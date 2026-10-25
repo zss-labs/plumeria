@@ -1,8 +1,8 @@
 # Plumeria
 
 [![OpenSSF Best Practices](https://img.shields.io/cii/level/15164?label=openssf&color=10B981)](https://www.bestpractices.dev/projects/15164)
-[![Tests](https://img.shields.io/github/actions/workflow/status/zss-in-js/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=10B981)](https://github.com/zss-in-js/plumeria/actions/workflows/tests.yml)
-![Codecov](https://img.shields.io/codecov/c/github/zss-in-js/plumeria?logo=codecov&logoColor=white&color=6366F1)
+[![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=10B981)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
+![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=6366F1)
 
 **Plumeria** is a **zero-cost abstraction layer** for styling React components. You write type-safe styles in TypeScript, and what ships is a class string — not a style object and a merger. Style composition is a monoid whose operation is fully determined at compile time, which is where the predictability comes from: styles are composable by construction, and strict syntax and linting keep the cognitive overhead low.
 
@@ -141,17 +141,17 @@ Versioning: All versions are standardized for consistency.
   - Example applications using Plumeria.
 - `packages`
   - Contains the individual packages managed in the monorepo.
-  - [codemod](https://github.com/zss-in-js/plumeria/tree/main/packages/codemod)
-  - [compiler](https://github.com/zss-in-js/plumeria/tree/main/packages/compiler)
-  - [core](https://github.com/zss-in-js/plumeria/tree/main/packages/core)
-  - [eslint-plugin](https://github.com/zss-in-js/plumeria/tree/main/packages/eslint-plugin)
-  - [headlessui](https://github.com/zss-in-js/plumeria/tree/main/packages/headlessui)
-  - [init](https://github.com/zss-in-js/plumeria/tree/main/packages/init)
-  - [inspector](https://github.com/zss-in-js/plumeria/tree/main/packages/inspector)
-  - [next-plugin](https://github.com/zss-in-js/plumeria/tree/main/packages/next-plugin)
-  - [turbopack-loader](https://github.com/zss-in-js/plumeria/tree/main/packages/turbopack-loader)
-  - [unplugin](https://github.com/zss-in-js/plumeria/tree/main/packages/unplugin)
-  - [utils](https://github.com/zss-in-js/plumeria/tree/main/packages/utils)
+  - [codemod](https://github.com/zss-labs/plumeria/tree/main/packages/codemod)
+  - [compiler](https://github.com/zss-labs/plumeria/tree/main/packages/compiler)
+  - [core](https://github.com/zss-labs/plumeria/tree/main/packages/core)
+  - [eslint-plugin](https://github.com/zss-labs/plumeria/tree/main/packages/eslint-plugin)
+  - [headlessui](https://github.com/zss-labs/plumeria/tree/main/packages/headlessui)
+  - [init](https://github.com/zss-labs/plumeria/tree/main/packages/init)
+  - [inspector](https://github.com/zss-labs/plumeria/tree/main/packages/inspector)
+  - [next-plugin](https://github.com/zss-labs/plumeria/tree/main/packages/next-plugin)
+  - [turbopack-loader](https://github.com/zss-labs/plumeria/tree/main/packages/turbopack-loader)
+  - [unplugin](https://github.com/zss-labs/plumeria/tree/main/packages/unplugin)
+  - [utils](https://github.com/zss-labs/plumeria/tree/main/packages/utils)
 - `test-e2e`
   - Contains e2e tests built with Playwright and Next.js for final quality assurance.
 
@@ -159,7 +159,7 @@ Versioning: All versions are standardized for consistency.
 
 We welcome contributions of all kinds — bug reports, feature ideas, pull requests.
 
-[Contributing Guide](https://github.com/zss-in-js/plumeria/blob/main/.github/CONTRIBUTING.md)
+[Contributing Guide](https://github.com/zss-labs/plumeria/blob/main/.github/CONTRIBUTING.md)
 
 ## Acknowledgements
 
@@ -171,4 +171,4 @@ We welcome contributions of all kinds — bug reports, feature ideas, pull reque
 
 ## License
 
-Plumeria is [MIT licensed](https://github.com/zss-in-js/plumeria/blob/main/LICENSE).
+Plumeria is [MIT licensed](https://github.com/zss-labs/plumeria/blob/main/LICENSE).
