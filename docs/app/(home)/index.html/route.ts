@@ -97,7 +97,7 @@ const html = `<!doctype html>
             <a href="/docs" class="menu-link">Docs</a>
             <a href="/playground" class="menu-link">Playground</a>
             <div class="menu-actions">
-              <a href="https://github.com/zss-in-js/plumeria" target="_blank" rel="noreferrer noopener" aria-label="GitHub" class="icon-link">${githubIcon}</a>
+              <a href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer noopener" aria-label="GitHub" class="icon-link">${githubIcon}</a>
               <button type="button" aria-label="Toggle Theme" class="theme"><span class="theme-icon theme-light">${sunIcon}</span><span class="theme-icon theme-dark">${moonIcon}</span></button>
             </div>
           </div>
