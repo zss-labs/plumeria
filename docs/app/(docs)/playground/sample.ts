@@ -57,7 +57,7 @@ export const Card = () => {
           <a classStyle={[styles.button, styles.primary]} href="/docs" target="_blank" rel="noreferrer">
             Docs <External />
           </a>
-          <a classStyle={styles.button} href="https://github.com/zss-in-js/plumeria" target="_blank" rel="noreferrer">
+          <a classStyle={styles.button} href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer">
             GitHub <External />
           </a>
         </div>
