@@ -11,6 +11,6 @@ export const socialLinks: LinkItemType[] = [
     label: 'GitHub',
     text: 'GitHub',
     icon: svg.Github({ width: 20, height: 20 }),
-    url: 'https://github.com/zss-in-js/plumeria',
+    url: 'https://github.com/zss-labs/plumeria',
   },
 ];
