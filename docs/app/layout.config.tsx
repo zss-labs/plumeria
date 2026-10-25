@@ -3,30 +3,28 @@ import Image from 'next/image';
 import * as css from '@plumeria/core';
 
 import { socialLinks } from 'lib/socialLinks';
-import { theme } from 'lib/theme';
 
 const styles = css.create({
   image: {
     position: 'relative',
     display: 'flex',
     flexDirection: 'row',
-    gap: 10,
+    gap: 5,
     alignItems: 'center',
-    fontSize: 12,
-    fontWeight: 600,
-    color: theme.wordmark,
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
+    fontSize: 15,
+    fontWeight: 650,
+    letterSpacing: '-0.03em',
   },
   mark: {
     display: 'flex',
+    marginTop: -2,
   },
 });
 
 export const logo = (
   <span classStyle={styles.image}>
     <span classStyle={styles.mark}>
-      <Image src="/logo.svg" alt="" width={24} height={24} preload />
+      <Image src="/logo.svg" alt="" width={20} height={20} preload />
     </span>
     Plumeria
   </span>
