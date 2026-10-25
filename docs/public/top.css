@@ -15,7 +15,6 @@
   --muted-foreground: #737373;
   --border: #cccccc80;
   --accent: #d1d1d180;
-  --wordmark: #365dcc;
 }
 
 .dark {
@@ -24,7 +23,6 @@
   --muted-foreground: #b3b3b3cc;
   --border: #6663;
   --accent: #6868684d;
-  --wordmark: #5b8cff;
 }
 
 *,
@@ -107,13 +105,15 @@ button {
 
 .brand {
   display: flex;
-  gap: 10px;
+  gap: 5px;
   align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--wordmark);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.brand img {
+  margin-top: -2px;
 }
 
 .menu {
@@ -228,13 +228,11 @@ button {
 }
 
 .title {
-  margin-right: -0.12em;
-  font-size: clamp(28px, 6vw, 56px);
-  font-weight: 600;
-  line-height: 1;
-  color: var(--wordmark);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  margin: 0;
+  font-size: clamp(48px, 10vw, 64px);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.065em;
 }
 
 .description {
