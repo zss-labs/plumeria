@@ -103,4 +103,4 @@ Turbopack rule conditions keep the compiler from being handed every module in th
 
 ## License
 
-Plumeria is [MIT licensed](https://github.com/zss-in-js/plumeria/blob/main/LICENSE).
+Plumeria is [MIT licensed](https://github.com/zss-labs/plumeria/blob/main/LICENSE).
