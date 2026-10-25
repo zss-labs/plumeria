@@ -100,7 +100,7 @@ export default function Page() {
       <h2 classStyle={styles.heading}>Contact</h2>
       <p classStyle={styles.text}>
         For questions about this policy or help with the plugins, open an issue on{' '}
-        <Link href="https://github.com/zss-in-js/plumeria/issues" classStyle={styles.link}>
+        <Link href="https://github.com/zss-labs/plumeria/issues" classStyle={styles.link}>
           GitHub
         </Link>
         .
