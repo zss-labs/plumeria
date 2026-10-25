@@ -11,11 +11,8 @@ export const SAMPLE_FILES: SampleFile[] = [
     path: ENTRY,
     label: 'Card.tsx',
     source: `import * as css from '@plumeria/core';
-import { useState } from 'react';
 import { theme } from './theme';
 import { breakpoints, tokens } from './tokens';
-
-const COMMAND = 'pnpm i -D @plumeria/core';
 
 const External = () => (
   <svg classStyle={styles.icon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -24,47 +21,30 @@ const External = () => (
   </svg>
 );
 
-export const Card = () => {
-  const [copied, setCopied] = useState(false);
-
-  const copy = () => {
-    void navigator.clipboard.writeText(COMMAND).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    });
-  };
-
-  return (
-    <main classStyle={styles.canvas}>
-      <article classStyle={styles.card}>
-        <div classStyle={styles.heading}>
-          <img classStyle={styles.logo} src="/logo.svg" alt="" width={28} height={28} />
-          <p classStyle={styles.eyebrow}>PLUMERIA</p>
-        </div>
-        <h1 classStyle={styles.title}>Rust-based CSS compiler</h1>
-        <p classStyle={styles.description}>
-          Atomic CSS at build time, nothing at runtime.
-          <br />
-          Edit any style and watch it land live.
-        </p>
-        <button classStyle={styles.install} type="button" onClick={copy}>
-          <code classStyle={styles.command}>
-            <span classStyle={styles.prompt}>$</span> {COMMAND}
-          </code>
-          <span classStyle={[styles.copy, copied && styles.copied]}>{copied ? 'Copied' : 'Copy'}</span>
-        </button>
-        <div classStyle={styles.actions}>
-          <a classStyle={[styles.button, styles.primary]} href="/docs" target="_blank" rel="noreferrer">
-            Docs <External />
-          </a>
-          <a classStyle={styles.button} href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer">
-            GitHub <External />
-          </a>
-        </div>
-      </article>
-    </main>
-  );
-};
+export const Card = () => (
+  <main classStyle={styles.canvas}>
+    <article classStyle={styles.card}>
+      <div classStyle={styles.heading}>
+        <img classStyle={styles.logo} src="/logo.svg" alt="" width={20} height={20} />
+        <p classStyle={styles.eyebrow}>Plumeria</p>
+      </div>
+      <h1 classStyle={styles.title}>Rust-based CSS compiler</h1>
+      <p classStyle={styles.description}>
+        Atomic CSS at build time, nothing at runtime.
+        <br />
+        Edit any style and watch it land live.
+      </p>
+      <div classStyle={styles.actions}>
+        <a classStyle={[styles.button, styles.primary]} href="/docs" target="_blank" rel="noreferrer">
+          Docs <External />
+        </a>
+        <a classStyle={styles.button} href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer">
+          GitHub <External />
+        </a>
+      </div>
+    </article>
+  </main>
+);
 
 const styles = css.create({
   canvas: {
@@ -91,7 +71,6 @@ const styles = css.create({
     borderWidth: '1px',
     borderRadius: tokens.radius,
     boxShadow: theme.shadow,
-    ...css.marker('card', ':hover'),
     [breakpoints.sm]: {
       padding: 22,
       borderRadius: 20,
@@ -99,27 +78,19 @@ const styles = css.create({
   },
   heading: {
     display: 'flex',
-    gap: 10,
+    gap: 5,
     alignItems: 'center',
     marginBottom: 20,
   },
   logo: {
-    transition: 'rotate 500ms cubic-bezier(0.2, 0.8, 0.2, 1), scale 500ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-    [css.extended('card', ':hover')]: {
-      rotate: '36deg',
-      scale: 1.1,
-    },
+    marginTop: -2,
   },
   eyebrow: {
     margin: 0,
-    fontSize: 12,
-    fontWeight: 600,
-    color: theme.accent,
-    letterSpacing: '0.12em',
-    transition: 'letter-spacing 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-    [css.extended('card', ':hover')]: {
-      letterSpacing: '0.24em',
-    },
+    fontSize: 15,
+    fontWeight: 650,
+    color: theme.text,
+    letterSpacing: '-0.03em',
   },
   title: {
     margin: 0,
@@ -137,54 +108,6 @@ const styles = css.create({
     lineHeight: 1.6,
     color: theme.muted,
     textWrap: 'balance',
-  },
-  install: {
-    boxSizing: 'border-box',
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    padding: '11px 14px',
-    marginBottom: tokens.gap,
-    color: theme.text,
-    cursor: 'pointer',
-    background: theme.canvas,
-    borderColor: theme.border,
-    borderStyle: 'solid',
-    borderWidth: '1px',
-    borderRadius: tokens.pill,
-    transition: 'scale 120ms',
-    ':active': {
-      scale: 0.99,
-    },
-    ':focus-visible': {
-      outline: \`2px solid \${theme.accent}\`,
-      outlineOffset: 3,
-    },
-  },
-  command: {
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    fontFamily: 'ui-monospace, monospace',
-    fontSize: 13,
-    whiteSpace: 'nowrap',
-  },
-  prompt: {
-    color: theme.muted,
-    transition: 'color 300ms',
-    [css.extended('card', ':hover')]: {
-      color: theme.accent,
-    },
-  },
-  copy: {
-    flex: 'none',
-    fontSize: 12,
-    fontWeight: 500,
-    color: theme.muted,
-  },
-  copied: {
-    color: theme.accent,
   },
   actions: {
     display: 'grid',
