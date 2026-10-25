@@ -88,7 +88,7 @@ const html = `<!doctype html>
   <body>
     <header class="header">
       <nav class="nav">
-        <a href="/" class="brand"><img src="/logo.svg" alt="" width="24" height="24">Plumeria</a>
+        <a href="/" class="brand"><img src="/logo.svg" alt="" width="20" height="20">Plumeria</a>
         <button type="button" popovertarget="home-menu" aria-label="Toggle Menu" class="toggle">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </button>
