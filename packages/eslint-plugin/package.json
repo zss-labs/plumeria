@@ -7,11 +7,11 @@
   "homepage": "https://plumeria.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zss-in-js/plumeria.git",
+    "url": "git+https://github.com/zss-labs/plumeria.git",
     "directory": "packages/eslint-plugin"
   },
   "bugs": {
-    "url": "https://github.com/zss-in-js/plumeria/issues"
+    "url": "https://github.com/zss-labs/plumeria/issues"
   },
   "keywords": [
     "plumeria",
