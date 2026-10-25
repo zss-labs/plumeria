@@ -1,18 +1,6 @@
 import * as css from '@plumeria/core';
-import { breakpoints } from 'lib/mediaQuery';
 
 export const styles = css.create({
-  article: {
-    width: '800px',
-    paddingInline: 24,
-    paddingTop: '24px',
-    marginInline: 'auto',
-    marginBottom: '40px',
-    lineHeight: 1.7,
-    [breakpoints.md]: {
-      width: '100%',
-    },
-  },
   title: {
     marginBottom: '12px',
     fontSize: 28,
