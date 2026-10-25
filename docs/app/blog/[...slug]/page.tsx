@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { blog } from 'lib/source';
 import { JSX } from 'react';
-import { DocsBody } from 'fumadocs-ui/page';
+import { DocsPage, DocsBody } from 'fumadocs-ui/page';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import '@plumeria/core';
 import { styles } from './styles';
@@ -32,7 +32,14 @@ export default async function Page(props: { params: Promise<{ slug?: Array<strin
   const MDX = page.data.body;
 
   return (
-    <article classStyle={styles.article}>
+    <DocsPage
+      toc={page.data.toc}
+      footer={{ enabled: false }}
+      tableOfContent={{
+        style: 'clerk',
+        single: true,
+      }}
+    >
       {page.data.title && <h1 classStyle={styles.title}>{page.data.title}</h1>}
       <p classStyle={styles.date}>
         <time dateTime={page.data.date}>{formatDate(page.data.date)}</time>
@@ -40,6 +47,6 @@ export default async function Page(props: { params: Promise<{ slug?: Array<strin
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
-    </article>
+    </DocsPage>
   );
 }
