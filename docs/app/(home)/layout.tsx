@@ -159,7 +159,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               Playground
             </Link>
             <a
-              href="https://github.com/zss-in-js/plumeria"
+              href="https://github.com/zss-labs/plumeria"
               target="_blank"
               rel="noreferrer noopener"
               classStyle={[styles.link, styles.external]}
