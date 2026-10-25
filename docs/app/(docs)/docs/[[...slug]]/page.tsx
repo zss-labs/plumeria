@@ -63,7 +63,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
-      <EditOnGitHub href={`https://github.com/zss-in-js/plumeria/blob/main/docs/content/docs/${page.path}`} />
+      <EditOnGitHub href={`https://github.com/zss-labs/plumeria/blob/main/docs/content/docs/${page.path}`} />
       <Footer />
       <SiteFooter />
     </DocsPage>
