@@ -1,5 +1,9 @@
 # Release Notes
 
+## 21.1.3 (Oct 25, 2026)
+
+- Update: Move repository links to the zss-labs organization
+
 ## 21.1.2 (Oct 23, 2026)
 
 - Fix: a received style can be composed onto a component the build never scans, such as a `@plumeria/headlessui` part, with `classStyle={[styles.base, classStyle]}` instead of failing the build

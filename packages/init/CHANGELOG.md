@@ -1,5 +1,11 @@
 # @plumeria/init
 
+## 21.1.3
+
+### Patch Changes
+
+- 2bf6c80: - Update: Move repository links to the zss-labs organization
+
 ## 21.1.2
 
 ### Patch Changes
