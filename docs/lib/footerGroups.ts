@@ -49,4 +49,4 @@ export const footerSocialLinks = [
   },
 ];
 
-export const copyright = '© zss-in-js contributors';
+export const copyright = '© zss-labs contributors';
