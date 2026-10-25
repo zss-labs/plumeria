@@ -7,9 +7,9 @@
   },
   "homepage": "https://plumeria.dev",
   "documentationUrl": "https://plumeria.dev/docs/ai",
-  "supportUrl": "https://github.com/zss-in-js/plumeria/issues",
+  "supportUrl": "https://github.com/zss-labs/plumeria/issues",
   "privacyPolicyUrl": "https://plumeria.dev/privacy",
-  "repository": "https://github.com/zss-in-js/plumeria",
+  "repository": "https://github.com/zss-labs/plumeria",
   "license": "MIT",
   "icon": "./.claude-plugin/icon.png",
   "keywords": [
