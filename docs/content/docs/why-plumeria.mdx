@@ -94,6 +94,10 @@ Styles go back to `*.module.css`, theme tokens and animations to global CSS, and
 
 The [Claude plugin](/docs/ai-agent-resources#claude-plugin) includes a skill that migrates Tailwind classes to Plumeria styles.
 
+## Coming from StyleX
+
+The APIs keep StyleX's names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api-reference/javascript/createTheme) declares each variable's default and themed values in one call.
+
 ---
 
 Plumeria is for those who say, "I never compromise." Ready to try it? Start with [Getting started](/docs/installation).
