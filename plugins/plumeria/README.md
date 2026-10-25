@@ -13,7 +13,7 @@ The plugin has no hooks, MCP servers, or scripts. It runs nothing, sends nothing
 ## Install
 
 ```text
-/plugin marketplace add zss-in-js/plumeria
+/plugin marketplace add zss-labs/plumeria
 /plugin install plumeria@plumeria
 ```
 
