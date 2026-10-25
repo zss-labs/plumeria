@@ -12,6 +12,10 @@
   --plumeria-accent: #d653bb;
 }
 
+:root:not(:has([data-playground])) {
+  scrollbar-gutter: stable;
+}
+
 :root:has([data-playground]) {
   --fd-layout-width: 100vw;
 }
