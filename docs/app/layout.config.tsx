@@ -43,6 +43,16 @@ export const baseOptions: BaseLayoutProps = {
       active: 'nested-url',
     },
     {
+      text: 'API',
+      url: '/docs/api-reference',
+      active: 'nested-url',
+    },
+    {
+      text: 'Blog',
+      url: '/blog',
+      active: 'nested-url',
+    },
+    {
       text: 'Playground',
       url: '/playground',
       active: 'nested-url',
