@@ -83,17 +83,11 @@ type ClassStyled<T> = Readonly<{
 
 type AtomicClassStyle<T> = ClassStyled<AtomicStyle<T>>;
 
-type StyleMap<T> = [T] extends [unknown]
-  ? Readonly<{
-      readonly [key in keyof T]: T[key] extends Record<string, unknown>
-        ? key extends NestedKey
-          ? StyleMap<T[key]>
-          : AtomicClassNameFor<key & string, T[key]>
-        : key extends string
-          ? AtomicClassNameFor<key, T[key]>
-          : never;
-    }>
-  : never;
+type StyleMap<T> = Readonly<{
+  readonly [key in keyof T]: key extends NestedKey
+    ? StyleMap<T[key]>
+    : AtomicClassNameFor<key & string, T[key]>;
+}>;
 
 type CreateReturnType<T> = Readonly<{
   [K in keyof T]: T[K] extends (...args: infer A) => infer R
@@ -106,16 +100,22 @@ type FlatNamespace<K extends StyleKey, M = unknown> = {
     : never;
 };
 
-interface NestedNamespace<K extends StyleKey, M> {
+type NestedNamespace<K extends StyleKey, M> = {
   readonly [P: NestedKey]: AllowedNamespace<K, M> | undefined;
-}
+};
 
 type AllowedNamespace<K extends StyleKey, M = unknown> = FlatNamespace<K, M> &
   NestedNamespace<K, M>;
 
 type StyleList<T> = T | false | null | undefined | StyleList<T>[];
 
-type StyleNamespace = AllowedNamespace<StyleKey>;
+type StyleNamespace = {
+  readonly [key: string]:
+    | AtomicClassNameFor<string, unknown>
+    | StyleNamespace
+    | undefined;
+};
+
 type Style = StyleList<StyleNamespace>;
 
 type StyleProps<K extends StyleKey> = StyleList<AllowedNamespace<K>>;
