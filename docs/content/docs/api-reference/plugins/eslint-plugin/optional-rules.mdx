@@ -70,9 +70,9 @@ for is what removes the shape.
 ```js
 borderTop: '1px solid red'
 // fixes to
-borderTopWidth: '1px',
+borderTopColor: 'red',
 borderTopStyle: 'solid',
-borderTopColor: 'red'
+borderTopWidth: '1px'
 ```
 
 `borderTop` and `borderBlockWidth` cross: the first sets three values on one
@@ -98,9 +98,9 @@ component the other tokens leave open:
 ```js
 borderLeft: `1px solid ${edge}`
 // fixes to
-borderLeftWidth: '1px',
+borderLeftColor: edge,
 borderLeftStyle: 'solid',
-borderLeftColor: edge
+borderLeftWidth: '1px'
 ```
 
 A value the rule cannot split — `var(--edge)` on its own, `inherit`, a
