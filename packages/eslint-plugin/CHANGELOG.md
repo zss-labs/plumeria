@@ -1,3 +1,11 @@
+## 21.1.4
+
+### Patch Changes
+
+- f26493b: Bump version to 21.1.4
+- Updated dependencies [f26493b]
+  - @plumeria/compiler@21.1.4
+
 ## 21.1.3
 
 ### Patch Changes
