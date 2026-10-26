@@ -1,5 +1,11 @@
 # @plumeria/headlessui
 
+## 21.1.4
+
+### Patch Changes
+
+- f26493b: Bump version to 21.1.4
+
 ## 21.1.3
 
 ### Patch Changes
