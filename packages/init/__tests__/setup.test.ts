@@ -223,6 +223,32 @@ describe('plan', () => {
     );
   });
 
+  it('declares the styling prop in src when the project has one', () => {
+    project(
+      { name: 'app', devDependencies: { vite: '^8.0.13' } },
+      {
+        'vite.config.ts': VITE_CONFIG,
+        'tsconfig.json': '{}',
+        'src/main.tsx': '',
+      },
+    );
+
+    expect(on(plan(detect(dir), answers()), 'src/plumeria.d.ts').kind).toBe(
+      'write',
+    );
+  });
+
+  it('declares the styling prop at the root without src', () => {
+    project(
+      { name: 'app', devDependencies: { vite: '^8.0.13' } },
+      { 'vite.config.ts': VITE_CONFIG, 'tsconfig.json': '{}' },
+    );
+
+    expect(on(plan(detect(dir), answers()), 'plumeria.d.ts').kind).toBe(
+      'write',
+    );
+  });
+
   it('registers the unplugin and carries the policy into it', () => {
     project(
       { name: 'app', devDependencies: { vite: '^8.0.13' } },
