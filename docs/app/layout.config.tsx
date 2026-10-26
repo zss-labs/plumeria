@@ -19,6 +19,11 @@ const styles = css.create({
     display: 'flex',
     marginTop: -2,
   },
+  external: {
+    display: 'inline-flex',
+    gap: 4,
+    alignItems: 'center',
+  },
 });
 
 export const logo = (
@@ -43,11 +48,6 @@ export const baseOptions: BaseLayoutProps = {
       active: 'nested-url',
     },
     {
-      text: 'API',
-      url: '/docs/api-reference',
-      active: 'nested-url',
-    },
-    {
       text: 'Blog',
       url: '/blog',
       active: 'nested-url',
@@ -56,6 +56,28 @@ export const baseOptions: BaseLayoutProps = {
       text: 'Playground',
       url: '/playground',
       active: 'nested-url',
+    },
+    {
+      text: (
+        <span classStyle={styles.external}>
+          Benchmark
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="M11 5H4v15h15v-7" />
+            <path d="M14 3h7v7M21 3 11 13" />
+          </svg>
+        </span>
+      ),
+      icon: false,
+      url: 'https://refirst11.github.io/css-compiler-bench/',
+      external: true,
     },
     ...socialLinks,
   ],
