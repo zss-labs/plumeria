@@ -623,5 +623,18 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
         /"--[a-z0-9-]+-margin-top": \(\(r\) \+ '%'\)/,
       );
     });
+
+    it('leaves a number inside a color or scale function without a unit', async () => {
+      const { code, sheets } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ k: (h: number, d: number) => ({ color: \`hsl(\${h} 85% 72%)\`, transform: \`scaleX(\${d})\` }) });
+export const A = ({ h, d }: { h: number; d: number }) => <div classStyle={s.k(h, d)} />;`,
+        'unit-unitless-function.tsx',
+      );
+      const css = sheets.join('');
+      expect(css).toMatch(/color: hsl\(var\(--[a-z0-9-]+\) 85% 72%\);/);
+      expect(css).toMatch(/transform: scaleX\(var\(--[a-z0-9-]+\)\);/);
+      expect(styleOf(code)).not.toContain("'px'");
+    });
   });
 });
