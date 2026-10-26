@@ -7,6 +7,7 @@ import type {
   SpreadElement,
   ObjectExpression,
   ImportSpecifier,
+  Comment,
 } from 'estree';
 import type { Rule } from 'eslint';
 import { styleObjectFromValue } from '../util/styleObject';
@@ -184,11 +185,53 @@ export const sortProperties: Rule.RuleModule = {
 
       if (misorderedIndices.length === 0) return;
 
-      const match = sourceCode.getText(node).match(/^{\s*\n(\s*)/);
-      const indent = match ? match[1] : '';
-      const lineEnding = match ? '\n' : ' ';
-      const closingIndentMatch = sourceCode.getText(node).match(/\n(\s*)}$/);
-      const closingIndent = closingIndentMatch ? closingIndentMatch[1] : '';
+      const text = sourceCode.text;
+      const textOf = (comments: Comment[]) =>
+        comments
+          .map((c) => ` ${text.slice(c.range![0], c.range![1])}`)
+          .join('');
+      const indentOf = (line: number) => {
+        const lineText = sourceCode.lines[line - 1];
+        let i = 0;
+        while (lineText[i] === ' ' || lineText[i] === '\t') i++;
+        return lineText.slice(0, i);
+      };
+
+      const slots = properties.map((prop) => {
+        const tokenBefore = sourceCode.getTokenBefore(prop)!;
+        const sameLineAsBefore =
+          prop.loc!.start.line === tokenBefore.loc.end.line;
+        const leading = sourceCode
+          .getCommentsBefore(prop)
+          .filter(
+            (c) =>
+              sameLineAsBefore || c.loc!.start.line > tokenBefore.loc.end.line,
+          );
+        const tokenAfter = sourceCode.getTokenAfter(prop)!;
+        const hasComma = tokenAfter.value === ',';
+        const beforeComma = hasComma ? sourceCode.getCommentsAfter(prop) : [];
+        const anchor = hasComma ? tokenAfter : prop;
+        const next = sourceCode.getTokenAfter(anchor)!;
+        const nextOnSameLine =
+          next.value !== '}' && next.loc.start.line === anchor.loc!.end.line;
+        const afterComma = nextOnSameLine
+          ? []
+          : sourceCode
+              .getCommentsAfter(anchor)
+              .filter((c) => c.loc!.start.line === anchor.loc!.end.line);
+        const start = leading.length ? leading[0].range![0] : prop.range![0];
+        const last = afterComma[afterComma.length - 1] ?? anchor;
+        return {
+          prop,
+          start,
+          last,
+          hasComma,
+          lead: text.slice(start, prop.range![0]),
+          beforeComma,
+          afterComma,
+        };
+      });
+      const slotOf = new Map(slots.map((slot) => [slot.prop, slot]));
 
       misorderedIndices.forEach((i) => {
         const prop = properties[i] as Property;
@@ -200,19 +243,34 @@ export const sortProperties: Rule.RuleModule = {
             property: keyNameOf(prop),
           },
           fix(fixer) {
-            const newText = sorted
-              .map((p) => {
-                return `${indent}${sourceCode.getText(p)}`;
-              })
-              .join(`,${lineEnding}`);
-
-            return fixer.replaceTextRange(
-              [
-                (node.range as [number, number])[0] + 1,
-                (node.range as [number, number])[1] - 1,
-              ],
-              `${lineEnding}${newText}${lineEnding}${closingIndent}`,
-            );
+            return slots.map((slot, j) => {
+              const unit = slotOf.get(sorted[j])!;
+              const body = sourceCode.getText(unit.prop);
+              const lineBefore = unit.beforeComma.filter(
+                (c) => c.type === 'Line',
+              );
+              const trailing = slot.hasComma
+                ? [...lineBefore, ...unit.afterComma]
+                : [...unit.beforeComma, ...unit.afterComma];
+              let replacement = slot.hasComma
+                ? `${unit.lead}${body}${textOf(unit.beforeComma.filter((c) => c.type === 'Block'))},${textOf(trailing)}`
+                : `${unit.lead}${body}${textOf(trailing)}`;
+              let end = slot.last.range![1];
+              if (trailing[trailing.length - 1]?.type === 'Line') {
+                const next = sourceCode.getTokenAfter(slot.last, {
+                  includeComments: true,
+                })!;
+                if (next.loc!.start.line === slot.last.loc!.end.line) {
+                  end = next.range![0];
+                  replacement += `\n${
+                    next === sourceCode.getLastToken(node)
+                      ? indentOf(node.loc!.start.line)
+                      : indentOf(slot.prop.loc!.start.line)
+                  }`;
+                }
+              }
+              return fixer.replaceTextRange([slot.start, end], replacement);
+            });
           },
         });
       });
