@@ -101,7 +101,7 @@ elsewhere outrank it.
 ```js
 borderTop: '1px solid red'
 // becomes
-borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: 'red'
+borderTopColor: 'red', borderTopStyle: 'solid', borderTopWidth: '1px'
 ```
 
 A shorthand resets what it omits, so `borderBlock: 'solid'` expands with
