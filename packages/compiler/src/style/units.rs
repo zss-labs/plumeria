@@ -16,6 +16,60 @@ pub fn is_unitless_prop(prop: &str) -> bool {
     exception_camel_case().iter().any(|name| name == prop) || prop.starts_with("--")
 }
 
+const UNITLESS_FUNCTIONS: &[&str] = &[
+    "rgb",
+    "rgba",
+    "hsl",
+    "hsla",
+    "hwb",
+    "lab",
+    "lch",
+    "oklab",
+    "oklch",
+    "color",
+    "scale",
+    "scalex",
+    "scaley",
+    "scalez",
+    "scale3d",
+    "matrix",
+    "matrix3d",
+    "brightness",
+    "contrast",
+    "grayscale",
+    "invert",
+    "opacity",
+    "saturate",
+    "sepia",
+];
+
+fn in_unitless_function(before: &str) -> bool {
+    let bytes = before.as_bytes();
+    let mut depth = 0usize;
+    for i in (0..bytes.len()).rev() {
+        match bytes[i] {
+            b')' => depth += 1,
+            b'(' if depth > 0 => depth -= 1,
+            b'(' => {
+                let mut start = i;
+                while start > 0
+                    && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'-')
+                {
+                    start -= 1;
+                }
+                if UNITLESS_FUNCTIONS
+                    .iter()
+                    .any(|name| name.eq_ignore_ascii_case(&before[start..i]))
+                {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 fn written_unit_after(rest: &str) -> String {
     let bytes = rest.as_bytes();
     if bytes.first() == Some(&b'%') {
@@ -50,9 +104,9 @@ pub struct VarGroup {
     pub written: bool,
 }
 
-fn unit_at(prop: &str, rest: &str) -> VarUnit {
+fn unit_at(prop: &str, before: &str, rest: &str) -> VarUnit {
     let written = written_unit_after(rest);
-    if !written.is_empty() {
+    if !written.is_empty() || in_unitless_function(before) {
         return VarUnit {
             unit: written,
             written: true,
@@ -103,9 +157,9 @@ fn rewrite_var_occurrences(
                 let mut rest = text.clone();
                 while let Some(at) = rest.find(&reference) {
                     let after = rest[at + reference.len()..].to_string();
-                    let unit = unit_at(&prop, &after);
-                    let name = assign(&prop, &unit);
                     rewritten.push_str(&rest[..at]);
+                    let unit = unit_at(&prop, &rewritten, &after);
+                    let name = assign(&prop, &unit);
                     rewritten.push_str(&format!("var({name})"));
                     rest = if unit.written {
                         after[unit.unit.len()..].to_string()
