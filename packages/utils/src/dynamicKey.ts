@@ -247,9 +247,54 @@ type VarGroup = {
   written: boolean;
 };
 
-const unitAt = (prop: string, rest: string): VarUnit => {
+const UNITLESS_FUNCTIONS = new Set([
+  'rgb',
+  'rgba',
+  'hsl',
+  'hsla',
+  'hwb',
+  'lab',
+  'lch',
+  'oklab',
+  'oklch',
+  'color',
+  'scale',
+  'scalex',
+  'scaley',
+  'scalez',
+  'scale3d',
+  'matrix',
+  'matrix3d',
+  'brightness',
+  'contrast',
+  'grayscale',
+  'invert',
+  'opacity',
+  'saturate',
+  'sepia',
+]);
+
+const FUNCTION_NAME_BEFORE = /[a-z0-9-]*$/i;
+
+const inUnitlessFunction = (before: string): boolean => {
+  let depth = 0;
+  for (let i = before.length - 1; i >= 0; i--) {
+    if (before[i] === ')') depth++;
+    else if (before[i] === '(') {
+      if (depth > 0) depth--;
+      else {
+        const name = FUNCTION_NAME_BEFORE.exec(before.slice(0, i))![0];
+        if (UNITLESS_FUNCTIONS.has(name.toLowerCase())) return true;
+      }
+    }
+  }
+  return false;
+};
+
+const unitAt = (prop: string, before: string, rest: string): VarUnit => {
   const written = writtenUnitAfter(rest);
-  if (written) return { unit: written, written: true };
+  if (written || inUnitlessFunction(before))
+    return { unit: written, written: true };
   return { unit: isUnitlessProp(prop) ? '' : 'px', written: false };
 };
 
@@ -272,8 +317,9 @@ const rewriteVarOccurrences = (
       let at = rest.indexOf(reference);
       while (at !== -1) {
         const after = rest.slice(at + reference.length);
-        const unit = unitAt(prop, after);
-        rewritten += `${rest.slice(0, at)}var(${assign(prop, unit)})`;
+        rewritten += rest.slice(0, at);
+        const unit = unitAt(prop, rewritten, after);
+        rewritten += `var(${assign(prop, unit)})`;
         rest = unit.written ? after.slice(unit.unit.length) : after;
         at = rest.indexOf(reference);
       }
