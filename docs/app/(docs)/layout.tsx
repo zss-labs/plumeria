@@ -1,13 +1,13 @@
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import 'katex/dist/katex.css';
 import type { ReactNode } from 'react';
 import { baseOptions } from 'app/layout.config';
 import { source } from 'lib/source';
+import { SectionDocsLayout } from './docs-layout';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <DocsLayout tree={source.pageTree} {...baseOptions}>
+    <SectionDocsLayout tree={source.pageTree} {...baseOptions}>
       {children}
-    </DocsLayout>
+    </SectionDocsLayout>
   );
 }
