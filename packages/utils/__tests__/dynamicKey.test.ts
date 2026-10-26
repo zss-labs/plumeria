@@ -114,6 +114,24 @@ describe('CSS variable unit rules', () => {
     ]);
   });
 
+  test('leaves a variable inside a color or scale function without a unit', () => {
+    expect(
+      splitVarByUnit({ color: 'hsl(calc(var(--h) + 10) 85% 72%)' }, '--h'),
+    ).toEqual([{ cssVar: '--h', prop: 'color', unit: '', written: true }]);
+    expect(splitVarByUnit({ filter: 'brightness(var(--b))' }, '--b')).toEqual([
+      { cssVar: '--b', prop: 'filter', unit: '', written: true },
+    ]);
+    expect(
+      splitVarByUnit(
+        { transform: 'translateX(var(--d)) scaleX(var(--d))' },
+        '--d',
+      ),
+    ).toEqual([
+      { cssVar: '--d', prop: 'transform', unit: 'px', written: false },
+      { cssVar: '--d-transform', prop: 'transform', unit: '', written: true },
+    ]);
+  });
+
   test('splits nested declarations by units and replaces every occurrence', () => {
     const style = {
       width: 'var(--size)',
