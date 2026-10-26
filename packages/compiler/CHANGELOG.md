@@ -1,5 +1,11 @@
 # @plumeria/compiler
 
+## 21.1.6
+
+### Patch Changes
+
+- b94dcc8: - Fix: a dynamic style parameter inside a color, filter or scale function, such as `hsl()`, `brightness()` or `scaleX()`, no longer gets a `px` unit
+
 ## 21.1.5
 
 ### Patch Changes

@@ -1,5 +1,9 @@
 # Release Notes
 
+## 21.1.6 (Oct 26, 2026)
+
+- Fix: a dynamic style parameter inside a color, filter or scale function, such as `hsl()`, `brightness()` or `scaleX()`, no longer gets a `px` unit
+
 ## 21.1.5 (Oct 26, 2026)
 
 - Fix: write `plumeria.d.ts` into `src/` when the project has one, so a tsconfig that includes only `src`, such as the Vite React template, reads the `classStyle` declaration
