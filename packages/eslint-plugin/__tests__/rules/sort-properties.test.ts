@@ -14,6 +14,83 @@ export const media = css.createStatic({
 );
 const APP = path.join(DIR, 'app.ts');
 
+const MOVED_COMMENTS: [string, number, string][] = [
+  [
+    // comments travel with their property; object comments stay put
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  card: { // layout
+    // the frame
+    borderWidth: '1px', // thin
+    /* tint */ borderColor: 'red',
+    color: 'blue' /* text */,
+    // dangling
+  },
+});`,
+    2,
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  card: { // layout
+    color: 'blue' /* text */,
+    /* tint */ borderColor: 'red',
+    // the frame
+    borderWidth: '1px', // thin
+    // dangling
+  },
+});`,
+  ],
+  [
+    // a line comment moved before the closing brace breaks the line
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    borderWidth: '1px', // frame
+    color: 'blue', borderColor: 'red' },
+});`,
+    1,
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    color: 'blue',
+    borderColor: 'red', borderWidth: '1px' // frame
+  },
+});`,
+  ],
+  [
+    // no blank line when a line break already follows
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    borderWidth: '1px', // frame
+    color: 'blue',
+  },
+});`,
+    1,
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    color: 'blue',
+    borderWidth: '1px', // frame
+  },
+});`,
+  ],
+  [
+    // a line comment moved mid-line in a one-line object
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: { borderWidth: '1px', // frame
+    color: 'blue', borderColor: 'red' },
+});`,
+    1,
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: { color: 'blue',
+    borderColor: 'red', borderWidth: '1px' // frame
+  },
+});`,
+  ],
+];
+
 const ruleTester = new RuleTester();
 
 ruleTester.run('sort-properties', sortProperties, {
@@ -155,8 +232,27 @@ const styles = css.create({ grid: { display: 'grid', '@media (min-width: 640px)'
         ecmaVersion: 2021,
       },
     },
+    // the fixed output settles in one pass
+    ...MOVED_COMMENTS.map(([, , output]) => output),
   ],
   invalid: [
+    {
+      code: `import * as css from '@plumeria/core';
+const styles = css.create({
+  card: {
+    borderWidth: '1px',
+    borderColor: 'red',
+  },
+});`,
+      output: `import * as css from '@plumeria/core';
+const styles = css.create({
+  card: {
+    borderColor: 'red',
+    borderWidth: '1px',
+  },
+});`,
+      errors: 1,
+    },
     {
       code: `import * as css from '@plumeria/core';
 import { media } from './tokens';
@@ -274,5 +370,10 @@ const styles = css.create({ grid: { display: 'grid', gap: 8, [media.desktop]: { 
         ecmaVersion: 2021,
       },
     },
+    ...MOVED_COMMENTS.map(([code, errors, output]) => ({
+      code,
+      errors,
+      output,
+    })),
   ],
 });
