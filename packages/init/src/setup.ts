@@ -358,7 +358,7 @@ export const plan = (detected: Detected, answers: Answers): Action[] => {
       kind: 'write',
       label: 'write',
       note: answers.styleProp,
-      file: 'plumeria.d.ts',
+      file: declarationFile(detected),
       contents: declarationSource(answers),
     });
   }
@@ -373,6 +373,13 @@ export const plan = (detected: Detected, answers: Answers): Action[] => {
 
   return actions;
 };
+
+const declarationFile = (detected: Detected): string =>
+  fs
+    .statSync(path.join(detected.root, 'src'), { throwIfNoEntry: false })
+    ?.isDirectory()
+    ? 'src/plumeria.d.ts'
+    : 'plumeria.d.ts';
 
 const read = (detected: Detected, file: string): string =>
   fs.readFileSync(path.join(detected.root, file), 'utf8');
