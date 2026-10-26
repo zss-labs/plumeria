@@ -78,9 +78,9 @@ rejects(
   'expand-border-shorthands',
   expandBorderShorthands,
   `{ border: '1px solid red' }`,
-  `import * as css from '@plumeria/core'; css.create({ dynamic: value => ({ borderWidth: '1px',
+  `import * as css from '@plumeria/core'; css.create({ dynamic: value => ({ borderColor: 'red',
                                                                          borderStyle: 'solid',
-                                                                         borderColor: 'red' }) });`,
+                                                                         borderWidth: '1px' }) });`,
 );
 rejects(
   'sort-properties',
