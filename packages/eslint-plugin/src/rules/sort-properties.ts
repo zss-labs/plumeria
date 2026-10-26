@@ -45,13 +45,13 @@ const pseudoGroupOffset3 = (propertyGroups.length + 3) * 1000;
 const defaultOffset = globalLastGroupIndex * 1000 + globalMaxPropIndex + 1;
 
 function getPropertyIndex(name: string): number {
-  // キャッシュがあれば爆速で返す
+  // return the cached index right away when there is one
   const cachedIndex = propertyIndexMap.get(name);
   if (cachedIndex !== undefined) {
     return cachedIndex;
   }
 
-  // 特殊なプレフィックスの判定
+  // check the special prefixes
   if (name.startsWith(':')) return pseudoGroupOffset1;
   if (name.startsWith('&')) return pseudoGroupOffset2;
   if (name.startsWith('@media') || name.startsWith('@container'))
