@@ -115,3 +115,13 @@ export const ab: NoDynamic = styles.nestedDynamic('red');
 
 // @ts-expect-error the same holds when the properties are enumerated
 export const ac: EnumeratedStatic = styles.nestedDynamic('red');
+
+declare const enumerated: Enumerated;
+declare const noPosition: NoPosition;
+declare const enumeratedStatic: EnumeratedStatic;
+declare const noDynamic: NoDynamic;
+
+export const ad: css.Style = [styles.ok, enumerated];
+export const ae: css.Style = [styles.ok, noPosition];
+export const af: css.Style = [styles.ok, enumeratedStatic];
+export const ag: css.Style = [styles.ok, noDynamic];
