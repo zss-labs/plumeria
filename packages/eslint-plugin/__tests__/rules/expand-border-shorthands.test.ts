@@ -1,5 +1,8 @@
-import { RuleTester } from 'eslint';
+import { Linter, RuleTester } from 'eslint';
+import { kebabToCamelCase } from 'zss-engine';
 import { expandBorderShorthands } from '../../src/rules/expand-border-shorthands';
+import { sortProperties } from '../../src/rules/sort-properties';
+import { BORDER_BUNDLES } from '../../src/util/borderShorthand';
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -72,9 +75,9 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
       `,
       output: `
         import { create as make } from '@plumeria/core';
-        make({ box: { borderRightWidth: "thin",
+        make({ box: { borderRightColor: "blue",
                       borderRightStyle: "dotted",
-                      borderRightColor: "blue" } });
+                      borderRightWidth: "thin" } });
       `,
       errors: [{ messageId: 'expand', data: { name: 'borderRight' } }],
     },
@@ -101,9 +104,9 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
         css.keyframes({
           from: {
             '@media (forced-colors: active)': {
-              borderBlockStartWidth: 'medium',
+              borderBlockStartColor: 'CanvasText',
               borderBlockStartStyle: 'solid',
-              borderBlockStartColor: 'CanvasText'
+              borderBlockStartWidth: 'medium'
             }
           }
         });
@@ -113,9 +116,9 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
     {
       code: wrap(`    borderTop: '1px solid red'`),
       output: wrap(
-        `    borderTopWidth: '1px',
+        `    borderTopColor: 'red',
     borderTopStyle: 'solid',
-    borderTopColor: 'red'`,
+    borderTopWidth: '1px'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderTop' } }],
     },
@@ -126,27 +129,27 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
        */
       code: wrap(`    borderBlock: 'solid'`),
       output: wrap(
-        `    borderBlockWidth: 'medium',
+        `    borderBlockColor: 'currentColor',
     borderBlockStyle: 'solid',
-    borderBlockColor: 'currentColor'`,
+    borderBlockWidth: 'medium'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderBlock' } }],
     },
     {
       code: wrap(`    border: '2px dashed rgb(0 0 0 / 50%)'`),
       output: wrap(
-        `    borderWidth: '2px',
+        `    borderColor: 'rgb(0 0 0 / 50%)',
     borderStyle: 'dashed',
-    borderColor: 'rgb(0 0 0 / 50%)'`,
+    borderWidth: '2px'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'border' } }],
     },
     {
       code: wrap(`    borderInlineStart: 'red 1px'`),
       output: wrap(
-        `    borderInlineStartWidth: '1px',
+        `    borderInlineStartColor: 'red',
     borderInlineStartStyle: 'none',
-    borderInlineStartColor: 'red'`,
+    borderInlineStartWidth: '1px'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderInlineStart' } }],
     },
@@ -161,27 +164,27 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
     {
       code: wrap(`    borderLeft: '1px solid var(--edge-color)'`),
       output: wrap(
-        `    borderLeftWidth: '1px',
+        `    borderLeftColor: 'var(--edge-color)',
     borderLeftStyle: 'solid',
-    borderLeftColor: 'var(--edge-color)'`,
+    borderLeftWidth: '1px'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderLeft' } }],
     },
     {
       code: wrap('    borderLeft: `1px solid ${colors.edge}`'),
       output: wrap(
-        `    borderLeftWidth: '1px',
+        `    borderLeftColor: colors.edge,
     borderLeftStyle: 'solid',
-    borderLeftColor: colors.edge`,
+    borderLeftWidth: '1px'`,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderLeft' } }],
     },
     {
       code: wrap('    borderRight: `${width}px solid red`'),
       output: wrap(
-        `    borderRightWidth: \`\${width}px\`,
+        `    borderRightColor: 'red',
     borderRightStyle: 'solid',
-    borderRightColor: 'red'`,
+    borderRightWidth: \`\${width}px\``,
       ),
       errors: [{ messageId: 'expand', data: { name: 'borderRight' } }],
     },
@@ -202,13 +205,49 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
         import { keyframes } from '@plumeria/core';
         keyframes({
           from: {
-            borderLeftWidth: '1px',
+            borderLeftColor: 'red',
             borderLeftStyle: 'solid',
-            borderLeftColor: 'red'
+            borderLeftWidth: '1px'
           }
         });
       `,
       errors: [{ messageId: 'expand', data: { name: 'borderLeft' } }],
     },
   ],
+});
+
+describe('expand-border-shorthands with sort-properties', () => {
+  const linter = new Linter({ configType: 'flat' });
+  const config = (rule: string): Linter.Config[] => [
+    {
+      languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+      plugins: {
+        plumeria: {
+          rules: {
+            'expand-border-shorthands': expandBorderShorthands,
+            'sort-properties': sortProperties,
+          },
+        },
+      },
+      rules: { [`plumeria/${rule}`]: 'error' },
+    },
+  ];
+
+  it.each(BORDER_BUNDLES.map(kebabToCamelCase))(
+    'leaves %s sorted after a single expansion',
+    (name) => {
+      const { output } = linter.verifyAndFix(
+        wrap(`    display: 'flex',
+    ${name}: '1px solid red',
+    borderRadius: '12px',`),
+        config('expand-border-shorthands'),
+      );
+
+      expect(output).toContain(`${name}Color: 'red',
+    ${name}Style: 'solid',
+    ${name}Width: '1px',
+    borderRadius: '12px',`);
+      expect(linter.verify(output, config('sort-properties'))).toEqual([]);
+    },
+  );
 });
