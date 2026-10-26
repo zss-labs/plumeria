@@ -188,7 +188,7 @@ export const expandBorderShorthands: Rule.RuleModule = {
             : `\`${restored}\``;
         };
         const indent = ' '.repeat(prop.loc!.start.column);
-        const declarations = (['width', 'style', 'color'] as const)
+        const declarations = (['color', 'style', 'width'] as const)
           .map(
             (part) =>
               `${kebabToCamelCase(`${kebab}-${part}`)}: ${render(parts[part])}`,
