@@ -1,5 +1,11 @@
 # @plumeria/codemod
 
+## 21.1.5
+
+### Patch Changes
+
+- 17a242d: Bump version to 21.1.5
+
 ## 21.1.4
 
 ### Patch Changes
