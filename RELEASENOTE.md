@@ -1,5 +1,13 @@
 # Release Notes
 
+## 21.1.5 (Oct 26, 2026)
+
+- Fix: write `plumeria.d.ts` into `src/` when the project has one, so a tsconfig that includes only `src`, such as the Vite React template, reads the `classStyle` declaration
+
+- Fix: `expand-border-shorthands` writes the longhands in the order `sort-properties` expects, so a single `oxlint --fix` pass settles both rules
+
+- Fix: `sort-properties` keeps the trailing comma and moves each property's comments with it when it reorders an object
+
 ## 21.1.4 (Oct 26, 2026)
 
 - Perf: Check the `classStyle` prop against a lighter type and map created styles without a conditional wrapper, so type checking spends about 12% less time on files with many styles

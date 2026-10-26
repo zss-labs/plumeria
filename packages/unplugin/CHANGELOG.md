@@ -1,5 +1,17 @@
 # @plumeria/unplugin
 
+## 21.1.5
+
+### Patch Changes
+
+- 17a242d: - Fix: write `plumeria.d.ts` into `src/` when the project has one, so a tsconfig that includes only `src`, such as the Vite React template, reads the `classStyle` declaration
+  - Fix: `expand-border-shorthands` writes the longhands in the order `sort-properties` expects, so a single `oxlint --fix` pass settles both rules
+  - Fix: `sort-properties` keeps the trailing comma and moves each property's comments with it when it reorders an object
+- Updated dependencies [17a242d]
+- Updated dependencies [17a242d]
+  - @plumeria/eslint-plugin@21.1.5
+  - @plumeria/compiler@21.1.5
+
 ## 21.1.4
 
 ### Patch Changes
