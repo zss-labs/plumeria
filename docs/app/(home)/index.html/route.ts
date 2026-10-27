@@ -120,7 +120,7 @@ const html = `<!doctype html>
           <nav aria-label="Resources" class="site-footer-groups">
 ${footerGroupsHtml}
           </nav>
-          <div class="site-footer-legal"><span>${copyright}</span><span aria-hidden="true">·</span><a href="/privacy" class="site-footer-link">privacy</a><div class="site-footer-social">${footerSocialHtml}</div></div>
+          <div class="site-footer-legal"><span>${copyright}</span><div class="site-footer-social">${footerSocialHtml}</div></div>
         </footer>
       </div>
     </main>
