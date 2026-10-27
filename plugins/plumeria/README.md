@@ -17,6 +17,10 @@ The plugin has no hooks, MCP servers, or scripts. It runs nothing, sends nothing
 /plugin install plumeria@plumeria
 ```
 
+## Icon
+
+The icon is the Plumeria logo, a simple SVG made with Claude Code.
+
 ## License
 
 MIT
