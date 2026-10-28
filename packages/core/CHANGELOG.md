@@ -1,5 +1,12 @@
 # @plumeria/core
 
+## 21.1.8
+
+### Patch Changes
+
+- de2791a: - Update README.md
+  - Update: Describe Plumeria as a React styling library for reliable interfaces in package.json
+
 ## 21.1.7
 
 ### Patch Changes
