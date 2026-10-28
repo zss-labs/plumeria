@@ -125,8 +125,61 @@ ruleTester.run('no-unused-keys', noUnusedKeys, {
         ecmaVersion: 2021,
       },
     },
+    {
+      code: `
+        const v = css.create({ a: {}, b: {} });
+        items.map((t) => v[t.k]);
+      `,
+      settings: {
+        ecmaVersion: 2021,
+      },
+    },
+    {
+      code: `
+        const styles = css.create({ used: {} });
+        styles[1 + 1];
+      `,
+      settings: {
+        ecmaVersion: 2021,
+      },
+    },
+    {
+      code: `
+        const v = css.create({ a: {}, b: {} });
+        v[\`a\`];
+        v.b;
+      `,
+      settings: {
+        ecmaVersion: 2021,
+      },
+    },
+    {
+      code: `
+        function pick(key) {
+          return styles[key];
+        }
+        const styles = css.create({ a: {}, b: {} });
+      `,
+      settings: {
+        ecmaVersion: 2021,
+      },
+    },
   ],
   invalid: [
+    {
+      code: `
+        const v = css.create({ a: {}, b: {} });
+        v[\`a\`];
+      `,
+      errors: [
+        {
+          message: "The key 'b' is defined but never referenced anywhere.",
+        },
+      ],
+      settings: {
+        ecmaVersion: 2021,
+      },
+    },
     {
       code: 'const styles = css.create({ key: {} });',
       errors: [
@@ -270,21 +323,6 @@ ruleTester.run('no-unused-keys', noUnusedKeys, {
     {
       // Dynamic bracket access on non-identifier object
       code: 'const styles = css.create({ used: {} }); (function(){})()[key];',
-      errors: [
-        {
-          message: "The key 'used' is defined but never referenced anywhere.",
-        },
-      ],
-      settings: {
-        ecmaVersion: 2021,
-      },
-    },
-    {
-      // Complex computed key (Ignored by the rule, so 'used' remains unused)
-      code: `
-        const styles = css.create({ used: {} });
-        styles[1 + 1];
-      `,
       errors: [
         {
           message: "The key 'used' is defined but never referenced anywhere.",
