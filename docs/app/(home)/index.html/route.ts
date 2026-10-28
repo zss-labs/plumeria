@@ -7,8 +7,8 @@ import { copyright, footerGroups, footerSocialLinks } from 'lib/footerGroups';
 export const dynamic = 'force-static';
 
 const seo = generateSEOData({
-  title: 'Plumeria - Zero-cost abstraction layer',
-  subtitle: 'Plumeria is a zero-cost abstraction layer for styling React components.',
+  title: 'Plumeria',
+  subtitle: 'React styling library for reliable interfaces',
 });
 
 const cssVersion = (file: string) =>
