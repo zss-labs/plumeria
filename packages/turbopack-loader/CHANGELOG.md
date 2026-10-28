@@ -1,5 +1,13 @@
 # @plumeria/turbopack-loader
 
+## 21.1.7
+
+### Patch Changes
+
+- 0f80855: Bump version to 21.1.7
+- Updated dependencies [0f80855]
+  - @plumeria/compiler@21.1.7
+
 ## 21.1.6
 
 ### Patch Changes
