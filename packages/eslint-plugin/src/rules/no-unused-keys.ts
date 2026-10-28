@@ -78,13 +78,18 @@ export const noUnusedKeys: Rule.RuleModule = {
         if (!rootObject) return;
 
         if (node.computed) {
-          if (node.property.type === 'Identifier') {
-            dynamicallyAccessedVars.add(rootObject.name);
-            definedKeys.delete(rootObject.name);
-          } else if (node.property.type === 'Literal') {
+          if (node.property.type === 'Literal') {
             referencedKeys.add(`${rootObject.name}.${node.property.value}`);
+          } else if (
+            node.property.type === 'TemplateLiteral' &&
+            node.property.expressions.length === 0
+          ) {
+            referencedKeys.add(
+              `${rootObject.name}.${node.property.quasis[0].value.cooked}`,
+            );
+          } else {
+            dynamicallyAccessedVars.add(rootObject.name);
           }
-          // Other computed keys (e.g. BinaryExpression) are ignored
           return;
         }
 
@@ -95,6 +100,7 @@ export const noUnusedKeys: Rule.RuleModule = {
 
       'Program:exit'() {
         definedKeys.forEach((keyMap, variableName) => {
+          if (dynamicallyAccessedVars.has(variableName)) return;
           keyMap.forEach((keyNode: Node, keyName: string) => {
             const normalKey = `${variableName}.${keyName}`;
             if (!referencedKeys.has(normalKey)) {
