@@ -240,12 +240,7 @@ button {
   margin-top: 28px;
   font-size: clamp(20px, 2.5vw, 28px);
   line-height: 1.5;
-  color: var(--muted-foreground);
   letter-spacing: -0.02em;
-}
-
-.emphasis {
-  color: var(--foreground);
 }
 
 .actions {
