@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21.1.8 (Oct 28, 2026)
+
+- Update README.md
+
+- Update: Describe Plumeria as a React styling library for reliable interfaces in package.json
+
 ## 21.1.7 (Oct 28, 2026)
 
 - Fix: `no-unused-keys` treats any non-literal bracket key, such as `styles[item.kind]`, as dynamic access instead of reporting every key as unused
