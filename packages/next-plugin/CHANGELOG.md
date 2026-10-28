@@ -1,5 +1,16 @@
 # @plumeria/next-plugin
 
+## 21.1.7
+
+### Patch Changes
+
+- 0f80855: - Fix: `no-unused-keys` treats any non-literal bracket key, such as `styles[item.kind]`, as dynamic access instead of reporting every key as unused
+  - Fix: `no-unused-keys` recognizes dynamic access that appears before the `css.create` call, such as inside a hoisted function
+- Updated dependencies [0f80855]
+- Updated dependencies [0f80855]
+  - @plumeria/turbopack-loader@21.1.7
+  - @plumeria/eslint-plugin@21.1.7
+
 ## 21.1.6
 
 ### Patch Changes

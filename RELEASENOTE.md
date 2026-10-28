@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21.1.7 (Oct 28, 2026)
+
+- Fix: `no-unused-keys` treats any non-literal bracket key, such as `styles[item.kind]`, as dynamic access instead of reporting every key as unused
+
+- Fix: `no-unused-keys` recognizes dynamic access that appears before the `css.create` call, such as inside a hoisted function
+
 ## 21.1.6 (Oct 26, 2026)
 
 - Fix: a dynamic style parameter inside a color, filter or scale function, such as `hsl()`, `brightness()` or `scaleX()`, no longer gets a `px` unit
