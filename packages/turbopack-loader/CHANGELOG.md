@@ -1,5 +1,13 @@
 # @plumeria/turbopack-loader
 
+## 21.1.9
+
+### Patch Changes
+
+- 09ef213: - Fix: an import whose bindings are only used by styles that compile into class names becomes a side-effect import, such as `import './tokens'`, so the module's side effects still run without leaving unused bindings behind
+- Updated dependencies [09ef213]
+  - @plumeria/compiler@21.1.9
+
 ## 21.1.8
 
 ### Patch Changes
