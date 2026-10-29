@@ -7,8 +7,8 @@ pub mod passes;
 use indexmap::IndexMap;
 use oxc_allocator::Allocator;
 use oxc_ast::ast::*;
-use oxc_semantic::{Scoping, SemanticBuilder};
-use oxc_span::Span;
+use oxc_semantic::{AstNodes, Scoping, Semantic, SemanticBuilder};
+use oxc_span::{GetSpan, Span};
 use oxc_syntax::symbol::SymbolId;
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
@@ -83,6 +83,7 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub source: &'a str,
     pub program: &'b Program<'a>,
     pub scoping: &'b Scoping,
+    pub nodes: &'b AstNodes<'a>,
     pub env: &'p TransformEnv,
     pub resource: String,
     pub local_consts: Object,
@@ -461,8 +462,10 @@ pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<Tr
     let program = parse_program(&allocator, source)?;
     let program: &Program = allocator.alloc(program);
     assert_property_policy(program, env.policy, &env.module_id)?;
-    let semantic = SemanticBuilder::new().build(program).semantic;
-    let scoping = semantic.scoping();
+    let semantic = SemanticBuilder::new()
+        .with_build_nodes(true)
+        .build(program)
+        .semantic;
 
     project.scan_overlay(&env.cwd, &env.style_prop);
     if let Some((_, message)) = project.resolve_file_error(&env.file_path, "") {
@@ -497,8 +500,9 @@ pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<Tr
 
     let tables = std::mem::take(&mut project.tables);
     let result = (|| -> TResult<String> {
-        let mut transformer =
-            Transformer::new(project, &tables, &allocator, source, program, scoping, env);
+        let mut transformer = Transformer::new(
+            project, &tables, &allocator, source, program, &semantic, env,
+        );
         transformer.prepare()?;
         transformer.first_pass()?;
         transformer.second_pass()?;
@@ -516,7 +520,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         allocator: &'a Allocator,
         source: &'a str,
         program: &'b Program<'a>,
-        scoping: &'b Scoping,
+        semantic: &'b Semantic<'a>,
         env: &'p TransformEnv,
     ) -> Self {
         Transformer {
@@ -526,7 +530,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             allocator,
             source,
             program,
-            scoping,
+            scoping: semantic.scoping(),
+            nodes: semantic.nodes(),
             env,
             resource: env.module_id.clone(),
             local_consts: Object::new(),
@@ -936,18 +941,94 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
 
-        let mut out = String::with_capacity(self.source.len());
-        let mut offset: u32 = 0;
-        for replacement in &self.replacements {
-            if replacement.start < offset {
-                continue;
-            }
-            out.push_str(&self.source[offset as usize..replacement.start as usize]);
-            out.push_str(&replacement.content);
-            offset = replacement.end;
+        let out = splice(self.source, &self.replacements);
+        let imports: Vec<&ImportDeclaration> = self
+            .program
+            .body
+            .iter()
+            .filter_map(|statement| match statement {
+                Statement::ImportDeclaration(decl) => Some(&**decl),
+                _ => None,
+            })
+            .filter(|decl| {
+                !self
+                    .replacements
+                    .iter()
+                    .any(|r| r.start < decl.span.end && r.end > decl.span.start)
+            })
+            .collect();
+        let covered = |span: Span| {
+            self.replacements
+                .iter()
+                .any(|r| r.start <= span.start && r.end >= span.end)
+        };
+        let candidates: Vec<&ImportDeclaration> = imports
+            .iter()
+            .copied()
+            .filter(|decl| {
+                !decl.import_kind.is_type()
+                    && decl.specifiers.as_ref().is_some_and(|specifiers| {
+                        !specifiers.is_empty()
+                            && specifiers.iter().all(|specifier| {
+                                specifier.local().symbol_id.get().is_some_and(|symbol| {
+                                    let references =
+                                        self.scoping.get_resolved_reference_ids(symbol);
+                                    !references.is_empty()
+                                        && references.iter().all(|&reference| {
+                                            let node =
+                                                self.scoping.get_reference(reference).node_id();
+                                            covered(self.nodes.get_node(node).span())
+                                        })
+                                })
+                            })
+                    })
+            })
+            .collect();
+        if candidates.is_empty() {
+            return Ok(out);
         }
-        out.push_str(&self.source[offset as usize..]);
-        Ok(out)
+        let empty = |span: Span| Replacement {
+            start: span.start,
+            end: span.end,
+            content: String::new(),
+        };
+        let mut all: Vec<Replacement> = self
+            .replacements
+            .iter()
+            .map(|r| Replacement {
+                start: r.start,
+                end: r.end,
+                content: r.content.clone(),
+            })
+            .chain(imports.iter().map(|decl| empty(decl.span)))
+            .collect();
+        all.sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+        let out_body = splice(self.source, &all);
+        let bare: Vec<Replacement> = candidates
+            .iter()
+            .filter(|decl| {
+                decl.specifiers.as_ref().is_some_and(|specifiers| {
+                    specifiers.iter().all(|specifier| {
+                        count_identifier(&out_body, specifier.local().name.as_str()) == 0
+                    })
+                })
+            })
+            .map(|decl| Replacement {
+                start: decl.span.start,
+                end: decl.span.end,
+                content: format!(
+                    "import {}",
+                    &self.source[decl.source.span.start as usize..decl.span.end as usize]
+                ),
+            })
+            .collect();
+        if bare.is_empty() {
+            return Ok(out);
+        }
+        self.replacements.extend(bare);
+        self.replacements
+            .sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+        Ok(splice(self.source, &self.replacements))
     }
 
     fn build_exported_init(&self, info: &CreateStyle) -> String {
@@ -965,6 +1046,33 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             crate::js::json::stringify_str_list(&keys)
         )
     }
+}
+
+fn splice(source: &str, replacements: &[Replacement]) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut offset: u32 = 0;
+    for replacement in replacements {
+        if replacement.start < offset {
+            continue;
+        }
+        out.push_str(&source[offset as usize..replacement.start as usize]);
+        out.push_str(&replacement.content);
+        offset = replacement.end;
+    }
+    out.push_str(&source[offset as usize..]);
+    out
+}
+
+fn count_identifier(text: &str, name: &str) -> usize {
+    let bytes = text.as_bytes();
+    let is_part = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'$';
+    text.match_indices(name)
+        .filter(|(index, _)| {
+            let before = index.checked_sub(1).map(|i| bytes[i]);
+            let after = bytes.get(index + name.len()).copied();
+            !before.is_some_and(is_part) && !after.is_some_and(is_part)
+        })
+        .count()
 }
 
 pub fn is_static_arg_value(node: E) -> bool {
