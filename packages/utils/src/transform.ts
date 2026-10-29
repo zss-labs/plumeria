@@ -3557,17 +3557,96 @@ export const transformSource = async (
       );
   }
 
-  let offset = 0;
-  const parts: Buffer[] = [];
+  const splice = (list: typeof replacements): string => {
+    let offset = 0;
+    const parts: Buffer[] = [];
+    list.forEach((r) => {
+      if (r.start < offset) return;
+      parts.push(sourceBuffer.subarray(offset, r.start));
+      parts.push(Buffer.from(r.content));
+      offset = r.end;
+    });
+    parts.push(sourceBuffer.subarray(offset));
+    return Buffer.concat(parts).toString();
+  };
 
-  replacements.forEach((r) => {
-    if (r.start < offset) return;
-    parts.push(sourceBuffer.subarray(offset, r.start));
-    parts.push(Buffer.from(r.content));
-    offset = r.end;
+  const transformedSource = splice(replacements);
+
+  const imports = ast.body
+    .filter(
+      (statement): statement is ImportDeclaration =>
+        statement.type === 'ImportDeclaration',
+    )
+    .map((node) => ({
+      node,
+      start: node.span.start - baseByteOffset,
+      end: node.span.end - baseByteOffset,
+    }))
+    .filter(
+      ({ start, end }) =>
+        !replacements.some((r) => r.start < end && r.end > start),
+    );
+  if (imports.length === 0) return { code: transformedSource };
+
+  const empty = ({ start, end }: { start: number; end: number }) => ({
+    start,
+    end,
+    content: '',
   });
-  parts.push(sourceBuffer.subarray(offset));
-  const transformedSource = Buffer.concat(parts).toString();
+  const bodyOf = (list: typeof replacements): string =>
+    splice(
+      [...list, ...imports.map(empty)].sort(
+        (a, b) => a.start - b.start || b.end - a.end,
+      ),
+    );
+  const sourceBody = bodyOf([]);
+  const outBody = bodyOf(replacements);
 
-  return { code: transformedSource };
+  const bare = imports
+    .filter(
+      ({ node }) =>
+        !node.typeOnly &&
+        node.specifiers.length > 0 &&
+        node.specifiers.every(
+          ({ local }) =>
+            countIdentifier(sourceBody, local.value) > 0 &&
+            countIdentifier(outBody, local.value) === 0,
+        ),
+    )
+    .map(({ node, start, end }) => ({
+      start,
+      end,
+      content: `import ${sourceBuffer
+        .subarray(node.source.span.start - baseByteOffset, end)
+        .toString()}`,
+    }));
+  if (bare.length === 0) return { code: transformedSource };
+
+  replacements.push(...bare);
+  replacements.sort((a, b) => a.start - b.start || b.end - a.end);
+
+  return { code: splice(replacements) };
+};
+
+const isIdentifierPart = (code: number): boolean =>
+  (code >= 48 && code <= 57) ||
+  (code >= 65 && code <= 90) ||
+  (code >= 97 && code <= 122) ||
+  code === 95 ||
+  code === 36;
+
+const countIdentifier = (text: string, name: string): number => {
+  let count = 0;
+  for (
+    let index = text.indexOf(name);
+    index !== -1;
+    index = text.indexOf(name, index + name.length)
+  ) {
+    if (
+      !isIdentifierPart(text.charCodeAt(index - 1)) &&
+      !isIdentifierPart(text.charCodeAt(index + name.length))
+    )
+      count++;
+  }
+  return count;
 };
