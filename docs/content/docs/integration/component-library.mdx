@@ -129,6 +129,12 @@ That is the whole integration. The component brings its own stylesheet, their
 bundler config is untouched, and their `package.json` never names `@plumeria/*`,
 whatever they build with.
 
+## Sharing definitions instead
+
+Tokens and styles meant to compile into the app are published as source rather
+than as a dist, through a `plumeria` export condition. The app then needs the
+bundler plugin. See [Across packages](/docs/module-architecture#across-packages).
+
 <Cards>
   <Card title="See more about Installation unplugin" href="/docs/installation" />
 </Cards>
