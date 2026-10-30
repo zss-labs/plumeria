@@ -50,6 +50,8 @@ Use this set for everyday component work, selectors, composition, dynamic values
 ```text title="Authoring context"
 https://plumeria.dev/docs/selector-rules.md
 https://plumeria.dev/docs/specificity.md
+https://plumeria.dev/docs/module-architecture.md
+https://plumeria.dev/docs/api-reference/wind.md
 https://plumeria.dev/docs/api-reference/javascript/create.md
 https://plumeria.dev/docs/api-reference/javascript/createStatic.md
 https://plumeria.dev/docs/api-reference/javascript/createTheme.md
@@ -72,6 +74,7 @@ https://plumeria.dev/docs/testing/vitest.md
 https://plumeria.dev/docs/testing/jest.md
 https://plumeria.dev/docs/api-reference/plugins/eslint-plugin.md
 https://plumeria.dev/docs/api-reference/plugins/eslint-plugin/optional-rules.md
+https://plumeria.dev/docs/api-reference/tools/init.md
 https://plumeria.dev/docs/api-reference/tools/codemod.md
 ```
 
@@ -114,18 +117,20 @@ ESLint plugin   https://plumeria.dev/docs/api-reference/plugins/eslint-plugin.md
 
 ## Complete documentation map
 
-Use this map when an agent needs to discover material outside the focused sets above. It covers every documentation section, from concepts through API and CSS references.
+Use this map when an agent needs to discover material outside the focused sets above. It covers every documentation section, from concepts through the API reference.
 
 | Area | What it contains | Markdown |
 | :-- | :-- | :-- |
 | Getting started | Installation, selector rules, editor and ESLint setup | [Open section](/docs/installation) · [Markdown](/docs/installation.md) |
-| Core concepts | Why Plumeria, compile-time behavior, composition | [Introduction](/docs.md) · [Why Plumeria?](/docs/why-plumeria.md) · [Composition laws](/docs/composition-laws.md) |
-| JavaScript API | `create`, static styles, themes, keyframes, markers, transitions, and `use` | [Open section](/docs/api-reference#javascript-api) · [Markdown](/docs/api-reference.md) |
+| Core concepts | Why Plumeria, compile-time behavior, modules, composition | [Introduction](/docs.md) · [Why Plumeria?](/docs/why-plumeria.md) · [Module architecture](/docs/module-architecture.md) · [Composition laws](/docs/composition-laws.md) |
+| JavaScript API | `create`, static styles, themes, keyframes, markers, transitions, typed custom properties, position fallbacks, and `use` | [Open section](/docs/api-reference#javascript-api) · [Markdown](/docs/api-reference.md) |
+| Types | `Style` and the types that narrow or read it | [Open section](/docs/api-reference#types) · [Markdown](/docs/api-reference.md) |
 | Components | Headless UI integration and the development inspector | [Open section](/docs/api-reference#components) · [Markdown](/docs/api-reference.md) |
-| Plugins and tools | Next.js, unplugin, Jest, ESLint, and codemods | [Open section](/docs/api-reference#plugins) · [Markdown](/docs/api-reference.md) |
+| Wind | Tailwind CSS design values as static tokens | [Open section](/docs/api-reference/wind) · [Markdown](/docs/api-reference/wind.md) |
+| Plugins and tools | Next.js, unplugin, Jest, ESLint, `init`, and codemods | [Open section](/docs/api-reference#plugins) · [Markdown](/docs/api-reference.md) |
 | Integrations | Nine bundlers, frameworks, and component-library distribution | [Open section](/docs/integration) · [Markdown](/docs/integration.md) |
 | Testing | Components in Vitest and Jest, jsdom, and type testing | [Open section](/docs/testing) · [Markdown](/docs/testing.md) |
-| CSS reference | Specificity, colors, and supported pseudo-selectors | [Open section](/docs/specificity) · [Markdown](/docs/specificity.md) |
+| Specificity | How atomic classes rank when styles conflict | [Open section](/docs/specificity) · [Markdown](/docs/specificity.md) |
 
 ## Fetch Markdown
 
@@ -159,4 +164,4 @@ For broad research, use the generated machine-readable indexes:
 
 ## Working examples
 
-The [`examples/` directory](https://github.com/zss-labs/plumeria/tree/main/examples) contains compiling projects for Next.js, Vite, Rollup, Rspack, webpack, esbuild, Bun, Farm, and Rolldown, plus React Router, Vue, Svelte, Solid, Qwik, Preact, Astro, and Storybook. Point an agent to the matching example when it needs a complete configuration rather than an isolated snippet.
+The [`examples/` directory](https://github.com/zss-labs/plumeria/tree/main/examples) contains compiling projects for Next.js, Vite, Rollup, Rspack, webpack, esbuild, Bun, Farm, and Rolldown, plus React Router, Waku, Vue, Svelte, Solid, Qwik, Preact, Astro, and Storybook. Point an agent to the matching example when it needs a complete configuration rather than an isolated snippet.
