@@ -3,7 +3,7 @@ title: 'Rolldown'
 description: 'Add Plumeria to a Rolldown project, with one command or by hand.'
 ---
 
-[`examples/rolldown`](https://github.com/zss-labs/plumeria/tree/main/examples/example-rolldown) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Rolldown.  
+[`examples/example-rolldown`](https://github.com/zss-labs/plumeria/tree/main/examples/example-rolldown) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Rolldown.  
 The plugin compiles Plumeria styles into the CSS asset Rolldown produces.
 
 `npx @plumeria/init` detects Rolldown and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
@@ -35,7 +35,7 @@ export default defineConfig({
 
 `@plumeria/core` ships no prop declaration of its own, so name the styling prop your project compiles with.
 
-For the default name (`classStyle`), reference the declaration that ships with the package:
+For the default name (`classStyle`), reference the declaration that ships with the package, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
 /// <reference types="@plumeria/core/class-style" />
