@@ -5,15 +5,13 @@ description: 'Tailwind CSS theme values as static tokens for Plumeria.'
 
 import { Palettes, Scale } from 'component/Wind';
 
-`@plumeria/wind` provides Tailwind CSS design values as static tokens. The values are compiled into your styles at build time, so the package adds nothing to your bundle.
+The values are compiled into your styles at build time, so the package adds nothing to your bundle.
 
 ## Installation
 
 ```sh title="Terminal"
 pnpm i -D @plumeria/wind
 ```
-
----
 
 ## Usage
 
@@ -34,24 +32,14 @@ const styles = css.create({
 
 The namespace name is up to you, and named imports work the same way.
 
-Animations pair a keyframes export with its timing.
-
-```tsx title="Spinner.tsx"
-import * as css from '@plumeria/core';
-import * as t from '@plumeria/wind';
-
-const styles = css.create({
-  spinner: {
-    animation: `${t.spin} ${t.animate.spin}`,
-  },
-});
-```
-
 ---
 
 ## Colors
 
 <Palettes />
+
+### color
+<Scale name="color" />
 
 ## Typography
 
@@ -122,12 +110,19 @@ const styles = css.create({
 ### animate
 <Scale name="animate" />
 
-Keyframes: `spin`, `ping`, `pulse`, `bounce`.
+Animations pair a keyframes export (`t.spin`, `t.ping`, `t.pulse`, `t.bounce`) with its timing.
 
-## Base Colors
+```tsx title="Spinner.tsx"
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
 
-<Scale name="color" />
+const styles = css.create({
+  spinner: {
+    animation: `${t.spin} ${t.animate.spin}`,
+  },
+});
+```
 
 ---
 
-The theme values are taken from Tailwind CSS v4.3.3 and distributed under its MIT license.
+The values are taken from Tailwind CSS V4 under the MIT License.
