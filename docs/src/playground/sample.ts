@@ -11,8 +11,9 @@ export const SAMPLE_FILES: SampleFile[] = [
     path: ENTRY,
     label: 'Card.tsx',
     source: `import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
 import { theme } from './theme';
-import { breakpoints, tokens } from './tokens';
+import { breakpoints } from './tokens';
 
 const External = () => (
   <svg classStyle={styles.icon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -62,14 +63,14 @@ const styles = css.create({
     boxSizing: 'border-box',
     width: '100%',
     maxWidth: 420,
-    padding: tokens.space,
+    padding: t.spacing[7],
     margin: 'auto',
     color: theme.text,
     background: theme.surface,
     borderColor: theme.border,
     borderStyle: 'solid',
     borderWidth: '1px',
-    borderRadius: tokens.radius,
+    borderRadius: t.radius['3xl'],
     boxShadow: theme.shadow,
     [breakpoints.sm]: {
       padding: 22,
@@ -112,7 +113,7 @@ const styles = css.create({
   actions: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: tokens.gap,
+    gap: t.spacing['2.5'],
   },
   button: {
     boxSizing: 'border-box',
@@ -127,7 +128,7 @@ const styles = css.create({
     color: theme.text,
     textDecoration: 'none',
     background: theme.tint,
-    borderRadius: tokens.pill,
+    borderRadius: t.radius.xl,
     transition: 'scale 120ms',
     ...css.marker('button', ':hover'),
     ':active': {
@@ -173,13 +174,6 @@ export const theme = css.createTheme('.dark', {
     path: '/tokens.ts',
     label: 'tokens.ts',
     source: `import * as css from '@plumeria/core';
-
-export const tokens = css.createStatic({
-  radius: 24,
-  pill: 12,
-  space: 28,
-  gap: 10,
-});
 
 export const breakpoints = css.createStatic({
   sm: '@media (max-width: 480px)',
