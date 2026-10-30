@@ -237,6 +237,9 @@ export const SiteHeader = () => (
           <Link to="/docs" unstable_prefetchOnView={{}} classStyle={styles.menuLink}>
             Docs
           </Link>
+          <Link to="/docs/api-reference/wind" unstable_prefetchOnView={{}} classStyle={styles.menuLink}>
+            Wind
+          </Link>
           <a href="/playground" classStyle={styles.menuLink}>
             Play
           </a>
