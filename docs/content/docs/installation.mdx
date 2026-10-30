@@ -3,8 +3,9 @@ title: 'Installation'
 description: 'Install Plumeria and set up the compiler, ESLint, and your bundler integration.'
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from "fumadocs-ui/components/steps";
+
+Install commands in these docs use pnpm. Plumeria works the same with any other package manager.
 
 <Steps>
 <Step>
@@ -26,26 +27,9 @@ every file it touches. The rest of this page shows the setup by hand.
 <Step>
 ## Installing core
 The core package is type definitions only. No bundle or runtime is included.  
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    npm i -D @plumeria/core
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    yarn add -D @plumeria/core
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    pnpm i -D @plumeria/core
-    ```
-  </Tab>
-</Tabs>
+```sh title="Terminal"
+pnpm i -D @plumeria/core
+```
 
 ### plumeria.d.ts
 `@plumeria/core` ships no prop declaration of its own. In `src/` when the project has one, or at the application root otherwise, reference the one for the default `classStyle` prop:
@@ -64,26 +48,9 @@ ESLint is optional. Skip to your bundler: [Next.js](/docs/installation#nextjs) /
 
 Install the plugin:
 
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    npm i -D @plumeria/eslint-plugin
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    yarn add -D @plumeria/eslint-plugin
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    pnpm i -D @plumeria/eslint-plugin
-    ```
-  </Tab>
-</Tabs>
+```sh title="Terminal"
+pnpm i -D @plumeria/eslint-plugin
+```
 
 [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) sorts and formats style properties and reports invalid values and selectors.
 The [plugin reference](/docs/api-reference/plugins/eslint-plugin) lists every rule.
@@ -115,24 +82,9 @@ Add the plugin for your bundler.
 
 ### Next.js
 
-<Tabs items={["npm", "yarn", "pnpm"]}>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    npm i -D @plumeria/next-plugin
-    ```
-  </Tab>
-  <Tab>
-    ```sh title="Terminal"
-    yarn add -D @plumeria/next-plugin
-    ```
-  </Tab>
-  <Tab>
-    ```sh title="Terminal"
-    pnpm add -D @plumeria/next-plugin
-    ```
-  </Tab>
-</Tabs>
+```sh title="Terminal"
+pnpm i -D @plumeria/next-plugin
+```
 
 It works with both Turbopack and Webpack.
 
@@ -152,23 +104,9 @@ export default withPlumeria(nextConfig);
 ```
 
 ### Vite
-<Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tab>
-    ```sh title="Terminal"
-    npm i -D @plumeria/unplugin
-    ```
-  </Tab>
-  <Tab>
-    ```sh title="Terminal"
-    yarn add -D @plumeria/unplugin
-    ```
-  </Tab>
-  <Tab>
-    ```sh title="Terminal"
-    pnpm add -D @plumeria/unplugin
-    ```
-  </Tab>
-</Tabs>
+```sh title="Terminal"
+pnpm i -D @plumeria/unplugin
+```
 
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite';
