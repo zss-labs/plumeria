@@ -145,6 +145,10 @@ ruleTester.run('no-combinator', noCombinator, {
       code: `import * as css from '@plumeria/core'; css.createStatic({ complex: ':where(div > span)' })`,
     },
     {
+      // createStatic values that are not selectors may hold spaces and > + ~
+      code: `import * as css from '@plumeria/core'; css.createStatic({ shadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)', sans: "ui-sans-serif, 'Noto Sans', sans-serif", label: 'C++ > C' })`,
+    },
+    {
       // Media queries should be allowed despite having spaces
       code: `import * as css from '@plumeria/core'; css.create({ container: { '@media (max-width: 768px)': { padding: '20px' } } })`,
     },
@@ -347,6 +351,16 @@ ruleTester.run('no-combinator', noCombinator, {
     {
       // createStatic invalid usage (value contains space combinator)
       code: `import * as css from '@plumeria/core'; css.createStatic({ descend: ':hover div span' })`,
+      errors: [
+        {
+          message:
+            'Combinator "(space)" is not allowed unless inside functional pseudo-classes.',
+        },
+      ],
+    },
+    {
+      // createStatic attribute selector value with a descendant combinator
+      code: `import * as css from '@plumeria/core'; css.createStatic({ open: '[data-open] span' })`,
       errors: [
         {
           message:
