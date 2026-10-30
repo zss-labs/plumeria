@@ -1,18 +1,6 @@
 import * as css from '@plumeria/core';
 import { theme } from 'lib/theme';
 
-const pulse = css.keyframes({
-  '0%': {
-    opacity: 0.6,
-  },
-  '50%': {
-    opacity: 1,
-  },
-  '100%': {
-    opacity: 0.6,
-  },
-});
-
 const styles = css.create({
   container: {
     position: 'relative',
@@ -59,69 +47,27 @@ const styles = css.create({
     color: theme.textSecondary,
     opacity: 0.8,
   },
-  skeleton: {
-    background: theme.iconBg,
-    borderRadius: 4,
-  },
-  pulseAnimation: {
-    animation: `${pulse} 2s infinite ease-in-out`,
-  },
 });
 
 interface GitHubUserProps {
   username: string;
-  subtext?: string;
+  subtext: string;
 }
 
-export const GitHubUser = async ({ username, subtext }: GitHubUserProps) => {
-  let user = null;
-
-  try {
-    const res = await fetch(`https://api.github.com/users/${username}`, {
-      cache: 'force-cache',
-    });
-    if (res.ok) {
-      const data = await res.json();
-      user = {
-        name: data.name || data.login,
-        avatar_url: data.avatar_url,
-        company: data.company,
-        html_url: data.html_url,
-      };
-    }
-  } catch (error) {
-    console.error(`Failed to fetch GitHub user: ${username}`, error);
-  }
-
-  if (!user) {
-    return (
-      <div classStyle={[styles.container, styles.pulseAnimation]}>
-        <div classStyle={styles.avatarContainer}>
-          <div classStyle={[styles.avatar, styles.skeleton]} />
-        </div>
-        <div classStyle={styles.info}>
-          <span classStyle={styles.name}>User not found</span>
-          <span classStyle={styles.company}>@{username}</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <a
-      href={user.html_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      classStyle={styles.container}
-      id={`github-user-${username}`}
-    >
-      <div classStyle={styles.avatarContainer}>
-        <img src={user.avatar_url} alt={user.name} classStyle={styles.avatar} />
-      </div>
-      <div classStyle={styles.info}>
-        <span classStyle={styles.name}>{user.name}</span>
-        <span classStyle={styles.company}>{subtext || user.company || `@${username}`}</span>
-      </div>
-    </a>
-  );
-};
+export const GitHubUser = ({ username, subtext }: GitHubUserProps) => (
+  <a
+    href={`https://github.com/${username}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    classStyle={styles.container}
+    id={`github-user-${username}`}
+  >
+    <div classStyle={styles.avatarContainer}>
+      <img src={`https://github.com/${username}.png`} alt={username} classStyle={styles.avatar} />
+    </div>
+    <div classStyle={styles.info}>
+      <span classStyle={styles.name}>{username}</span>
+      <span classStyle={styles.company}>{subtext}</span>
+    </div>
+  </a>
+);
