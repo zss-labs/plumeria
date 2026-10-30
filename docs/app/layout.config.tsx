@@ -48,13 +48,13 @@ export const baseOptions: BaseLayoutProps = {
       active: 'nested-url',
     },
     {
-      text: 'Blog',
-      url: '/blog',
+      text: 'Play',
+      url: '/playground',
       active: 'nested-url',
     },
     {
-      text: 'Playground',
-      url: '/playground',
+      text: 'Blog',
+      url: '/blog',
       active: 'nested-url',
     },
     {
