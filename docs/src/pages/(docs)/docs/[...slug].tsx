@@ -1,11 +1,10 @@
 import { source } from 'lib/source';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle, EditOnGitHub } from 'fumadocs-ui/page';
 import { Footer } from 'fumadocs-ui/layouts/docs/page/slots/footer';
-import { notFound } from 'next/navigation';
+import { unstable_notFound as notFound } from 'waku/router/server';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
-import { Metadata } from 'next';
-import generateSEOData from 'lib/generateSEOData';
 import { MarkdownActions } from 'component/MarkdownActions';
+import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import type { Node } from 'fumadocs-core/page-tree';
 
@@ -22,34 +21,25 @@ const getSection = (nodes: Node[], url: string, section = ''): string | undefine
   }
 };
 
-export async function generateMetadata(props: { params: Promise<{ slug?: Array<string> }> }): Promise<Metadata> {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  return generateSEOData({
-    title: page?.data.title as string,
-    subtitle: page?.data.description,
-    path: page?.url,
-  });
-}
-
-export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
+export default async function Page({ slug }: { slug?: string[] }) {
+  const page = source.getPage(slug);
   if (!page) notFound();
 
-  const MDX = page.data.body;
+  const { body: MDX, toc } = await page.data.load();
   const section = getSection(source.pageTree.children, page.url);
 
   return (
     <DocsPage
-      toc={page.data.toc}
+      toc={toc}
       full={page.data.full}
       footer={{ enabled: false }}
       tableOfContent={{
         style: 'clerk',
         single: true,
       }}
+      tableOfContentPopover={{ enabled: false }}
     >
+      <Seo title={page.data.title as string} subtitle={page.data.description} path={page.url} />
       <header className="docs-article-header">
         {section && <p className="docs-article-section">{section}</p>}
         <div className="docs-article-title-row">
@@ -70,6 +60,12 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   );
 }
 
-export async function generateStaticParams() {
-  return source.generateParams();
-}
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: source
+      .generateParams()
+      .map(({ slug }) => slug)
+      .filter((slug) => slug.length > 0),
+  } as const;
+};
