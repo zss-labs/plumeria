@@ -3,8 +3,6 @@ import { createFromSource } from 'fumadocs-core/search/server';
 import type { Node } from 'fumadocs-core/page-tree';
 import { basename, extname } from 'node:path';
 
-export const dynamic = 'force-static';
-
 const breadcrumbs = new Map<string, string[]>();
 
 const collectBreadcrumbs = (nodes: Node[], parents: string[]) => {
@@ -21,6 +19,9 @@ const collectBreadcrumbs = (nodes: Node[], parents: string[]) => {
 
 collectBreadcrumbs(searchSource.pageTree.children, []);
 
+// The tree is walked top to bottom, so insertion order is the sidebar order.
+const sidebarOrder = new Map([...breadcrumbs.keys()].map((url, index) => [url, index]));
+
 const tokenize = (raw: string) => [
   ...new Set(
     raw
@@ -33,11 +34,18 @@ const tokenize = (raw: string) => [
 
 export const { staticGET: GET } = createFromSource(searchSource, {
   tokenizer: { language: 'english', normalizationCache: new Map(), tokenize },
-  buildIndex: (page) => ({
-    id: page.url,
+  buildIndex: async (page) => ({
+    // Results only carry their id, so it holds the sidebar position for the dialog to sort by.
+    id: `${sidebarOrder.get(page.url) ?? sidebarOrder.size}:${page.url}`,
     title: page.data.title ?? basename(page.path, extname(page.path)),
     breadcrumbs: breadcrumbs.get(page.url) ?? [],
     url: page.url,
-    structuredData: { headings: page.data.structuredData.headings, contents: [] },
+    structuredData: { headings: (await page.data.load()).structuredData.headings, contents: [] },
   }),
 });
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
