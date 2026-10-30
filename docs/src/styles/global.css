@@ -1,4 +1,22 @@
-@import '../public/footer.css';
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/fonts/inter-latin.woff2) format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+html {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+}
 
 :is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] button[aria-expanded] {
   cursor: pointer;
@@ -10,9 +28,37 @@
 
 :root {
   --plumeria-accent: #d653bb;
+  /* Offsets the Fumadocs layout below the site header. */
+  --fd-banner-height: 56px;
 }
 
-:root:not(:has([data-playground])) {
+#nd-docs-layout {
+  min-height: calc(100dvh - var(--fd-banner-height));
+}
+
+@media (max-width: 767.98px) {
+  #nd-docs-layout {
+    --fd-header-height: 48px;
+  }
+}
+
+#nd-sidebar-mobile {
+  --fd-sidebar-drawer-offset: -100%;
+
+  inset-inline: 0 auto;
+  top: var(--fd-docs-row-2);
+  border-inline-width: 0 1px;
+}
+
+:has(+ #nd-sidebar-mobile) {
+  top: var(--fd-docs-row-2);
+}
+
+#nd-sidebar-mobile > :first-child {
+  display: none;
+}
+
+:root:not(:has([data-playground], [data-home])) {
   scrollbar-gutter: stable;
 }
 
@@ -35,11 +81,11 @@
   --color-fd-primary: var(--plumeria-accent);
 }
 
-#nd-sidebar {
+:is(#nd-sidebar, #nd-sidebar-mobile) {
   background-color: white;
 }
 
-.dark #nd-sidebar {
+.dark :is(#nd-sidebar, #nd-sidebar-mobile) {
   background-color: black;
 }
 
@@ -265,7 +311,6 @@ body {
   }
 }
 
-/* Body Styling */
 body {
   background: white;
 }
@@ -317,13 +362,6 @@ code {
   font-family: ui-monospace, 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
 }
 
-/* Text Utilities */
-.text-3xl {
-  font-size: 36px;
-  font-weight: 550;
-}
-
-/* Diff Styling */
 .dark span.line.diff.remove {
   background: rgba(255, 83, 252, 0.14);
 }
@@ -426,12 +464,4 @@ code {
   [data-playground='stage'] > iframe {
     transform: none;
   }
-}
-
-.site-footer {
-  --site-footer-border: var(--color-fd-border);
-  --site-footer-foreground: var(--color-fd-foreground);
-  --site-footer-muted: var(--color-fd-muted-foreground);
-
-  margin-top: 48px;
 }
