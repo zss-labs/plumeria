@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@mdn/browser-compat-data": "^8.1.5",
+    "@mdn/browser-compat-data": "^8.1.7",
     "@playwright/test": "^1.60.0",
     "@plumeria/codemod": "workspace:^",
     "@plumeria/eslint-plugin": "workspace:^",
@@ -42,7 +42,7 @@
     "@swc/jest": "^0.2.39",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.8.0",
-    "@webref/css": "^8.7.6",
+    "@webref/css": "^8.7.8",
     "css-tree": "^3.2.1",
     "jest": "^30.4.2",
     "mdn-data": "^2.37.2",
