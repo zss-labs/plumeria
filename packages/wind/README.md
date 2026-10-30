@@ -4,18 +4,18 @@ Tailwind CSS design values as Plumeria static tokens. It generates no utility cl
 
 ```ts
 import * as css from '@plumeria/core';
-import { blue, slate, spacing, radius, text, spin, animate } from '@plumeria/wind';
+import * as t from '@plumeria/wind';
 
 const styles = css.create({
   button: {
-    paddingInline: spacing[4],
-    fontSize: text.sm,
-    color: slate[50],
-    backgroundColor: blue[600],
-    borderRadius: radius.md,
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
   },
   loader: {
-    animation: `${spin} ${animate.spin}`,
+    animation: `${t.spin} ${t.animate.spin}`,
   },
 });
 ```
