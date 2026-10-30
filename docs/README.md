@@ -1,6 +1,6 @@
 # plumeria/docs
 
-Documentation site for [Plumeria](https://plumeria.dev), built with [Fumadocs](https://fumadocs.vercel.app/) and Next.js.
+Documentation site for [Plumeria](https://plumeria.dev), built with [Fumadocs](https://fumadocs.vercel.app/) and [Waku](https://waku.gg/).
 
 ## Development
 
