@@ -52,7 +52,7 @@ const styles = css.create({
 
 The compiler follows the `plumeria` condition, including subpath and pattern exports such as `@acme/tokens/colors`, and packages linked from a pnpm store. `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies` all count. A package without the condition is not read.
 
-An import whose names are all compiled away is now removed from the output, so the bundler never resolves `@acme/tokens` here. A package that exports only definitions can ship its source alone. One that also exports runtime code keeps a `default` condition for it, and an import still read at runtime, rendered as a component or re-exported stays in place.
+An import whose names are all compiled away is now removed from the output, so the bundler never resolves `@acme/tokens` here. A package that exports only definitions can ship its source alone. One that also exports runtime code keeps a `default` condition for it, and an import still read at runtime, rendered as a component or re-exported stays in place. See [Across packages](/docs/module-architecture#across-packages).
 
 ## 2. `@plumeria/wind`
 
@@ -92,7 +92,7 @@ const styles = css.create({
 });
 ```
 
-`tokens.blue` is read as `import { blue }`, and the namespace import is removed when nothing else uses it. A string key, destructuring, a rest element or passing `tokens` as a whole still stops the build and asks for a named import.
+`tokens.blue` is read as `import { blue }`, and the namespace import is removed when nothing else uses it. A string key, destructuring, a rest element or passing `tokens` as a whole still stops the build and asks for a named import. See [Imports](/docs/module-architecture#imports).
 
 ## 4. Lint
 
