@@ -8,6 +8,7 @@ import remarkMath from 'remark-math';
 export const { docs, meta } = defineDocs({
   dir: 'content/docs',
   docs: {
+    async: true,
     postprocess: { includeProcessedMarkdown: true },
   },
 });
@@ -15,6 +16,7 @@ export const { docs, meta } = defineDocs({
 export const { docs: blogDocs, meta: blogMeta } = defineDocs({
   dir: 'content/blog',
   docs: {
+    async: true,
     schema: pageSchema.extend({
       date: z.string(),
     }),
