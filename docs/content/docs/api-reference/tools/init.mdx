@@ -2,7 +2,6 @@
 title: '@plumeria/init'
 description: 'One command that picks the right packages and plugin for your bundler.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 [`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init) sets Plumeria up in a project that already exists. There are eight packages and a plugin per bundler; the choice between them is not a judgement, it is a detection, so the command makes it.
 
@@ -127,23 +126,9 @@ Without a TTY it never asks — every unanswered question takes its default, whi
 
 None. Run it with `npx` and it is gone again afterwards. Install it only if you want it pinned in the repo, where the command is `plumeria-init`:
 
-<Tabs items={['npm',  'yarn', 'pnpm']}>
-<Tab>
 ```sh title="Terminal"
-npm i --save-dev @plumeria/init
+pnpm i -D @plumeria/init
 ```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/init
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-pnpm i --save-dev @plumeria/init
-```
-</Tab>
-</Tabs>
 
 <Cards>
   <Card title="Set it up by hand instead" href="/docs/installation" />
