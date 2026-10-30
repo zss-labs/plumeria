@@ -1,6 +1,6 @@
 ---
 title: 'Module architecture'
-description: 'Organize styles as exported modules, and refactor them without changing the output.'
+description: 'Organize styles as exported modules, share them across packages, and refactor them without changing the output.'
 ---
 
 Styles are module exports. A style used by one file stays in that file; a style
@@ -149,6 +149,84 @@ export const Profile = () => (
   </div>
 );
 ```
+
+## Imports
+
+A namespace import reads a definition by name, as a named import does:
+
+```ts title="styles/layout.ts"
+import * as css from '@plumeria/core';
+import * as tokens from './tokens';
+
+export const layout = css.create({
+  stack: {
+    gap: 16,
+    [tokens.breakpoints.sm]: {
+      gap: 8,
+    },
+  },
+});
+```
+
+Every read is written in place, so the compiler has to see which definition is
+read. A string key, destructuring, a rest element or passing `tokens` as a whole
+stops the build.
+
+An import whose names are all compiled away is removed from the output, so the
+bundler never loads the module through it. An import still read at runtime,
+rendered as a component or re-exported stays. A module that also has to run on
+import, such as one importing a global stylesheet, gets an import of its own:
+
+```ts
+import './tokens';
+```
+
+## Across packages
+
+A package shares its definitions by pointing a `plumeria` export condition at
+its TypeScript source:
+
+```json title="package.json"
+{
+  "name": "@acme/tokens",
+  "exports": {
+    ".": {
+      "plumeria": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  }
+}
+```
+
+```ts title="src/index.ts"
+import * as css from '@plumeria/core';
+
+export const brand = css.createStatic({
+  primary: '#0b5fff',
+});
+```
+
+An app that lists the package in its dependencies reads it like a local module:
+
+```tsx title="Button.tsx"
+import * as css from '@plumeria/core';
+import { brand } from '@acme/tokens';
+
+const styles = css.create({
+  button: {
+    backgroundColor: brand.primary,
+  },
+});
+```
+
+The compiler follows the condition through subpath and pattern exports such as
+`@acme/tokens/colors`, and into packages linked from a pnpm store.
+`dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies`
+all count. A package without the condition is not read.
+
+The import compiles away, so a package that exports only definitions can ship
+its source alone, as [`@plumeria/wind`](/docs/api-reference/wind) does. One that
+also exports runtime code keeps a `default` condition for it.
 
 ## Refactoring is free
 
