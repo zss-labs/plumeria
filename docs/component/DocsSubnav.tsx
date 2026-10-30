@@ -131,7 +131,7 @@ export const DocsSubnav = () => {
                 <path d="m9 18 6-6-6-6" />
               </svg>
             )}
-            <span classStyle={index === crumbs.length - 1 ? styles.current : styles.parent}>{crumb}</span>
+            <span classStyle={[index === crumbs.length - 1 ? styles.current : styles.parent]}>{crumb}</span>
           </Fragment>
         ))}
       </nav>
