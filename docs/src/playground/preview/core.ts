@@ -7,6 +7,8 @@ type StyleRule = Record<string, unknown>;
 let element: HTMLStyleElement | undefined;
 let inserted = new Set<string>();
 let pending: Set<string> | undefined;
+// An imported package such as @plumeria/wind runs once, but its keyframes have to outlive each render.
+const keyframeSheets = new Set<string>();
 
 function styleElement(): HTMLStyleElement {
   element ??= document.head.appendChild(document.createElement('style'));
@@ -21,7 +23,7 @@ export function commitStyles(): void {
   if (!pending) return;
   inserted = pending;
   pending = undefined;
-  styleElement().textContent = [...inserted].join('');
+  styleElement().textContent = [...new Set([...keyframeSheets, ...inserted])].join('');
 }
 
 export function discardStyles(): void {
@@ -63,6 +65,7 @@ export function props(...rules: unknown[]): { className: string } {
 export function keyframes(rule: StyleRule): string {
   const hash = genBase36Hash(rule, 1, 8);
   const { styleSheet } = transpile({ [`@keyframes kf-${hash}`]: rule }, undefined, '--global');
+  keyframeSheets.add(styleSheet);
   insert(styleSheet);
   return `kf-${hash}`;
 }
