@@ -3,7 +3,7 @@ title: '@plumeria/init'
 description: 'One command that picks the right packages and plugin for your bundler.'
 ---
 
-[`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init) sets Plumeria up in a project that already exists. There are eight packages and a plugin per bundler; the choice between them is not a judgement, it is a detection, so the command makes it.
+[`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init) sets Plumeria up in a project that already exists. Each bundler has its own plugin; the choice between them is not a judgement, it is a detection, so the command makes it.
 
 ```sh title="Terminal"
 npx @plumeria/init
@@ -61,7 +61,7 @@ A renamed prop is rejected unless it is an identifier TypeScript can declare, an
 
 | File | What lands in it |
 | --- | --- |
-| `plumeria.d.ts` | the styling prop TypeScript reads |
+| `plumeria.d.ts` | the styling prop TypeScript reads, in `src/` when the project has one |
 | the bundler config | the plugin, and the options the answers chose |
 | `eslint.config.ts` | `plumeria.configs.recommended`, the rules that were asked for, and `settings.plumeria.styleProp` when the styling prop was renamed |
 | `package.json` | on esbuild and Bun, `plumeria-lint --` in front of the `build` script, and on Next.js `rimraf .next` before `dev` and `build` |
