@@ -300,7 +300,7 @@ div:has(.shiki)[data-orientation='horizontal'] [role='tablist'] {
 }
 
 .shiki pre {
-  font-size: 12.65px;
+  font-size: 12.35px;
 }
 
 @media screen and (max-width: 768px) {
