@@ -13,6 +13,9 @@ declare global {
     interface HTMLAttributes<T> {
       classStyle?: Style;
     }
+    interface SVGAttributes<T> {
+      classStyle?: Style;
+    }
   }
 }
 
@@ -53,6 +56,8 @@ export const use: use;
 `css.use()` converts styles into a string of class names. Use it where the `classStyle` prop is not available, for example when passing a class name to an external component that only accepts `className`.
 
 Pass every style to one `css.use()` call; a later argument takes precedence. Strings from separate calls are not merged when joined, so which rule wins depends on stylesheet order.
+
+A [function key](/docs/api-reference/javascript/create#dynamic-values) cannot go through `css.use()`, and the build stops on it: its values reach the element as CSS variables on `style`, which a class name string cannot carry. Apply it with `classStyle`. A prop that ends up in `css.use()` can reject one at the call site with [StaticStyles](/docs/api-reference/types/StaticStyles).
 
 ### Example
 
