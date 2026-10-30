@@ -593,19 +593,20 @@ export const A = () => <div classStyle={st.a} />;`,
       expect(css).toMatch(/::view-transition-old\(\*\.vt-x[a-z0-9]+\) \{/);
     });
 
-    it.each([
-      [
-        'a keyframes read through a namespace import',
-        {
-          'anim.ts': `import * as css from '@plumeria/core';
+    it('names a keyframes read through a namespace import', async () => {
+      const { css } = await transform({
+        'anim.ts': `import * as css from '@plumeria/core';
 export const k = css.keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });`,
-          'app.tsx': `import * as css from '@plumeria/core';
+        'app.tsx': `import * as css from '@plumeria/core';
 import * as anim from './anim';
 const st = css.create({ a: { animationName: anim.k } });
 export const A = () => <div classStyle={st.a} />;`,
-        },
-        'Cannot resolve the value of "animationName" at build time (anim.k).',
-      ],
+      });
+      expect(css).toMatch(/@keyframes kf-x[a-z0-9]+ \{/);
+      expect(css).toMatch(/animation-name: kf-x[a-z0-9]+;/);
+    });
+
+    it.each([
       [
         'a createStatic value read through two quoted keys',
         {
