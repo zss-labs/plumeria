@@ -22,4 +22,5 @@ const styles = css.create({
 
 The values are compiled into your styles at build time, so the package adds nothing to your bundle.
 
-The values are taken from Tailwind CSS v4.3.3 (MIT). See [LICENSE-tailwindcss](./LICENSE-tailwindcss).
+The values are taken from Tailwind CSS V4 (MIT).   
+See [LICENSE-tailwindcss](./LICENSE-tailwindcss).
