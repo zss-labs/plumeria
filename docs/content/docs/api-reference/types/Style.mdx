@@ -97,6 +97,8 @@ export function Example() {
 }
 ```
 
+A component has to apply the style it receives on an element it renders. One that only passes it on stops the build; see [`no-style-prop-relay`](/docs/api-reference/plugins/eslint-plugin#no-style-prop-relay).
+
 ## One style rather than a list
 
 `Style` describes a list, so a prop typed with it can be handed an array, a conditional or nothing at all. A prop that instead takes exactly one created style, because the component reads a property off it, is [AtomicStyle](/docs/api-reference/types/AtomicStyle):
