@@ -32,6 +32,8 @@ const styles = css.create({
 
 The namespace name is up to you, and named imports work the same way.
 
+A token passed as an argument to a [function key](/docs/api-reference/javascript/create#dynamic-values) is not compiled, so read it inside `css.create` instead.
+
 ---
 
 ## Colors
@@ -89,6 +91,19 @@ The namespace name is up to you, and named imports work the same way.
 
 ### breakpoint
 <Scale name="breakpoint" />
+
+A breakpoint is a length, so write the query around it:
+
+```tsx title="Grid.tsx"
+const styles = css.create({
+  grid: {
+    gap: t.spacing[2],
+    [`@media (width >= ${t.breakpoint.md})`]: {
+      gap: t.spacing[4],
+    },
+  },
+});
+```
 
 ### container
 <Scale name="container" />
