@@ -41,10 +41,6 @@ export function SiteFooter() {
       </nav>
       <div className="site-footer-legal">
         <span>{copyright}</span>
-        <span aria-hidden="true">·</span>
-        <Link href="/privacy" className="site-footer-link">
-          privacy
-        </Link>
         <div className="site-footer-social">
           {footerSocialLinks.map(({ label, href, path }) => (
             <a
