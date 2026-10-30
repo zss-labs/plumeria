@@ -17,6 +17,7 @@
     "api-reference/javascript",
     "api-reference/types",
     "api-reference/components",
+    "api-reference/wind",
     "---TOOLS---",
     "api-reference/tools/init",
     "api-reference/tools/codemod",
