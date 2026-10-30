@@ -19,6 +19,7 @@ import {
   isAtRule,
 } from 'zss-engine';
 import { readSource, sourceStamp } from './sourceCache';
+import { asWritten, expandNamespaces } from './namespaceImport';
 import {
   compilationRevision,
   compilationGeneration,
@@ -488,9 +489,22 @@ export function compileCSS(options: CompilerOptions) {
   }
 
   const processFile = (filePath: string, writes: Writes): string[] => {
-    const scannedTables = readTables(tables, writes);
     const resourcePath = path.resolve(cwd, filePath);
-    const source = options.sources?.[resourcePath] ?? readSource(resourcePath);
+    const written = options.sources?.[resourcePath] ?? readSource(resourcePath);
+    const namespaces = expandNamespaces(resourcePath, written);
+    try {
+      return extractFile(resourcePath, namespaces?.source ?? written, writes);
+    } catch (error) {
+      throw asWritten(namespaces, error);
+    }
+  };
+
+  const extractFile = (
+    resourcePath: string,
+    source: string,
+    writes: Writes,
+  ): string[] => {
+    const scannedTables = readTables(tables, writes);
     const extractedSheets: string[] = [];
 
     const ast = parseSync(source, {
