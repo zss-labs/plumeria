@@ -1,18 +1,13 @@
-import { notFound } from 'next/navigation';
 import { source } from 'lib/source';
-
-export const revalidate = false;
-export const dynamic = 'force-static';
 
 const markdownSlug = (slugs: string[]) => {
   const path = ['docs', ...slugs];
   return [...path.slice(0, -1), `${path.at(-1)}.md`];
 };
 
-export async function GET(_req: Request, props: { params: Promise<{ slug: string[] }> }): Promise<Response> {
-  const params = await props.params;
+export async function GET(_req: Request, { params }: { params: { slug: string[] } }): Promise<Response> {
   const page = source.getPages().find((page) => markdownSlug(page.slugs).join('/') === params.slug.join('/'));
-  if (!page) notFound();
+  if (!page) return new Response('Not Found', { status: 404 });
 
   const url = new URL(page.url, process.env.PROD_URL).toString();
   const processed = await page.data.getText('processed');
@@ -22,6 +17,9 @@ export async function GET(_req: Request, props: { params: Promise<{ slug: string
   });
 }
 
-export function generateStaticParams() {
-  return source.getPages().map((page) => ({ slug: markdownSlug(page.slugs) }));
-}
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: source.getPages().map((page) => markdownSlug(page.slugs)),
+  } as const;
+};
