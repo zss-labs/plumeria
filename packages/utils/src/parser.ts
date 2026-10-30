@@ -77,7 +77,13 @@ import {
 } from './dynamicKey';
 import type { DynamicStyleTables } from './dynamicKey';
 import type { StyleRecord } from './create';
-import { resolveImportPath, resetImportResolutionCache } from './resolver';
+import {
+  getSourcePackages,
+  resolveImportPath,
+  resetImportResolutionCache,
+  sourceDirsOf,
+  sourcePackagesStale,
+} from './resolver';
 
 export function unwrapExpression(node: any): any {
   while (
@@ -1985,10 +1991,17 @@ function runScan(scanCwd: string, styleProp: string): Tables {
   } catch {
     /* No config. */
   }
+  const manifestStamp = fs.statSync(path.join(cwd, 'package.json'), {
+    throwIfNoEntry: false,
+  });
+  if (manifestStamp) configStamp += `:${manifestStamp.mtimeMs}`;
+  const packagesStale = sourcePackagesStale();
   const resolutionChanged =
-    resolutionConfigStamp !== undefined &&
-    resolutionConfigStamp !== configStamp;
-  if (resolutionConfigStamp !== configStamp) resetImportResolutionCache(cwd);
+    packagesStale ||
+    (resolutionConfigStamp !== undefined &&
+      resolutionConfigStamp !== configStamp);
+  if (packagesStale || resolutionConfigStamp !== configStamp)
+    resetImportResolutionCache(cwd);
   resolutionConfigStamp = configStamp;
 
   const segments = cwd.split(path.sep);
@@ -1998,18 +2011,28 @@ function runScan(scanCwd: string, styleProp: string): Tables {
       ? cwd
       : segments.slice(0, dependencyDirectory).join(path.sep) ||
         path.parse(cwd).root;
-  const files = rs
-    .globSync(path.join(root, '**/*.{js,jsx,ts,tsx}'), {
-      exclude: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/.next/**',
-      ],
-      cwd: root,
-      sort: true,
-    })
-    .sort();
+  const exclude = [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/build/**',
+    '**/.next/**',
+  ];
+  const files = [
+    ...new Set([
+      ...rs.globSync(path.join(root, '**/*.{js,jsx,ts,tsx}'), {
+        exclude,
+        cwd: root,
+        sort: true,
+      }),
+      ...getSourcePackages()
+        .flatMap(sourceDirsOf)
+        .flatMap((dir) =>
+          rs
+            .globSync('**/*.{js,jsx,ts,tsx}', { exclude, cwd: dir })
+            .map((file) => path.join(dir, file)),
+        ),
+    ]),
+  ].sort();
   const currentFiles = new Set(files);
 
   // Detect deleted files
