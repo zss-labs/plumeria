@@ -34,6 +34,8 @@ The complete rule set, distilled. Each rule is explained with examples in the se
 - Route a function key through `css.use()`, inline or through a `Style` prop. (→ Dynamic Styling)
 - Pass a received `Style` prop on to another component. Apply it on the element the component renders. (→ Styling Custom Components)
 - Join `css.use()` output with other class names, including another `css.use()` result passed through `className`, or pass it to a function such as `clsx` or `css.use()`. Pass every style to one `css.use()` call. (→ Forbidden Patterns)
+- Read a definition from a namespace import by string key, destructuring or a rest element, or pass the namespace as a whole. Read it by name, as in `tokens.blue`. (→ Forbidden Patterns)
+- Read a definition in an argument to a function key. Read it inside `css.create()`. (→ Dynamic Styling)
 
 ## Mental Model
 
@@ -73,6 +75,10 @@ export const MyComponent = ({ isActive }) => {
 **Right-wins composition.** `classStyle` accepts arrays, ternaries, and conditional expressions. The right-most style always takes precedence: above, `styles.active` overrides `styles.container` when `isActive` is true. `css.use()` follows the same rule. Within a single style, do not rely on source order to resolve overlapping pseudo-class states; declare their compound selector explicitly (see Selector Rules).
 
 **Cross-file imports.** Styles can be imported across files. A file that applies them with `classStyle` is compiled without further setup, but a file that passes them to a component through any other prop MUST contain `import "@plumeria/core";` — the import is how the compiler finds the file. Keeping the import in every consuming file is always correct and is the fastest path, because the compiler accepts such a file without looking further.
+
+**Definitions from a package.** A package whose `exports` point a `plumeria` condition at its TypeScript source, such as `@plumeria/wind`, is read like a local module by an app that lists it in its dependencies. A package without the condition is not read.
+
+**Imports that compile away.** An import whose names are all compiled away is removed from the output, so a module imported only for its definitions is not loaded through it. If the module also has to run on import, add `import './tokens';` beside it. An import still read at runtime, rendered as a component or re-exported stays.
 
 ## Forbidden Patterns
 
@@ -115,15 +121,17 @@ export const Box = ({ className }: { className?: string }) => (
 
 Strings from separate calls are not merged, so which rule wins depends on stylesheet order. Receive a `css.Style` prop and pass it to the same call instead, e.g. `css.use(styles.base, style)`. (→ Styling Custom Components)
 
-❌ **Reading a definition through a namespace import:**
+❌ **Reading a definition from a namespace import by anything but its name:**
 
 ```tsx
 import * as tokens from './tokens';
 
-<div classStyle={tokens.styles.card} />
+const { styles } = tokens;
+
+<div classStyle={tokens['styles'].card} />
 ```
 
-Every use of a definition is written in place at build time, so the compiler has to see which one is read. Import it by name instead: `import { styles } from './tokens'`. Reading it as `tokens.styles`, `tokens['styles']`, by destructuring or a rest element, or passing `tokens` as a whole, stops the build.
+Every use of a definition is written in place at build time, so the compiler has to see which one is read. `tokens.styles.card` compiles as `import { styles } from './tokens'` does. A string key, destructuring, a rest element or passing `tokens` as a whole stops the build.
 
 ❌ **Complex JS expressions in style values.** Only simple ternary operators are allowed, and only when necessary. Never put complex logic or function calls inside style values.
 
@@ -208,6 +216,8 @@ const styles = css.create({
 
 // Usage: <div classStyle={styles.palette(color)} />
 ```
+
+An argument reaches the output as written. A Plumeria definition read there, as in `styles.palette(tokens.blue[500])`, is not compiled and has no value at runtime. Read it inside `css.create()` instead.
 
 ### Bracket notation (variants)
 
@@ -314,6 +324,8 @@ export const styles = css.create({
   },
 });
 ```
+
+A numeric key, as in a color scale, is quoted: `'500': '#3b82f6'`. An unquoted number stops the build. A module that imports it reads `blue[500]` or `blue['500']`; the module that defines it reads `blue['500']`.
 
 ### `css.createTheme()`
 
@@ -630,6 +642,29 @@ export const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => {
 
 Merging under a base style — `[styles.base, headerStyle]` — is the supported shape. What is rejected is the *relay*: a prop that is only forwarded, never applied.
 
+A received style also cannot go through `classStyle` to a component that declares `classStyle`, even from another file and even when the same style is applied to an element as well:
+
+```tsx
+// ❌ INVALID: Header declares classStyle
+export const Layout = ({ classStyle }: { classStyle?: css.Style }) => {
+  return <Header classStyle={[styles.base, classStyle]} />;
+};
+```
+
+```
+[plumeria] "classStyle" is a style received through a prop and cannot be passed on
+to a component that declares classStyle. Apply it on an element this component renders.
+```
+
+A component the build never scans declares nothing, so a received style composes onto it and resolves to class names at the call site:
+
+```tsx
+// ✅ VALID: Dialog.Trigger comes from @plumeria/headlessui, a dependency
+export const OpenButton = ({ classStyle }: { classStyle?: css.Style }) => {
+  return <Dialog.Trigger classStyle={[styles.base, classStyle]}>Open</Dialog.Trigger>;
+};
+```
+
 So the valid call site above stays valid only while `Layout` applies all three props itself. If it routes them onward to a grandchild, each unapplied prop is an error — which is the signal that the styles belong on the components that own those elements.
 
 Prop drilling is an anti-pattern in React on its own terms; here it is also unresolvable, because the compiler would have to trace a style across an arbitrary chain of wrappers to build the lookup table. Rejecting it keeps the boundary decidable and the generated CSS exact.
@@ -651,6 +686,19 @@ Tailwind's model and Plumeria's do not map one-to-one. A utility-by-utility rewr
 **Resolve values from the compiled stylesheet, never from memory.** Utility values come from the project's `@theme`, not from a fixed table: `p-4` is `calc(var(--spacing) * 4)`, `text-sm` sets `font-size` *and* a paired `line-height`, and the color scale is whatever the project defines. Build the project and read the declarations out of the emitted CSS.
 
 **NEVER carry a `--tw-*` variable chain across.** `shadow-lg` compiles to `--tw-shadow: …` plus `box-shadow: var(--tw-inset-shadow), …, var(--tw-shadow)`, and those variables hold a value only because Tailwind registers them with `@property`. Copied literally, the declaration is invalid and the shadow disappears. Resolve the chain to its final value instead.
+
+**Where a compiled value is Tailwind's default, read it from `@plumeria/wind`.** The package holds the default theme of Tailwind CSS v4 as `css.createStatic` tokens, and each one compiles into the style that reads it, so nothing reaches the bundle. Install it with `pnpm i -D @plumeria/wind` and import it with `import * as t from '@plumeria/wind'`. It knows nothing of the project's `@theme`, so compare a token with the emitted CSS and keep the emitted value where the two differ. It generates no utility classes, so the key naming below still applies.
+
+| Tailwind | `@plumeria/wind` |
+|---|---|
+| `p-4` | `padding: t.spacing[4]` |
+| `text-sm` | `fontSize: t.text.sm`, `lineHeight: t.textLineHeight.sm` |
+| `font-medium` | `fontWeight: t.fontWeight.medium` |
+| `bg-blue-500`, `text-white` | `backgroundColor: t.blue[500]`, `color: t.color.white` |
+| `rounded-md` | `borderRadius: t.radius.md` |
+| `shadow-lg` | `boxShadow: t.shadow.lg`, which holds the resolved value |
+| `md:` | `` [`@media (width >= ${t.breakpoint.md})`] ``. The token is a length, so write the query around it; as a key on its own it produces no rule. |
+| `animate-spin` | `` animation: `${t.spin} ${t.animate.spin}` `` |
 
 **Name keys after what the element is, not after the utilities it carried.** The class list is the input to the migration, not the output.
 
@@ -742,6 +790,39 @@ export const Button = ({ size = 'sm', tone = 'primary', styleArray }: ButtonProp
 );
 ```
 
+On a project that keeps the default theme, the same two groups read from `@plumeria/wind`:
+
+```tsx
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const sizeStyles = css.create({
+  sm: {
+    height: t.spacing[8],
+    paddingInline: t.spacing[3],
+    fontSize: t.text.sm,
+    lineHeight: t.textLineHeight.sm,
+  },
+  lg: {
+    height: t.spacing[12],
+    paddingInline: t.spacing[6],
+    fontSize: t.text.lg,
+    lineHeight: t.textLineHeight.lg,
+  },
+});
+
+const toneStyles = css.create({
+  primary: {
+    color: t.color.white,
+    backgroundColor: t.blue[500],
+  },
+  danger: {
+    color: t.color.white,
+    backgroundColor: t.red[500],
+  },
+});
+```
+
 ## Testing
 
 **NEVER stub `@plumeria/core`.** It publishes types and no runtime. A `moduleNameMapper` entry or a hand-written mock makes the suite run, but every class name it produces is invented, so the test says nothing about the styles. If a runner cannot resolve the package, that is the signal to test a different layer, not to fake the package.
@@ -772,7 +853,7 @@ module.exports = {
 
 **Setup.** Do not write the configuration by hand. `npx @plumeria/init` detects the package manager and the bundler, installs the packages, writes `plumeria.d.ts` and the bundler config, extends the ESLint flat config, and on esbuild and Bun puts `plumeria-lint --` in front of the `build` script. The other bundler plugins lint the build themselves. It shows the plan before it writes, `--dry-run` stops at the plan, and `--yes` takes every default without asking, which is what makes it usable without a TTY. A project that is already set up reads as done and nothing is written.
 
-**Compiler expectations.** The SWC compiler statically extracts `css.create()` calls, which is why they MUST sit at module top level. Prefer direct, clearly defined references — indirect variable references may be unanalyzable.
+**Compiler expectations.** The compiler statically extracts `css.create()` calls, which is why they MUST sit at module top level. Prefer direct, clearly defined references — indirect variable references may be unanalyzable.
 
 **ESLint guarantees.** `@plumeria/eslint-plugin` enforces Plumeria's rules. Treat its errors as blocking, and its warnings (such as `no-order-dependent-overlap`) as defects to resolve rather than noise. It checks:
 
