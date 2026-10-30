@@ -6,7 +6,7 @@ import { dirname, join, sep } from 'node:path';
 const root = process.cwd();
 const stub = join(root, 'lib', 'node-stub.cjs');
 const pathPolyfill = createRequire(import.meta.url).resolve('path-browserify');
-const utilsShim = join(root, 'app', '(docs)', 'playground', 'utils-shim.ts');
+const utilsShim = join(root, 'src', 'playground', 'utils-shim.ts');
 const compilerWasm = dirname(createRequire(import.meta.url).resolve('@plumeria/compiler-wasm32-wasi/package.json'));
 const wasmRuntime = dirname(createRequire(join(compilerWasm, 'package.json')).resolve('@napi-rs/wasm-runtime'));
 
@@ -71,7 +71,7 @@ const stubPlugin = {
 };
 
 await build({
-  entryPoints: [join(root, 'app', '(docs)', 'playground', 'engine-entry.ts')],
+  entryPoints: [join(root, 'src', 'playground', 'engine-entry.ts')],
   outfile: join(root, 'public', 'playground', 'engine.mjs'),
   bundle: true,
   format: 'esm',
@@ -127,7 +127,7 @@ for (const name of ['engine.mjs', 'libs.json']) {
 await writeFile(join(root, 'public', 'playground', 'manifest.json'), JSON.stringify(sizes));
 
 const previewDir = join(root, 'public', 'playground', 'preview');
-const previewSrc = join(root, 'app', '(docs)', 'playground', 'preview');
+const previewSrc = join(root, 'src', 'playground', 'preview');
 
 await build({
   entryPoints: [
@@ -153,6 +153,21 @@ await build({
 });
 
 await copyFile(join(compilerWasm, 'compiler.wasm32-wasi.wasm'), join(previewDir, 'compiler.wasm32-wasi.wasm'));
+
+const windSource = join(root, 'node_modules', '@plumeria', 'wind', 'src', 'index.ts');
+await copyFile(windSource, join(previewDir, 'wind-source.txt'));
+
+await build({
+  entryPoints: [windSource],
+  outfile: join(previewDir, 'wind.mjs'),
+  bundle: true,
+  format: 'esm',
+  minify: true,
+  platform: 'browser',
+  target: 'es2022',
+  external: ['@plumeria/core'],
+  logLevel: 'error',
+});
 
 await build({
   entryPoints: [join(previewSrc, 'compiler-worker.ts')],
@@ -187,7 +202,8 @@ await writeFile(
           "react/jsx-runtime": "/playground/preview/jsx-runtime.mjs",
           "react/jsx-dev-runtime": "/playground/preview/jsx-dev-runtime.mjs",
           "react-dom/client": "/playground/preview/react-dom-client.mjs",
-          "@plumeria/core": "/playground/preview/core.mjs"
+          "@plumeria/core": "/playground/preview/core.mjs",
+          "@plumeria/wind": "/playground/preview/wind.mjs"
         }
       }
     </script>
