@@ -36,6 +36,8 @@ export const styles = css.create({
 
 A key resolves when it is a `const` holding a string, a member of a `const` object or a `css.createStatic` object, or an import of one of these. `as const`, `satisfies`, and type annotations make no difference. A key the rules cannot resolve, such as a `let` or a function parameter, is skipped.
 
+`sort-properties` reads a computed key the same way, and sorts one that holds an at-rule with the other at-rules, after the pseudo-classes. `no-combinator` checks a `css.createStatic` value only when it starts with `:` or `[`, the ones that become a selector when used as a key, so a shadow or a font stack is not reported.
+
 ## Rules
 `Rules: recommended`
 - `'@plumeria/custom-props-require-import': 'error'`
@@ -116,7 +118,10 @@ other modules.
 ## no-style-prop-relay
 
 Reports a style prop that a component receives but never applies to
-`classStyle` or `css.use()`. Enabled by `recommended` as `error`:
+`classStyle` or `css.use()`, and a received style passed through `classStyle` to
+a component that declares it, even from another file and even when the same
+style is applied to an element as well. The build stops on both. Enabled by
+`recommended` as `error`:
 
 ```js
 '@plumeria/no-style-prop-relay': 'error'
@@ -128,9 +133,21 @@ const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => (
   <Header headerStyle={headerStyle} />
 );
 
+// Errors: Header declares classStyle.
+const Layout = ({ classStyle }: { classStyle?: css.Style }) => (
+  <div classStyle={classStyle}>
+    <Header classStyle={classStyle} />
+  </div>
+);
+
 // Apply it on an element this component renders.
 const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => (
   <header classStyle={[styles.base, headerStyle]} />
+);
+
+// A component the build never scans declares nothing, so a style composes onto it.
+const OpenButton = ({ classStyle }: { classStyle?: css.Style }) => (
+  <Dialog.Trigger classStyle={[styles.base, classStyle]} />
 );
 ```
 
