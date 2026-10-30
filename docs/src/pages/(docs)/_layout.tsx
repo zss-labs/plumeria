@@ -1,7 +1,7 @@
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import 'katex/dist/katex.css';
 import type { ReactNode } from 'react';
-import { baseOptions } from 'app/layout.config';
+import { baseOptions } from 'lib/layout.config';
 import { source } from 'lib/source';
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -11,3 +11,9 @@ export default function Layout({ children }: { children: ReactNode }) {
     </DocsLayout>
   );
 }
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
