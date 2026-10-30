@@ -4,6 +4,7 @@ import { HomeSearchIcon, HomeSearchTrigger } from 'component/HomeSearchTrigger';
 import { HomeThemeToggle } from 'component/HomeThemeToggle';
 import { MenuAutoClose } from 'component/MenuAutoClose';
 import { coreVersion } from 'lib/coreVersion';
+import { latestBlogUrl } from 'lib/latestBlogUrl';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 
@@ -60,6 +61,10 @@ const styles = css.create({
     lineHeight: '20px',
     background: homeTheme.accent,
     borderRadius: 9999,
+    transitionDuration: '0.2s',
+    ':hover': {
+      opacity: 0.7,
+    },
   },
   toggle: {
     display: 'none',
@@ -189,7 +194,9 @@ export const SiteHeader = () => (
         <img src="/logo.svg" alt="" width="20" height="20" classStyle={styles.brandMark} />
         Plumeria
       </Link>
-      <span classStyle={styles.version}>v{coreVersion}</span>
+      <Link to={latestBlogUrl} classStyle={styles.version}>
+        v{coreVersion}
+      </Link>
       <HomeSearchIcon />
       <button type="button" popoverTarget="home-menu" aria-label="Toggle Menu" classStyle={styles.toggle}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
