@@ -3,7 +3,7 @@ title: 'Bun'
 description: 'Add Plumeria to a Bun project, with one command or by hand.'
 ---
 
-[`examples/bun`](https://github.com/zss-labs/plumeria/tree/main/examples/example-bun) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Bun.  
+[`examples/example-bun`](https://github.com/zss-labs/plumeria/tree/main/examples/example-bun) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Bun.  
 The plugin compiles Plumeria styles into the CSS asset Bun produces.
 
 `npx @plumeria/init` detects Bun and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
@@ -28,7 +28,7 @@ await Bun.build({
 
 `@plumeria/core` ships no prop declaration of its own, so name the styling prop your project compiles with.
 
-For the default name (`classStyle`), reference the declaration that ships with the package:
+For the default name (`classStyle`), reference the declaration that ships with the package, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
 /// <reference types="@plumeria/core/class-style" />
