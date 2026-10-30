@@ -3,33 +3,15 @@ title: '@plumeria/wind'
 description: 'Tailwind CSS theme values as static tokens for Plumeria.'
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Palettes, Scale } from 'component/Wind';
 
 `@plumeria/wind` provides Tailwind CSS design values as static tokens. The values are compiled into your styles at build time, so the package adds nothing to your bundle.
 
 ## Installation
 
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    npm i -D @plumeria/wind
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    yarn add -D @plumeria/wind
-    ```
-  </Tab>
-  {/* prettier-ignore */}
-  <Tab>
-    ```sh title="Terminal"
-    pnpm i -D @plumeria/wind
-    ```
-  </Tab>
-</Tabs>
+```sh title="Terminal"
+pnpm i -D @plumeria/wind
+```
 
 ---
 
@@ -37,28 +19,30 @@ import { Palettes, Scale } from 'component/Wind';
 
 ```tsx title="Button.tsx"
 import * as css from '@plumeria/core';
-import { blue, radius, slate, spacing, text } from '@plumeria/wind';
+import * as t from '@plumeria/wind';
 
 const styles = css.create({
   button: {
-    paddingInline: spacing[4],
-    fontSize: text.sm,
-    color: slate[50],
-    backgroundColor: blue[600],
-    borderRadius: radius.md,
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
   },
 });
 ```
+
+The namespace name is up to you, and named imports work the same way.
 
 Animations pair a keyframes export with its timing.
 
 ```tsx title="Spinner.tsx"
 import * as css from '@plumeria/core';
-import { animate, spin } from '@plumeria/wind';
+import * as t from '@plumeria/wind';
 
 const styles = css.create({
   spinner: {
-    animation: `${spin} ${animate.spin}`,
+    animation: `${t.spin} ${t.animate.spin}`,
   },
 });
 ```
