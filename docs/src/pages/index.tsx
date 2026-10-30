@@ -103,7 +103,7 @@ export default function Page() {
           <h1 classStyle={styles.title}>Plumeria</h1>
           <p classStyle={styles.description}>React styling library for reliable interfaces</p>
           <div classStyle={styles.actions}>
-            <Link to="/docs" classStyle={[styles.button, styles.primary]}>
+            <Link to="/docs" unstable_prefetchOnView={{}} classStyle={[styles.button, styles.primary]}>
               Get started
               <svg
                 width="16"
@@ -120,7 +120,7 @@ export default function Page() {
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </Link>
-            <Link to="/docs/why-plumeria" classStyle={styles.button}>
+            <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} classStyle={styles.button}>
               Why Plumeria?
             </Link>
           </div>
