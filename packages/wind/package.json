@@ -1,7 +1,7 @@
 {
   "name": "@plumeria/wind",
   "version": "21.1.8",
-  "description": "Tailwind CSS design values as Plumeria static tokens",
+  "description": "Tailwind CSS design-tokens for Plumeria",
   "author": "Refirst 11",
   "license": "MIT",
   "homepage": "https://plumeria.dev",
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "plumeria",
+    "tailwindcss",
     "tokens",
     "design-tokens",
     "css-in-js"
