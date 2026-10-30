@@ -3,6 +3,8 @@ title: css.createTheme
 description: 'Themes such as light and dark, switched by a class, an attribute or a media query.'
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 ```ts
 type CreateTheme = {
   [key: string]: {
@@ -20,100 +22,114 @@ Since a unique hash is automatically prepended to the generated variable names, 
 
 References between Plumeria themes are not supported: `default` and `theme` accept strings, not another theme member, and generated CSS variable names are content hashes that can change when the theme changes.
 
----
+## Example
 
-## Selector Patterns & Compiled CSS
+Toggle the theme by adding a class to the root element.
 
-`createTheme` supports class names, attribute selectors, and nesting-capable conditional at-rules (like `@media`, `@container` and `@supports`). Here are three common selector patterns and their compiled native CSS outputs:
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
 
-### 1. Class-based Selector (`.dark`)
+    export const theme = css.createTheme('.dark', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xvgqnxo9-text: #333;
+    }
 
-Excellent for toggling themes by adding a class to the root element.
+    .dark {
+      --xvgqnxo9-text: #eaeaea;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Usage
 
 ```ts
 import * as css from '@plumeria/core';
+import { theme } from 'lib/theme';
 
-export const theme = css.createTheme('.dark', {
-  text: {
-    default: '#333',
-    theme: '#eaeaea',
+const styles = css.create({
+  title: {
+    color: theme.text,
   },
 });
 ```
 
-**Compiled CSS:**
+## Selectors
 
-```css
-:where(:root) {
-  --xvgqnxo9-text: #333;
-}
+The first argument also takes attribute selectors and nesting-capable conditional at-rules such as `@media`, `@container` and `@supports`.
 
-.dark {
-  --xvgqnxo9-text: #eaeaea;
-}
-```
+### Attribute
 
----
+For attribute-based setups such as next-themes.
 
-### 2. Attribute-based Selector (`[data-theme="dark"]`)
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
 
-Great for attribute-based theme setups (e.g. Next-Themes).
+    export const theme = css.createTheme('[data-theme="dark"]', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xipw25nr-text: #333;
+    }
 
-```ts
-import * as css from '@plumeria/core';
+    [data-theme="dark"] {
+      --xipw25nr-text: #eaeaea;
+    }
+    ```
+  </Tab>
+</Tabs>
 
-export const theme = css.createTheme('[data-theme="dark"]', {
-  text: {
-    default: '#333',
-    theme: '#eaeaea',
-  },
-});
-```
+### Media query
 
-**Compiled CSS:**
+Follows the system setting without any JavaScript.
 
-```css
-:where(:root) {
-  --xipw25nr-text: #333;
-}
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
 
-[data-theme="dark"] {
-  --xipw25nr-text: #eaeaea;
-}
-```
+    export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xnof3ra0-text: #333;
+    }
 
----
-
-### 3. Media Query (`@media (prefers-color-scheme: dark)`)
-
-Ideal for automatic system-level dark mode switching without any JavaScript.
-
-```ts
-import * as css from '@plumeria/core';
-
-export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
-  text: {
-    default: '#333',
-    theme: '#eaeaea',
-  },
-});
-```
-
-**Compiled CSS:**
-
-```css
-:where(:root) {
-  --xnof3ra0-text: #333;
-}
-
-@media (prefers-color-scheme: dark) {
-  :where(:root) {
-    --xnof3ra0-text: #eaeaea;
-  }
-}
-```
-
----
+    @media (prefers-color-scheme: dark) {
+      :where(:root) {
+        --xnof3ra0-text: #eaeaea;
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 <Callout title="Good to know">
 All APIs, including createTheme, are not compiled until the theme variable is actually used in a styling block.
