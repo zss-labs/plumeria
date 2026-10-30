@@ -2,7 +2,6 @@
 title: 'Rollup'
 description: 'Add Plumeria to a Rollup project, with one command or by hand.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 [`examples/rollup`](https://github.com/zss-labs/plumeria/tree/main/examples/example-rollup) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Rollup.  
 The plugin compiles Plumeria styles into the CSS asset Rollup produces.
@@ -10,23 +9,9 @@ The plugin compiles Plumeria styles into the CSS asset Rollup produces.
 `npx @plumeria/init` detects Rollup and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
 
 ## Installation
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-<Tab>
-```sh title="Terminal"
-npm i -D @plumeria/unplugin
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/unplugin
-```
-</Tab>
-<Tab>
 ```sh title="Terminal"
 pnpm i -D @plumeria/unplugin
 ```
-</Tab>
-</Tabs>
 
 ## Usage
 ```js title="rollup.config.js"
