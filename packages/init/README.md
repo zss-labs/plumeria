@@ -56,7 +56,7 @@ the `build` script is prefixed with `plumeria-lint --` instead.
 
 ## What it writes
 
-- `plumeria.d.ts` — the styling prop TypeScript reads.
+- `plumeria.d.ts` — the styling prop TypeScript reads, in `src/` when the project has one.
 - the bundler config — the plugin, and the options the answers chose. An
   existing config is patched: the import lands after the last import, and the
   plugin joins the `plugins` array. A Next config has its default export
