@@ -3,7 +3,7 @@ title: 'Farm'
 description: 'Add Plumeria to a Farm project, with one command or by hand.'
 ---
 
-[`examples/farm`](https://github.com/zss-labs/plumeria/tree/main/examples/example-farm) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Farm.  
+[`examples/example-farm`](https://github.com/zss-labs/plumeria/tree/main/examples/example-farm) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Farm.  
 The plugin compiles Plumeria styles into CSS, with HMR in development.
 
 `npx @plumeria/init` detects Farm and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
@@ -31,7 +31,7 @@ export default defineConfig({
 
 `@plumeria/core` ships no prop declaration of its own, so name the styling prop your project compiles with.
 
-For the default name (`classStyle`), reference the declaration that ships with the package:
+For the default name (`classStyle`), reference the declaration that ships with the package, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
 /// <reference types="@plumeria/core/class-style" />
