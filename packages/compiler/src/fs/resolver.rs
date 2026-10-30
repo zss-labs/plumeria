@@ -490,14 +490,171 @@ pub fn resolve_with_extension(base: &Path) -> Option<String> {
     None
 }
 
+const SOURCE_CONDITION: &str = "plumeria";
+
+#[derive(Clone, Debug)]
+pub struct SourcePackage {
+    pub name: String,
+    pub dir: PathBuf,
+    exports: Json,
+    linked: PathBuf,
+    manifest_mtime: Option<std::time::SystemTime>,
+}
+
+fn source_target_of(entry: &Json) -> Option<String> {
+    match entry {
+        Json::Object(conditions) => match conditions.get(SOURCE_CONDITION)? {
+            Json::String(target) => Some(target.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn manifest_mtime(dir: &Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(dir.join("package.json"))
+        .and_then(|metadata| metadata.modified())
+        .ok()
+}
+
+impl SourcePackage {
+    fn is_stale(&self) -> bool {
+        std::fs::canonicalize(&self.linked).ok().as_ref() != Some(&self.dir)
+            || manifest_mtime(&self.dir) != self.manifest_mtime
+    }
+
+    fn target(&self, subpath: &str) -> Option<String> {
+        let map = match &self.exports {
+            Json::Object(map) if map.keys().any(|key| key.starts_with('.')) => map,
+            other if subpath == "." => return source_target_of(other),
+            _ => return None,
+        };
+        if let Some(entry) = map.get(subpath) {
+            return source_target_of(entry);
+        }
+        let (key, matched) = map
+            .keys()
+            .filter_map(|key| {
+                let (prefix, suffix) = key.split_once('*')?;
+                (!suffix.contains('*')
+                    && subpath.len() >= key.len()
+                    && subpath.starts_with(prefix)
+                    && subpath.ends_with(suffix))
+                .then(|| (key, &subpath[prefix.len()..subpath.len() - suffix.len()]))
+            })
+            .max_by_key(|(key, _)| (key.find('*').unwrap_or(0), key.len()))?;
+        Some(source_target_of(map.get(key)?)?.replace('*', matched))
+    }
+
+    pub fn source_dirs(&self) -> Vec<PathBuf> {
+        let entries: Vec<&Json> = match &self.exports {
+            Json::Object(map) if map.keys().any(|key| key.starts_with('.')) => {
+                map.values().collect()
+            }
+            other => vec![other],
+        };
+        let mut dirs: Vec<PathBuf> = entries
+            .into_iter()
+            .filter_map(source_target_of)
+            .filter_map(|target| match target.find('*') {
+                Some(star) if target[..star].ends_with('/') => {
+                    Some(resolve(&self.dir, &target[..star]))
+                }
+                Some(star) => resolve(&self.dir, &target[..star])
+                    .parent()
+                    .map(Path::to_path_buf),
+                None => resolve(&self.dir, &target).parent().map(Path::to_path_buf),
+            })
+            .filter(|dir| dir.starts_with(&self.dir))
+            .collect();
+        dirs.sort();
+        dirs.dedup();
+        let nested: Vec<PathBuf> = dirs
+            .iter()
+            .filter(|dir| {
+                dirs.iter()
+                    .any(|other| other != *dir && dir.starts_with(other))
+            })
+            .cloned()
+            .collect();
+        dirs.retain(|dir| !nested.contains(dir));
+        dirs
+    }
+}
+
+pub fn load_source_packages(cwd: &Path) -> Vec<SourcePackage> {
+    let Some(manifest) = read_config(&cwd.join("package.json")) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = [
+        "dependencies",
+        "devDependencies",
+        "peerDependencies",
+        "optionalDependencies",
+    ]
+    .iter()
+    .filter_map(|field| match manifest.get(*field) {
+        Some(Json::Object(map)) => Some(map.keys().cloned()),
+        _ => None,
+    })
+    .flatten()
+    .collect();
+    names.sort();
+    names.dedup();
+    names
+        .into_iter()
+        .filter_map(|name| {
+            let linked = cwd
+                .ancestors()
+                .map(|dir| dir.join("node_modules").join(&name))
+                .find(|dir| is_dir(dir))?;
+            let dir = std::fs::canonicalize(&linked).ok()?;
+            let exports = read_config(&dir.join("package.json"))?
+                .get("exports")?
+                .clone();
+            let manifest_mtime = manifest_mtime(&dir);
+            let package = SourcePackage {
+                name,
+                dir,
+                exports,
+                linked,
+                manifest_mtime,
+            };
+            (!package.source_dirs().is_empty()).then_some(package)
+        })
+        .collect()
+}
+
 #[derive(Default)]
 pub struct Resolver {
     matcher: Option<Option<PathsMatcher>>,
+    packages: Option<Vec<SourcePackage>>,
 }
 
 impl Resolver {
     pub fn reset(&mut self, cwd: &Path) {
         self.matcher = Some(load_paths_matcher(&cwd.join("tsconfig.json")));
+        self.packages = Some(load_source_packages(cwd));
+    }
+
+    pub fn source_packages_stale(&self) -> bool {
+        self.packages
+            .as_ref()
+            .is_some_and(|packages| packages.iter().any(SourcePackage::is_stale))
+    }
+
+    pub fn source_packages(&mut self) -> &[SourcePackage] {
+        self.packages.get_or_insert_with(|| {
+            load_source_packages(&std::env::current_dir().unwrap_or_default())
+        })
+    }
+
+    fn resolve_source_package(&mut self, import_path: &str) -> Option<String> {
+        let name = package_name_of(import_path);
+        let subpath = format!(".{}", &import_path[name.len()..]);
+        let package = self.source_packages().iter().find(|p| p.name == name)?;
+        let resolved = resolve(&package.dir, &package.target(&subpath)?);
+        is_file(&resolved).then(|| resolved.to_string_lossy().into_owned())
     }
 
     fn matcher(&mut self) -> Option<&PathsMatcher> {
@@ -526,6 +683,9 @@ impl Resolver {
                     return Some(result);
                 }
             }
+        }
+        if let Some(result) = self.resolve_source_package(import_path) {
+            return Some(result);
         }
         let mut current = PathBuf::from(dirname(importer));
         loop {
