@@ -33,14 +33,23 @@ export type Compiler = {
 export type Output = { jsx: Record<string, string>; css: string };
 
 const ROOT = '/playground';
+const WIND_FILE = `${ROOT}/__wind.ts`;
+const WIND_TSCONFIG = JSON.stringify({
+  compilerOptions: { paths: { '@plumeria/wind': ['./__wind.ts'] } },
+});
 
 export async function loadCompiler(threads: number) {
   const { fs } = memfs({ [ROOT]: null });
   const workers: Worker[] = [];
   const memory = new WebAssembly.Memory({ initial: 1024, maximum: 16384, shared: true });
-  const wasm = await fetch(new URL('./compiler.wasm32-wasi.wasm', import.meta.url)).then((response) =>
-    response.arrayBuffer(),
-  );
+  const [wasm, wind] = await Promise.all([
+    fetch(new URL('./compiler.wasm32-wasi.wasm', import.meta.url)).then((response) => response.arrayBuffer()),
+    fetch(new URL('./wind-source.txt', import.meta.url)).then((response) => response.text()),
+  ]);
+
+  // The WASI compiler does not pick the package up from node_modules, so it sits beside the sources.
+  fs.writeFileSync(`${ROOT}/tsconfig.json`, WIND_TSCONFIG);
+  fs.writeFileSync(WIND_FILE, wind);
 
   const { napiModule } = await instantiateNapiModule(wasm, {
     context: getDefaultContext(),
@@ -71,7 +80,7 @@ export async function loadCompiler(threads: number) {
   }
 
   function compile(sources: Record<string, string>): Output {
-    const files = Object.keys(sources).map((path) => ROOT + path);
+    const files = [...Object.keys(sources).map((path) => ROOT + path), WIND_FILE];
     for (const [path, source] of Object.entries(sources)) fs.writeFileSync(ROOT + path, source);
     if (files.join() !== known) {
       known = files.join();
