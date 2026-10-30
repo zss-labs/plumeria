@@ -1,4 +1,4 @@
-import { docs, meta, blogDocs, blogMeta } from '.source/server';
+import { docs, meta, blogDocs, blogMeta } from '../.source/server';
 import { loader } from 'fumadocs-core/source';
 import type { Node, Root } from 'fumadocs-core/page-tree';
 import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
