@@ -140,14 +140,32 @@ const collectHoistedNames = (n: any, out: Set<string>) => {
 export interface ReferenceIdentifiers {
   references: Set<number>;
   shorthands: Set<number>;
+  names: Map<number, string>;
 }
 
-export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
+export function collectReferenceIdentifiers(
+  ast: Module,
+  { runtimeReads = false }: { runtimeReads?: boolean } = {},
+): ReferenceIdentifiers {
   const references = new Set<number>();
   const shorthands = new Set<number>();
+  const names = new Map<number, string>();
   const scopes: Set<string>[] = [];
 
   const isShadowed = (name: string) => scopes.some((scope) => scope.has(name));
+
+  const reference = (ident: any) => {
+    if (isShadowed(ident.value)) return false;
+    references.add(ident.span.start);
+    names.set(ident.span.start, ident.value);
+    return true;
+  };
+
+  const elementName = (name: any) => {
+    if (name?.type === 'Identifier' && /^[a-z]/.test(name.value)) return;
+    while (name?.type === 'JSXMemberExpression') name = name.object;
+    if (name?.type === 'Identifier') reference(name);
+  };
 
   const walkPattern = (n: any) => {
     if (!n || typeof n !== 'object') return;
@@ -217,7 +235,7 @@ export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
     const type: string = n.type;
 
     if (type === 'Identifier') {
-      if (!isShadowed(n.value)) references.add(n.span.start);
+      reference(n);
       return;
     }
 
@@ -227,6 +245,9 @@ export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
     }
 
     switch (type) {
+      case 'ExportNamedDeclaration':
+        if (n.source) return;
+        break;
       case 'BlockStatement':
         walkBlock(n, n.stmts);
         return;
@@ -292,10 +313,7 @@ export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
       case 'ObjectExpression':
         n.properties?.forEach((prop: any) => {
           if (prop?.type === 'Identifier') {
-            if (!isShadowed(prop.value)) {
-              references.add(prop.span.start);
-              shorthands.add(prop.span.start);
-            }
+            if (reference(prop)) shorthands.add(prop.span.start);
             return;
           }
           walk(prop);
@@ -320,6 +338,10 @@ export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
       if (skip.includes(key)) {
         const child = n[key];
         if (child?.type === 'Computed') walk(child);
+        else if (runtimeReads && type === 'JSXOpeningElement')
+          elementName(child);
+        else if (runtimeReads && type === 'ExportSpecifier' && key === 'orig')
+          reference(child);
         continue;
       }
       walk(n[key]);
@@ -327,5 +349,5 @@ export function collectReferenceIdentifiers(ast: Module): ReferenceIdentifiers {
   }
 
   ast.body.forEach(walk);
-  return { references, shorthands };
+  return { references, shorthands, names };
 }
