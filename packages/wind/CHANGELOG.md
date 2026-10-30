@@ -1,5 +1,11 @@
 # @plumeria/wind
 
+## 21.2.1
+
+### Patch Changes
+
+- 2089b8a: - Update: use a namespace import in README.md
+
 ## 21.2.0
 
 ### Minor Changes
