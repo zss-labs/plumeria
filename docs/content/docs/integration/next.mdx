@@ -2,8 +2,6 @@
 title: 'Next.js'
 description: 'Add Plumeria to a Next.js project, with one command or by hand.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import Link from 'next/link';
 
 [`examples/nextjs`](https://github.com/zss-labs/plumeria/tree/main/examples/example-nextjs) shows how to use [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) in Next.js.  
 The plugin compiles Plumeria styles into CSS, with HMR in development.
@@ -11,23 +9,9 @@ The plugin compiles Plumeria styles into CSS, with HMR in development.
 `npx @plumeria/init` detects Next.js and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
 
 ## Installation
-<Tabs items={['npm',  'yarn', 'pnpm']}>
-<Tab>
 ```sh title="Terminal"
-npm i --save-dev @plumeria/next-plugin
+pnpm i -D @plumeria/next-plugin
 ```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/next-plugin
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-pnpm i --save-dev @plumeria/next-plugin
-```
-</Tab>
-</Tabs>
 
 ## next.config.ts
 
