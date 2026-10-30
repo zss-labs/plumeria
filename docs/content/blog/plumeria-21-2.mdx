@@ -64,20 +64,20 @@ npm i -D @plumeria/wind
 
 ```tsx title="Button.tsx"
 import * as css from '@plumeria/core';
-import { blue, radius, slate, spacing, text } from '@plumeria/wind';
+import * as t from '@plumeria/wind';
 
 const styles = css.create({
   button: {
-    paddingInline: spacing[4],
-    fontSize: text.sm,
-    color: slate[50],
-    backgroundColor: blue[600],
-    borderRadius: radius.md,
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
   },
 });
 ```
 
-It is built the way section 1 describes: its `package.json` points a `plumeria` condition at `src/index.ts`, and there is no build output. Every value is compiled into the styles that read it and the import is removed, so nothing from the package reaches the bundle. It generates no utility classes. The full list is in [@plumeria/wind](/docs/api-reference/javascript/wind).
+It is built the way section 1 describes: its `package.json` points a `plumeria` condition at `src/index.ts`, and there is no build output. Every value is compiled into the styles that read it and the import is removed, so nothing from the package reaches the bundle. It generates no utility classes. The full list is in [@plumeria/wind](/docs/api-reference/wind).
 
 ## 3. Namespace imports
 
