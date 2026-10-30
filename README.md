@@ -115,11 +115,15 @@ Plumeria publishes frequently. To make that legible, every public API is rated f
 
 | Package                   | Stability |           |
 | --------------------------| --------- | --------- |
-| `@plumeria/init`          | ★★★☆☆     | Candidate |
+| `@plumeria/init`          | ★★★★☆     | Stable    |
 | `@plumeria/codemod`       | ★★★☆☆     | Candidate |
 | `@plumeria/eslint-plugin` | ★★★★☆     | Stable    |
 | `@plumeria/headlessui`    | ★★★★☆     | Stable    |
 | `@plumeria/inspector`     | ★★★☆☆     | Candidate |
+| `@plumeria/swc-jest`      | ★★★★☆     | Stable    |
+| `@plumeria/wind`          | ★★★★☆     | Stable    |
+
+> **`@plumeria/wind`** provides design values as static tokens, not a utility atom vocabulary.
 
 ### Internal
 
@@ -149,9 +153,11 @@ Versioning: All versions are standardized for consistency.
   - [init](https://github.com/zss-labs/plumeria/tree/main/packages/init)
   - [inspector](https://github.com/zss-labs/plumeria/tree/main/packages/inspector)
   - [next-plugin](https://github.com/zss-labs/plumeria/tree/main/packages/next-plugin)
+  - [swc-jest](https://github.com/zss-labs/plumeria/tree/main/packages/swc-jest)
   - [turbopack-loader](https://github.com/zss-labs/plumeria/tree/main/packages/turbopack-loader)
   - [unplugin](https://github.com/zss-labs/plumeria/tree/main/packages/unplugin)
   - [utils](https://github.com/zss-labs/plumeria/tree/main/packages/utils)
+  - [wind](https://github.com/zss-labs/plumeria/tree/main/packages/wind)
 - `test-e2e`
   - Contains e2e tests built with Playwright and Next.js for final quality assurance.
 
