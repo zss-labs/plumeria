@@ -77,7 +77,7 @@ A shorthand against a longhand is the exception: the longhand wins wherever the 
 
 ## Types all the way down
 
-Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** rather than runtime objects — in fact, the package's only entry point is a `.d.ts` file. There is no JavaScript to import:
+Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** rather than runtime objects — in fact, every entry point of the package is a `.d.ts` file. There is no JavaScript to import:
 
 ```json title="package.json"
 {
@@ -85,6 +85,9 @@ Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** 
   "exports": {
     ".": {
       "types": "./lib/css.d.ts",
+    },
+    "./class-style": {
+      "types": "./lib/class-style.d.ts",
     },
   },
 }
