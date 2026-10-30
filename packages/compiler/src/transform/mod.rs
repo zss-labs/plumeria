@@ -24,6 +24,7 @@ use crate::eval::consts::{
 use crate::eval::functions::{StyleFunctions, style_functions_of};
 use crate::js::{Object, Value};
 use crate::policy::{PropertyPolicy, assert_property_policy};
+use crate::project::namespace::{NamespaceImport, Namespaces, as_written};
 use crate::project::{KeyTable, LocalImport, LocalImports, Project, Tables};
 use crate::style::ondemand::SheetTables;
 use crate::style::records::{StyleRecord, Weights, style_records};
@@ -458,22 +459,35 @@ impl SheetTables for OverlayView<'_> {
 }
 
 pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<TransformOutput> {
+    project.scan_overlay(&env.cwd, &env.style_prop);
+    let namespaces = project.expand_namespaces(&env.module_id, &env.source);
+    transform_expanded(project, env, namespaces.as_deref())
+        .map_err(|message| as_written(namespaces.as_deref(), message))
+}
+
+fn transform_expanded(
+    project: &mut Project,
+    env: &TransformEnv,
+    namespaces: Option<&Namespaces>,
+) -> TResult<TransformOutput> {
     let allocator = Allocator::default();
-    let source: &str = allocator.alloc_str(&env.source);
+    let source: &str = allocator
+        .alloc_str(namespaces.map_or(env.source.as_str(), |namespaces| namespaces.source.as_str()));
     let program = parse_program(&allocator, source)?;
     let program: &Program = allocator.alloc(program);
     assert_property_policy(program, env.policy, &env.module_id)?;
     let semantic = SemanticBuilder::new().build(program).semantic;
     let scoping = semantic.scoping();
 
-    project.scan_overlay(&env.cwd, &env.style_prop);
     if let Some((_, message)) = project.resolve_file_error(&env.file_path, "") {
         return Err(format!("[plumeria] {message}"));
     }
 
     let mut dependencies: Vec<String> = Vec::new();
+    let appended = namespaces.map_or(u32::MAX, |n| n.original_len);
     for statement in &program.body {
         if let Statement::ImportDeclaration(decl) = statement
+            && decl.span.start < appended
             && let Some(actual) =
                 project.resolve_import_path(decl.source.value.as_str(), &env.module_id)
         {
@@ -504,7 +518,7 @@ pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<Tr
         transformer.prepare()?;
         transformer.first_pass()?;
         transformer.second_pass()?;
-        transformer.finish()
+        transformer.finish(namespaces)
     })();
     project.tables = tables;
     let code = result?;
@@ -848,7 +862,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
     }
 
-    fn finish(mut self) -> TResult<String> {
+    fn finish(mut self, namespaces: Option<&Namespaces>) -> TResult<String> {
         for component in &self.components {
             let key = format!("{}-{}", self.resource, component.name);
             let Some(props) = self.tables.component_props.get(&key) else {
@@ -939,7 +953,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
 
         let out = splice(self.source, &self.replacements);
-        let elided = self.elided_imports(&out);
+        let mut elided = self.elided_imports(&out);
+        if let Some(namespaces) = namespaces {
+            namespace_elisions(self.source, namespaces, &self.replacements, &mut elided);
+        }
         if elided.is_empty() {
             return Ok(out);
         }
@@ -1051,6 +1068,80 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             "(()=>{{const k=new Set({});return new Proxy({{}},{{get(t,p){{if(typeof p===\"string\"&&k.has(p))throw new Error({head}+p+{tail});return t[p];}}}});}})()",
             crate::js::json::stringify_str_list(&keys)
         )
+    }
+}
+
+fn namespace_elisions(
+    source: &str,
+    namespaces: &Namespaces,
+    replacements: &[Replacement],
+    elided: &mut Vec<Replacement>,
+) {
+    let covered = |at: u32| replacements.iter().any(|r| r.start <= at && at < r.end);
+    let removed = |span: Span, elided: &[Replacement]| elided.iter().any(|r| r.start == span.start);
+    let mut extra: Vec<Replacement> = Vec::new();
+    for import in &namespaces.imports {
+        if removed(import.appended, elided) {
+            if import.unused {
+                extra.push(Replacement {
+                    start: import.span.start,
+                    end: import.span.end,
+                    content: String::new(),
+                });
+            }
+            continue;
+        }
+        extra.extend(
+            import
+                .dots
+                .iter()
+                .filter(|&&dot| !covered(dot))
+                .map(|&dot| Replacement {
+                    start: dot,
+                    end: dot + 1,
+                    content: ".".to_string(),
+                }),
+        );
+    }
+    let appended = |import: &NamespaceImport| Replacement {
+        start: import.appended.start,
+        end: import.appended.end,
+        content: String::new(),
+    };
+    let pending: Vec<&NamespaceImport> = namespaces
+        .imports
+        .iter()
+        .filter(|import| !removed(import.appended, elided))
+        .collect();
+    let mut draft: Vec<Replacement> = replacements
+        .iter()
+        .chain(elided.iter())
+        .chain(extra.iter())
+        .cloned()
+        .chain(pending.iter().map(|import| appended(import)))
+        .collect();
+    draft.sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+    let draft = splice(source, &draft);
+    let mut kept = false;
+    for import in pending {
+        if import
+            .bindings
+            .iter()
+            .any(|binding| draft.contains(binding.as_str()))
+        {
+            kept = true;
+        } else {
+            extra.push(appended(import));
+        }
+    }
+    elided.extend(extra);
+    if !kept && namespaces.separated {
+        let first = namespaces.imports[0].appended.start;
+        for replacement in elided.iter_mut() {
+            if replacement.start == first {
+                replacement.start = namespaces.original_len;
+            }
+        }
     }
 }
 
