@@ -1,10 +1,11 @@
 pub mod inline;
+pub mod namespace;
 pub mod pass;
 pub mod tables;
 pub mod values;
 
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
 use indexmap::{IndexMap, IndexSet};
@@ -19,6 +20,7 @@ use crate::fs::resolver::Resolver;
 use crate::js::cmp_utf16;
 use crate::syntax::module::{CORE, import_specs, module_export_name};
 use crate::syntax::parse::parse_program;
+use namespace::as_written;
 pub use tables::{Condition, KeyTable, ObjectTable, Ordered, PropsTable, TableEntry, Tables};
 
 pub const DEFAULT_STYLE_PROP: &str = "classStyle";
@@ -116,6 +118,7 @@ pub struct Project {
     stat_memo: Option<FxHashMap<String, Option<Stat>>>,
     pub resolver: Resolver,
     const_cache: values::ConstCache,
+    namespace_cache: namespace::NamespaceCache,
 }
 
 pub fn project() -> &'static Mutex<Project> {
@@ -578,6 +581,7 @@ impl Project {
         };
 
         let mut sources: Vec<(String, String, Stamp)> = Vec::new();
+        let mut expanded: FxHashMap<String, Arc<namespace::Namespaces>> = FxHashMap::default();
         for (file, loaded) in uncached.iter().zip(loaded) {
             let Some((stat, source)) = loaded else {
                 self.record_file_error(
@@ -608,6 +612,14 @@ impl Project {
                 );
                 continue;
             }
+            let source = match self.expand_namespaces(file, &source) {
+                Some(namespaces) => {
+                    let source = namespaces.source.clone();
+                    expanded.insert(file.clone(), namespaces);
+                    source
+                }
+                None => source,
+            };
             sources.push((file.clone(), source, stat.stamp));
         }
 
@@ -618,7 +630,10 @@ impl Project {
         {
             match parse_program(allocator, source) {
                 Ok(program) => parsed.push((index, program)),
-                Err(message) => self.record_file_error(file, message),
+                Err(message) => self.record_file_error(
+                    file,
+                    as_written(expanded.get(file).map(Arc::as_ref), message),
+                ),
             }
         }
 
@@ -672,7 +687,10 @@ impl Project {
                         jsx_queue.push(state);
                     }
                     Ok(None) => {}
-                    Err(message) => self.record_file_error(file, message),
+                    Err(message) => self.record_file_error(
+                        file,
+                        as_written(expanded.get(file).map(Arc::as_ref), message),
+                    ),
                 }
             }
         }
@@ -689,7 +707,10 @@ impl Project {
             let file = file.clone();
             match pass::jsx_phase(self, &file, program, &allocators[*index], state, &consts) {
                 Ok(()) => completed.push(file),
-                Err(message) => self.record_file_error(&file, message),
+                Err(message) => self.record_file_error(
+                    &file,
+                    as_written(expanded.get(&file).map(Arc::as_ref), message),
+                ),
             }
         }
 
@@ -1006,7 +1027,11 @@ impl Project {
             {
                 let allocator = Allocator::default();
                 if let Ok(program) = parse_program(&allocator, &source) {
+                    let known = self.files.contains_key(file);
                     self.extract_and_cache_exports(file, &program, stat.stamp);
+                    if !known && let Some(entry) = self.files.get_mut(file) {
+                        entry.mtime = None;
+                    }
                 }
             }
         }
