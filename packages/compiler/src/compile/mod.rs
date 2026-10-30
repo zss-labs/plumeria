@@ -19,6 +19,7 @@ use crate::fs::glob::{GlobOptions, glob_sync};
 use crate::fs::path::{basename, resolve};
 use crate::js::{Object, Value, deep_merge, entries_object};
 use crate::policy::{PropertyPolicy, assert_property_policy};
+use crate::project::namespace::as_written;
 use crate::project::{KeyTable, LocalImport, LocalImports, Project, Tables};
 use crate::style::ondemand::extract_ondemand_styles;
 use crate::style::records::style_records;
@@ -194,13 +195,18 @@ pub fn compile_css(project: &mut Project, options: &CompileOptions) -> Result<St
                         Err(error) => return Err(error.to_string()),
                     },
                 };
+                let namespaces = project.expand_namespaces(&resource, &source);
+                let source = namespaces
+                    .as_ref()
+                    .map_or(source, |namespaces| namespaces.source.clone());
                 let mut writes = Writes::default();
                 #[cfg(test)]
                 {
                     cache.extractions += 1;
                 }
                 let (sheets, imports) =
-                    process_file(project, &tables, &mut writes, &resource, &source, options)?;
+                    process_file(project, &tables, &mut writes, &resource, &source, options)
+                        .map_err(|message| as_written(namespaces.as_deref(), message))?;
                 let dependencies = imports
                     .into_iter()
                     .map(|import| {
