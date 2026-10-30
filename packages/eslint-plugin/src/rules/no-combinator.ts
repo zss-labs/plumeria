@@ -226,7 +226,9 @@ export const noCombinator: Rule.RuleModule = {
         if (prop.type === 'Property') {
           if (prop.value.type === 'Literal') {
             const value = String(prop.value.value);
-            checkAndReport(value, prop.value);
+            // Only a value starting with ':' or '[' becomes a selector as a key.
+            const head = value.trimStart()[0];
+            if (head === ':' || head === '[') checkAndReport(value, prop.value);
           }
         }
       }
