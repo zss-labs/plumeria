@@ -1,8 +1,9 @@
 'use client';
 
 import * as css from '@plumeria/core';
-import { lazy, type ReactNode } from 'react';
+import { type ComponentProps, lazy, type ReactNode } from 'react';
 import { RootProvider } from 'fumadocs-ui/provider/waku';
+import { Link } from 'waku';
 
 const SearchDialog = lazy(() => import('component/SearchDialog').then((m) => ({ default: m.SearchDialog })));
 
@@ -33,6 +34,20 @@ const hotKey = [
   },
 ];
 
+// Fumadocs prefetches its links on hover unless it is given a link of its own.
+const PrefetchLink = ({
+  href = '#',
+  prefetch = true,
+  children,
+  ...props
+}: ComponentProps<'a'> & { prefetch?: boolean }) => (
+  <Link to={href} unstable_prefetchOnView={prefetch ? {} : undefined} {...props}>
+    {children}
+  </Link>
+);
+
 export const Provider = ({ children }: { children: ReactNode }) => (
-  <RootProvider search={{ SearchDialog, hotKey, preload: false }}>{children}</RootProvider>
+  <RootProvider components={{ Link: PrefetchLink }} search={{ SearchDialog, hotKey, preload: false }}>
+    {children}
+  </RootProvider>
 );
