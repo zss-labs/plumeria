@@ -7,8 +7,10 @@ pub mod passes;
 use indexmap::IndexMap;
 use oxc_allocator::Allocator;
 use oxc_ast::ast::*;
+use oxc_ast_visit::Visit;
 use oxc_semantic::{Scoping, SemanticBuilder};
 use oxc_span::Span;
+use oxc_syntax::reference::ReferenceId;
 use oxc_syntax::symbol::SymbolId;
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
@@ -936,18 +938,103 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
 
-        let mut out = String::with_capacity(self.source.len());
-        let mut offset: u32 = 0;
-        for replacement in &self.replacements {
-            if replacement.start < offset {
-                continue;
-            }
-            out.push_str(&self.source[offset as usize..replacement.start as usize]);
-            out.push_str(&replacement.content);
-            offset = replacement.end;
+        let out = splice(self.source, &self.replacements);
+        let elided = self.elided_imports(&out);
+        if elided.is_empty() {
+            return Ok(out);
         }
-        out.push_str(&self.source[offset as usize..]);
-        Ok(out)
+        self.replacements.extend(elided);
+        self.replacements
+            .sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+        Ok(splice(self.source, &self.replacements))
+    }
+
+    fn elided_imports(&self, out: &str) -> Vec<Replacement> {
+        if self.replacements.is_empty() {
+            return Vec::new();
+        }
+        let overlaps = |span: Span| {
+            self.replacements
+                .iter()
+                .any(|r| r.start <= span.end && r.end >= span.start)
+        };
+        let imports: Vec<&ImportDeclaration> = self
+            .program
+            .body
+            .iter()
+            .filter_map(|statement| match statement {
+                Statement::ImportDeclaration(decl) => Some(&**decl),
+                _ => None,
+            })
+            .filter(|decl| {
+                !decl.import_kind.is_type()
+                    && !overlaps(decl.span)
+                    && decl.specifiers.as_ref().is_some_and(|specifiers| {
+                        !specifiers.is_empty()
+                            && specifiers.iter().all(|specifier| match specifier {
+                                ImportDeclarationSpecifier::ImportSpecifier(s) => {
+                                    !s.import_kind.is_type()
+                                }
+                                _ => true,
+                            })
+                    })
+            })
+            .collect();
+        if imports.is_empty() {
+            return Vec::new();
+        }
+        let mut spans = ReferenceSpans::default();
+        spans.visit_program(self.program);
+        let covered = |span: Span| {
+            self.replacements
+                .iter()
+                .any(|r| r.start <= span.start && r.end >= span.end)
+        };
+        let candidates: Vec<&ImportDeclaration> = imports
+            .into_iter()
+            .filter(|decl| {
+                decl.specifiers.iter().flatten().all(|specifier| {
+                    specifier.local().symbol_id.get().is_some_and(|symbol| {
+                        let mut values = self
+                            .scoping
+                            .get_resolved_reference_ids(symbol)
+                            .iter()
+                            .filter(|&&id| self.scoping.get_reference(id).is_value())
+                            .peekable();
+                        values.peek().is_some()
+                            && values.all(|id| spans.0.get(id).is_some_and(|&span| covered(span)))
+                    })
+                })
+            })
+            .collect();
+        if candidates.is_empty() {
+            return Vec::new();
+        }
+        let allocator = Allocator::default();
+        let Ok(program) = parse_program(&allocator, out) else {
+            return Vec::new();
+        };
+        let semantic = SemanticBuilder::new().build(&program).semantic;
+        let scoping = semantic.scoping();
+        candidates
+            .into_iter()
+            .filter(|decl| {
+                decl.specifiers.iter().flatten().all(|specifier| {
+                    scoping
+                        .get_root_binding(specifier.local().name)
+                        .is_some_and(|symbol| {
+                            !scoping
+                                .get_resolved_references(symbol)
+                                .any(|reference| reference.is_value())
+                        })
+                })
+            })
+            .map(|decl| Replacement {
+                start: decl.span.start,
+                end: decl.span.end,
+                content: String::new(),
+            })
+            .collect()
     }
 
     fn build_exported_init(&self, info: &CreateStyle) -> String {
@@ -964,6 +1051,32 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             "(()=>{{const k=new Set({});return new Proxy({{}},{{get(t,p){{if(typeof p===\"string\"&&k.has(p))throw new Error({head}+p+{tail});return t[p];}}}});}})()",
             crate::js::json::stringify_str_list(&keys)
         )
+    }
+}
+
+fn splice(source: &str, replacements: &[Replacement]) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut offset: u32 = 0;
+    for replacement in replacements {
+        if replacement.start < offset {
+            continue;
+        }
+        out.push_str(&source[offset as usize..replacement.start as usize]);
+        out.push_str(&replacement.content);
+        offset = replacement.end;
+    }
+    out.push_str(&source[offset as usize..]);
+    out
+}
+
+#[derive(Default)]
+struct ReferenceSpans(FxHashMap<ReferenceId, Span>);
+
+impl<'a> Visit<'a> for ReferenceSpans {
+    fn visit_identifier_reference(&mut self, it: &IdentifierReference<'a>) {
+        if let Some(id) = it.reference_id.get() {
+            self.0.insert(id, it.span);
+        }
     }
 }
 
