@@ -1,0 +1,45 @@
+{
+  "name": "@plumeria/wind",
+  "version": "21.1.8",
+  "description": "Tailwind CSS design values as Plumeria static tokens",
+  "author": "Refirst 11",
+  "license": "MIT",
+  "homepage": "https://plumeria.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zss-labs/plumeria.git",
+    "directory": "packages/wind"
+  },
+  "bugs": {
+    "url": "https://github.com/zss-labs/plumeria/issues"
+  },
+  "keywords": [
+    "plumeria",
+    "tokens",
+    "design-tokens",
+    "css-in-js"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "plumeria": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "type": "module",
+  "types": "./src/index.ts",
+  "files": [
+    "src/",
+    "LICENSE-tailwindcss"
+  ],
+  "scripts": {
+    "generate": "node scripts/generate.mjs"
+  },
+  "peerDependencies": {
+    "@plumeria/core": "workspace:^"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
