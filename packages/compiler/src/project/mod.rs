@@ -3,7 +3,7 @@ pub mod pass;
 pub mod tables;
 pub mod values;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
@@ -351,11 +351,20 @@ impl Project {
         if let Some(stat) = stat(&config_path) {
             config_stamp.push_str(&format!(":{}", stat.stamp.0));
         }
-        let resolution_changed = self
-            .resolution_stamp
-            .as_ref()
-            .is_some_and(|previous| *previous != config_stamp);
-        if self.resolution_stamp.as_deref() != Some(config_stamp.as_str()) {
+        let manifest_path = Path::new(&cwd)
+            .join("package.json")
+            .to_string_lossy()
+            .into_owned();
+        if let Some(stat) = stat(&manifest_path) {
+            config_stamp.push_str(&format!(":{}", stat.stamp.0));
+        }
+        let packages_stale = self.resolver.source_packages_stale();
+        let resolution_changed = packages_stale
+            || self
+                .resolution_stamp
+                .as_ref()
+                .is_some_and(|previous| *previous != config_stamp);
+        if packages_stale || self.resolution_stamp.as_deref() != Some(config_stamp.as_str()) {
             self.resolver.reset(Path::new(&cwd));
         }
         self.resolution_stamp = Some(config_stamp);
@@ -396,7 +405,29 @@ impl Project {
             },
         )
         .unwrap_or_default();
+        let source_dirs: Vec<PathBuf> = self
+            .resolver
+            .source_packages()
+            .iter()
+            .flat_map(|package| package.source_dirs())
+            .collect();
+        for dir in source_dirs {
+            files.extend(
+                glob_sync(
+                    &["**/*.{js,jsx,ts,tsx}".to_string()],
+                    GlobOptions {
+                        cwd: &dir,
+                        exclude: &exclude,
+                        expected_files: 0,
+                    },
+                )
+                .unwrap_or_default()
+                .into_iter()
+                .map(|file| dir.join(file).to_string_lossy().into_owned()),
+            );
+        }
         files.sort_by(|a, b| cmp_utf16(a, b));
+        files.dedup();
         let current_files: FxHashSet<String> = files.iter().cloned().collect();
 
         let deleted: Vec<String> = self
