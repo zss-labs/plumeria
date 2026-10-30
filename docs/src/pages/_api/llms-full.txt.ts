@@ -1,8 +1,5 @@
 import { source } from 'lib/source';
 
-export const revalidate = false;
-export const dynamic = 'force-static';
-
 export async function GET(): Promise<Response> {
   const url = (p: string): string => new URL(p, process.env.PROD_URL).toString();
 
@@ -17,3 +14,9 @@ export async function GET(): Promise<Response> {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 }
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
