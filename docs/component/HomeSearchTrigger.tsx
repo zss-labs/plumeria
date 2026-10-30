@@ -123,7 +123,7 @@ const styles = css.create({
       left: '50%',
       justifyContent: 'space-between',
       // Narrows before it reaches the links on the right.
-      width: 'clamp(120px, 100vw - 864px, 280px)',
+      width: 'clamp(120px, 100vw - 916px, 280px)',
       padding: '6px 12px',
       transform: 'translate(-50%, -50%)',
     },
