@@ -5,6 +5,7 @@
     "create",
     "createTheme",
     "createStatic",
+    "wind",
     "keyframes",
     "viewTransitionClass",
     "positionTry",
