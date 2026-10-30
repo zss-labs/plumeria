@@ -1,11 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ImageResponse } from 'next/og';
-import { notFound } from 'next/navigation';
+import { ImageResponse } from '@vercel/og';
 import { blog, source } from 'lib/source';
 import { ogpImagePath } from 'lib/generateSEOData';
-
-export const dynamic = 'force-static';
 
 const card = `data:image/png;base64,${readFileSync(join(process.cwd(), 'public/OGP_CARD.png')).toString('base64')}`;
 
@@ -16,10 +13,9 @@ const cards = new Map<string, { title: string; date?: string }>([
   ...blog.getPages().map((page) => [ogpImagePath(page.url), { title: page.data.title, date: page.data.date }] as const),
 ]);
 
-export async function GET(_req: Request, props: { params: Promise<{ slug: string[] }> }) {
-  const params = await props.params;
+export async function GET(_req: Request, { params }: { params: { slug: string[] } }) {
   const entry = cards.get(`/ogp/${params.slug.join('/')}`);
-  if (!entry) notFound();
+  if (!entry) return new Response('Not Found', { status: 404 });
   const title = entry.title.slice(0, 100);
   const date = entry.date?.slice(0, 50).replaceAll('-', '/');
 
@@ -70,6 +66,9 @@ export async function GET(_req: Request, props: { params: Promise<{ slug: string
   );
 }
 
-export function generateStaticParams() {
-  return [...cards.keys()].map((path) => ({ slug: path.split('/').slice(2) }));
-}
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: [...cards.keys()].map((path) => path.split('/').slice(2)),
+  } as const;
+};
