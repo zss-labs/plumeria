@@ -58,7 +58,7 @@ async function load(): Promise<LoadedEngine> {
 
   const url = URL.createObjectURL(new Blob([engineSource], { type: 'text/javascript' }));
   try {
-    const engine = (await import(/* turbopackIgnore: true */ url)) as Engine;
+    const engine = (await import(/* @vite-ignore */ url)) as Engine;
     const libs = JSON.parse(await libsSource.text()) as Record<string, string>;
     return { engine, libs };
   } finally {
