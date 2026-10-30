@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import babel from '@rolldown/plugin-babel';
 import plumeria from '@plumeria/unplugin';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
@@ -15,7 +17,9 @@ const vercelRoutes = (): VitePlugin => ({
       const { pathname, search } = new URL(req.url ?? '/', 'http://localhost');
       const rewritten = applyRewrites(pathname);
       for (const [key, value] of Object.entries(headersFor(rewritten))) res.setHeader(key, value);
-      req.url = rewritten + search;
+      // cleanUrls serves a folder's index.html at the path of the folder.
+      const isFolder = existsSync(join('public', rewritten, 'index.html'));
+      req.url = (isFolder ? `${rewritten}/index.html` : rewritten) + search;
       // Waku reads the request URL from here in dev.
       (req as { originalUrl?: string }).originalUrl = req.url;
       next();
