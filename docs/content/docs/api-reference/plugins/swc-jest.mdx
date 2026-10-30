@@ -2,30 +2,15 @@
 title: '@plumeria/swc-jest'
 description: 'Compile Plumeria styles in Jest, then hand the result to @swc/jest.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 [`@plumeria/swc-jest`](https://www.npmjs.com/package/@plumeria/swc-jest) is a Jest transformer for Plumeria.
 It compiles the styling prop away, then passes the result to [`@swc/jest`](https://www.npmjs.com/package/@swc/jest), so components render in a test with the class names the build gives them.
 
 ## Installation
 
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-<Tab>
-```sh title="Terminal"
-npm i -D @plumeria/swc-jest @swc/core
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/swc-jest @swc/core
-```
-</Tab>
-<Tab>
 ```sh title="Terminal"
 pnpm i -D @plumeria/swc-jest @swc/core
 ```
-</Tab>
-</Tabs>
 
 ## Usage
 
