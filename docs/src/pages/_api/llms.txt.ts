@@ -1,8 +1,5 @@
 import { source } from 'lib/source';
 
-export const revalidate = false;
-export const dynamic = 'force-static';
-
 export function GET(): Response {
   const url = (path: string): string => new URL(path, process.env.PROD_URL).toString();
 
@@ -26,3 +23,9 @@ export function GET(): Response {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 }
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
