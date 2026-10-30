@@ -28,5 +28,8 @@ catalog:
 
 minimumReleaseAge: 0
 
+overrides:
+  '@vercel/og>sharp': '-'
+
 onlyBuiltDependencies:
   - '@swc/core'
