@@ -18,6 +18,18 @@ interface TsConfig {
 interface PackageManifest {
   exports?: unknown;
   tsconfig?: unknown;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+}
+
+export interface SourcePackage {
+  name: string;
+  dir: string;
+  exports: unknown;
+  linked: string;
+  manifestMtime: number | undefined;
 }
 
 const CONFIG_DIR = '${configDir}';
@@ -25,6 +37,9 @@ const CONFIG_DIR = '${configDir}';
 type PathsMatcher = (specifier: string) => string[];
 
 let cachedPathsMatcher: PathsMatcher | null | undefined = undefined;
+let cachedSourcePackages: SourcePackage[] | undefined = undefined;
+
+const SOURCE_CONDITION = 'plumeria';
 
 function stripComments(text: string): string {
   let out = '';
@@ -300,8 +315,165 @@ function loadPathsMatcher(configPath: string): PathsMatcher | null {
   return patterns ? buildMatcher(patterns) : null;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasSubpaths = (exports: unknown): exports is Record<string, unknown> =>
+  isRecord(exports) && Object.keys(exports).some((key) => key.startsWith('.'));
+
+const sourceTargetOf = (entry: unknown): string | null => {
+  if (!isRecord(entry)) return null;
+  const target = entry[SOURCE_CONDITION];
+  return typeof target === 'string' ? target : null;
+};
+
+function sourceTarget(pkg: SourcePackage, subpath: string): string | null {
+  const { exports } = pkg;
+  if (!hasSubpaths(exports))
+    return subpath === '.' ? sourceTargetOf(exports) : null;
+  if (Object.hasOwn(exports, subpath)) return sourceTargetOf(exports[subpath]);
+  let best: { key: string; star: number; matched: string } | null = null;
+  for (const key of Object.keys(exports)) {
+    const star = key.indexOf('*');
+    if (star < 0 || key.indexOf('*', star + 1) >= 0) continue;
+    const suffix = key.slice(star + 1);
+    if (
+      subpath.length < key.length ||
+      !subpath.startsWith(key.slice(0, star)) ||
+      !subpath.endsWith(suffix)
+    )
+      continue;
+    if (
+      best &&
+      (star < best.star ||
+        (star === best.star && key.length <= best.key.length))
+    )
+      continue;
+    best = {
+      key,
+      star,
+      matched: subpath.slice(star, subpath.length - suffix.length),
+    };
+  }
+  if (!best) return null;
+  const target = sourceTargetOf(exports[best.key]);
+  return target === null ? null : target.replaceAll('*', best.matched);
+}
+
+const sourceDirOf = (dir: string, target: string): string => {
+  const star = target.indexOf('*');
+  if (star < 0) return path.dirname(path.resolve(dir, target));
+  const base = target.slice(0, star);
+  return base.endsWith('/')
+    ? path.resolve(dir, base)
+    : path.dirname(path.resolve(dir, base));
+};
+
+export function sourceDirsOf(pkg: SourcePackage): string[] {
+  const entries = hasSubpaths(pkg.exports)
+    ? Object.values(pkg.exports)
+    : [pkg.exports];
+  const dirs = [
+    ...new Set(
+      entries
+        .map(sourceTargetOf)
+        .filter((target): target is string => target !== null)
+        .map((target) => sourceDirOf(pkg.dir, target))
+        .filter((dir) => dir === pkg.dir || dir.startsWith(pkg.dir + path.sep)),
+    ),
+  ].sort();
+  return dirs.filter(
+    (dir) =>
+      !dirs.some((other) => other !== dir && dir.startsWith(other + path.sep)),
+  );
+}
+
+const manifestMtimeOf = (dir: string): number | undefined =>
+  fs.statSync(path.join(dir, 'package.json'), { throwIfNoEntry: false })
+    ?.mtimeMs;
+
+const realpathOf = (linked: string): string | null => {
+  try {
+    return fs.realpathSync(linked);
+  } catch {
+    return null;
+  }
+};
+
+export function sourcePackagesStale(): boolean {
+  return (
+    cachedSourcePackages?.some(
+      (pkg) =>
+        realpathOf(pkg.linked) !== pkg.dir ||
+        manifestMtimeOf(pkg.dir) !== pkg.manifestMtime,
+    ) ?? false
+  );
+}
+
+function loadSourcePackages(cwd: string): SourcePackage[] {
+  const manifest = readConfig<PackageManifest>(path.join(cwd, 'package.json'));
+  if (!manifest) return [];
+  const names = [
+    ...new Set(
+      (
+        [
+          'dependencies',
+          'devDependencies',
+          'peerDependencies',
+          'optionalDependencies',
+        ] as const
+      ).flatMap((field) =>
+        isRecord(manifest[field]) ? Object.keys(manifest[field]) : [],
+      ),
+    ),
+  ].sort();
+  const packages: SourcePackage[] = [];
+  for (const name of names) {
+    let linked: string | null = null;
+    for (let dir = cwd; ; dir = path.dirname(dir)) {
+      const candidate = path.join(dir, 'node_modules', name);
+      if (fs.statSync(candidate, { throwIfNoEntry: false })?.isDirectory()) {
+        linked = candidate;
+        break;
+      }
+      if (dir === path.dirname(dir)) break;
+    }
+    if (!linked) continue;
+    const dir = fs.realpathSync(linked);
+    const exports = readConfig<PackageManifest>(
+      path.join(dir, 'package.json'),
+    )?.exports;
+    if (exports === undefined) continue;
+    const pkg = {
+      name,
+      dir,
+      exports,
+      linked,
+      manifestMtime: manifestMtimeOf(dir),
+    };
+    if (sourceDirsOf(pkg).length > 0) packages.push(pkg);
+  }
+  return packages;
+}
+
 export function resetImportResolutionCache(cwd: string = process.cwd()): void {
   cachedPathsMatcher = loadPathsMatcher(path.join(cwd, 'tsconfig.json'));
+  cachedSourcePackages = loadSourcePackages(cwd);
+}
+
+export function getSourcePackages(): SourcePackage[] {
+  cachedSourcePackages ??= loadSourcePackages(process.cwd());
+  return cachedSourcePackages;
+}
+
+function resolveSourcePackage(importPath: string): string | null {
+  const name = packageNameOf(importPath);
+  const pkg = getSourcePackages().find((p) => p.name === name);
+  if (!pkg) return null;
+  const target = sourceTarget(pkg, `.${importPath.slice(name.length)}`);
+  if (target === null) return null;
+  const resolved = path.resolve(pkg.dir, target);
+  return isFile(resolved) ? resolved : null;
 }
 
 function getPathsMatcher(): PathsMatcher | null {
@@ -371,6 +543,9 @@ export function resolveImportPath(
       if (result) return result;
     }
   }
+
+  const sourcePackage = resolveSourcePackage(importPath);
+  if (sourcePackage) return sourcePackage;
 
   let currentDir = path.dirname(importerPath);
   while (currentDir !== path.parse(currentDir).root) {
