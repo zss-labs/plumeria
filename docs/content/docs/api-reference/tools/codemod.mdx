@@ -2,7 +2,6 @@
 title: '@plumeria/codemod'
 description: 'Migrate between CSS Modules and Plumeria, or rename the styling prop or an API, in one pass.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 [`@plumeria/codemod`](https://www.npmjs.com/package/@plumeria/codemod) rewrites Plumeria APIs across a codebase, and moves a codebase onto Plumeria in the first place.
 
@@ -25,23 +24,9 @@ npx @plumeria/codemod rename-prop classStyle sx
 
 Install it only if you want it pinned in the repo:
 
-<Tabs items={['npm',  'yarn', 'pnpm']}>
-<Tab>
 ```sh title="Terminal"
-npm i --save-dev @plumeria/codemod
+pnpm i -D @plumeria/codemod
 ```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/codemod
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-pnpm i --save-dev @plumeria/codemod
-```
-</Tab>
-</Tabs>
 
 The package depends on ESLint and its TypeScript parser, and on nothing from Plumeria. It runs the same on a codebase you have not upgraded yet.
 
