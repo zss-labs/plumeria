@@ -1,10 +1,10 @@
 'use client';
 
 import * as css from '@plumeria/core';
-import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
-import { RootProvider } from 'fumadocs-ui/provider/next';
-import { SearchDialog } from 'component/SearchDialog';
+import { lazy, type ReactNode } from 'react';
+import { RootProvider } from 'fumadocs-ui/provider/waku';
+
+const SearchDialog = lazy(() => import('component/SearchDialog').then((m) => ({ default: m.SearchDialog })));
 
 const styles = css.create({
   hotKey: {
@@ -33,8 +33,6 @@ const hotKey = [
   },
 ];
 
-export const Provider = ({ children }: { children: ReactNode }) => {
-  const preload = usePathname() !== '/';
-
-  return <RootProvider search={{ SearchDialog, hotKey, preload }}>{children}</RootProvider>;
-};
+export const Provider = ({ children }: { children: ReactNode }) => (
+  <RootProvider search={{ SearchDialog, hotKey, preload: false }}>{children}</RootProvider>
+);
