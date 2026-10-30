@@ -3,8 +3,6 @@ title: 'Plumeria 0.17.0'
 description: 'We are now able to provide stable HMR and new OGP. (1 min read)'
 date: '2025/08/30'
 ---
-import Image from 'next/image';
-import Link from 'next/link';
 
 ## It has stabilized
 
@@ -14,14 +12,14 @@ We came up with two conflict-free approaches.
 One was to separate the server and client,
 and the other was to add a cartridge on the client side for atoms stacked on top and media queries stacked below, thereby achieving a conflict-free atomic class development screen.
 
-<Link href="/docs">
-<Image
-    src="/BACKGROUND.png"
+<a href="/docs">
+<img
+    src="/OGP_CARD.png"
     width={1200}
     height={630}
     alt="installation"
 />
-</Link>
+</a>
 
 For the above reasons, Plumeria works normally with applications that allow client injection, so Vite does not actually require a plugin, but we distribute a plugin that excludes fs.
 
