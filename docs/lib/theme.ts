@@ -45,8 +45,4 @@ export const homeTheme = css.createTheme('.dark', {
   muted: { default: '#737373', theme: '#b3b3b3cc' },
   border: { default: '#cccccc80', theme: '#6663' },
   accent: { default: '#d1d1d180', theme: '#6868684d' },
-  themeLightColor: { default: '#0a0a0a', theme: '#b3b3b3cc' },
-  themeLightBg: { default: '#d1d1d180', theme: 'transparent' },
-  themeDarkColor: { default: '#737373', theme: '#ebebeb' },
-  themeDarkBg: { default: 'transparent', theme: '#6868684d' },
 });
