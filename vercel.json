@@ -1,4 +1,7 @@
 {
+  "framework": null,
+  "buildCommand": "pnpm build && pnpm --filter plumeria-docs build",
+  "outputDirectory": "docs/dist/public",
   "cleanUrls": true,
   "redirects": [
     {
@@ -9,6 +12,11 @@
     {
       "source": "/docs/api-reference/javascript/viewTransition",
       "destination": "/docs/api-reference/javascript/viewTransitionClass",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/javascript/wind",
+      "destination": "/docs/api-reference/wind",
       "permanent": true
     }
   ],
@@ -42,7 +50,7 @@
       ]
     },
     {
-      "source": "/_next/static/:path*/turbopack-worker-:name",
+      "source": "/assets/:path*",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
