@@ -1,4 +1,6 @@
 import { readSource } from './sourceCache';
+import { asWritten, expandNamespaces } from './namespaceImport';
+import type { Namespaces } from './namespaceImport';
 import type {
   CSSObject,
   CSSValue,
@@ -1648,7 +1650,7 @@ export function resolveFileError(
 
 // Cache for incremental scanning
 interface CachedData {
-  mtimeMs: number;
+  mtimeMs?: number;
   exportsMtimeMs?: number;
   dependencies?: string[];
   exports?: {
@@ -2151,6 +2153,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
 
   // Parsing of uncached or modified files
   const parsedFiles: { filePath: string; ast: Module; mtimeMs: number }[] = [];
+  const expanded = new Map<string, Namespaces>();
   for (const filePath of uncachedFiles) {
     try {
       const stats = fs.statSync(filePath);
@@ -2184,14 +2187,16 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         continue;
       }
 
-      const ast = parseSync(source, {
+      const namespaces = expandNamespaces(filePath, source);
+      if (namespaces) expanded.set(filePath, namespaces);
+      const ast = parseSync(namespaces?.source ?? source, {
         syntax: 'typescript',
         tsx: true,
         target: 'es2022',
       });
       parsedFiles.push({ filePath, ast, mtimeMs: stats.mtimeMs });
     } catch (e) {
-      recordFileError(filePath, e);
+      recordFileError(filePath, asWritten(expanded.get(filePath), e));
     }
   }
 
@@ -2225,7 +2230,10 @@ function runScan(scanCwd: string, styleProp: string): Tables {
     try {
       extractAndCacheExports(file.filePath, file.ast, file.mtimeMs);
     } catch (error) {
-      recordFileError(file.filePath, error);
+      recordFileError(
+        file.filePath,
+        asWritten(expanded.get(file.filePath), error),
+      );
     }
   }
   const byPath = new Map(parsedFiles.map((file) => [file.filePath, file]));
@@ -2737,7 +2745,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           localImports,
         });
       } catch (e) {
-        recordFileError(filePath, e);
+        recordFileError(filePath, asWritten(expanded.get(filePath), e));
       }
     }
   }
@@ -3310,7 +3318,10 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         fileCache[filePath].dependencies,
       );
     } catch (e) {
-      recordFileError(entry.filePath, e);
+      recordFileError(
+        entry.filePath,
+        asWritten(expanded.get(entry.filePath), e),
+      );
     }
   }
 
@@ -3540,7 +3551,9 @@ function refreshExports(filePath: string): void {
         tsx: true,
         target: 'es2022',
       });
+      const known = filePath in fileCache;
       extractAndCacheExports(filePath, ast, stats.mtimeMs);
+      if (!known) fileCache[filePath].mtimeMs = undefined;
     }
   } catch (e) {
     // ignore
