@@ -17,12 +17,12 @@ pnpm i @plumeria/headlessui
 
 ## How classStyle works
 
-When `classStyle` is passed to a custom component, it is **automatically compiled to `className` and `style` at the call site — before the component ever runs**.
+`@plumeria/headlessui` is a dependency the build never scans, so a `classStyle` written on one of its components is **compiled to `className` and `style` at the call site — before the component ever runs**.
 Therefore, each `@plumeria/headlessui` component does not need to know about `classStyle` at all; it simply spreads `...props` onto the underlying Radix primitive.
 
 ```tsx
 import * as css from '@plumeria/core';
-import { DialogTrigger } from '@plumeria/headlessui';
+import { Dialog } from '@plumeria/headlessui';
 
 const styles = css.create({
   primary: {
@@ -34,6 +34,14 @@ const styles = css.create({
 
 // classStyle is compiled to className="xxxxxxxx" at this call site
 <Dialog.Trigger classStyle={styles.primary}>Open</Dialog.Trigger>;
+```
+
+A component of your own can compose a style it receives onto a part:
+
+```tsx
+export const OpenButton = ({ classStyle }: { classStyle?: css.Style }) => (
+  <Dialog.Trigger classStyle={[styles.primary, classStyle]}>Open</Dialog.Trigger>
+);
 ```
 
 ---
