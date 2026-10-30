@@ -109,7 +109,7 @@ A shorthand resets what it omits, so `borderBlock: 'solid'` expands with
 
 ### no-combinator
 
-Disallow combinators `>`, `+`, `~` and descendant combinator (space) unless inside functional pseudo-classes.
+Disallow combinators `>`, `+`, `~` and descendant combinator (space) unless inside functional pseudo-classes. A `css.createStatic` value is checked only when it starts with `:` or `[`, the ones that become a selector when used as a key.
 
 ### no-destructure
 
@@ -156,7 +156,7 @@ is known to be vertical.
 
 ### no-style-prop-relay
 
-Reports a style prop that a component receives but only passes on. Apply it to the styling prop or `css.use()` on an element the component renders.
+Reports a style prop that a component receives but only passes on, and a received style passed through the styling prop to a component that declares it. Apply it to the styling prop or `css.use()` on an element the component renders.
 
 Accepts `{ styleProp }`; see [Configuring the styling prop](#configuring-the-styling-prop).
 
@@ -178,7 +178,7 @@ Warns when object keys are defined but not used, mainly in component files.
 
 ### sort-properties
 
-Automatically sorts CSS properties in the recommended order for consistency and maintainability.
+Automatically sorts CSS properties in the recommended order for consistency and maintainability. A computed key from `css.createStatic` is read as the at-rule it holds and sorted with the other at-rules, after the pseudo-classes.
 
 ### format-properties
 
