@@ -37,6 +37,11 @@ for (const name of coreLibs) {
   files[`${coreDir}/lib/${name}`] = await readFile(join(coreLibDir, name), 'utf8');
 }
 
+const windDir = join(root, 'node_modules', '@plumeria', 'wind');
+for (const name of ['package.json', 'src/index.ts']) {
+  files[`/node_modules/@plumeria/wind/${name}`] = await readFile(join(windDir, name), 'utf8');
+}
+
 const reactTypesDir = await realpath(join(root, 'node_modules', '@types', 'react'));
 
 const typePackages = {
