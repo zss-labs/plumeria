@@ -8,6 +8,24 @@ import { latestBlogUrl } from 'lib/latestBlogUrl';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 
+const menuFadeIn = css.keyframes({
+  from: {
+    opacity: 0,
+  },
+  to: {
+    opacity: 1,
+  },
+});
+
+const menuFadeOut = css.keyframes({
+  from: {
+    opacity: 1,
+  },
+  to: {
+    opacity: 0,
+  },
+});
+
 const styles = css.create({
   header: {
     position: 'sticky',
@@ -132,6 +150,13 @@ const styles = css.create({
       flexDirection: 'column',
       minHeight: 0,
       overflow: 'hidden',
+      animationName: menuFadeOut,
+      animationDuration: '0.2s',
+      animationTimingFunction: 'ease',
+      animationFillMode: 'both',
+      ':is(:popover-open > *)': {
+        animationName: menuFadeIn,
+      },
       '::before': {
         flex: 'none',
         height: 16,
