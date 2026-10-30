@@ -70,7 +70,7 @@ export default function App({ cond }) {
 npx @plumeria/init
 ```
 
-It detects the bundler and the package manager, asks the two questions it cannot detect — which spelling of a two-named property the project writes, and what the styling prop is called — then installs the packages and writes the configs. It shows the plan before writing anything.
+It detects the bundler and the package manager, asks what it cannot detect — which spelling of a two-named property the project writes, what the styling prop is called, and whether to set up ESLint — then installs the packages and writes the configs. It shows the plan before writing anything.
 
 ## Benchmark
 
