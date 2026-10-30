@@ -550,7 +550,7 @@ export function Playground() {
         <iframe
           ref={preview}
           classStyle={[styles.preview, outputTab !== 'preview' && styles.narrowHidden]}
-          src="/playground/preview/index.html"
+          src="/playground/preview"
           title="Preview"
         />
       </div>
