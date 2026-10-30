@@ -34,7 +34,7 @@ const styles = css.create({
     display: 'flex',
     flexDirection: 'column',
     gridArea: 'main',
-    height: 'calc(var(--fd-docs-height) - var(--fd-header-height))',
+    height: 'calc(var(--fd-docs-height) - var(--fd-docs-row-2))',
     overflow: 'hidden',
     color: theme.textPrimary,
   },
