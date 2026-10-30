@@ -1,10 +1,10 @@
-import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join } from 'node:path';
 import { URL } from 'node:url';
+import { applyRewrites, headersFor } from './vercel-routes.mjs';
 
-const root = join(process.cwd(), 'out');
-const vercel = JSON.parse(readFileSync(join(process.cwd(), '..', 'vercel.json'), 'utf8'));
+const root = join(process.cwd(), 'dist', 'public');
 const port = Number(process.env.PORT ?? 3000);
 
 const types = {
@@ -25,23 +25,6 @@ const types = {
   '.wasm': 'application/wasm',
 };
 
-const toRegExp = (source) =>
-  new RegExp(
-    `^${source
-      .split('(.*)')
-      .map((part) =>
-        part
-          .replace(/[.+?^${}|[\]\\]/g, '\\$&')
-          .replace(/\/:(\w+)\*/g, '(?:/(?<$1>.*))?')
-          .replace(/:(\w+)\*/g, '(?<$1>.*)')
-          .replace(/:(\w+)/g, '(?<$1>[^/]+)'),
-      )
-      .join('(.*)')}$`,
-  );
-
-const rewrites = vercel.rewrites.map(({ source, destination }) => ({ pattern: toRegExp(source), destination }));
-const headers = vercel.headers.map(({ source, headers }) => ({ pattern: toRegExp(source), headers }));
-
 const resolveFile = (pathname) => {
   const candidates = [pathname, `${pathname}.html`, join(pathname, 'index.html')];
   for (const candidate of candidates) {
@@ -51,20 +34,8 @@ const resolveFile = (pathname) => {
 };
 
 createServer((req, res) => {
-  let pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-
-  for (const { pattern, destination } of rewrites) {
-    const match = pattern.exec(pathname);
-    if (!match) continue;
-    pathname = destination.replace(/:(\w+)\*?/g, (_, name) => match.groups?.[name] ?? '');
-    break;
-  }
-
-  const extra = Object.fromEntries(
-    headers
-      .filter(({ pattern }) => pattern.test(pathname))
-      .flatMap(({ headers }) => headers.map(({ key, value }) => [key, value])),
-  );
+  const pathname = applyRewrites(decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
+  const extra = headersFor(pathname);
 
   const file = resolveFile(pathname);
   const status = file ? 200 : 404;
@@ -72,5 +43,5 @@ createServer((req, res) => {
   res.writeHead(status, { ...extra, 'Content-Type': types[extname(body)] ?? 'application/octet-stream' });
   createReadStream(body).pipe(res);
 }).listen(port, () => {
-  console.log(`Serving out/ on http://localhost:${port}`);
+  console.log(`Serving dist/public/ on http://localhost:${port}`);
 });
