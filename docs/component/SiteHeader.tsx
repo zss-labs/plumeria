@@ -190,11 +190,11 @@ const styles = css.create({
 export const SiteHeader = () => (
   <header classStyle={styles.header}>
     <nav classStyle={styles.nav}>
-      <Link to="/" classStyle={styles.brand}>
+      <Link to="/" unstable_prefetchOnView={{}} classStyle={styles.brand}>
         <img src="/logo.svg" alt="" width="20" height="20" classStyle={styles.brandMark} />
         Plumeria
       </Link>
-      <Link to={latestBlogUrl} classStyle={styles.version}>
+      <Link to={latestBlogUrl} unstable_prefetchOnView={{}} classStyle={styles.version}>
         v{coreVersion}
       </Link>
       <HomeSearchIcon />
@@ -209,13 +209,13 @@ export const SiteHeader = () => (
         <MenuAutoClose id="home-menu" />
         <div classStyle={styles.menuBody}>
           <HomeSearchTrigger />
-          <Link to="/docs" classStyle={styles.menuLink}>
+          <Link to="/docs" unstable_prefetchOnView={{}} classStyle={styles.menuLink}>
             Docs
           </Link>
           <a href="/playground" classStyle={styles.menuLink}>
             Play
           </a>
-          <Link to="/blog" classStyle={styles.menuLink}>
+          <Link to="/blog" unstable_prefetchOnView={{}} classStyle={styles.menuLink}>
             Blog
           </Link>
           <a
