@@ -110,6 +110,10 @@ import './tokens';
 
 ## Release notes
 
+## 21.2.1 (Oct 30, 2026)
+
+- Update: use a namespace import in README.md
+
 ## 21.2.0 (Oct 30, 2026)
 
 - Feat: a package can share its Plumeria definitions as source: when its `exports` point a `plumeria` condition at its TypeScript files, as in `"plumeria": "./src/index.ts"`, an app that lists it in its dependencies reads the definitions it exports, such as `css.createStatic` values, `css.create` styles and `css.keyframes` names, as it reads a local module, including subpath and pattern exports and packages linked from a pnpm store
