@@ -87,7 +87,9 @@ export const Color = ({ color }) => {
 }
 ```
 
-Pass a plain value. The argument is written into the element, so an expression that is not the same on every read — a call with a side effect, a getter — is not read once.
+Pass a plain value. The argument is written into the element, so an expression that is not the same on every read — a call with a side effect, a getter — is not read once. A definition such as a `css.createStatic` value is not compiled there and has no value at runtime, so read it inside `css.create` instead.
+
+A number takes `px` the way it does in a static style, so `width` gets one and `opacity` does not. A number inside a color, filter or scale function, such as `hsl()`, `brightness()` or `scaleX()`, stays bare.
 
 ## Variants bracket notation
 
