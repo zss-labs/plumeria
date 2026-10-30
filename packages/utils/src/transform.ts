@@ -4,6 +4,7 @@ import type {
   HasSpan,
   ImportSpecifier,
   ImportDeclaration,
+  Module,
   ObjectExpression,
   Identifier,
   CallExpression,
@@ -3557,17 +3558,97 @@ export const transformSource = async (
       );
   }
 
-  let offset = 0;
-  const parts: Buffer[] = [];
+  const splice = (list: typeof replacements): string => {
+    let offset = 0;
+    const parts: Buffer[] = [];
+    list.forEach((r) => {
+      if (r.start < offset) return;
+      parts.push(sourceBuffer.subarray(offset, r.start));
+      parts.push(Buffer.from(r.content));
+      offset = r.end;
+    });
+    parts.push(sourceBuffer.subarray(offset));
+    return Buffer.concat(parts).toString();
+  };
 
-  replacements.forEach((r) => {
-    if (r.start < offset) return;
-    parts.push(sourceBuffer.subarray(offset, r.start));
-    parts.push(Buffer.from(r.content));
-    offset = r.end;
-  });
-  parts.push(sourceBuffer.subarray(offset));
-  const transformedSource = Buffer.concat(parts).toString();
+  const transformedSource = splice(replacements);
+  const elided = elidedImports(
+    ast,
+    baseByteOffset,
+    replacements,
+    transformedSource,
+  );
+  if (elided.length === 0) return { code: transformedSource };
 
-  return { code: transformedSource };
+  replacements.push(...elided);
+  replacements.sort((a, b) => a.start - b.start || b.end - a.end);
+
+  return { code: splice(replacements) };
+};
+
+const elidedImports = (
+  ast: Module,
+  baseByteOffset: number,
+  replacements: Array<{ start: number; end: number; content: string }>,
+  transformedSource: string,
+): Array<{ start: number; end: number; content: string }> => {
+  if (replacements.length === 0) return [];
+  const overlaps = (start: number, end: number) =>
+    replacements.some((r) => r.start <= end && r.end >= start);
+  const covered = (position: number) =>
+    replacements.some((r) => r.start <= position && r.end > position);
+
+  const imports = ast.body.filter(
+    (statement): statement is ImportDeclaration =>
+      statement.type === 'ImportDeclaration' &&
+      !statement.typeOnly &&
+      statement.specifiers.length > 0 &&
+      statement.specifiers.every(
+        (specifier) =>
+          specifier.type !== 'ImportSpecifier' || !specifier.isTypeOnly,
+      ) &&
+      !overlaps(
+        statement.span.start - baseByteOffset,
+        statement.span.end - baseByteOffset,
+      ),
+  );
+  if (imports.length === 0) return [];
+
+  const positionsOf = new Map<string, number[]>();
+  const { names } = collectReferenceIdentifiers(ast, { runtimeReads: true });
+  for (const [start, name] of names) {
+    const positions = positionsOf.get(name);
+    if (positions) positions.push(start - baseByteOffset);
+    else positionsOf.set(name, [start - baseByteOffset]);
+  }
+  const candidates = imports.filter((node) =>
+    node.specifiers.every(({ local }) => {
+      const positions = positionsOf.get(local.value);
+      return positions !== undefined && positions.every(covered);
+    }),
+  );
+  if (candidates.length === 0) return [];
+
+  let output: Module;
+  try {
+    output = parseSync(transformedSource, {
+      syntax: 'typescript',
+      tsx: true,
+      target: 'es2022',
+    });
+  } catch {
+    return [];
+  }
+  const remaining = new Set(
+    collectReferenceIdentifiers(output, { runtimeReads: true }).names.values(),
+  );
+  return candidates
+    .filter((node) =>
+      node.specifiers.every(({ local }) => !remaining.has(local.value)),
+    )
+    .map((node) => ({
+      start: node.span.start - baseByteOffset,
+      end: node.span.end - baseByteOffset,
+      content: '',
+    }));
 };
