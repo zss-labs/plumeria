@@ -422,7 +422,7 @@ export async function mount(
     automaticLayout: true,
     minimap: { enabled: false },
     stickyScroll: { enabled: false },
-    fontSize: 13,
+    fontSize: 12.35,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     padding: { top: 16, bottom: 16 },
