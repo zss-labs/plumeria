@@ -9,10 +9,6 @@ export const theme = css.createTheme('.dark', {
     default: 'rgba(255, 255, 255, 0.5)',
     theme: 'rgba(24, 24, 27, 0.5)',
   },
-  pageBg: {
-    default: 'white',
-    theme: 'black',
-  },
   dropdownBg: {
     default: '#ffffff',
     theme: '#18181b',
@@ -21,27 +17,9 @@ export const theme = css.createTheme('.dark', {
     default: 'rgba(100, 100, 100, 0.4)',
     theme: 'rgba(255, 255, 255, 0.12)',
   },
-  cardHoverBorder: {
-    default: 'rgba(255, 255, 255, 0.9)',
-    theme: 'rgba(255, 255, 255, 0.3)',
-  },
-  cardCutGlass: {
-    default: 'inset 0 0 1.5px 1px rgba(200, 200, 200, 0.2)',
-    theme: 'inset 0 0 1.5px 1px rgba(255, 255, 255, 0.05)',
-  },
   cardShadow: {
     default: '0 8px 32px 0 rgba(0, 0, 0, 1), 0 2px 8px 0 rgba(0, 0, 0, 1)',
     theme: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 2px 8px 0 rgba(0, 0, 0, 0.2)',
-  },
-  cardBoxShadow: {
-    default:
-      '0 8px 32px 0 rgba(0, 0, 0, 0.1), 0 2px 8px 0 rgba(0, 0, 0, 0.02), inset 0 0 1.5px 1px rgba(200, 200, 200, 0.4)',
-    theme:
-      '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 2px 8px 0 rgba(0, 0, 0, 0.2), inset 0 0 1.5px 1px rgba(255, 255, 255, 0.05)',
-  },
-  iconColor: {
-    default: '#71717a',
-    theme: '#e4e4e7',
   },
   iconBg: {
     default: 'rgba(242, 242, 242, 1)',
@@ -55,16 +33,20 @@ export const theme = css.createTheme('.dark', {
     default: '#69676cff',
     theme: '#a09ea4ff',
   },
-  textNav: {
-    default: '#454144',
-    theme: '#A5A0A4',
-  },
   textMuted: {
     default: '#71717a',
     theme: '#71717a',
   },
-  textMainHeaderLine: {
-    default: '#3c3c43',
-    theme: '#dfdfd6',
-  },
+});
+
+export const homeTheme = css.createTheme('.dark', {
+  background: { default: '#fff', theme: '#000' },
+  foreground: { default: '#0a0a0a', theme: '#ebebeb' },
+  muted: { default: '#737373', theme: '#b3b3b3cc' },
+  border: { default: '#cccccc80', theme: '#6663' },
+  accent: { default: '#d1d1d180', theme: '#6868684d' },
+  themeLightColor: { default: '#0a0a0a', theme: '#b3b3b3cc' },
+  themeLightBg: { default: '#d1d1d180', theme: 'transparent' },
+  themeDarkColor: { default: '#737373', theme: '#ebebeb' },
+  themeDarkBg: { default: 'transparent', theme: '#6868684d' },
 });
