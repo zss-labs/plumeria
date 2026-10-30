@@ -132,7 +132,7 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
                       <ExternalIcon />
                     </a>
                   ) : (
-                    <Link to={href} classStyle={[styles.link, home && styles.homeMuted]}>
+                    <Link to={href} unstable_prefetchOnView={{}} classStyle={[styles.link, home && styles.homeMuted]}>
                       {label}
                     </Link>
                   )}
