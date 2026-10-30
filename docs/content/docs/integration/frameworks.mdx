@@ -15,11 +15,11 @@ export default defineConfig({
 });
 ```
 
-That file is the whole integration. [`examples/vite-vue-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-vue-ts), [`examples/vite-svelte-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-svelte-ts), [`examples/vite-solid`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-solid), [`examples/vite-preact`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-preact), [`examples/vite-qwik`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-qwik), [`examples/react-router`](https://github.com/zss-labs/plumeria/tree/main/examples/example-react-router) and [`examples/storybook`](https://github.com/zss-labs/plumeria/tree/main/examples/example-storybook) are that file with the framework plugin swapped.
+That file is the whole integration. [`examples/example-vite-vue-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-vue-ts), [`examples/example-vite-svelte-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-svelte-ts), [`examples/example-vite-solid`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-solid), [`examples/example-vite-preact`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-preact), [`examples/example-vite-qwik`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-qwik), [`examples/example-react-router`](https://github.com/zss-labs/plumeria/tree/main/examples/example-react-router) and [`examples/example-storybook`](https://github.com/zss-labs/plumeria/tree/main/examples/example-storybook) are that file with the framework plugin swapped.
 
 ## The styling prop
 
-`@plumeria/core/class-style` declares `classStyle` on React's `HTMLAttributes` and `SVGAttributes`, so anything rendering through the React namespace needs one line:
+`@plumeria/core/class-style` declares `classStyle` on React's `HTMLAttributes` and `SVGAttributes`, so anything rendering through the React namespace needs one line, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
 /// <reference types="@plumeria/core/class-style" />
@@ -129,7 +129,7 @@ export default defineConfig({
 });
 ```
 
-See [`examples/vite-astro-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-astro-ts).
+See [`examples/example-vite-astro-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-astro-ts).
 
 <Cards>
   <Card title="See more about Vite" href="/docs/integration/vite" />
