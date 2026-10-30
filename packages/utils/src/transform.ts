@@ -122,6 +122,8 @@ import { themeHashOf } from './createTheme';
 import { resolveImportPath } from './resolver';
 import { getLeadingCommentLength } from './ast';
 import { collectReferenceIdentifiers } from './references';
+import { asWritten, expandNamespaces } from './namespaceImport';
+import type { NamespaceImport, Namespaces } from './namespaceImport';
 import { assertPropertyPolicy } from './propertyPolicy';
 import type { PropertyPolicy } from './propertyPolicy';
 import type {
@@ -135,6 +137,7 @@ import type {
   CreateStaticHashTable,
   CSSObject,
   TableEntry,
+  Tables,
 } from './types';
 
 type CreateStyleValue = {
@@ -311,9 +314,24 @@ export type TransformOutput = {
 export const transformSource = async (
   env: TransformEnv,
 ): Promise<TransformOutput> => {
-  const { source, root, styleProp, propertyPolicy, isDev, addDependency } = env;
+  const scannedTables = scanOverlay(undefined, env.styleProp);
+  const namespaces = expandNamespaces(env.moduleId, env.source);
+  try {
+    return await transformExpanded(env, scannedTables, namespaces);
+  } catch (error) {
+    throw asWritten(namespaces, error);
+  }
+};
+
+const transformExpanded = async (
+  env: TransformEnv,
+  scannedTables: Tables,
+  namespaces: Namespaces | undefined,
+): Promise<TransformOutput> => {
+  const { root, styleProp, propertyPolicy, isDev, addDependency } = env;
   const classProp = env.classProp ?? 'className';
   const id = env.moduleId;
+  const source = namespaces?.source ?? env.source;
   const resourcePath = env.moduleId;
   const baseId = env.filePath;
   const ast = parseSync(source, {
@@ -387,12 +405,15 @@ export const transformSource = async (
     }
   };
 
-  const scannedTables = scanOverlay(undefined, styleProp);
   const ownFailure = resolveFileError(baseId, '');
   if (ownFailure) throwCompilationError(`[plumeria] ${ownFailure.message}`);
 
+  const appended = namespaces?.originalLength ?? Infinity;
   for (const node of ast.body) {
-    if (node.type === 'ImportDeclaration') {
+    if (
+      node.type === 'ImportDeclaration' &&
+      node.span.start - baseByteOffset < appended
+    ) {
       const sourcePath = node.source.value;
       const actualPath = resolveImportPath(sourcePath, id);
       if (actualPath) {
@@ -3578,12 +3599,61 @@ export const transformSource = async (
     replacements,
     transformedSource,
   );
+  if (namespaces) namespaceElisions(namespaces, replacements, elided, splice);
   if (elided.length === 0) return { code: transformedSource };
 
   replacements.push(...elided);
   replacements.sort((a, b) => a.start - b.start || b.end - a.end);
 
   return { code: splice(replacements) };
+};
+
+type Replacement = { start: number; end: number; content: string };
+
+const namespaceElisions = (
+  namespaces: Namespaces,
+  replacements: Replacement[],
+  elided: Replacement[],
+  splice: (list: Replacement[]) => string,
+): void => {
+  const covered = (at: number) =>
+    replacements.some((r) => r.start <= at && at < r.end);
+  const removed = ({ appendedStart }: NamespaceImport) =>
+    elided.some((r) => r.start === appendedStart);
+  const appended = ({ appendedStart, appendedEnd }: NamespaceImport) => ({
+    start: appendedStart,
+    end: appendedEnd,
+    content: '',
+  });
+  const extra: Replacement[] = [];
+  for (const namespace of namespaces.imports) {
+    if (removed(namespace)) {
+      if (namespace.unused)
+        extra.push({ start: namespace.start, end: namespace.end, content: '' });
+      continue;
+    }
+    for (const dot of namespace.dots)
+      if (!covered(dot)) extra.push({ start: dot, end: dot + 1, content: '.' });
+  }
+  const pending = namespaces.imports.filter((namespace) => !removed(namespace));
+  const draft = splice(
+    [...replacements, ...elided, ...extra, ...pending.map(appended)].sort(
+      (a, b) => a.start - b.start || b.end - a.end,
+    ),
+  );
+  let kept = false;
+  for (const namespace of pending) {
+    if (namespace.bindings.some((binding) => draft.includes(binding)))
+      kept = true;
+    else extra.push(appended(namespace));
+  }
+  elided.push(...extra);
+  if (!kept && namespaces.separated) {
+    const first = namespaces.imports[0].appendedStart;
+    for (const replacement of elided)
+      if (replacement.start === first)
+        replacement.start = namespaces.originalLength;
+  }
 };
 
 const elidedImports = (
