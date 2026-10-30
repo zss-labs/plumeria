@@ -2,27 +2,12 @@
 title: 'Jest'
 description: 'Render Plumeria components in Jest with @plumeria/swc-jest as the transformer.'
 ---
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 Jest takes the transform through [`@plumeria/swc-jest`](/docs/api-reference/plugins/swc-jest). It compiles the styling prop away, then hands the file to `@swc/jest`.
 
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-<Tab>
-```sh title="Terminal"
-npm i -D @plumeria/swc-jest @swc/core
-```
-</Tab>
-<Tab>
-```sh title="Terminal"
-yarn add -D @plumeria/swc-jest @swc/core
-```
-</Tab>
-<Tab>
 ```sh title="Terminal"
 pnpm i -D @plumeria/swc-jest @swc/core
 ```
-</Tab>
-</Tabs>
 
 Put it where `@swc/jest` was. Jest runs one transformer per pattern, so it replaces the entry rather than sitting beside it:
 
