@@ -39,6 +39,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 | Shortcut | Action |
 | --- | --- |
-| `Cmd + I` / `Ctrl + I` | Toggle inspector |
+| `Cmd + I` / `Alt + I` | Toggle inspector |
 | `Shift` | Lock / unlock target element |
 
