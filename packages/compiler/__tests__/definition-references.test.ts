@@ -83,8 +83,22 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       expect(definitions).not.toContain(`export const name = "${prefix}`);
     });
 
+    it('writes the name where a definition is read through a namespace member', async () => {
+      fs.writeFileSync(
+        path.join(dir, 'definitions.ts'),
+        `import * as css from '@plumeria/core';\nexport const name = ${definition};\n`,
+      );
+      fs.writeFileSync(
+        path.join(dir, 'reader.ts'),
+        `import * as css from '@plumeria/core';\nimport * as defs from './definitions';\nconsole.log(defs.name);\n`,
+      );
+      await transformSource(env(dir, 'definitions.ts'));
+      const { code } = await transformSource(env(dir, 'reader.ts'));
+      expect(code).toContain(`console.log("${prefix}`);
+      expect(code).not.toContain('defs');
+    });
+
     it.each([
-      ['a member', `console.log(defs.name);`],
       ['a string key', `console.log(defs['name']);`],
       ['a destructured key', `const { name } = defs;\nconsole.log(name);`],
       ['a rest element', `const { ...rest } = defs;\nconsole.log(rest);`],
