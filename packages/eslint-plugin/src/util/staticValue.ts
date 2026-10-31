@@ -98,7 +98,9 @@ export function staticValueResolver(context: Rule.RuleContext) {
       return node.property.name;
     }
     const key = resolve(node.property);
-    return typeof key === 'string' ? key : undefined;
+    return typeof key === 'string' || typeof key === 'number'
+      ? String(key)
+      : undefined;
   };
 
   const resolve = (node: any): unknown => {
