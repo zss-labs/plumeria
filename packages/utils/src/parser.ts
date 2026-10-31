@@ -375,6 +375,13 @@ export function objectExpressionToObject(
       );
       if (typeof spreadVal === 'object' && spreadVal !== null) {
         Object.assign(obj, spreadVal);
+      } else if (
+        spreadVal === null &&
+        !t.isNullLiteral(unwrapExpression(arg))
+      ) {
+        throw new Error(
+          `[plumeria] Cannot spread ${expressionLabel(arg)} at build time. Spread a const object, or pass a runtime value through the function form, css.create({ name: (value) => ({ ... }) }).`,
+        );
       }
       return;
     }
@@ -389,13 +396,30 @@ export function objectExpressionToObject(
           return;
         }
       }
-      if (staticTable[key] !== undefined) {
-        obj[key] = staticTable[key];
+      try {
+        obj[key] = evaluateExpression(
+          prop,
+          staticTable,
+          keyframesHashTable,
+          viewTransitionHashTable,
+          varTypeHashTable,
+          positionTryHashTable,
+          createThemeHashTable,
+          createThemeObjectTable,
+          createStaticHashTable,
+          createStaticObjectTable,
+        ) as CSSValue;
+      } catch {
+        // Left unset: an argument passes it at runtime, a style fails the value check.
       }
       return;
     }
 
-    if (!t.isObjectProperty(prop)) return;
+    if (!t.isObjectProperty(prop)) {
+      throw new Error(
+        `[plumeria] Cannot read the method or accessor "${(prop as any).key?.value ?? ''}" at build time. Write it as a plain property.`,
+      );
+    }
 
     const rawKey = getPropertyKey(
       prop.key,
@@ -1005,7 +1029,9 @@ function getPropertyKey(
         createStaticObjectTable,
       );
     }
-    return '';
+    throw new Error(
+      `[plumeria] Cannot inline the computed key [${expressionLabel(expr)}] at build time. Declare it with css.createStatic, such as const breakpoints = css.createStatic({ sm: '...' }), and read it as [breakpoints.sm]. A definition in a package needs a plumeria export condition.`,
+    );
   }
 
   if (t.isTemplateLiteral(node)) {
