@@ -97,7 +97,10 @@ const styles = css.create({
 export default function Page() {
   return (
     <main data-home classStyle={styles.home}>
-      <Seo title="Plumeria - Zero-Trace Runtime" subtitle="React styling library for reliable interfaces" />
+      <Seo
+        title="Plumeria - React styling library"
+        subtitle="The style on the right wins, not the one imported or loaded last."
+      />
       <div classStyle={styles.page}>
         <div classStyle={styles.hero}>
           <h1 classStyle={styles.title}>Plumeria</h1>
@@ -121,7 +124,7 @@ export default function Page() {
               </svg>
             </Link>
             <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} classStyle={styles.button}>
-              Why Plumeria?
+              Why Plumeria
             </Link>
           </div>
         </div>
