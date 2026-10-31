@@ -80,7 +80,7 @@ export const MyComponent = ({ isActive }) => {
 
 **Cross-file imports.** Styles can be imported across files. A file that applies them with `classStyle` is compiled without further setup, but a file that passes them to a component through any other prop MUST contain `import "@plumeria/core";` — the import is how the compiler finds the file. Keeping the import in every consuming file is always correct and is the fastest path, because the compiler accepts such a file without looking further.
 
-**Definitions from a package.** A package whose `exports` point a `plumeria` condition at its TypeScript source, such as `@plumeria/wind`, is read like a local module by an app that lists it in its dependencies. A package without the condition is not read.
+**Definitions from a package.** A package whose `exports` point a `plumeria` condition at its TypeScript source, such as `@plumeria/wind`, is read like a local module by an app that lists it in its dependencies. A package without the condition is not read. A package that reads definitions from another Plumeria package needs both in the app's dependencies. If the app lists only the first, the build succeeds, but declarations that read the second are dropped.
 
 **Imports that compile away.** An import whose names are all compiled away is removed from the output, so a module imported only for its definitions is not loaded through it. If the module also has to run on import, add `import './tokens';` beside it. An import still read at runtime, rendered as a component or re-exported stays.
 
@@ -329,7 +329,7 @@ export const styles = css.create({
 });
 ```
 
-A numeric key, as in a color scale, is quoted: `'500': '#3b82f6'`. An unquoted number stops the build. A module that imports it reads `blue[500]` or `blue['500']`; the module that defines it reads `blue['500']`.
+A numeric key, as in a color scale, is quoted: `'500': '#3b82f6'`. An unquoted number stops the build. Read it as `blue[500]` or `blue['500']`.
 
 ### `css.createTheme()`
 
