@@ -97,7 +97,7 @@ const styles = css.create({
 export default function Page() {
   return (
     <main data-home classStyle={styles.home}>
-      <Seo title="Plumeria - Zero-trace runtime" subtitle="React styling library for reliable interfaces" />
+      <Seo title="Plumeria - Zero-Trace Runtime" subtitle="React styling library for reliable interfaces" />
       <div classStyle={styles.page}>
         <div classStyle={styles.hero}>
           <h1 classStyle={styles.title}>Plumeria</h1>
