@@ -4,7 +4,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=10B981)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=6366F1)
 
-**Plumeria** is a React styling library for reliable interfaces. You write type-safe styles in TypeScript, and what ships is a class string — not a style object and a runtime merger. Style composition is a monoid whose operation is fully determined at compile time, which is where the predictability comes from: styles are composable by construction, and strict syntax and linting keep the cognitive overhead low.
+**Plumeria** is a React styling library for reliable interfaces. The style on the right wins, not the one imported or loaded last: the compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
 
 > The compiler is written in Rust with oxc, so builds are fast. The CSS types and the property list the linter checks against are generated from MDN data, so properties and keywords follow what MDN documents.
 
