@@ -1001,7 +1001,10 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
         let filtered = object.properties.iter().filter(|prop| match prop {
             ObjectPropertyKind::ObjectProperty(p) if p.shorthand => true,
             ObjectPropertyKind::ObjectProperty(p) => {
-                !p.method && p.kind == PropertyKind::Init && is_static_arg_value(E::new(&p.value))
+                !p.computed
+                    && !p.method
+                    && p.kind == PropertyKind::Init
+                    && is_static_arg_value(E::new(&p.value))
             }
             _ => false,
         });
