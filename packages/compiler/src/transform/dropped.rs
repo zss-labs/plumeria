@@ -39,9 +39,7 @@ fn key_value(prop: &ObjectProperty) -> Option<KeyVal> {
 
 fn as_key_value<'b, 'a>(prop: &'b ObjectPropertyKind<'a>) -> Option<&'b ObjectProperty<'a>> {
     match prop {
-        ObjectPropertyKind::ObjectProperty(p)
-            if !p.shorthand && !p.method && p.kind == PropertyKind::Init =>
-        {
+        ObjectPropertyKind::ObjectProperty(p) if !p.method && p.kind == PropertyKind::Init => {
             Some(p)
         }
         _ => None,
