@@ -17,6 +17,13 @@ const keyValue = (key: unknown): string | number | undefined => {
     : undefined;
 };
 
+const asKeyValue = (prop: SourceProperty) =>
+  prop.type === 'Identifier'
+    ? { key: prop, value: prop }
+    : prop.type === 'KeyValueProperty'
+      ? prop
+      : null;
+
 export type StyleContext = {
   spread: ResolveSpread;
   resolvesValue: (value: unknown) => boolean;
@@ -48,8 +55,8 @@ const overwrittenLater = (
       if (String(key) in provided.values) return true;
       continue;
     }
-    if (later.type === 'KeyValueProperty' && keyValue(later.key) === key)
-      return true;
+    const entry = asKeyValue(later);
+    if (entry && keyValue(entry.key) === key) return true;
   }
   return false;
 };
@@ -110,15 +117,15 @@ const assertStyleFunction = (
   const walk = (object: any): void => {
     const properties = object.properties ?? [];
     for (let index = 0; index < properties.length; index++) {
-      const prop = properties[index];
-      if (prop.type !== 'KeyValueProperty') continue;
-      const key = keyValue(prop.key);
+      const entry = asKeyValue(properties[index]);
+      if (!entry) continue;
+      const key = keyValue(entry.key);
       if (
         (typeof key === 'string' || typeof key === 'number') &&
         overwrittenLater(properties, index, key, context)
       )
         continue;
-      const value = prop.value;
+      const value: any = entry.value;
       if (!value) continue;
       if (value.type === 'ObjectExpression') {
         walk(value);
@@ -153,8 +160,9 @@ const keysSuppliedAfter = (
       for (const name of Object.keys(provided.values)) keys.add(name);
       continue;
     }
-    if (later.type !== 'KeyValueProperty') continue;
-    const key = keyValue(later.key);
+    const entry = asKeyValue(later);
+    if (!entry) continue;
+    const key = keyValue(entry.key);
     if (typeof key !== 'string' && typeof key !== 'number') return null;
     keys.add(String(key));
   }
@@ -186,14 +194,15 @@ export const assertNoDroppedValues = (
       continue;
     }
 
-    if (prop.type !== 'KeyValueProperty') continue;
+    const entry = asKeyValue(prop);
+    if (!entry) continue;
 
-    const key = keyValue(prop.key);
+    const key = keyValue(entry.key);
     if (typeof key !== 'string' && typeof key !== 'number') continue;
     if (ignore?.has(String(key))) continue;
     if (overwrittenLater(node.properties, index, key, context)) continue;
 
-    const value = prop.value;
+    const value = entry.value;
     if (!value) continue;
     if (
       value.type === 'ArrowFunctionExpression' ||
