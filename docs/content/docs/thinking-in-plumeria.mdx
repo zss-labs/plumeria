@@ -495,6 +495,8 @@ const styles = css.create({
 
 The compiler follows the condition through subpath and pattern exports such as `@acme/tokens/colors`, and into packages linked from a pnpm store. `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies` all count. A package without the condition is not read, and a definition taken from it stops the build.
 
+A package that reads definitions from another Plumeria package needs both in the app's dependencies, such as `@plumeria/wind` alongside a package built on it. If the app lists only the package built on it, the build succeeds, but declarations that read `@plumeria/wind` are dropped.
+
 The import compiles away, so a package that exports only definitions can ship its source alone, as [`@plumeria/wind`](/docs/api-reference/wind) does. One that also exports runtime code keeps a `default` condition for it.
 
 ## Next steps
