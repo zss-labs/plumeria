@@ -617,6 +617,47 @@ const { card } = styles;
     },
     {
       filename,
+      // a prop is a class string once its caller has left Plumeria
+      code: `<div classStyle={[styles.base, override]} />;`,
+      options,
+      output:
+        "<div className={[styles.base, override].filter(Boolean).join(' ')} />;",
+      errors: 2,
+    },
+    {
+      filename,
+      code: `<div classStyle={[styles.base, props.override]} />;`,
+      options,
+      output:
+        "<div className={[styles.base, props.override].filter(Boolean).join(' ')} />;",
+      errors: 2,
+    },
+    {
+      filename,
+      code: `<div classStyle={[styles.base, ...rest]} />;`,
+      options,
+      output:
+        "<div className={[styles.base, ...rest].filter(Boolean).join(' ')} />;",
+      errors: 2,
+    },
+    {
+      filename,
+      code: `<div classStyle={[styles.base, on && override]} />;`,
+      options,
+      output:
+        "<div className={[styles.base, on && override].filter(Boolean).join(' ')} />;",
+      errors: 2,
+    },
+    {
+      filename,
+      // once the whole project has left, a list of props goes with it
+      code: `<div classStyle={[first, second]} />;`,
+      options: [{ ...options[0], complete: true }],
+      output: "<div className={[first, second].filter(Boolean).join(' ')} />;",
+      errors: 2,
+    },
+    {
+      filename,
       // the core import goes once nothing but a released style still reads it
       code: `import * as css from '@plumeria/core';\n<div classStyle={css.use(styles.card)} />;`,
       options: [{ active: true, ...options[0] }],
