@@ -1825,6 +1825,7 @@ const transformExpanded = async (
             (prop) =>
               prop.type === 'Identifier' ||
               (prop.type === 'KeyValueProperty' &&
+                prop.key.type !== 'Computed' &&
                 isStaticArgValue(prop.value)),
           ),
         },
