@@ -695,18 +695,17 @@ export const A = () => <div classStyle={st.a} />;`,
         `const base = { inner: { padding: 2 } };`,
         ['{ padding: 2px; }', '{ color: red; }'],
       ],
-      [
-        'a call, which it passes over',
-        `{ a: { ...make(), color: 'red' } }`,
-        '',
-        ['{ color: red; }'],
-      ],
     ])('reads %s', async (_name, declaration, lead, rules) => {
       const { css } = await declared(declaration, lead);
       for (const rule of rules) expect(css).toContain(rule);
     });
 
     it.each([
+      [
+        'a call',
+        `{ a: { ...make(), color: 'red' } }`,
+        '[plumeria] Cannot spread a function call at build time.',
+      ],
       [
         'a name it cannot resolve',
         `{ a: { ...missing, color: 'red' } }`,
