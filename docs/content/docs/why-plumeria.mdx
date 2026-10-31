@@ -1,103 +1,351 @@
 ---
-title: 'Why Plumeria?'
-description: 'How Plumeria reclaims the predictability of CSS Modules without sacrificing the power of CSS-in-JS.'
+title: 'Why Plumeria'
+description: 'The style on the right wins, not the one imported or loaded last, and the build stops when something is wrong.'
 date: '2026-07-12'
 ---
 
-## "CSS Modules are fine after all."
+A wrong value is easy to spot. The harder bug is a right value that loses: a component moves to another file, a chunk loads first, a caller passes an override, and a rule that was winning stops winning. Nothing errors, the diff looks fine, and a page nobody touched changes. Every refactor risks it, and coding agents move code faster than anyone can check the result by eye.
 
-If you build web interfaces for a living, you have probably said this. After wrestling with runtime CSS-in-JS configuration, chasing specificity bugs across dynamic boundaries, or watching a utility-first framework bloat your markup, returning to the humble CSS Module feels like a relief.
+Plumeria takes that decision away from stylesheet order. The compiler merges styles at build time, so the style on the right wins and an overridden property never reaches the element. A mistake stops the build, and what ships is class names and CSS.
 
-That isn't a compromise made for lack of features. CSS Modules win because they are **predictable**: the CSS you write behaves exactly as written. There is no runtime parser guessing your intent, no injection-order races between chunks, and almost no runtime JavaScript — just a class mapping object.
+## The right side wins
 
-But the safety has a price. You give up TypeScript-integrated styling, compile-time validation, dynamic theming, and seamless colocation.
+A component applies its own style first and the one it receives last. Here the two live in different modules, and both set `color`:
 
-**Plumeria is designed to eliminate this compromise.** It matches — and in several areas exceeds — the predictability of CSS Modules, while delivering the type-safe developer experience of a modern CSS-in-JS library.
-
----
-
-## The Zero-Trace Runtime
-
-Try compiling this — note that the style is actually applied, not left unused:
-
-```tsx
+```tsx title="Badge.tsx"
 import * as css from '@plumeria/core';
+import type { ReactNode } from 'react';
 
 const styles = css.create({
-  box: {
-    padding: 16,
-    color: 'red'
-  }
+  badge: {
+    padding: 4,
+    color: 'gray',
+  },
 });
 
-export const Box = () => <div classStyle={styles.box}>Box</div>;
+type BadgeProps = {
+  classStyle?: css.Style;
+  children: ReactNode;
+};
+
+export const Badge = ({ classStyle, children }: BadgeProps) => (
+  <span classStyle={[styles.badge, classStyle]}>{children}</span> // [!code hl]
+);
 ```
 
-Here is the *entire* JavaScript build output:
+```ts title="accent.ts"
+import * as css from '@plumeria/core';
 
-```tsx
-export const Box = () => <div className={'xqqbxt1d xq96bg3w'}>Box</div>;
+export const accent = css.create({
+  text: {
+    color: 'teal',
+  },
+});
 ```
 
-The declarations move to a generated stylesheet:
+```tsx title="Page.tsx"
+import { accent } from './accent';
+import { Badge } from './Badge';
 
-```css
-.xqqbxt1d { padding: 16px; }
-.xq96bg3w { color: red; }
+export const Page = () => <Badge classStyle={accent.text}>New</Badge>;
 ```
 
-The style still renders, yet `import * as css from '@plumeria/core'` and the entire `css.create` declaration have vanished. This is not dead-code elimination — nothing in this file is unused, and no bundler could remove a live call for you. The compiler resolves the class names statically and rewrites the call site, so the library never has a runtime form to eliminate in the first place. That disappearing import is the most concise illustration of a **Zero-Trace Runtime** — anything that shouldn't exist at runtime leaves no trace, not even an import statement. Every Plumeria call ends one of two ways: the compiler rewrites it in the AST, or the build fails. Nothing is left to run. This isn't a best practice; it's a compiler contract.
+The element receives one class per property:
 
-The definition APIs — `createTheme`, `createStatic`, `keyframes`, `viewTransitionClass`, `positionTry` and `varType` — are compiled the same way. Every use of a definition, in its own module or in one that imports it, is written in place, so nothing reads the definition at runtime. A definition exported from its own module stays behind only as an empty value with no tie to `@plumeria/core`, and the bundler drops it as unused; the Playground shows these lines dimmed. An import whose names are all compiled away is removed as well, so the bundler never loads that module through it.
+```html title="Output"
+<span class="x8ti24uy xxcejlqg">New</span>
+```
 
-Nothing of the library reaches the component, so a React Server Component keeps its styles with no `'use client'` boundary to add.
+```css title="Generated CSS"
+.xxcejlqg { color: teal; }
+.x8ti24uy { padding: 4px; }
+.xuifcaas { color: gray; }
+```
 
-Plumeria goes one step further than CSS Modules here. Where CSS Modules ship a class mapping object in your JS bundle, Plumeria inlines the final class name strings directly into the compiled output and deletes the `css.create` declarations. Not even a styling map remains in production JS. (See the [Introduction](/docs) for how the compilation works.)
+Gray is still in the stylesheet, because a `Badge` with no override needs it, and it even comes after teal. It makes no difference, since its class never reaches this element. The compiler knows every style the project passes to `Badge`, and it writes the merge as a lookup:
 
-Note the two class names in that output: one per property. Every property-value pair compiles to a global atomic class shared across your entire project, so your CSS stops growing in proportion to your component count — it plateaus.
+```tsx title="Badge.tsx (output)"
+<span
+  className={
+    "x8ti24uy" + " " + ({"x672n4nd":"xxcejlqg"}[classStyle] || "xuifcaas")
+  }
+>
+  {children}
+</span>
+```
 
-Measured on identical Next.js apps, that is 1.83KB less client JavaScript than StyleX, which keeps its resolver — see the [side-by-side benchmark](https://refirst11.github.io/css-compiler-bench).
+Swap the imports in `Page.tsx` or move `accent` into the same file, and the element is the same. That is [tested in a real browser](https://github.com/zss-labs/plumeria/blob/main/test-e2e/test/relay-order.test.ts), with the imports in both orders.
 
-Plumeria's strength doesn't come from flashy, single-purpose features. It comes from the cumulative effect of a few understated pillars that prove their value as your application grows.
+The rest of the model is just as short. A longhand beats its shorthand, so `marginTop` survives `margin` in either order. A condition or a nested selector beats its base, so an `@media` block overrides the declaration it shares a property with, wherever its rule lands in the stylesheet.
 
----
+[Composition laws](/docs/composition-laws) states the merge formally. [Specificity](/docs/specificity) shows how each pair is ranked, including the [four pairs](/docs/specificity#what-source-order-still-decides) nothing can rank and what to do about them.
 
-## The Last Style Written Wins
-
-Split, organize, and refactor styles across files without fear. Where traditional approaches let bundling order and import hierarchies decide which rule wins — silently breaking layouts — Plumeria never leaves that to stylesheet order. Styles merge property by property and the one written last wins, whether it comes from the same file, another module, or a parent through a prop. Your layouts look identical no matter how files are structured or in what order they are bundled.
+Where a style is written does not reach the output either. A class name comes from the property and the value alone, so [moving a style into a module](/docs/thinking-in-plumeria#refactoring-is-free) compiles to the same classes and the same CSS.
 
 [Playground · Last style wins](/playground?example=merge)
 
-## Never Executes Your Application Code
+## The build stops
 
-Plumeria's compiler never executes your application code. It relies purely on fast static analysis with the oxc parser and direct AST rewrites, and the type definitions of `@plumeria/core` resolve without any evaluation. The build pipeline stays fast and lightweight, and your styles never depend on runtime evaluation. A value the compiler cannot resolve is reported at build time.
+`next build` runs [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) through oxlint alongside the compile, with nothing to configure, and stops on any error or warning. [The unplugin](/docs/api-reference/plugins/unplugin#lint) does the same on every bundler except esbuild and Bun, where [`@plumeria/init`](/docs/api-reference/tools/init) prefixes the build script with `plumeria-lint --`.
 
-## Already on CSS Modules
+```tsx title="components/Menu.tsx"
+import * as css from '@plumeria/core';
 
-The migration is a command, not a rewrite:
+const styles = css.create({
+  menu: {
+    position: 'fixd', // [!code hl]
+    top: 0,
+    padding: 8,
+  },
+});
+
+export const Menu = () => <nav classStyle={styles.menu} />;
+```
+
+```text title="next build"
+  ⚠ @plumeria(validate-values): 'position' has an invalid value 'fixd'.
+  Valid values: static, relative, absolute, fixed, sticky
+   ╭─[components/Menu.tsx:5:15]
+ 4 │   menu: {
+ 5 │     position: 'fixd',
+   ·               ──────
+ 6 │     top: 0,
+   ╰────
+
+Found 1 warning and 0 errors.
+Finished in 119ms on 50 files with 19 rules using 2 threads.
+
+✖ [plumeria] Linting failed. Aborting build...
+```
+
+A failure says what is wrong and, where it can, points at the code. A few more of the checks:
+
+| You write | The build says |
+| :-- | :-- |
+| `colr: 'red'` | `Unknown CSS property 'colr'.` |
+| A key nothing reads | `The key 'stale' is defined but never referenced anywhere.` |
+| `'> a': { ... }` | `Combinator ">" is not allowed unless inside functional pseudo-classes.` |
+| `className` beside `classStyle` | `"classStyle" handles both "className" and "style". Avoid mixing them.` |
+| `classStyle={{ color: 'red' }}` | `Do not pass inline objects to "classStyle". It only accepts compiled styles from css.create().` |
+| `css.create` inside a component | `Do not use css.create inside functions` |
+| A style prop handed on instead of applied | `'headerStyle' is never applied here. Apply it to classStyle or css.use() on an element this component renders.` |
+
+Some carry the whole fix. Two states that can match at once have nothing to rank them, so the message says how to decide:
+
+```text title="next build"
+  ⚠ @plumeria(no-order-dependent-overlap): ':hover' and ':focus' can match at
+  the same time and both set 'color', but neither outranks the other, so the
+  result depends on the order they are written. Declare ':hover:focus' if the
+  intersection has a value of its own, or split them into separate styles and
+  compose them in the order that should win.
+   ╭─[components/Button.tsx:8:5]
+ 7 │     },
+ 8 │     ':focus': {
+   ·     ────────
+ 9 │       color: 'blue',
+   ╰────
+```
+
+### A component sets its own limits
+
+A component can refuse styles at its boundary. [`WithoutProperties`](/docs/api-reference/types/WithoutProperties) names what a caller may not set, and [`StyleProps`](/docs/api-reference/types/StyleProps) names the only things it may:
+
+```tsx title="Panel.tsx"
+import * as css from '@plumeria/core';
+import type { ReactNode } from 'react';
+
+const styles = css.create({
+  panel: {
+    display: 'flex',
+    padding: 8,
+  },
+});
+
+type PanelProps = {
+  classStyle?: css.WithoutProperties<'position' | 'top' | 'left'>; // [!code hl]
+  children: ReactNode;
+};
+
+export const Panel = ({ classStyle, children }: PanelProps) => (
+  <div classStyle={[styles.panel, classStyle]}>{children}</div>
+);
+```
+
+```tsx title="Page.tsx"
+import * as css from '@plumeria/core';
+import { Panel } from './Panel';
+
+const styles = css.create({
+  tinted: {
+    color: 'teal',
+  },
+  pinned: {
+    position: 'fixed',
+  },
+});
+
+export const Page = () => (
+  <>
+    <Panel classStyle={styles.tinted}>Accepted</Panel>
+    <Panel classStyle={styles.pinned}>Type error</Panel> {/* [!code hl] */}
+  </>
+);
+```
+
+The check reaches into pseudo-classes and at-rules, so `position` cannot slip in behind `:hover`.
+
+## Nothing falls back to the browser
+
+Every entry point of `@plumeria/core` is a `.d.ts` file, so the library has no code to run in the browser and no style can wait until then.
+
+The compiler reads your source with the oxc parser and never runs it, so a style cannot depend on what a module does when it executes. It follows a `const`, and a value it would have to run the code to know is an error rather than a guess:
+
+```tsx title="components/Box.tsx"
+import * as css from '@plumeria/core';
+
+const SPACING = Math.max(8, 16); // [!code hl]
+
+const styles = css.create({
+  box: {
+    padding: SPACING,
+  },
+});
+
+export const Box = () => <div classStyle={styles.box} />;
+```
+
+```text title="next build"
+Error: [plumeria] Cannot resolve the value of "padding" at build time
+(SPACING). Values in css.create must be statically known; pass a runtime
+value through the function form, css.create({ name: (value) => ({ ... }) }).
+```
+
+What passes leaves no library behind, so a React Server Component keeps its styles with no `'use client'` boundary to add. Measured on identical Next.js apps with the lint off, the step adds about 0.4 seconds to a CSS Modules build. See the [side-by-side benchmark](https://refirst11.github.io/css-compiler-bench/).
+
+## When an agent writes the code
+
+An agent cannot see the page, so a style that quietly loses is the failure it is least able to catch. Here, moving code does not change what renders, and what it gets wrong comes back as build output it can act on.
+
+The same failure reads differently under a coding agent. oxlint recognizes Claude Code, Cursor, Codex and others, and drops the frame, so each failure arrives on one line with its position, its rule and what to change:
+
+```text title="next build, run by a coding agent"
+components/Menu.tsx:5:15: warning @plumeria(validate-values): 'position' has an invalid value 'fixd'. Valid values: static, relative, absolute, fixed, sticky
+
+✖ [plumeria] Linting failed. Aborting build...
+```
+
+The agent corrects its own change and builds again until it compiles.
+
+It needs no person to get started either. `npx @plumeria/init --yes` sets up a project and asks nothing, every page here is plain Markdown at its URL plus `.md`, and [AI Agent Resources](/docs/ai-agent-resources) has the prompt to start from and the Claude plugin.
+
+## Written as CSS
+
+Properties are CSS names in camelCase, values are CSS values, and pseudo-classes, attribute selectors and at-rules are spelled the way CSS spells them. There is no utility vocabulary to learn. The types and the property list the linter checks are generated from MDN's data.
+
+```tsx title="MenuItem.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  item: {
+    padding: 8,
+    borderRadius: 6,
+    '[aria-current="page"]': { // [!code hl]
+      fontWeight: 600, // [!code hl]
+    }, // [!code hl]
+    ':hover': {
+      backgroundColor: '#f4f4f5',
+    },
+    '@media (min-width: 768px)': {
+      padding: 12,
+    },
+  },
+});
+
+export const MenuItem = () => (
+  <a href="/" aria-current="page" classStyle={styles.item}>
+    Home
+  </a>
+);
+```
+
+```css title="Generated CSS"
+.xymmdeuh { padding: 8px; }
+.x1b4ohri { border-radius: 6px; }
+.x8nzehgc:not(#\#):not(#\#)[aria-current="page"] { font-weight: 600; }
+.xzvfwjlv:not(#\#):not(#\#):hover { background-color: #f4f4f5; }
+@media (min-width: 768px) {
+  .xy3st0md:not(#\#) { padding: 12px; }
+}
+```
+
+`aria-current` is the state assistive technology reads and the state the style matches, so the two cannot disagree. The repeated `:not(#\#)` is how the compiler ranks a rule without depending on its position in the stylesheet.
+
+A selector never names a path through the DOM. Combinators are rejected, and a descendant reacts to a parent's state through [`css.marker` and `css.extended`](/docs/api-reference/javascript/marker):
+
+```tsx title="Card.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  card: {
+    ...css.marker('card', ':hover'), // [!code hl]
+    padding: 16,
+  },
+  action: {
+    opacity: 0.6,
+    [css.extended('card', ':hover')]: { // [!code hl]
+      opacity: 1,
+    },
+  },
+});
+
+export const Card = () => (
+  <article classStyle={styles.card}>
+    <footer>
+      <button classStyle={styles.action}>Open</button>
+    </footer>
+  </article>
+);
+```
+
+Move the button anywhere inside the card and the rule still holds, because nothing in it spells out the markup.
+
+Themes are variables. [`createTheme`](/docs/api-reference/javascript/createTheme) takes the selector or the query that switches them, so components contain no dark-mode branch and no provider:
+
+```ts title="theme.ts"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
+  surface: {
+    default: '#fff',
+    theme: '#111',
+  },
+  text: {
+    default: '#111',
+    theme: '#eee',
+  },
+});
+```
+
+## A way in, and a way out
+
+Adopting Plumeria is a command, and so is leaving it. [`@plumeria/codemod`](/docs/api-reference/tools/codemod) has a `--dry-run` for both, and it lists what it cannot convert by file and line rather than guessing:
 
 ```sh
 npx @plumeria/codemod migrate --from css-modules
-```
-
-Each `*.module.css` becomes a `*.styles.ts` beside it and its consumers are pointed at it — including the descendant rules, which have no combinator to translate into and become a [marker and its extended styles](/docs/api-reference/javascript/marker) instead. What cannot be converted is listed by file and line rather than guessed at. See [`@plumeria/codemod`](/docs/api-reference/tools/codemod).
-
-The command runs the other way as well:
-
-```sh
 npx @plumeria/codemod migrate --from plumeria
 ```
 
-Styles go back to `*.module.css`, theme tokens and animations to global CSS, and the call sites to `className`. It is an export rather than a round trip — a dynamic style leaves as a custom property, a marker as the `@container style()` rule it compiles to — so what returns is the equivalent stylesheet, not the files you started from. Leaving is a command too.
+The first turns each `*.module.css` into a `*.styles.ts` beside it and points its consumers there. The second sends styles back to `*.module.css`, theme tokens and animations to global CSS, and call sites to `className`. What returns is an equivalent stylesheet, not the files you started from: a dynamic style leaves as a custom property, and a marker as the `@container style()` rule it compiles to.
 
-## Coming from Tailwind
+CI runs the whole trip on this site and on the e2e app: out to CSS Modules, back to Plumeria and out again, and a new type error fails it. [How to leave Plumeria](/blog/how-to-leave-plumeria) has the details.
 
-The [Claude plugin](/docs/ai-agent-resources#claude-plugin) includes a skill that migrates Tailwind classes to Plumeria styles, and [`@plumeria/wind`](/docs/api-reference/wind) keeps Tailwind's design values as tokens.
+From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api-reference/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api-reference/javascript/createTheme) declares each variable's default and themed values in one call.
 
-## Coming from StyleX
+## Next steps
 
-The APIs keep StyleX's names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api-reference/javascript/createTheme) declares each variable's default and themed values in one call.
-
----
-
-Plumeria is for those who say, "I never compromise." Ready to try it? Start with [Getting started](/docs/installation).
+<Cards>
+  <Card title="Installation" href="/docs/installation" />
+  <Card title="Thinking in Plumeria" href="/docs/thinking-in-plumeria" />
+  <Card title="Playground" href="/playground" />
+  <Card title="Composition laws" href="/docs/composition-laws" />
+</Cards>
