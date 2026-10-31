@@ -118,9 +118,16 @@ impl<'e, 'r> Evaluator<'e, 'r> {
     pub fn property_into(&self, prop: &ObjectPropertyKind, obj: &mut Object) -> EvalResult<()> {
         match prop {
             ObjectPropertyKind::SpreadProperty(spread) => {
-                let value = self.plain().expression(E::new(&spread.argument))?;
-                if let Value::Obj(spread_obj) = value {
-                    obj.assign(&spread_obj);
+                let argument = E::new(&spread.argument);
+                match self.plain().expression(argument)? {
+                    Value::Obj(spread_obj) => obj.assign(&spread_obj),
+                    Value::Null if !matches!(unwrap(argument).kind(), K::Null) => {
+                        return Err(format!(
+                            "[plumeria] Cannot spread {} at build time. Spread a const object, or pass a runtime value through the function form, css.create({{ name: (value) => ({{ ... }}) }}).",
+                            expression_label(argument)
+                        ));
+                    }
+                    _ => {}
                 }
                 Ok(())
             }
@@ -136,13 +143,16 @@ impl<'e, 'r> Evaluator<'e, 'r> {
                         obj.insert(key, resolved);
                         return Ok(());
                     }
-                    if let Some(value) = self.env.statics.lookup(key) {
+                    if let Ok(value) = self.expression(E::new(&prop.value)) {
                         obj.insert(key, value);
                     }
                     return Ok(());
                 }
                 if !property_is_plain(prop) {
-                    return Ok(());
+                    return Err(format!(
+                        "[plumeria] Cannot read the method or accessor \"{}\" at build time. Write it as a plain property.",
+                        prop.key.static_name().unwrap_or_default()
+                    ));
                 }
                 let key = self.property_key(&prop.key, prop.computed)?;
                 if !key.truthy() {
@@ -305,7 +315,10 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         match expr.kind() {
             K::Template(template) => self.plain().template(template).map(Value::Str),
             K::Binary(left, op, right) => self.plain().binary(left, op, right),
-            _ => Ok(Value::str("")),
+            _ => Err(format!(
+                "[plumeria] Cannot inline the computed key [{}] at build time. Declare it with css.createStatic, such as const breakpoints = css.createStatic({{ sm: '...' }}), and read it as [breakpoints.sm]. A definition in a package needs a plumeria export condition.",
+                expression_label(expr)
+            )),
         }
     }
 
