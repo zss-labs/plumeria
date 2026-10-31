@@ -3,77 +3,94 @@ title: 'Introduction'
 description: 'What Plumeria is, what writing styles with it looks like, and how far its types reach.'
 ---
 
-Plumeria is a compile-time CSS-in-JS library for React. You write style objects in TypeScript, and the compiler turns them into static atomic CSS and rewrites every call site, so no library code reaches your JavaScript bundle. No runtime code ships, no styles are computed in the browser.
+Plumeria is a React styling library. You write style objects in TypeScript, and the compiler turns them into atomic CSS and rewrites every call site, so no library code reaches your JavaScript bundle and no style is computed in the browser.
 
-Because styles are compiled instead of injected, which value wins is never left to stylesheet order. Styles merge property by property and the one written last wins — whether it comes from the same file, another module, or a parent through a prop — so splitting and moving files never changes what renders.
+Which value wins is never left to stylesheet order. Styles merge property by property and the one on the right wins, whether it comes from the same file, another module, or a parent through a prop, so splitting and moving files never changes what renders. A mistake stops the build at the line that caused it.
 
-## Usage
+## Write a style
 
-Styling is straightforward: define styles once with `css.create()`, and the compiler handles everything else. The atomic class names are determined at that point — all that remains is to attach them via the `classStyle` prop.
+Define styles with `css.create()` and attach them with the `classStyle` prop:
 
-```tsx
-import * as css from "@plumeria/core";
+```tsx title="Footer.tsx"
+import * as css from '@plumeria/core';
 
 const styles = css.create({
   text: {
-    fontSize: 16,
+    padding: 16,
+    color: 'gray',
   },
 });
 
-export const Footer = () => {
-  return <div classStyle={styles.text}>MyText</div>;
-};
+export const Footer = () => <p classStyle={styles.text}>MyText</p>;
 ```
 
-Styles compile to zero across file boundaries, too. You can colocate styles with components or share them across files — structure them to fit your project. A file that applies them with `classStyle` needs nothing else. A file that passes them to a component through any other prop imports `@plumeria/core`, which is how the compiler finds it; importing it in every file that uses Plumeria is always safe and keeps each file on the fastest path.
+The import and the `css.create()` call compile away, and the declarations move to a generated stylesheet:
 
-```tsx title="styles.ts"
-import * as css from "@plumeria/core";
+```tsx title="Output"
+export const Footer = () => <p className={"xqqbxt1d xuifcaas"}>MyText</p>;
+```
+
+```css title="Generated CSS"
+.xqqbxt1d { padding: 16px; }
+.xuifcaas { color: gray; }
+```
+
+## Compose from the right
+
+`classStyle` accepts arrays, ternaries and conditions. When two styles set the same property, the one on the right wins:
+
+```tsx title="Item.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    padding: 16,
+    color: 'gray',
+  },
+  active: {
+    color: 'teal',
+  },
+});
+
+export const Item = ({ isActive }: { isActive: boolean }) => (
+  <p classStyle={[styles.base, isActive && styles.active]}>MyText</p>
+);
+```
+
+The class that loses never reaches the element:
+
+```html title="Output"
+<p class="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
+<p class="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
+```
+
+A shorthand against a longhand is the exception: the longhand wins wherever the two meet, in either order. [Specificity](/docs/specificity) ranks every pair, and [Composition laws](/docs/composition-laws) states the merge formally.
+
+[Playground · Last style wins](/playground?example=merge)
+
+## Share across files
+
+Styles compile to zero across file boundaries too, so you can keep them beside a component or share them, whichever fits the project:
+
+```ts title="styles.ts"
+import * as css from '@plumeria/core';
 
 export const styles = css.create({
   common: {
-    color: "gray",
+    color: 'gray',
   },
 });
 ```
 
 ```tsx title="Component.tsx"
-import { styles } from "./styles";
+import { styles } from './styles';
 
 export const Component = () => {
   return <p classStyle={styles.common}>Shared style</p>;
 };
 ```
 
-### Specificity
-
-The `classStyle` prop accepts arrays, ternaries, and conditional expressions. Merging follows one rule: **the right side wins**. If `isActive` is true, the properties of `active` override the properties of `base` — always.
-
-```tsx title="Component.tsx"
-const styles = css.create({
-  base: {
-    color: "gray",
-    fontSize: 16,
-  },
-  active: {
-    color: "blue",
-  },
-});
-
-classStyle={[styles.base, isActive && styles.active]}
-```
-
-Because the compiler controls the merge, it settles specificity instead of the cascade, apart from the few pairs listed in [Specificity](/docs/specificity). Writing the merge as an operation, where $\oplus$ combines styles left to right, disjoint styles simply concatenate:
-
-$$parse(A \oplus B \oplus C) \to \text{"classA classB classC"}$$
-
-And when two styles set the same property, the losing atom on the left is filtered out at compile time — it never reaches the output:
-
-$$parse(A_{color} \oplus B_{color}) \to \text{"classB"}$$
-
-A shorthand against a longhand is the exception: the longhand wins wherever the two meet, in either order. The laws this merge obeys are in [Composition laws](/docs/composition-laws).
-
-[Playground · Last style wins](/playground?example=merge)
+A file that applies them with `classStyle` needs nothing else. A file that passes them to a component through any other prop imports `@plumeria/core`, which is how the compiler finds it; importing it in every file that uses Plumeria is always safe and keeps each file on the fastest path.
 
 ## Types all the way down
 
@@ -84,12 +101,12 @@ Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** 
   "name": "@plumeria/core",
   "exports": {
     ".": {
-      "types": "./lib/css.d.ts",
+      "types": "./lib/css.d.ts"
     },
     "./class-style": {
-      "types": "./lib/class-style.d.ts",
-    },
-  },
+      "types": "./lib/class-style.d.ts"
+    }
+  }
 }
 ```
 
@@ -102,8 +119,15 @@ Static styles resolve to class names entirely at compile time. The dynamic piece
 
 Of course, "zero-runtime" doesn't claim the cost vanishes — it claims the cost moves. All of the work happens at build time, and the browser only ever receives class names and CSS.
 
----
+## Next steps
 
-To learn what motivated this design, read [Why Plumeria?](/docs/why-plumeria). For integration with bundlers and the full API, see the [API reference](/docs/api-reference) and [Installation](/docs/installation).
+<Cards>
+  <Card title="Installation" href="/docs/installation" />
+  <Card title="Why Plumeria" href="/docs/why-plumeria" />
+  <Card title="Thinking in Plumeria" href="/docs/thinking-in-plumeria" />
+  <Card title="API" href="/docs/api-reference" />
+</Cards>
+
+---
 
 This site is built with Plumeria. The documentation app lives in the same repository and depends on the workspace packages, so every release is exercised here — and every experiment is tried here — before it ships.
