@@ -362,6 +362,11 @@ code {
   font-family: ui-monospace, 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
 }
 
+/* A plain text block wraps an empty line in an empty span, which .line:empty misses. */
+.shiki .line:has(> span:only-child:empty) {
+  height: 1lh;
+}
+
 .dark span.line.diff.remove {
   background: rgba(255, 83, 252, 0.14);
 }
