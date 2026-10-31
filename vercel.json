@@ -18,6 +18,16 @@
       "source": "/docs/api-reference/javascript/wind",
       "destination": "/docs/api-reference/wind",
       "permanent": true
+    },
+    {
+      "source": "/docs/module-architecture",
+      "destination": "/docs/thinking-in-plumeria",
+      "permanent": true
+    },
+    {
+      "source": "/docs/module-architecture.md",
+      "destination": "/docs/thinking-in-plumeria.md",
+      "permanent": true
     }
   ],
   "rewrites": [
