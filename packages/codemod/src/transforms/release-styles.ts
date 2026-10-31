@@ -1100,8 +1100,15 @@ export const releaseStyles: Rule.RuleModule = {
             takeProp();
             return;
           }
-          const texts = elements.map(resolveText);
-          if (texts.some((text: any) => text === undefined)) return;
+          const resolved = elements.map(resolveText);
+          if (!complete && resolved.every((text: any) => text === undefined))
+            return;
+          // A member the export cannot name, such as a prop, is a class string
+          // once its caller has left Plumeria, and it may be undefined.
+          const unnamed = resolved.includes(undefined);
+          const texts = resolved.map(
+            (text: any, at: number) => text ?? sourceCode.getText(elements[at]),
+          );
           // A slot the stylesheet cannot rank high enough carries its own
           // override alongside it, under the same condition.
           const ranked = elements.map((element: any) =>
@@ -1136,9 +1143,10 @@ export const releaseStyles: Rule.RuleModule = {
           // One shape for every composition: the array the call site already
           // wrote, joined. `filter` only earns its place when a member can
           // turn out falsy.
-          const replacement = elements.some(needsFilter)
-            ? `[${texts.join(', ')}].filter(Boolean).join(' ')`
-            : `[${texts.join(', ')}].join(' ')`;
+          const replacement =
+            unnamed || elements.some(needsFilter)
+              ? `[${texts.join(', ')}].filter(Boolean).join(' ')`
+              : `[${texts.join(', ')}].join(' ')`;
           if (declarations.length > 0) {
             replaceWithFunctionStyle(replacement, declarations);
             return;
