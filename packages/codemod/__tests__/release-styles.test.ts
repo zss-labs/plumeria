@@ -90,6 +90,7 @@ tester.run('release-styles', releaseStyles, {
     { code: `import value from './local';` },
     { code: `import value from './local';`, options: [{ modules: {} }] },
     { filename, code: `<div className={styles.card} />;`, options },
+    { filename, code: `<div classStyle={[first, second]} />;`, options },
     {
       filename: OTHER,
       code: `<div classStyle={styles.card} />;`,
