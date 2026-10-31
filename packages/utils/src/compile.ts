@@ -1090,6 +1090,7 @@ export function compileCSS(options: CompilerOptions) {
                 (prop) =>
                   prop.type === 'Identifier' ||
                   (prop.type === 'KeyValueProperty' &&
+                    prop.key.type !== 'Computed' &&
                     isStaticArgValue(prop.value)),
               ),
             },
