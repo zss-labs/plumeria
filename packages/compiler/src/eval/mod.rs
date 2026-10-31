@@ -2,6 +2,8 @@ pub mod consts;
 pub mod env;
 pub mod functions;
 
+use std::borrow::Cow;
+
 use oxc_ast::ast::*;
 use oxc_syntax::operator::{BinaryOperator, LogicalOperator, UnaryOperator};
 
@@ -14,7 +16,9 @@ use crate::engine::specificity::{
 use crate::js::number::{number_to_string, to_int32, to_uint32};
 use crate::js::{Object, Value};
 use crate::style::theme::theme_var_reference;
-use crate::syntax::expr::{BinOp, E, K, Prop, expression_label, root_identifier, unwrap};
+use crate::syntax::expr::{
+    BinOp, E, K, Member, Prop, expression_label, member_prop, root_identifier, unwrap,
+};
 
 pub type EvalResult<T> = Result<T, String>;
 
@@ -593,9 +597,9 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         }
         let theme = self.env.theme_objects.lookup(&hash)?;
         let theme = theme.as_obj()?;
-        let key = simple_member_key(node)?;
-        let value = theme.get(key)?;
-        Some(Value::Str(theme_var_reference(&hash, key, value)))
+        let key = member_key(node.member()?, self.env.statics)?;
+        let value = theme.get(key.as_ref())?;
+        Some(Value::Str(theme_var_reference(&hash, &key, value)))
     }
 
     pub fn static_object_member(&self, node: E) -> Option<Value> {
@@ -606,16 +610,22 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         }
         let object = self.env.static_objects.lookup(&hash)?;
         let object = object.as_obj()?;
-        let key = simple_member_key(node)?;
-        object.get(key).cloned()
+        let key = member_key(node.member()?, self.env.statics)?;
+        object.get(key.as_ref()).cloned()
     }
 }
 
-fn simple_member_key<'b>(node: E<'b, '_>) -> Option<&'b str> {
-    match node.prop()? {
-        Prop::Name(name) => Some(name),
-        Prop::Computed(expr) => match expr.kind() {
-            K::Str(value) => Some(value.value.as_str()),
+fn member_key<'b>(member: Member<'b, '_>, statics: &dyn Lookup<Value>) -> Option<Cow<'b, str>> {
+    match member_prop(member) {
+        Prop::Name(name) => Some(Cow::Borrowed(name)),
+        Prop::Computed(expr) => match unwrap(expr).kind() {
+            K::Str(value) => Some(Cow::Borrowed(value.value.as_str())),
+            K::Num(value) => Some(Cow::Owned(number_to_string(value.value))),
+            K::Ident(ident) => match statics.lookup(ident.name.as_str()) {
+                Some(Value::Str(text)) => Some(Cow::Owned(text)),
+                Some(Value::Num(number)) => Some(Cow::Owned(number_to_string(number))),
+                _ => None,
+            },
             _ => None,
         },
         Prop::Private => None,
@@ -630,35 +640,17 @@ fn js_pow(base: f64, exponent: f64) -> f64 {
 }
 
 pub fn resolve_static_member(node: E, statics: &dyn Lookup<Value>) -> Option<Value> {
-    let mut keys: Vec<String> = Vec::new();
+    let mut keys: Vec<Cow<'_, str>> = Vec::new();
     let mut current = node;
     while let K::Member(member) = current.kind() {
-        let key = match crate::syntax::expr::member_prop(member) {
-            Prop::Name(name) => Some(name.to_string()),
-            Prop::Computed(expr) => {
-                let inner = unwrap(expr);
-                match inner.kind() {
-                    K::Str(value) => Some(value.value.to_string()),
-                    K::Num(value) => Some(number_to_string(value.value)),
-                    K::Ident(ident) => match statics.lookup(ident.name.as_str()) {
-                        Some(Value::Str(text)) => Some(text),
-                        Some(Value::Num(number)) => Some(number_to_string(number)),
-                        _ => None,
-                    },
-                    _ => None,
-                }
-            }
-            Prop::Private => None,
-        };
-        let key = key?;
-        keys.push(key);
+        keys.push(member_key(member, statics)?);
         current = unwrap(current.member_object(member));
     }
     let root = current.ident_name()?;
     let mut value = statics.lookup(root)?;
     for key in keys.iter().rev() {
         let next = match &value {
-            Value::Obj(object) => object.get(key).cloned(),
+            Value::Obj(object) => object.get(key.as_ref()).cloned(),
             _ => None,
         };
         value = next?;
