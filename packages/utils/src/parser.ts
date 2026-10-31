@@ -516,6 +516,7 @@ export function objectExpressionToObject(
       }
       const resolvedTheme = resolveCreateThemeTableMemberExpressionByNode(
         val,
+        staticTable,
         createThemeHashTable,
         createThemeObjectTable,
       );
@@ -525,6 +526,7 @@ export function objectExpressionToObject(
       }
       const resolvedStatic = resolveCreateStaticTableMemberExpression(
         val,
+        staticTable,
         createStaticHashTable,
         createStaticObjectTable,
       );
@@ -989,6 +991,7 @@ function getPropertyKey(
 
       const staticResult = resolveCreateStaticTableMemberExpression(
         expr,
+        staticTable,
         createStaticHashTable,
         createStaticObjectTable,
       );
@@ -996,6 +999,7 @@ function getPropertyKey(
 
       const themeResult = resolveCreateThemeTableMemberExpressionByNode(
         expr,
+        staticTable,
         createThemeHashTable,
         createThemeObjectTable,
       );
@@ -1384,6 +1388,7 @@ function evaluateExpression(
     }
     const resolvedTheme = resolveCreateThemeTableMemberExpressionByNode(
       node,
+      staticTable,
       createThemeHashTable,
       createThemeObjectTable,
     );
@@ -1393,6 +1398,7 @@ function evaluateExpression(
 
     const resolvedStatic = resolveCreateStaticTableMemberExpression(
       node,
+      staticTable,
       createStaticHashTable,
       createStaticObjectTable,
     );
@@ -1516,6 +1522,25 @@ function resolveCreateTableMemberExpression(
   }
 }
 
+function memberKey(
+  node: MemberExpression,
+  staticTable: StaticTable,
+): string | undefined {
+  const property = node.property;
+  if (t.isIdentifier(property)) return property.value;
+  if (property.type !== 'Computed') return undefined;
+  const key = unwrapExpression(property.expression);
+  const value =
+    t.isStringLiteral(key) || t.isNumericLiteral(key)
+      ? key.value
+      : t.isIdentifier(key)
+        ? staticTable[key.value]
+        : undefined;
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value)
+    : undefined;
+}
+
 function resolveStaticTableMemberExpression(
   node: MemberExpression,
   staticTable: StaticTable,
@@ -1523,23 +1548,9 @@ function resolveStaticTableMemberExpression(
   const keys: string[] = [];
   let current: Expression = node;
   while (t.isMemberExpression(current)) {
-    const property = current.property;
-    const key = t.isIdentifier(property)
-      ? property.value
-      : property.type === 'Computed'
-        ? unwrapExpression(property.expression)
-        : undefined;
-    const value =
-      typeof key === 'string'
-        ? key
-        : t.isStringLiteral(key) || t.isNumericLiteral(key)
-          ? String(key.value)
-          : t.isIdentifier(key)
-            ? staticTable[key.value]
-            : undefined;
-    if (typeof value !== 'string' && typeof value !== 'number')
-      return undefined;
-    keys.unshift(String(value));
+    const key = memberKey(current, staticTable);
+    if (key === undefined) return undefined;
+    keys.unshift(key);
     current = unwrapExpression(current.object);
   }
   if (!t.isIdentifier(current)) return undefined;
@@ -1555,6 +1566,7 @@ function resolveStaticTableMemberExpression(
 /* istanbul ignore next */
 function resolveCreateThemeTableMemberExpressionByNode(
   node: Identifier | MemberExpression,
+  staticTable: StaticTable,
   createThemeHashTable: CreateThemeHashTable,
   createThemeObjectTable: CreateThemeObjectTable,
 ): CSSValue | undefined {
@@ -1565,15 +1577,7 @@ function resolveCreateThemeTableMemberExpressionByNode(
     if (hash) {
       const themeObj = createThemeObjectTable[hash];
       if (themeObj) {
-        let key: string | undefined;
-        if (t.isIdentifier(node.property)) {
-          key = node.property.value;
-        } else if (
-          node.property.type === 'Computed' &&
-          t.isStringLiteral(node.property.expression)
-        ) {
-          key = node.property.expression.value;
-        }
+        const key = memberKey(node, staticTable);
 
         if (key && themeObj[key] !== undefined) {
           const value = themeObj[key];
@@ -1593,6 +1597,7 @@ function resolveCreateThemeTableMemberExpressionByNode(
 
 function resolveCreateStaticTableMemberExpression(
   node: Identifier | MemberExpression,
+  staticTable: StaticTable,
   createStaticHashTable: CreateStaticHashTable,
   createStaticObjectTable: CreateStaticObjectTable,
 ): CSSValue | undefined {
@@ -1603,15 +1608,7 @@ function resolveCreateStaticTableMemberExpression(
     if (hash) {
       const staticObj = createStaticObjectTable[hash];
       if (staticObj) {
-        let key: string | undefined;
-        if (t.isIdentifier(node.property)) {
-          key = node.property.value;
-        } else if (
-          node.property.type === 'Computed' &&
-          t.isStringLiteral(node.property.expression)
-        ) {
-          key = node.property.expression.value;
-        }
+        const key = memberKey(node, staticTable);
 
         if (key && staticObj[key] !== undefined) {
           return staticObj[key];
