@@ -880,27 +880,15 @@ describe('parser', () => {
       ).toThrow('Cannot resolve static value: spread');
     });
 
-    it('should ignore properties with unsupported keys', () => {
-      // Using a computed property with a function call which getPropertyKey doesn't support and returns ''
+    it('should reject a computed key it cannot inline', () => {
       const source = `const obj = { [() => {}]: 'value', valid: 'ok' }`;
       const ast = parseSync(source, { syntax: 'typescript' });
       const varDecl = ast.body[0] as any;
       const objectExpr = varDecl.declarations[0].init as ObjectExpression;
 
-      const result = objectExpressionToObject(
-        objectExpr,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-      );
-
-      expect(result.valid).toBe('ok');
-      expect(Object.keys(result)).toHaveLength(1);
+      expect(() =>
+        objectExpressionToObject(objectExpr, {}, {}, {}, {}, {}, {}, {}, {}),
+      ).toThrow('Cannot inline the computed key');
     });
 
     it('should NOT resolve identifier keys against staticTable', () => {
@@ -1032,26 +1020,19 @@ describe('parser', () => {
       expect(result).toEqual({ a: 1, b: 2 });
     });
 
-    it('should ignore non-KeyValueProperty properties (e.g. methods and getters)', () => {
-      // Covers line 173: if (!t.isObjectProperty(prop)) return;
-      const source = `const obj = { get p() { return 1; }, m() {}, valid: 123 }`;
+    it.each([
+      ['a getter', 'get p() { return 1; }', 'p'],
+      ['a setter', 'set p(value) {}', 'p'],
+      ['a method', 'm() {}', 'm'],
+    ])('should reject %s', (_name, member, key) => {
+      const source = `const obj = { ${member}, valid: 123 }`;
       const ast = parseSync(source, { syntax: 'typescript' });
       const varDecl = ast.body[0] as any;
       const objectExpr = varDecl.declarations[0].init as ObjectExpression;
 
-      const result = objectExpressionToObject(
-        objectExpr,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-      );
-
-      expect(result).toEqual({ valid: 123 });
+      expect(() =>
+        objectExpressionToObject(objectExpr, {}, {}, {}, {}, {}, {}, {}, {}),
+      ).toThrow(`Cannot read the method or accessor "${key}"`);
     });
 
     it('should resolve shorthand properties via resolveVariable and staticTable', () => {
