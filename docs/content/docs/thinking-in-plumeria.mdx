@@ -1,0 +1,507 @@
+---
+title: 'Thinking in Plumeria'
+description: 'How to place, compose and share styles, from one component to a project split across packages.'
+---
+
+Two facts decide most of what follows. A class name comes from the property and the value alone, so where a style is written never reaches the output. The array on `classStyle` is the merge, so the order you read is the order that wins. Structure has one job left, which is to be easy to read, and it can change whenever that stops being true.
+
+Here is one component, `Notice`, from its first style to a project that shares its values across packages.
+
+## Start in the component's file
+
+A style one component uses stays in that component's file and is not exported.
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  notice: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+  },
+  title: {
+    fontWeight: 600,
+  },
+});
+
+export const Notice = ({ title }: { title: string }) => (
+  <div classStyle={styles.notice}>
+    <strong classStyle={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+`css.create` stays at the top level of the module; inside a function, the build stops. A key nothing reads stops it too, so deleting an element cannot leave its styles behind.
+
+## Compose in the order you mean
+
+Give each concern its own key, and list the keys from the general to the specific. A `pinned` flag is one key and one condition:
+
+```tsx
+const styles = css.create({
+  // ...
+  pinned: {
+    position: 'sticky',
+    top: 0,
+  },
+});
+
+<div classStyle={[styles.notice, pinned && styles.pinned]}>
+```
+
+The right side wins, so the array answers which style overrides which. `classStyle` takes arrays, ternaries and conditions, so there is no helper to import and no class string to assemble.
+
+## Make a choice a lookup
+
+When a prop picks one of several looks, give the choices a `css.create` of their own and index it. There is no variant configuration to learn.
+
+```tsx
+const toneStyles = css.create({
+  info: {
+    color: '#0b5fff',
+    backgroundColor: '#eef4ff',
+  },
+  danger: {
+    color: '#b42318',
+    backgroundColor: '#fef3f2',
+  },
+});
+
+type NoticeProps = {
+  title: string;
+  tone?: keyof typeof toneStyles; // [!code hl]
+  pinned?: boolean;
+};
+
+export const Notice = ({ title, tone = 'info', pinned }: NoticeProps) => (
+  <div classStyle={[styles.notice, toneStyles[tone], pinned && styles.pinned]}>
+    <strong classStyle={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+The prop's type comes from the styles, so the two cannot drift apart. `tone="warning"` fails until a `warning` key exists:
+
+```text title="next build"
+Type '"warning"' is not assignable to type '"danger" | "info" | undefined'.
+```
+
+The index compiles to a literal lookup of class strings:
+
+```tsx title="Output"
+<div
+  className={
+    "xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7" + " " +
+    ((pinned) ? "xxkkh052 x3v14h35" : "") + " " +
+    ({"info":"xuin35ub xkex1i2c","danger":"xt5mu2nw x7tnr6ub"}[tone] || "")
+  }
+>
+```
+
+A default is a default parameter. A combination is one more condition in the array:
+
+```tsx
+tone === 'danger' && pinned && styles.pinnedDanger
+```
+
+## Let CSS hold the state
+
+A state the DOM already exposes needs no style prop and no branch. Put it on the element and let the style match it:
+
+```tsx
+const styles = css.create({
+  notice: {
+    // ...
+    '[data-state="closing"]': {
+      opacity: 0,
+    },
+  },
+});
+
+<div data-state={state} classStyle={styles.notice}>
+```
+
+`:hover`, `:focus-visible`, `:disabled` and `[aria-*]` work the same way. [Selector rules](/docs/selector-rules) lists what can nest in what.
+
+A descendant reacts to its ancestor through a [marker](/docs/api-reference/javascript/marker), not a path through the DOM. Combinators are rejected, so markup can change without taking a rule with it:
+
+```tsx
+const styles = css.create({
+  notice: {
+    ...css.marker('notice', ':hover'), // [!code hl]
+    // ...
+  },
+  dismiss: {
+    alignSelf: 'flex-end',
+    opacity: 0.6,
+    [css.extended('notice', ':hover')]: { // [!code hl]
+      opacity: 1,
+    },
+  },
+});
+```
+
+Two states in one style that can match at once and set the same property need a decision of their own, and the build asks for it. See [Two states that match at once](/docs/specificity#two-states-that-match-at-once).
+
+## Pass a runtime value through a function
+
+A value known only at runtime goes through a function key. The classes stay shared, and the value lands in a custom property on the element:
+
+```tsx
+const styles = css.create({
+  progress: (width: string) => ({
+    width,
+    height: 2,
+    backgroundColor: 'currentColor',
+  }),
+});
+
+<div classStyle={styles.progress(`${remaining}%`)} />
+```
+
+```html title="Output"
+<div class="xjyavzpg xt4pryfr xbjfqarc" style="--x7vdqwo0-width:40%"></div>
+```
+
+```css title="Generated CSS"
+.xjyavzpg { width: var(--x7vdqwo0-width); }
+.xt4pryfr { height: 2px; }
+.xbjfqarc:not(#\#) { background-color: currentColor; }
+```
+
+A runtime value in any other declaration stops the build and points here. A computed key has to be known at build time too, so a selector or a breakpoint is a literal or comes from [`createStatic`](/docs/api-reference/javascript/createStatic).
+
+## Make the boundary a prop
+
+A component takes a style the way it takes any other value: through a prop, applied last so the caller wins. It also decides what a caller may change. `Notice` positions itself when pinned, so a caller cannot:
+
+```tsx
+type NoticeProps = {
+  // ...
+  classStyle?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+};
+```
+
+[`Style`](/docs/api-reference/types/Style) accepts any style, [`StyleProps`](/docs/api-reference/types/StyleProps) only the properties it names, and [`WithoutProperties`](/docs/api-reference/types/WithoutProperties) everything but the ones it names.
+
+Apply a style prop on an element the component renders. Passing it on to another component stops the build, because the compiler would have to trace it through a chain of wrappers. A wrapper that only forwards styles is one to remove, so the caller styles the component that owns the element:
+
+```tsx
+<Header headerStyle={[styles.base, styles.primary]} />
+```
+
+So far:
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  notice: {
+    ...css.marker('notice', ':hover'),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+    '[data-state="closing"]': {
+      opacity: 0,
+    },
+  },
+  pinned: {
+    position: 'sticky',
+    top: 0,
+  },
+  title: {
+    fontWeight: 600,
+  },
+  dismiss: {
+    alignSelf: 'flex-end',
+    opacity: 0.6,
+    [css.extended('notice', ':hover')]: {
+      opacity: 1,
+    },
+  },
+  progress: (width: string) => ({
+    width,
+    height: 2,
+    backgroundColor: 'currentColor',
+  }),
+});
+
+const toneStyles = css.create({
+  info: {
+    color: '#0b5fff',
+    backgroundColor: '#eef4ff',
+  },
+  danger: {
+    color: '#b42318',
+    backgroundColor: '#fef3f2',
+  },
+});
+
+type NoticeProps = {
+  title: string;
+  tone?: keyof typeof toneStyles;
+  pinned?: boolean;
+  state?: 'open' | 'closing';
+  remaining: number;
+  classStyle?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+};
+
+export const Notice = ({
+  title,
+  tone = 'info',
+  pinned,
+  state = 'open',
+  remaining,
+  classStyle,
+}: NoticeProps) => (
+  <div
+    data-state={state}
+    classStyle={[
+      styles.notice,
+      toneStyles[tone],
+      pinned && styles.pinned,
+      classStyle,
+    ]}
+  >
+    <strong classStyle={styles.title}>{title}</strong>
+    <button classStyle={styles.dismiss}>Dismiss</button>
+    <div classStyle={styles.progress(`${remaining}%`)} />
+  </div>
+);
+```
+
+## Keep values apart from styles
+
+`Notice` spells out its colors, so a dark theme would mean a branch in every component like it. Move the values into a file of their own. [`createTheme`](/docs/api-reference/javascript/createTheme) holds what changes with a selector or a query:
+
+```ts title="styles/theme.ts"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('.dark', {
+  info: {
+    default: '#0b5fff',
+    theme: '#8ab4ff',
+  },
+  infoSurface: {
+    default: '#eef4ff',
+    theme: '#10203f',
+  },
+});
+```
+
+```tsx title="components/Notice.tsx"
+import { theme } from '../styles/theme';
+
+const toneStyles = css.create({
+  info: {
+    color: theme.info, // [!code hl]
+    backgroundColor: theme.infoSurface, // [!code hl]
+  },
+  // ...
+});
+```
+
+The style now reads a variable, so `Notice` has no dark-mode branch and needs no provider:
+
+```css title="Generated CSS"
+:where(:root) {
+  --x4iemmlw-info: #0b5fff;
+  --x2cyw8xi-info-surface: #eef4ff;
+}
+.dark {
+  --x4iemmlw-info: #8ab4ff;
+  --x2cyw8xi-info-surface: #10203f;
+}
+.xq5fprsm { color: var(--x4iemmlw-info); }
+.xshf6edi:not(#\#) { background-color: var(--x2cyw8xi-info-surface); }
+```
+
+[`createStatic`](/docs/api-reference/javascript/createStatic) holds what never changes, such as a breakpoint, and is written in place wherever it is read. [`@plumeria/wind`](/docs/api-reference/wind) carries Tailwind's design values the same way.
+
+```ts title="styles/tokens.ts"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  sm: '@media (max-width: 640px)',
+});
+```
+
+Rename a value and every read of it stops the build until it follows:
+
+```text title="next build"
+Error: [plumeria] Unknown style member: theme.info does not exist.
+```
+
+## Move a style when a second component needs it
+
+`Notice` stacks its children, and now `Card` has to stack its own the same way. A style used by more than one file moves to a module, and every file that needs it imports it:
+
+```ts title="styles/layout.ts"
+import * as css from '@plumeria/core';
+
+export const layout = css.create({
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+});
+```
+
+```tsx title="components/Card.tsx"
+import type { ReactNode } from 'react';
+import { layout } from '../styles/layout';
+
+export const Card = ({ children }: { children: ReactNode }) => (
+  <article classStyle={layout.stack}>{children}</article>
+);
+```
+
+`styles/` only exports. It imports no components and renders nothing, so dependencies run one way: `styles/` ← `components/` ← `app/`.
+
+```
+app/
+└─ page.tsx
+components/
+├─ Card.tsx
+└─ Notice.tsx
+styles/
+├─ layout.ts
+├─ theme.ts
+└─ tokens.ts
+```
+
+Styles that crowd a component's markup can move to a `styles.ts` beside it. Only that component imports the file, until a second one needs a style from it.
+
+## Refactoring is free
+
+That move changed nothing the browser receives. A class name comes from the property and the value alone, so `Notice` ends up with the classes it started with:
+
+```tsx title="components/Notice.tsx"
+const styles = css.create({
+  notice: {
+    display: 'flex', // [!code --]
+    flexDirection: 'column', // [!code --]
+    gap: 12, // [!code --]
+    padding: 16,
+    borderRadius: 8,
+  },
+});
+
+<div classStyle={styles.notice}> // [!code --]
+<div classStyle={[layout.stack, styles.notice]}> // [!code ++]
+```
+
+```tsx title="Output, before and after"
+<div className={"xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7"}>
+```
+
+The same holds for splitting a module or merging two of them, so the structure can follow the code as it grows.
+
+## Imports
+
+Every read of a definition is written in place, and the rules for imports follow from that.
+
+A file that only writes `classStyle` needs no import of `@plumeria/core`. A file that hands a style to a component through any other prop does, because that import is how the compiler finds the file:
+
+```text title="next build"
+  × @plumeria(custom-props-require-import): bodyStyle passes a style from
+  "../styles/layout", so this file must import "@plumeria/core".
+   ╭─[components/Panel.tsx:4:36]
+ 3 │ 
+ 4 │ export const Panel = () => <Notice bodyStyle={layout.stack} />;
+   ·                                    ────────────────────────
+   ╰────
+```
+
+Keeping the import in every file that uses Plumeria is always safe, and it is the fastest path: the compiler accepts such a file without looking any further.
+
+A namespace import reads a definition by name, as a named import does:
+
+```ts title="styles/layout.ts"
+import * as css from '@plumeria/core';
+import * as tokens from './tokens';
+
+export const layout = css.create({
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    [tokens.breakpoints.sm]: {
+      gap: 8,
+    },
+  },
+});
+```
+
+The compiler has to see which definition is read, so a string key, destructuring, a rest element or passing `tokens` as a whole stops the build:
+
+```text title="next build"
+Error: [plumeria] tokens.breakpoints reads a Plumeria definition through a
+namespace import, which cannot be compiled. Import it by name:
+import { breakpoints } from '...'.
+```
+
+An import whose names are all compiled away is removed from the output, so the bundler never loads the module through it. An import still read at runtime, rendered as a component or re-exported stays. A module that also has to run on import, such as one importing a global stylesheet, gets an import of its own:
+
+```ts
+import './tokens';
+```
+
+## Across packages
+
+When a second app needs the same values, they move to a package. The package points a `plumeria` export condition at its TypeScript source:
+
+```json title="packages/tokens/package.json"
+{
+  "name": "@acme/tokens",
+  "exports": {
+    ".": {
+      "plumeria": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  }
+}
+```
+
+```ts title="packages/tokens/src/index.ts"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  sm: '@media (max-width: 640px)',
+});
+```
+
+An app that lists the package in its dependencies reads it like a local module, so only the import line changes:
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+import { breakpoints } from '@acme/tokens'; // [!code hl]
+
+const styles = css.create({
+  notice: {
+    padding: 16,
+    [breakpoints.sm]: {
+      padding: 12,
+    },
+  },
+});
+```
+
+The compiler follows the condition through subpath and pattern exports such as `@acme/tokens/colors`, and into packages linked from a pnpm store. `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies` all count. A package without the condition is not read, and a definition taken from it stops the build.
+
+The import compiles away, so a package that exports only definitions can ship its source alone, as [`@plumeria/wind`](/docs/api-reference/wind) does. One that also exports runtime code keeps a `default` condition for it.
+
+## Next steps
+
+<Cards>
+  <Card title="Composition laws" href="/docs/composition-laws" />
+  <Card title="Specificity" href="/docs/specificity" />
+  <Card title="Selector rules" href="/docs/selector-rules" />
+  <Card title="API reference" href="/docs/api-reference" />
+</Cards>
