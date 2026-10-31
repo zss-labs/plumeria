@@ -18,6 +18,7 @@ export const query = '@media (width >= 640px)' as const;
 export const pseudo: string = ':hover';
 export const bp = css.createStatic({ md: '@media (width >= 768px)' });
 export const plain = { sm: '@media (width >= 480px)' };
+export const scale = css.createStatic({ '500': ':hover' });
 export default ':focus';`,
 );
 write('barrel.ts', `export { query as renamed } from './tokens';`);
@@ -250,7 +251,39 @@ describe('staticValueResolver', () => {
     ).toEqual([true, null, null]);
   });
 
-  it('leaves a member unresolved when its key is not a string', () => {
+  it('reads a number as the quoted key it names', () => {
+    expect(
+      resolveKeys(`
+        import * as css from '@plumeria/core';
+        import { scale } from './tokens';
+        import * as tokens from './tokens';
+        const local = css.createStatic({ '500': ':focus' });
+        const plain = { '500': ':active' };
+        const n = 500;
+        ({
+          [local[500]]: {},
+          [local[0x1f4]]: {},
+          [local[500 as number]]: {},
+          [local[n]]: {},
+          [plain[500]]: {},
+          [scale[500]]: {},
+          [tokens.scale[500]]: {},
+          [local[999]]: {},
+        });
+      `),
+    ).toEqual([
+      ':focus',
+      ':focus',
+      ':focus',
+      ':focus',
+      ':active',
+      ':hover',
+      ':hover',
+      null,
+    ]);
+  });
+
+  it('leaves a member unresolved when its key is unquoted or unknown', () => {
     expect(
       resolveKeys(`
         const obj = { a: ':hover', 1: ':focus' };
