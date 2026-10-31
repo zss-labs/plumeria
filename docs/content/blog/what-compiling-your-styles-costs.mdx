@@ -1,0 +1,55 @@
+---
+title: 'What compiling your styles costs'
+description: 'Twelve setups build the same Next.js app. Plumeria adds 375 ms to a CSS Modules build, and it is not first everywhere.'
+date: '2026-10-31'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+<GitHubUser username="refirst11" subtext="Core team members" />
+</div>
+
+Plumeria settles the merge at build time, so the fair question is what that time comes to. [css-compiler-bench](https://refirst11.github.io/css-compiler-bench/) measures it: twelve setups build one identical Next.js app, with CSS Modules as the control.
+
+Plumeria's author maintains the benchmark, so discount it accordingly. The fixture and the harness are public, every setup gets the same workload, and the numbers here come from [one CI run](https://github.com/refirst11/css-compiler-bench/actions/runs/41161053980) on a shared four-core Linux runner, with twelve measured builds per setup. Read them as a trend, not as timings for your laptop.
+
+## Build cost
+
+The CSS Modules build took 6.34 seconds. Plumeria added 375 ms to it, with a 95% interval of 303 to 461 ms.
+
+| How the setup works | Setups | Added to the build |
+| :-- | :-- | :-- |
+| Renders styles at runtime (styled-components) | 1 | 236 ms |
+| Scans for class names you wrote (Tailwind, with and without `cn`) | 2 | 302 to 330 ms |
+| Reads the AST and rewrites the call site | 6 | 375 to 3,125 ms |
+| Scans declarations out of source (Panda CSS) | 1 | 2,894 ms |
+| Executes the module (vanilla-extract) | 1 | 3,774 ms |
+
+Plumeria is the low end of the third row, and the next setup in that row adds 1,460 ms. Against Tailwind this run cannot separate them: Tailwind's interval is 257 to 401 ms, and it overlaps Plumeria's.
+
+No setup lints during this build, so Plumeria runs with `lint: false`. A real project also pays for the lint. On the 50 files of the end-to-end app, on a laptop, that was 119 ms.
+
+## Where it is not first
+
+**More definitions.** At 1,000 distinct definitions Plumeria takes 11.31 seconds, against 9.52 for CSS Modules, 9.58 for Tailwind and 10.81 for Devup UI. It adds 4.56 ms per definition, where CSS Modules adds 3.32, Devup UI 2.98 and Tailwind 1.98. Each count is built once, so this is a direction rather than a measurement to quote closely.
+
+**Bytes.** Marked `"use client"`, the fixture's chunk is 862 bytes. Three compile-time setups come in under that, at 659, 800 and 802 bytes, and CSS Modules ships none. Nobody should choose a styling library over a difference that small, in either direction.
+
+## A value it cannot read
+
+The benchmark writes one declaration three ways: at the call site, behind a `const`, and behind an expression that has to be evaluated. The third is where the setups part.
+
+| What happens to the expression | Setups |
+| :-- | :-- |
+| Evaluated at build time | 4 |
+| Left to the runtime | 4 |
+| Refuses to build | 3 |
+
+Plumeria is in the third row. Its compiler never runs your code, so it stops and says where the value should go instead. Whether that is better than evaluating the expression is a matter of taste. It does mean nothing is deferred to the browser without your knowing.
+
+## What it does not measure
+
+The benchmark has no probe yet for what Plumeria is built around: whether a style still wins after the code around it moves. Plumeria [tests that in a real browser](https://github.com/zss-labs/plumeria/blob/main/test-e2e/test/relay-order.test.ts), but nothing compares it across setups.
+
+So these numbers say what the compile step costs. They do not say why you would want one. [Why Plumeria](/docs/why-plumeria) is the case for that, and the [full report](https://refirst11.github.io/css-compiler-bench/) has every setup by name, including the ones this post leaves in a range.
