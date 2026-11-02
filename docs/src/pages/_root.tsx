@@ -6,7 +6,6 @@ import { Provider } from 'component/Provider';
 import { SiteHeader } from 'component/SiteHeader';
 import type { ReactNode } from 'react';
 
-const heroHeightScript = `(()=>{var w=0,e=document.documentElement;function s(){if(innerWidth!==w){w=innerWidth;e.style.setProperty('--hero-height',innerHeight+'px')}}s();addEventListener('resize',s)})()`;
 const translatedDomScript = `(()=>{var p=Node.prototype,r=p.removeChild,i=p.insertBefore;p.removeChild=function(c){if(c.parentNode!==this)return c;return r.apply(this,arguments)};p.insertBefore=function(n,f){if(f&&f.parentNode!==this)return n;return i.apply(this,arguments)}})()`;
 
 export default function Root({ children }: { children: ReactNode }) {
@@ -16,7 +15,6 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{ __html: translatedDomScript }} />
-        <script dangerouslySetInnerHTML={{ __html: heroHeightScript }} />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
