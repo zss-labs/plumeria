@@ -282,4 +282,21 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       await expect(run(body)).resolves.toBeDefined();
     });
   });
+
+  // A call handed a definition returns something else, so its result is not
+  // read as that definition.
+  it('rejects a value read through a call handed a definition', async () => {
+    fs.writeFileSync(
+      path.join(DIR, 'picked.ts'),
+      `import * as css from '@plumeria/core';
+export const T = css.createStatic({ w: '10px' });
+const pick = (x: unknown) => ({ w: '99px' });
+export const U = pick(T);`,
+    );
+    await expect(
+      run(
+        `import { U } from './picked';\nconst s = css.create({ a: { width: U.w } });`,
+      ),
+    ).rejects.toThrow(UNRESOLVABLE);
+  });
 });
