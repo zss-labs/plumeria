@@ -129,3 +129,32 @@ pub fn jsx_openings<'b, 'a>(program: &'b Program<'a>) -> Vec<&'b JSXOpeningEleme
         .map(|ptr| unsafe { &*ptr })
         .collect()
 }
+
+pub fn renders_style(function: &Expression) -> bool {
+    struct Renders {
+        found: bool,
+    }
+    impl<'a> Visit<'a> for Renders {
+        fn visit_jsx_element(&mut self, _: &JSXElement<'a>) {
+            self.found = true;
+        }
+        fn visit_jsx_fragment(&mut self, _: &JSXFragment<'a>) {
+            self.found = true;
+        }
+        fn visit_call_expression(&mut self, it: &CallExpression<'a>) {
+            let applies = match &it.callee {
+                Expression::Identifier(ident) => ident.name == "use",
+                Expression::StaticMemberExpression(member) => member.property.name == "use",
+                _ => false,
+            };
+            if applies {
+                self.found = true;
+            } else {
+                walk::walk_call_expression(self, it);
+            }
+        }
+    }
+    let mut renders = Renders { found: false };
+    renders.visit_expression(function);
+    renders.found
+}
