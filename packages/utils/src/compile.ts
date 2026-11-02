@@ -19,12 +19,13 @@ import {
   isAtRule,
 } from 'zss-engine';
 import { readSource, sourceStamp } from './sourceCache';
-import { asWritten, expandNamespaces } from './namespaceImport';
+import { resolveNamespaceMembers } from './namespaceImport';
 import {
   compilationRevision,
   compilationGeneration,
   getFileDependencies,
 } from './parser';
+import { componentFunctions } from './component';
 import * as path from 'path';
 import * as rs from '@rust-gear/glob';
 
@@ -87,33 +88,6 @@ interface CompilerOptions extends PropertyPolicyOptions {
 // ===========================================
 // Definition of recontext and extraction logic
 // ============================================
-
-const unwrapExport = (node: any): any => {
-  if (node?.type === 'ExportDeclaration') return node.declaration;
-  if (node?.type === 'ExportDefaultDeclaration') return node.decl;
-  if (node?.type === 'ExportDefaultExpression') return node.expression;
-  return node;
-};
-
-const isFunctionNode = (
-  node: any,
-): node is HasSpan & { params: unknown[]; identifier?: Identifier } =>
-  node?.type === 'FunctionDeclaration' ||
-  node?.type === 'FunctionExpression' ||
-  node?.type === 'ArrowFunctionExpression';
-
-const componentFunctionOf = (
-  node: any,
-): (HasSpan & { params: unknown[]; identifier?: Identifier }) | undefined => {
-  if (isFunctionNode(node)) return node;
-  if (node?.type === 'CallExpression') {
-    for (const arg of node.arguments ?? []) {
-      const fn = componentFunctionOf(arg.expression);
-      if (fn) return fn;
-    }
-  }
-  return undefined;
-};
 
 const unwrapPatternDefault = (pattern: any): any =>
   pattern?.type === 'AssignmentPattern' ? pattern.left : pattern;
@@ -489,22 +463,9 @@ export function compileCSS(options: CompilerOptions) {
   }
 
   const processFile = (filePath: string, writes: Writes): string[] => {
-    const resourcePath = path.resolve(cwd, filePath);
-    const written = options.sources?.[resourcePath] ?? readSource(resourcePath);
-    const namespaces = expandNamespaces(resourcePath, written);
-    try {
-      return extractFile(resourcePath, namespaces?.source ?? written, writes);
-    } catch (error) {
-      throw asWritten(namespaces, error);
-    }
-  };
-
-  const extractFile = (
-    resourcePath: string,
-    source: string,
-    writes: Writes,
-  ): string[] => {
     const scannedTables = readTables(tables, writes);
+    const resourcePath = path.resolve(cwd, filePath);
+    const source = options.sources?.[resourcePath] ?? readSource(resourcePath);
     const extractedSheets: string[] = [];
 
     const ast = parseSync(source, {
@@ -512,6 +473,7 @@ export function compileCSS(options: CompilerOptions) {
       tsx: true,
       target: 'es2022',
     });
+    resolveNamespaceMembers(ast, resourcePath);
 
     assertPropertyPolicy(ast, propertyPolicy, resourcePath);
 
@@ -769,21 +731,8 @@ export function compileCSS(options: CompilerOptions) {
         }
       }
     };
-    for (const node of ast.body) {
-      const statement = unwrapExport(node);
-      if (isFunctionNode(statement)) {
-        addFirstParamName(statement);
-      } else if (statement?.type === 'CallExpression') {
-        const fn = componentFunctionOf(statement);
-        if (fn) addFirstParamName(fn);
-      } else if (t.isVariableDeclaration(statement)) {
-        for (const decl of statement.declarations) {
-          if (!t.isIdentifier(decl.id) || !decl.init) continue;
-          const fn = componentFunctionOf(decl.init);
-          if (fn) addFirstParamName(fn);
-        }
-      }
-    }
+    const found = componentFunctions(ast);
+    for (const { fn } of found) addFirstParamName(fn);
 
     const components: Array<{ name: string; node: HasSpan }> = [];
     const propAliases = new Map<string, Map<string, string>>();
@@ -817,21 +766,7 @@ export function compileCSS(options: CompilerOptions) {
       }
       if (declared.size > 0) declaredProps.set(name, declared);
     };
-    for (const node of ast.body) {
-      const statement = unwrapExport(node);
-      if (isFunctionNode(statement)) {
-        addComponent(statement.identifier?.value ?? 'default', statement);
-      } else if (statement?.type === 'CallExpression') {
-        const fn = componentFunctionOf(statement);
-        if (fn) addComponent('default', fn);
-      } else if (t.isVariableDeclaration(statement)) {
-        for (const decl of statement.declarations) {
-          if (!t.isIdentifier(decl.id)) continue;
-          const fn = componentFunctionOf(decl.init);
-          if (fn) addComponent(decl.id.value, fn);
-        }
-      }
-    }
+    for (const { name, fn } of found) addComponent(name, fn);
     const ownerComponentOf = (at: HasSpan) =>
       components.find(
         (c) =>
