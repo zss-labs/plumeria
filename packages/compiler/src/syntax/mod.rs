@@ -1,3 +1,4 @@
+pub mod component;
 pub mod expr;
 pub mod module;
 pub mod parse;
