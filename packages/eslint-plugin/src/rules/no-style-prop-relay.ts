@@ -11,24 +11,75 @@ import { scanTables } from '../util/scan';
 
 type Component = { name: string; fn: Node & { params: Pattern[] } };
 type Passed = { attribute: Node; roots: Node[] };
+type Wrapped = { fn: Component['fn'] } | { name: string } | 'ambiguous';
 
 const isFunction = (node: Node | null | undefined) =>
   node?.type === 'FunctionDeclaration' ||
   node?.type === 'FunctionExpression' ||
   node?.type === 'ArrowFunctionExpression';
 
+const isUse = (node: Node): boolean => {
+  if (node.type !== 'CallExpression') return false;
+  const callee = node.callee;
+  return (
+    (callee.type === 'MemberExpression' &&
+      !callee.computed &&
+      callee.property.type === 'Identifier' &&
+      callee.property.name === 'use') ||
+    (callee.type === 'Identifier' && callee.name === 'use')
+  );
+};
+
+const rendersStyle = (node: unknown): boolean => {
+  if (!node || typeof node !== 'object') return false;
+  if (Array.isArray(node)) return node.some(rendersStyle);
+  const current = node as Node & { type: string };
+  if (typeof current.type !== 'string') return false;
+  if (current.type === 'JSXElement' || current.type === 'JSXFragment')
+    return true;
+  if (isUse(current)) return true;
+  return Object.keys(current).some(
+    (key) => key !== 'parent' && rendersStyle((current as any)[key]),
+  );
+};
+
+const wrappedComponent = (call: Node): Wrapped | undefined => {
+  if (call.type !== 'CallExpression') return undefined;
+  const functions: Component['fn'][] = [];
+  const names: string[] = [];
+  for (const argument of call.arguments) {
+    if (
+      (argument.type === 'ArrowFunctionExpression' ||
+        argument.type === 'FunctionExpression') &&
+      argument.params.some((param) => param.type !== 'RestElement') &&
+      rendersStyle(argument)
+    ) {
+      functions.push(argument as Component['fn']);
+    } else if (argument.type === 'CallExpression') {
+      const inner = wrappedComponent(argument);
+      if (inner === 'ambiguous') return inner;
+      if (inner && 'fn' in inner) functions.push(inner.fn);
+      else if (inner) names.push(inner.name);
+    } else if (
+      argument.type === 'Identifier' &&
+      /^\p{Lu}/u.test(argument.name)
+    ) {
+      names.push(argument.name);
+    }
+  }
+  if (functions.length === 1) return { fn: functions[0] };
+  if (functions.length === 0 && names.length === 1) return { name: names[0] };
+  if (functions.length === 0 && names.length === 0) return undefined;
+  return 'ambiguous';
+};
+
 const componentFunctionOf = (
   node: Node | null | undefined,
 ): Component['fn'] | undefined => {
   if (!node) return undefined;
   if (isFunction(node)) return node as Component['fn'];
-  if (node.type === 'CallExpression') {
-    for (const argument of node.arguments) {
-      const fn = componentFunctionOf(argument as Node);
-      if (fn) return fn;
-    }
-  }
-  return undefined;
+  const found = wrappedComponent(node);
+  return found && found !== 'ambiguous' && 'fn' in found ? found.fn : undefined;
 };
 
 const realPathOf = (filename: string) => {
@@ -95,18 +146,6 @@ export const noStylePropRelay: Rule.RuleModule = {
         }
       }
       return found;
-    }
-
-    function isUse(node: Node): boolean {
-      if (node.type !== 'CallExpression') return false;
-      const callee = node.callee;
-      return (
-        (callee.type === 'MemberExpression' &&
-          !callee.computed &&
-          callee.property.type === 'Identifier' &&
-          callee.property.name === 'use') ||
-        (callee.type === 'Identifier' && callee.name === 'use')
-      );
     }
 
     function roots(node: Node | null | undefined, into: Node[]): Node[] {
