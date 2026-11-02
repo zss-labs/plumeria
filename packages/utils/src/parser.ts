@@ -1,6 +1,6 @@
 import { readSource } from './sourceCache';
-import { asWritten, expandNamespaces } from './namespaceImport';
-import type { Namespaces } from './namespaceImport';
+import { resolveNamespaceMembers } from './namespaceImport';
+import { componentFunctions, wrappedBindings } from './component';
 import type {
   CSSObject,
   CSSValue,
@@ -203,7 +203,7 @@ export function resolveComponentKey(
   if (nameNode?.type === 'Identifier') {
     const name = nameNode.value;
     if (name[0] !== name[0].toUpperCase()) return null;
-    const site = resolveBinding(filePath, name, localImports);
+    const site = aliased(resolveBinding(filePath, name, localImports));
     return `${site.filePath}-${site.localName}`;
   }
   if (nameNode?.type !== 'JSXMemberExpression') return null;
@@ -225,7 +225,31 @@ export function resolveComponentKey(
         localName: link,
       };
   }
+  site = aliased(site);
   return `${site.filePath}-${site.localName}`;
+}
+
+type Site = { filePath: string; localName: string };
+
+function aliased(site: Site, visited = new Set<string>()): Site {
+  const alias = fileCache[site.filePath]?.exports?.aliases[site.localName];
+  const key = `${site.filePath}-${site.localName}`;
+  if (!alias || visited.has(key)) return site;
+  visited.add(key);
+  if (alias.source === null)
+    return aliased(
+      { filePath: site.filePath, localName: alias.localName },
+      visited,
+    );
+  const actualPath = resolveImportPath(alias.source, site.filePath);
+  if (!actualPath) return site;
+  return aliased(
+    resolveExport(actualPath, alias.localName) ?? {
+      filePath: actualPath,
+      localName: alias.localName,
+    },
+    visited,
+  );
 }
 
 function resolveBinding(
@@ -1683,6 +1707,7 @@ interface CachedData {
     // Bindings this module imports, so a name that is used here without being
     // re-exported can still be traced back to where it is declared.
     imports: Record<string, { source: string; importedName: string }>;
+    aliases: Record<string, { source: string | null; localName: string }>;
   };
   staticTable: StaticTable;
   keyframesHashTable: KeyframesHashTable;
@@ -2176,7 +2201,6 @@ function runScan(scanCwd: string, styleProp: string): Tables {
 
   // Parsing of uncached or modified files
   const parsedFiles: { filePath: string; ast: Module; mtimeMs: number }[] = [];
-  const expanded = new Map<string, Namespaces>();
   for (const filePath of uncachedFiles) {
     try {
       const stats = fs.statSync(filePath);
@@ -2210,16 +2234,15 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         continue;
       }
 
-      const namespaces = expandNamespaces(filePath, source);
-      if (namespaces) expanded.set(filePath, namespaces);
-      const ast = parseSync(namespaces?.source ?? source, {
+      const ast = parseSync(source, {
         syntax: 'typescript',
         tsx: true,
         target: 'es2022',
       });
+      resolveNamespaceMembers(ast, filePath);
       parsedFiles.push({ filePath, ast, mtimeMs: stats.mtimeMs });
     } catch (e) {
-      recordFileError(filePath, asWritten(expanded.get(filePath), e));
+      recordFileError(filePath, e);
     }
   }
 
@@ -2253,10 +2276,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
     try {
       extractAndCacheExports(file.filePath, file.ast, file.mtimeMs);
     } catch (error) {
-      recordFileError(
-        file.filePath,
-        asWritten(expanded.get(file.filePath), error),
-      );
+      recordFileError(file.filePath, error);
     }
   }
   const byPath = new Map(parsedFiles.map((file) => [file.filePath, file]));
@@ -2768,7 +2788,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           localImports,
         });
       } catch (e) {
-        recordFileError(filePath, asWritten(expanded.get(filePath), e));
+        recordFileError(filePath, e);
       }
     }
   }
@@ -3204,7 +3224,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
 
       const receiverTable = localTables.styleReceiverTable!;
       const registerReceiver = (name: string, fn: any) => {
-        if (name[0] !== name[0].toUpperCase()) return;
+        if (name !== 'default' && name[0] !== name[0].toUpperCase()) return;
         const first = fn?.params?.[0];
         const pattern = first?.pat ?? first;
         const inner =
@@ -3230,27 +3250,8 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         }
       };
 
-      for (const statement of ast.body) {
-        const declaration =
-          statement.type === 'ExportDeclaration'
-            ? statement.declaration
-            : statement;
-        if (declaration.type === 'FunctionDeclaration') {
-          if (declaration.identifier)
-            registerReceiver(declaration.identifier.value, declaration);
-          continue;
-        }
-        if (declaration.type !== 'VariableDeclaration') continue;
-        for (const declarator of declaration.declarations) {
-          const init = declarator.init;
-          if (!t.isIdentifier(declarator.id) || !init) continue;
-          if (
-            init.type === 'ArrowFunctionExpression' ||
-            init.type === 'FunctionExpression'
-          )
-            registerReceiver(declarator.id.value, init);
-        }
-      }
+      for (const { name, fn } of componentFunctions(ast))
+        registerReceiver(name, fn);
 
       traverse(ast, {
         JSXOpeningElement({ node }) {
@@ -3341,10 +3342,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         fileCache[filePath].dependencies,
       );
     } catch (e) {
-      recordFileError(
-        entry.filePath,
-        asWritten(expanded.get(entry.filePath), e),
-      );
+      recordFileError(entry.filePath, e);
     }
   }
 
@@ -3519,6 +3517,16 @@ function extractAndCacheExports(
     }
   }
 
+  const aliases: Record<string, { source: string | null; localName: string }> =
+    {};
+  for (const { name, wrapped } of wrappedBindings(ast)) {
+    if (typeof wrapped !== 'object' || !('name' in wrapped)) continue;
+    const imported = imports[wrapped.name];
+    aliases[name] = imported
+      ? { source: imported.source, localName: imported.importedName }
+      : { source: null, localName: wrapped.name };
+  }
+
   // Clear and update old dependency edges
   const prevDeps = fileCache[filePath]?.dependencies;
   const newDeps = Array.from(localDependencies);
@@ -3527,7 +3535,7 @@ function extractAndCacheExports(
   if (!fileCache[filePath]) {
     fileCache[filePath] = {
       mtimeMs: mtimeMs,
-      exports: { localExports, reExports, starExports, imports },
+      exports: { localExports, reExports, starExports, imports, aliases },
       dependencies: newDeps,
       unresolvedImports,
       staticTable: {},
@@ -3553,6 +3561,7 @@ function extractAndCacheExports(
       reExports,
       starExports,
       imports,
+      aliases,
     };
     fileCache[filePath].dependencies = newDeps;
     fileCache[filePath].unresolvedImports = unresolvedImports;
