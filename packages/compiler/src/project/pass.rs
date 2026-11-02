@@ -20,6 +20,7 @@ use crate::eval::{Env, EvalResult, Evaluator, Lookup, argument_expr, resolve_the
 use crate::js::{Object, Value, deep_merge, entries_object};
 use crate::style::records::{atom_class_string, atom_map};
 use crate::style::theme::{checked_var_type_hash, theme_atomic_map, theme_hash_of};
+use crate::syntax::component::component_functions;
 use crate::syntax::expr::{BinOp, E, K, Prop, unwrap};
 use crate::syntax::module::{
     Aliases, CORE, SpecKind, add_core_aliases, import_specs, plumeria_method,
@@ -1149,7 +1150,7 @@ pub fn jsx_phase<'b, 'a>(
     dynamic_statics.assign(&local.statics);
 
     let register_receiver = |project: &mut Project, name: &str, params: &FormalParameters| {
-        if !is_capitalized(name) {
+        if name != "default" && !is_capitalized(name) {
             return;
         }
         let Some(props) = receiver_props(params) else {
@@ -1175,39 +1176,8 @@ pub fn jsx_phase<'b, 'a>(
         }
     };
 
-    for statement in &program.body {
-        let declaration = match statement {
-            Statement::ExportDeclaration(export) => Some(&export.declaration),
-            other => other.as_declaration(),
-        };
-        let Some(declaration) = declaration else {
-            continue;
-        };
-        match declaration {
-            Declaration::FunctionDeclaration(function) => {
-                if let Some(id) = &function.id {
-                    register_receiver(project, id.name.as_str(), &function.params);
-                }
-            }
-            Declaration::VariableDeclaration(decl) => {
-                for declarator in &decl.declarations {
-                    let (Some(name), Some(init)) = (binding_name(&declarator.id), &declarator.init)
-                    else {
-                        continue;
-                    };
-                    match init {
-                        Expression::ArrowFunctionExpression(arrow) => {
-                            register_receiver(project, name, &arrow.params)
-                        }
-                        Expression::FunctionExpression(function) => {
-                            register_receiver(project, name, &function.params)
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            _ => {}
-        }
+    for (name, _, params) in component_functions(program) {
+        register_receiver(project, &name, params);
     }
 
     let style_prop = project.scanned_style_prop.clone().unwrap_or_default();
