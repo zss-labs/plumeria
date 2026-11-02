@@ -28,6 +28,9 @@ jest.mock('../src/disk-css', () => ({
   }),
 }));
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import vite from '../src/vite';
 
 const { scanAll: mockScanAll } = jest.requireMock<{ scanAll: jest.Mock }>(
@@ -61,6 +64,37 @@ it('merges Vite config for serve and build commands', () => {
   expect((vite() as any).config({}, { command: 'build' })).toMatchObject({
     build: { cssCodeSplit: false },
   });
+});
+
+// The dependency scan resolves imports with Vite's own conditions, and a package
+// exporting its source under `plumeria` alone has no entry for them. One with a
+// fallback is resolvable and keeps its pre-bundling.
+it('leaves a package exporting only Plumeria source out of pre-bundling', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-vite-'));
+  const write = (file: string, manifest: object) => {
+    fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), JSON.stringify(manifest));
+  };
+  write('package.json', {
+    dependencies: { '@acme/tokens': '1.0.0', '@acme/ui': '1.0.0' },
+    devDependencies: { plain: '1.0.0' },
+  });
+  write('node_modules/@acme/tokens/package.json', {
+    exports: { '.': { plumeria: './src/index.ts', types: './src/index.ts' } },
+  });
+  write('node_modules/@acme/ui/package.json', {
+    exports: {
+      '.': { plumeria: './src/index.ts', default: './dist/index.js' },
+    },
+  });
+  write('node_modules/plain/package.json', { exports: './index.js' });
+  try {
+    expect(
+      (vite() as any).config({ root }, { command: 'serve' }).optimizeDeps,
+    ).toEqual({ exclude: ['@plumeria/core', '@acme/tokens'] });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 it('starts the lint guard for builds only', () => {
