@@ -5,7 +5,7 @@ pub mod tables;
 pub mod values;
 
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
 use indexmap::{IndexMap, IndexSet};
@@ -18,9 +18,9 @@ use crate::fs::glob::{GlobOptions, glob_sync};
 use crate::fs::path::resolve;
 use crate::fs::resolver::Resolver;
 use crate::js::cmp_utf16;
+use crate::syntax::component::{Wrapped, wrapped_bindings};
 use crate::syntax::module::{CORE, import_specs, module_export_name};
 use crate::syntax::parse::parse_program;
-use namespace::as_written;
 pub use tables::{Condition, KeyTable, ObjectTable, Ordered, PropsTable, TableEntry, Tables};
 
 pub const DEFAULT_STYLE_PROP: &str = "classStyle";
@@ -67,6 +67,7 @@ pub struct Exports {
     pub re_exports: Ordered<ReExport>,
     pub star_exports: Vec<String>,
     pub imports: Ordered<ImportRecord>,
+    pub aliases: Ordered<ReExport>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -118,7 +119,6 @@ pub struct Project {
     stat_memo: Option<FxHashMap<String, Option<Stat>>>,
     pub resolver: Resolver,
     const_cache: values::ConstCache,
-    namespace_cache: namespace::NamespaceCache,
 }
 
 pub fn project() -> &'static Mutex<Project> {
@@ -581,7 +581,6 @@ impl Project {
         };
 
         let mut sources: Vec<(String, String, Stamp)> = Vec::new();
-        let mut expanded: FxHashMap<String, Arc<namespace::Namespaces>> = FxHashMap::default();
         for (file, loaded) in uncached.iter().zip(loaded) {
             let Some((stat, source)) = loaded else {
                 self.record_file_error(
@@ -612,14 +611,6 @@ impl Project {
                 );
                 continue;
             }
-            let source = match self.expand_namespaces(file, &source) {
-                Some(namespaces) => {
-                    let source = namespaces.source.clone();
-                    expanded.insert(file.clone(), namespaces);
-                    source
-                }
-                None => source,
-            };
             sources.push((file.clone(), source, stat.stamp));
         }
 
@@ -629,11 +620,11 @@ impl Project {
             sources.iter().zip(allocators.iter()).enumerate()
         {
             match parse_program(allocator, source) {
-                Ok(program) => parsed.push((index, program)),
-                Err(message) => self.record_file_error(
-                    file,
-                    as_written(expanded.get(file).map(Arc::as_ref), message),
-                ),
+                Ok(mut program) => {
+                    self.resolve_namespace_members(allocator, &mut program, file);
+                    parsed.push((index, program));
+                }
+                Err(message) => self.record_file_error(file, message),
             }
         }
 
@@ -687,10 +678,7 @@ impl Project {
                         jsx_queue.push(state);
                     }
                     Ok(None) => {}
-                    Err(message) => self.record_file_error(
-                        file,
-                        as_written(expanded.get(file).map(Arc::as_ref), message),
-                    ),
+                    Err(message) => self.record_file_error(file, message),
                 }
             }
         }
@@ -707,10 +695,7 @@ impl Project {
             let file = file.clone();
             match pass::jsx_phase(self, &file, program, &allocators[*index], state, &consts) {
                 Ok(()) => completed.push(file),
-                Err(message) => self.record_file_error(
-                    &file,
-                    as_written(expanded.get(&file).map(Arc::as_ref), message),
-                ),
+                Err(message) => self.record_file_error(&file, message),
             }
         }
 
@@ -953,11 +938,28 @@ impl Project {
             .and_then(|cached| cached.dependencies.clone());
         self.update_dependency_edges(file, previous.as_deref(), Some(&new_deps));
 
+        let mut aliases: Ordered<ReExport> = Ordered::default();
+        for (name, _, found) in wrapped_bindings(program) {
+            if let Wrapped::Name(inner) = found {
+                let alias = match imports.get(inner) {
+                    Some(imported) => ReExport {
+                        source: Some(imported.source.clone()),
+                        local_name: imported.imported_name.clone(),
+                    },
+                    None => ReExport {
+                        source: None,
+                        local_name: inner.to_string(),
+                    },
+                };
+                aliases.insert(name, alias);
+            }
+        }
         let exports = Exports {
             local_exports,
             re_exports,
             star_exports,
             imports,
+            aliases,
         };
         let entry = self
             .files
@@ -1099,6 +1101,37 @@ impl Project {
         None
     }
 
+    fn aliased(&mut self, site: Site, visited: &mut FxHashSet<String>) -> Site {
+        let alias = self
+            .files
+            .get(&site.file)
+            .and_then(|cached| cached.exports.as_ref())
+            .and_then(|exports| exports.aliases.get(&site.local_name))
+            .cloned();
+        let Some(alias) = alias else {
+            return site;
+        };
+        if !visited.insert(format!("{}-{}", site.file, site.local_name)) {
+            return site;
+        }
+        let next = match &alias.source {
+            Some(source) => match self.resolve_import_path(source, &site.file) {
+                Some(actual) => self
+                    .resolve_export(&actual, &alias.local_name)
+                    .unwrap_or(Site {
+                        file: actual,
+                        local_name: alias.local_name.clone(),
+                    }),
+                None => return site,
+            },
+            None => Site {
+                file: site.file.clone(),
+                local_name: alias.local_name.clone(),
+            },
+        };
+        self.aliased(next, visited)
+    }
+
     pub fn resolve_binding(
         &mut self,
         file: &str,
@@ -1187,6 +1220,7 @@ impl Project {
                             }),
                     };
                 }
+                let site = self.aliased(site, &mut FxHashSet::default());
                 Some(format!("{}-{}", site.file, site.local_name))
             }
             _ => None,
@@ -1204,6 +1238,7 @@ impl Project {
             return None;
         }
         let site = self.resolve_binding(file, name, local_imports);
+        let site = self.aliased(site, &mut FxHashSet::default());
         Some(format!("{}-{}", site.file, site.local_name))
     }
 
