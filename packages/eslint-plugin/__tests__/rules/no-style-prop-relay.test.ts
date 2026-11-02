@@ -325,6 +325,34 @@ test('handles an uninitialized declarator', () => {
   expect(reportsForProgram(program)).toHaveLength(0);
 });
 
+// The component a call wraps is the argument that renders, as the compiler
+// reads it: a comparator or an options value is not the component.
+test('reads the argument that renders as the component a call wraps', () => {
+  const reports = reportsFor(
+    'const Forward = withCompare((a, b) => a === b, ({ headerStyle }) => <Header headerStyle={headerStyle} />);',
+  );
+  expect(reports).toHaveLength(1);
+  expect((reports[0] as { node: { type: string } }).node.type).toBe('Property');
+});
+
+// memo(Inner, compare) is Inner, so the style is Inner's to apply.
+test('leaves a call wrapping a component by name to that component', () => {
+  expect(
+    reportsFor(
+      'const Inner = ({ headerStyle }) => <Header headerStyle={headerStyle} />;\nconst Forward = memo(Inner, (a, b) => a === b);',
+    ),
+  ).toHaveLength(0);
+});
+
+// Two arguments render; the compiler stops the build instead.
+test('leaves a call with more than one argument that could be the component', () => {
+  expect(
+    reportsFor(
+      'const Forward = withFallback(({ headerStyle }) => <Header headerStyle={headerStyle} />, (error) => <p>{String(error)}</p>);',
+    ),
+  ).toHaveLength(0);
+});
+
 test('finds a component in a top-level call', () => {
   const program = parse(
     'memo(({ headerStyle }) => <Header headerStyle={headerStyle} />);',
