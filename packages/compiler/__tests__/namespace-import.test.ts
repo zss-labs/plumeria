@@ -13,6 +13,7 @@ export const spin = css.keyframes({ to: { transform: 'rotate(360deg)' } });
 export const vt = css.viewTransitionClass({ old: { opacity: 0 }, new: { opacity: 1 } });
 export const above = css.positionTry({ positionArea: 'top' });
 export const n = Math.random();
+export const label = (text: string) => text;
 export const styles = css.create({
   card: { padding: 12 },
   accent: { color: 'red' },
@@ -228,6 +229,98 @@ export const A = () => <div classStyle={[...t.styles.card]} />;
     expect(() =>
       compileCSS({ cwd, include: ['app.tsx'], exclude: [] }),
     ).toThrow('"...t.styles.card"');
+  });
+
+  it('drops the namespace import once every read is compiled', async () => {
+    const cwd = write(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+const s = css.create({ a: { color: t.blue[500] } });
+export const A = () => <div classStyle={[s.a, t.styles.card]} />;
+`);
+    const { code } = await transform(cwd);
+    expect(code).not.toContain('./tokens');
+    expect(code).not.toContain('t.');
+  });
+
+  it('keeps a namespace read left for runtime as written', async () => {
+    const cwd = write(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+const s = css.create({ a: { color: t.blue[500] } });
+export const A = () => <p classStyle={s.a}>{String(t.n)}</p>;
+`);
+    const { code } = await transform(cwd);
+    expect(code).toContain(`import * as t from './tokens';`);
+    expect(code).toContain('{String(t.n)}');
+    expect(code).not.toContain('t$');
+  });
+
+  it('keeps a call, an assignment and a delete through the namespace', async () => {
+    const touch = `export const touch = () => {
+  t.label('x');
+  t.n++;
+  t.n = 1;
+  delete t.n;
+  ({ a: t.n } = { a: 2 });
+  [t.n] = [3];
+  for (t.n of [4]);
+};`;
+    const cwd = write(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+const s = css.create({ a: { color: t.blue[500] } });
+export const A = () => <p classStyle={s.a}>{t.label('y')}</p>;
+${touch}
+`);
+    const { code } = await transform(cwd);
+    expect(code).toContain(`import * as t from './tokens';`);
+    expect(code).toContain(touch);
+    expect(code).toContain("{t.label('y')}");
+    expect(code).not.toContain('t$');
+  });
+
+  it('points an error at the namespace read where it was written', async () => {
+    const cwd = write(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+
+export const A = () => <div classStyle={[s.a, ...t.styles.card]} />;
+const s = css.create({ a: { color: t.blue[500] } });
+`);
+    await expect(transform(cwd)).rejects.toThrow(
+      '"...t.styles.card". List each style explicitly. (app.tsx:4:50)',
+    );
+  });
+
+  it('reads a namespace whose member joined by $ is already a binding', async () => {
+    const { code, sheet } = await build(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+const t$blue = 'x';
+const s = css.create({ a: { color: t.blue[500] } });
+export const A = () => <p classStyle={s.a}>{t$blue}</p>;
+`);
+    expect(code).toContain('className={"');
+    expect(code).toContain('{t$blue}');
+    expect(sheet).toContain('#3b82f6');
+  });
+
+  it('reads a namespace imported next to a default import', async () => {
+    const { code, sheet } = await build(`import * as css from '@plumeria/core';
+import def, * as t from './tokens';
+const s = css.create({ a: { color: t.blue[500] } });
+export const A = () => <div classStyle={[s.a, t.styles.card]} />;
+`);
+    expect(code).toContain('className={"');
+    expect(code).not.toContain('t.');
+    expect(sheet).toContain('#3b82f6');
+  });
+
+  it('leaves an optional read of the namespace as written', async () => {
+    const cwd = write(`import * as css from '@plumeria/core';
+import * as t from './tokens';
+const s = css.create({ a: { color: t?.blue[500] } });
+export const A = () => <p classStyle={s.a} />;
+`);
+    await expect(transform(cwd)).rejects.toThrow(
+      'Cannot resolve the value of "color" at build time (t?.blue[500])',
+    );
   });
 
   it('leaves a local binding that shadows the namespace alone', async () => {
