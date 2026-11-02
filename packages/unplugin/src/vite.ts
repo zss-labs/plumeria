@@ -2,6 +2,7 @@ import { createVitePlugin } from 'unplugin';
 import { unpluginFactory, EXTENSION_PATTERN } from './core';
 import type { PluginOptions } from './core';
 import compiler from '@plumeria/compiler';
+import * as fs from 'fs';
 import * as path from 'path';
 import type {
   ViteDevServer,
@@ -14,6 +15,50 @@ import type {
 import { createDiskCssImport } from './disk-css';
 
 const { scanAll, optimizer } = compiler;
+
+const readJson = (file: string): any => {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return undefined;
+  }
+};
+
+const conditionsOf = (exports: unknown, into = new Set<string>()) => {
+  if (exports && typeof exports === 'object' && !Array.isArray(exports))
+    for (const [key, value] of Object.entries(exports)) {
+      if (!key.startsWith('.')) into.add(key);
+      conditionsOf(value, into);
+    }
+  return into;
+};
+
+function sourceOnlyPackages(root: string): string[] {
+  const manifest = readJson(path.join(root, 'package.json')) ?? {};
+  const names = new Set(
+    [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ].flatMap((field) => Object.keys(manifest[field] ?? {})),
+  );
+  return [...names].filter((name) => {
+    for (let dir = root; ; dir = path.dirname(dir)) {
+      const pkg = readJson(
+        path.join(dir, 'node_modules', name, 'package.json'),
+      );
+      if (pkg) {
+        const conditions = [...conditionsOf(pkg.exports)];
+        return (
+          conditions.includes('plumeria') &&
+          conditions.every((c) => c === 'plumeria' || c === 'types')
+        );
+      }
+      if (path.dirname(dir) === dir) return false;
+    }
+  });
+}
 
 function isRscConfig(userConfig: UserConfig): boolean {
   if ((userConfig as any).environments?.rsc) return true;
@@ -171,6 +216,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
           exclude: [
             ...(userConfig.optimizeDeps?.exclude ?? []),
             '@plumeria/core',
+            ...sourceOnlyPackages(path.resolve(userConfig.root ?? '')),
           ],
         },
       };
