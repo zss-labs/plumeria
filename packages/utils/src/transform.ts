@@ -47,6 +47,7 @@ import {
   collectLocalConsts,
   collectLocalConstNodes,
 } from './parser';
+import { componentFunctions, wrappedBindings } from './component';
 import { assertNoDroppedValues } from './unresolvableValue';
 import { checkedVarTypeHash } from './varType';
 
@@ -122,8 +123,7 @@ import { themeHashOf } from './createTheme';
 import { resolveImportPath } from './resolver';
 import { getLeadingCommentLength } from './ast';
 import { collectReferenceIdentifiers } from './references';
-import { asWritten, expandNamespaces } from './namespaceImport';
-import type { NamespaceImport, Namespaces } from './namespaceImport';
+import { resolveNamespaceMembers } from './namespaceImport';
 import { assertPropertyPolicy } from './propertyPolicy';
 import type { PropertyPolicy } from './propertyPolicy';
 import type {
@@ -137,7 +137,6 @@ import type {
   CreateStaticHashTable,
   CSSObject,
   TableEntry,
-  Tables,
 } from './types';
 
 type CreateStyleValue = {
@@ -178,26 +177,6 @@ const unwrapExport = (node: any): any => {
   if (node?.type === 'ExportDefaultDeclaration') return node.decl;
   if (node?.type === 'ExportDefaultExpression') return node.expression;
   return node;
-};
-
-const isFunctionNode = (
-  node: any,
-): node is HasSpan & { params: unknown[]; identifier?: Identifier } =>
-  node?.type === 'FunctionDeclaration' ||
-  node?.type === 'FunctionExpression' ||
-  node?.type === 'ArrowFunctionExpression';
-
-const componentFunctionOf = (
-  node: any,
-): (HasSpan & { params: unknown[]; identifier?: Identifier }) | undefined => {
-  if (isFunctionNode(node)) return node;
-  if (node?.type === 'CallExpression') {
-    for (const arg of node.arguments ?? []) {
-      const fn = componentFunctionOf(arg.expression);
-      if (fn) return fn;
-    }
-  }
-  return undefined;
 };
 
 const unwrapPatternDefault = (pattern: any): any =>
@@ -315,23 +294,10 @@ export const transformSource = async (
   env: TransformEnv,
 ): Promise<TransformOutput> => {
   const scannedTables = scanOverlay(undefined, env.styleProp);
-  const namespaces = expandNamespaces(env.moduleId, env.source);
-  try {
-    return await transformExpanded(env, scannedTables, namespaces);
-  } catch (error) {
-    throw asWritten(namespaces, error);
-  }
-};
-
-const transformExpanded = async (
-  env: TransformEnv,
-  scannedTables: Tables,
-  namespaces: Namespaces | undefined,
-): Promise<TransformOutput> => {
   const { root, styleProp, propertyPolicy, isDev, addDependency } = env;
   const classProp = env.classProp ?? 'className';
   const id = env.moduleId;
-  const source = namespaces?.source ?? env.source;
+  const source = env.source;
   const resourcePath = env.moduleId;
   const baseId = env.filePath;
   const ast = parseSync(source, {
@@ -339,6 +305,7 @@ const transformExpanded = async (
     tsx: true,
     target: 'es2022',
   });
+  resolveNamespaceMembers(ast, id);
 
   assertPropertyPolicy(ast, propertyPolicy, id);
 
@@ -408,12 +375,8 @@ const transformExpanded = async (
   const ownFailure = resolveFileError(baseId, '');
   if (ownFailure) throwCompilationError(`[plumeria] ${ownFailure.message}`);
 
-  const appended = namespaces?.originalLength ?? Infinity;
   for (const node of ast.body) {
-    if (
-      node.type === 'ImportDeclaration' &&
-      node.span.start - baseByteOffset < appended
-    ) {
+    if (node.type === 'ImportDeclaration') {
       const sourcePath = node.source.value;
       const actualPath = resolveImportPath(sourcePath, id);
       if (actualPath) {
@@ -473,21 +436,7 @@ const transformExpanded = async (
     }
     if (declared.size > 0) declaredProps.set(name, declared);
   };
-  for (const node of ast.body) {
-    const statement = unwrapExport(node);
-    if (isFunctionNode(statement)) {
-      addComponent(statement.identifier?.value ?? 'default', statement);
-    } else if (statement?.type === 'CallExpression') {
-      const fn = componentFunctionOf(statement);
-      if (fn) addComponent('default', fn);
-    } else if (t.isVariableDeclaration(statement)) {
-      for (const decl of statement.declarations) {
-        if (!t.isIdentifier(decl.id)) continue;
-        const fn = componentFunctionOf(decl.init);
-        if (fn) addComponent(decl.id.value, fn);
-      }
-    }
-  }
+  for (const { name, fn } of componentFunctions(ast)) addComponent(name, fn);
 
   const appliedStyleProps = new Set<string>();
   const ownerComponentOf = (at: HasSpan) =>
@@ -1644,21 +1593,7 @@ const transformExpanded = async (
       }
     }
   };
-  for (const node of ast.body) {
-    const statement = unwrapExport(node);
-    if (isFunctionNode(statement)) {
-      addFirstParamName(statement);
-    } else if (statement?.type === 'CallExpression') {
-      const fn = componentFunctionOf(statement);
-      if (fn) addFirstParamName(fn);
-    } else if (t.isVariableDeclaration(statement)) {
-      for (const decl of statement.declarations) {
-        if (!t.isIdentifier(decl.id) || !decl.init) continue;
-        const fn = componentFunctionOf(decl.init);
-        if (fn) addFirstParamName(fn);
-      }
-    }
-  }
+  for (const { fn } of componentFunctions(ast)) addFirstParamName(fn);
 
   const excludeSubtreeSpans = (n: any) => {
     if (!n || typeof n !== 'object') return;
@@ -3489,6 +3424,18 @@ const transformExpanded = async (
     },
   });
 
+  for (const { name, node, wrapped } of wrappedBindings(ast)) {
+    const props =
+      scannedTables.componentPropsTable?.[`${resourcePath}-${name}`];
+    if (wrapped === 'ambiguous' && Object.keys(props ?? {}).length > 0)
+      throwCompilationError(
+        `[plumeria] "${name}" is made by a call with more than one argument that could be the component, ` +
+          `so a style passed to it cannot reach one. Leave the component as the only function that renders, ` +
+          `or the only component name, the call takes.`,
+        node,
+      );
+  }
+
   for (const { name, node } of components) {
     const props =
       scannedTables.componentPropsTable?.[`${resourcePath}-${name}`];
@@ -3600,61 +3547,12 @@ const transformExpanded = async (
     replacements,
     transformedSource,
   );
-  if (namespaces) namespaceElisions(namespaces, replacements, elided, splice);
   if (elided.length === 0) return { code: transformedSource };
 
   replacements.push(...elided);
   replacements.sort((a, b) => a.start - b.start || b.end - a.end);
 
   return { code: splice(replacements) };
-};
-
-type Replacement = { start: number; end: number; content: string };
-
-const namespaceElisions = (
-  namespaces: Namespaces,
-  replacements: Replacement[],
-  elided: Replacement[],
-  splice: (list: Replacement[]) => string,
-): void => {
-  const covered = (at: number) =>
-    replacements.some((r) => r.start <= at && at < r.end);
-  const removed = ({ appendedStart }: NamespaceImport) =>
-    elided.some((r) => r.start === appendedStart);
-  const appended = ({ appendedStart, appendedEnd }: NamespaceImport) => ({
-    start: appendedStart,
-    end: appendedEnd,
-    content: '',
-  });
-  const extra: Replacement[] = [];
-  for (const namespace of namespaces.imports) {
-    if (removed(namespace)) {
-      if (namespace.unused)
-        extra.push({ start: namespace.start, end: namespace.end, content: '' });
-      continue;
-    }
-    for (const dot of namespace.dots)
-      if (!covered(dot)) extra.push({ start: dot, end: dot + 1, content: '.' });
-  }
-  const pending = namespaces.imports.filter((namespace) => !removed(namespace));
-  const draft = splice(
-    [...replacements, ...elided, ...extra, ...pending.map(appended)].sort(
-      (a, b) => a.start - b.start || b.end - a.end,
-    ),
-  );
-  let kept = false;
-  for (const namespace of pending) {
-    if (namespace.bindings.some((binding) => draft.includes(binding)))
-      kept = true;
-    else extra.push(appended(namespace));
-  }
-  elided.push(...extra);
-  if (!kept && namespaces.separated) {
-    const first = namespaces.imports[0].appendedStart;
-    for (const replacement of elided)
-      if (replacement.start === first)
-        replacement.start = namespaces.originalLength;
-  }
 };
 
 const elidedImports = (
@@ -3687,10 +3585,15 @@ const elidedImports = (
 
   const positionsOf = new Map<string, number[]>();
   const { names } = collectReferenceIdentifiers(ast, { runtimeReads: true });
-  for (const [start, name] of names) {
+  const record = (name: string, position: number) => {
     const positions = positionsOf.get(name);
-    if (positions) positions.push(start - baseByteOffset);
-    else positionsOf.set(name, [start - baseByteOffset]);
+    if (positions) positions.push(position);
+    else positionsOf.set(name, [position]);
+  };
+  for (const [start, name] of names) {
+    record(name, start - baseByteOffset);
+    const dot = name.indexOf('.');
+    if (dot > 0) record(name.slice(0, dot), start - baseByteOffset);
   }
   const candidates = imports.filter((node) =>
     node.specifiers.every(({ local }) => {
