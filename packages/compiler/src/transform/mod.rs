@@ -24,10 +24,10 @@ use crate::eval::consts::{
 use crate::eval::functions::{StyleFunctions, style_functions_of};
 use crate::js::{Object, Value};
 use crate::policy::{PropertyPolicy, assert_property_policy};
-use crate::project::namespace::{NamespaceImport, Namespaces, as_written};
 use crate::project::{KeyTable, LocalImport, LocalImports, Project, Tables};
 use crate::style::ondemand::SheetTables;
 use crate::style::records::{StyleRecord, Weights, style_records};
+use crate::syntax::component::{Wrapped, component_functions, wrapped_bindings};
 use crate::syntax::expr::{E, K};
 use crate::syntax::module::{Aliases, CORE, SpecKind, add_core_aliases, import_specs};
 use crate::syntax::parse::{parse_object_text, parse_program};
@@ -135,110 +135,6 @@ pub fn unwrap_pattern_default<'b, 'a>(pattern: &'b BindingPattern<'a>) -> &'b Bi
     match pattern {
         BindingPattern::AssignmentPattern(assign) => &assign.left,
         other => other,
-    }
-}
-
-pub fn function_of<'b, 'a>(expr: &'b Expression<'a>) -> Option<(Span, &'b FormalParameters<'a>)> {
-    match expr {
-        Expression::ArrowFunctionExpression(arrow) => Some((arrow.span, &arrow.params)),
-        Expression::FunctionExpression(function) => Some((function.span, &function.params)),
-        Expression::CallExpression(call) => {
-            for argument in &call.arguments {
-                let inner = match argument {
-                    Argument::SpreadElement(spread) => &spread.argument,
-                    other => other.to_expression(),
-                };
-                if let Some(found) = function_of(inner) {
-                    return Some(found);
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-pub fn component_functions<'b, 'a>(
-    program: &'b Program<'a>,
-) -> Vec<(String, Span, &'b FormalParameters<'a>)> {
-    let mut out = Vec::new();
-    for statement in &program.body {
-        match statement {
-            Statement::FunctionDeclaration(function) => {
-                let name = function
-                    .id
-                    .as_ref()
-                    .map(|id| id.name.to_string())
-                    .unwrap_or_else(|| "default".to_string());
-                out.push((name, function.span, &*function.params));
-            }
-            Statement::ExportDeclaration(export) => match &export.declaration {
-                Declaration::FunctionDeclaration(function) => {
-                    let name = function
-                        .id
-                        .as_ref()
-                        .map(|id| id.name.to_string())
-                        .unwrap_or_else(|| "default".to_string());
-                    out.push((name, function.span, &*function.params));
-                }
-                Declaration::VariableDeclaration(decl) => push_declarator_functions(decl, &mut out),
-                _ => {}
-            },
-            Statement::VariableDeclaration(decl) => push_declarator_functions(decl, &mut out),
-            Statement::ExportDefaultDeclaration(export) => match &export.declaration {
-                ExportDefaultDeclarationKind::FunctionDeclaration(function) => {
-                    let name = function
-                        .id
-                        .as_ref()
-                        .map(|id| id.name.to_string())
-                        .unwrap_or_else(|| "default".to_string());
-                    out.push((name, function.span, &*function.params));
-                }
-                ExportDefaultDeclarationKind::ClassDeclaration(_)
-                | ExportDefaultDeclarationKind::TSInterfaceDeclaration(_) => {}
-                other => {
-                    let expr = other.to_expression();
-                    match expr {
-                        Expression::ArrowFunctionExpression(arrow) => {
-                            out.push(("default".to_string(), arrow.span, &*arrow.params));
-                        }
-                        Expression::FunctionExpression(function) => {
-                            let name = function
-                                .id
-                                .as_ref()
-                                .map(|id| id.name.to_string())
-                                .unwrap_or_else(|| "default".to_string());
-                            out.push((name, function.span, &*function.params));
-                        }
-                        Expression::CallExpression(_) => {
-                            if let Some((span, params)) = function_of(expr) {
-                                out.push(("default".to_string(), span, params));
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            },
-            _ => {}
-        }
-    }
-    out
-}
-
-fn push_declarator_functions<'b, 'a>(
-    decl: &'b VariableDeclaration<'a>,
-    out: &mut Vec<(String, Span, &'b FormalParameters<'a>)>,
-) {
-    for declarator in &decl.declarations {
-        let Some(name) = binding_name(&declarator.id) else {
-            continue;
-        };
-        let Some(init) = &declarator.init else {
-            continue;
-        };
-        if let Some((span, params)) = function_of(init) {
-            out.push((name.to_string(), span, params));
-        }
     }
 }
 
@@ -460,20 +356,10 @@ impl SheetTables for OverlayView<'_> {
 
 pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<TransformOutput> {
     project.scan_overlay(&env.cwd, &env.style_prop);
-    let namespaces = project.expand_namespaces(&env.module_id, &env.source);
-    transform_expanded(project, env, namespaces.as_deref())
-        .map_err(|message| as_written(namespaces.as_deref(), message))
-}
-
-fn transform_expanded(
-    project: &mut Project,
-    env: &TransformEnv,
-    namespaces: Option<&Namespaces>,
-) -> TResult<TransformOutput> {
     let allocator = Allocator::default();
-    let source: &str = allocator
-        .alloc_str(namespaces.map_or(env.source.as_str(), |namespaces| namespaces.source.as_str()));
-    let program = parse_program(&allocator, source)?;
+    let source: &str = allocator.alloc_str(&env.source);
+    let mut program = parse_program(&allocator, source)?;
+    project.resolve_namespace_members(&allocator, &mut program, &env.module_id);
     let program: &Program = allocator.alloc(program);
     assert_property_policy(program, env.policy, &env.module_id)?;
     let semantic = SemanticBuilder::new().build(program).semantic;
@@ -484,10 +370,8 @@ fn transform_expanded(
     }
 
     let mut dependencies: Vec<String> = Vec::new();
-    let appended = namespaces.map_or(u32::MAX, |n| n.original_len);
     for statement in &program.body {
         if let Statement::ImportDeclaration(decl) = statement
-            && decl.span.start < appended
             && let Some(actual) =
                 project.resolve_import_path(decl.source.value.as_str(), &env.module_id)
         {
@@ -518,7 +402,7 @@ fn transform_expanded(
         transformer.prepare()?;
         transformer.first_pass()?;
         transformer.second_pass()?;
-        transformer.finish(namespaces)
+        transformer.finish()
     })();
     project.tables = tables;
     let code = result?;
@@ -862,7 +746,24 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
     }
 
-    fn finish(mut self, namespaces: Option<&Namespaces>) -> TResult<String> {
+    fn finish(mut self) -> TResult<String> {
+        for (name, span, found) in wrapped_bindings(self.program) {
+            let key = format!("{}-{name}", self.resource);
+            if matches!(found, Wrapped::Ambiguous)
+                && self
+                    .tables
+                    .component_props
+                    .get(&key)
+                    .is_some_and(|props| !props.is_empty())
+            {
+                return Err(self.fail(
+                    format!(
+                        "[plumeria] \"{name}\" is made by a call with more than one argument that could be the component, so a style passed to it cannot reach one. Leave the component as the only function that renders, or the only component name, the call takes."
+                    ),
+                    Some(span),
+                ));
+            }
+        }
         for component in &self.components {
             let key = format!("{}-{}", self.resource, component.name);
             let Some(props) = self.tables.component_props.get(&key) else {
@@ -953,10 +854,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
 
         let out = splice(self.source, &self.replacements);
-        let mut elided = self.elided_imports(&out);
-        if let Some(namespaces) = namespaces {
-            namespace_elisions(self.source, namespaces, &self.replacements, &mut elided);
-        }
+        let elided = self.elided_imports(&out);
         if elided.is_empty() {
             return Ok(out);
         }
@@ -1007,6 +905,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 .iter()
                 .any(|r| r.start <= span.start && r.end >= span.end)
         };
+        let read_through = |decl: &ImportDeclaration, local: &str| {
+            decl.specifiers.iter().flatten().any(|specifier| {
+                specifier
+                    .local()
+                    .name
+                    .strip_prefix(local)
+                    .is_some_and(|rest| rest.starts_with('.'))
+            })
+        };
         let candidates: Vec<&ImportDeclaration> = imports
             .into_iter()
             .filter(|decl| {
@@ -1018,7 +925,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             .iter()
                             .filter(|&&id| self.scoping.get_reference(id).is_value())
                             .peekable();
-                        values.peek().is_some()
+                        (values.peek().is_some()
+                            || read_through(decl, specifier.local().name.as_str()))
                             && values.all(|id| spans.0.get(id).is_some_and(|&span| covered(span)))
                     })
                 })
@@ -1037,13 +945,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .into_iter()
             .filter(|decl| {
                 decl.specifiers.iter().flatten().all(|specifier| {
-                    scoping
-                        .get_root_binding(specifier.local().name)
-                        .is_some_and(|symbol| {
-                            !scoping
-                                .get_resolved_references(symbol)
-                                .any(|reference| reference.is_value())
-                        })
+                    let name = specifier.local().name.as_str();
+                    let name = name.split_once('.').map_or(name, |(local, _)| local);
+                    scoping.get_root_binding(name.into()).is_some_and(|symbol| {
+                        !scoping
+                            .get_resolved_references(symbol)
+                            .any(|reference| reference.is_value())
+                    })
                 })
             })
             .map(|decl| Replacement {
@@ -1068,80 +976,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             "(()=>{{const k=new Set({});return new Proxy({{}},{{get(t,p){{if(typeof p===\"string\"&&k.has(p))throw new Error({head}+p+{tail});return t[p];}}}});}})()",
             crate::js::json::stringify_str_list(&keys)
         )
-    }
-}
-
-fn namespace_elisions(
-    source: &str,
-    namespaces: &Namespaces,
-    replacements: &[Replacement],
-    elided: &mut Vec<Replacement>,
-) {
-    let covered = |at: u32| replacements.iter().any(|r| r.start <= at && at < r.end);
-    let removed = |span: Span, elided: &[Replacement]| elided.iter().any(|r| r.start == span.start);
-    let mut extra: Vec<Replacement> = Vec::new();
-    for import in &namespaces.imports {
-        if removed(import.appended, elided) {
-            if import.unused {
-                extra.push(Replacement {
-                    start: import.span.start,
-                    end: import.span.end,
-                    content: String::new(),
-                });
-            }
-            continue;
-        }
-        extra.extend(
-            import
-                .dots
-                .iter()
-                .filter(|&&dot| !covered(dot))
-                .map(|&dot| Replacement {
-                    start: dot,
-                    end: dot + 1,
-                    content: ".".to_string(),
-                }),
-        );
-    }
-    let appended = |import: &NamespaceImport| Replacement {
-        start: import.appended.start,
-        end: import.appended.end,
-        content: String::new(),
-    };
-    let pending: Vec<&NamespaceImport> = namespaces
-        .imports
-        .iter()
-        .filter(|import| !removed(import.appended, elided))
-        .collect();
-    let mut draft: Vec<Replacement> = replacements
-        .iter()
-        .chain(elided.iter())
-        .chain(extra.iter())
-        .cloned()
-        .chain(pending.iter().map(|import| appended(import)))
-        .collect();
-    draft.sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
-    let draft = splice(source, &draft);
-    let mut kept = false;
-    for import in pending {
-        if import
-            .bindings
-            .iter()
-            .any(|binding| draft.contains(binding.as_str()))
-        {
-            kept = true;
-        } else {
-            extra.push(appended(import));
-        }
-    }
-    elided.extend(extra);
-    if !kept && namespaces.separated {
-        let first = namespaces.imports[0].appended.start;
-        for replacement in elided.iter_mut() {
-            if replacement.start == first {
-                replacement.start = namespaces.original_len;
-            }
-        }
     }
 }
 
