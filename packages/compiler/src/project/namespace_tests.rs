@@ -38,43 +38,74 @@ fn env(dir: &std::path::Path, name: &str) -> TransformEnv {
 
 const TOKENS: &str = "import * as css from '@plumeria/core';\nexport const blue = css.createStatic({ '500': '#3b82f6' });\n";
 
-#[test]
-fn finds_namespace_imports_without_parsing() {
-    assert_eq!(
-        namespace_imports(
-            "import * as css from '@plumeria/core';\nimport*as t from\"./tokens\";\nimport * as\n  u\n  from './u';"
-        ),
-        vec![("css", "@plumeria/core"), ("t", "./tokens"), ("u", "./u")]
-    );
-    assert!(
-        namespace_imports(
-            "import type * as t from './tokens';\nimport { a } from './a';\nconst x = a * as;"
-        )
-        .is_empty()
-    );
+fn resolved(project: &mut Project, file: &str, source: &str) -> (Vec<String>, Vec<String>) {
+    let allocator = oxc_allocator::Allocator::default();
+    let source = allocator.alloc_str(source);
+    let mut program = crate::syntax::parse::parse_program(&allocator, source).unwrap();
+    project.resolve_namespace_members(&allocator, &mut program, file);
+    #[derive(Default)]
+    struct Names(Vec<String>);
+    impl<'a> oxc_ast_visit::Visit<'a> for Names {
+        fn visit_identifier_reference(&mut self, it: &IdentifierReference<'a>) {
+            self.0.push(it.name.to_string());
+        }
+    }
+    let mut names = Names::default();
+    oxc_ast_visit::Visit::visit_program(&mut names, &program);
+    let specifiers = program
+        .body
+        .iter()
+        .filter_map(|statement| match statement {
+            Statement::ImportDeclaration(decl) => decl.specifiers.as_ref(),
+            _ => None,
+        })
+        .flatten()
+        .map(|specifier| specifier.local().name.to_string())
+        .collect();
+    (names.0, specifiers)
 }
 
 #[test]
-fn reads_a_file_once_per_source_and_exports() {
+fn resolves_a_read_of_an_export_to_a_named_import() {
     let dir = fixture("namespace", &[("tokens.ts", "export const a = 1;\n")]);
     let tokens = dir.join("tokens.ts");
     let app = dir.join("app.tsx").to_string_lossy().into_owned();
     let mut project = Project::default();
 
-    let core = "import * as css from '@plumeria/core';\nconst s = css.create({});\n";
-    assert!(project.expand_namespaces(&app, core).is_none());
-    assert!(project.namespace_cache.0.is_empty());
-
-    let source = "import * as t from './tokens';\nconsole.log(t.a, t.b);\n";
-    let first = project.expand_namespaces(&app, source).unwrap();
-    assert!(first.source.contains("console.log(t$a, t.b);"));
-    let second = project.expand_namespaces(&app, source).unwrap();
-    assert!(Arc::ptr_eq(&first, &second));
+    let source = "import * as t from './tokens';\nconst t$a = 0;\nconsole.log(t.a, t.b, t.a);\n";
+    let (names, specifiers) = resolved(&mut project, &app, source);
+    assert_eq!(names, ["console", "t.a", "t", "t.a"]);
+    assert_eq!(specifiers, ["t", "t.a"]);
 
     std::fs::write(&tokens, "export const a = 1;\nexport const b = 2;\n").unwrap();
-    let third = project.expand_namespaces(&app, source).unwrap();
-    assert!(!Arc::ptr_eq(&first, &third));
-    assert!(third.source.contains("console.log(t$a, t$b);"));
+    let (names, specifiers) = resolved(&mut project, &app, source);
+    assert_eq!(names, ["console", "t.a", "t.b", "t.a"]);
+    assert_eq!(specifiers, ["t", "t.a", "t.b"]);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn leaves_a_read_that_is_not_a_plain_value_alone() {
+    let dir = fixture(
+        "namespace-kept",
+        &[(
+            "tokens.ts",
+            "export let a = 1;\nexport const f = () => 1;\n",
+        )],
+    );
+    let app = dir.join("app.tsx").to_string_lossy().into_owned();
+    let mut project = Project::default();
+
+    let source = "import def, * as t from './tokens';\nimport type * as u from './tokens';\nimport * as css from '@plumeria/core';\nt.f();\nt.a = 1;\nt.a++;\ndelete t.a;\nt?.a;\n[t.a] = [1];\nconst g = (t) => t.a;\ncss.create;\nt.a;\n";
+    let (names, specifiers) = resolved(&mut project, &app, source);
+    assert_eq!(names.iter().filter(|name| *name == "t.a").count(), 1);
+    assert!(!names.iter().any(|name| name == "t.f"));
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.starts_with("css.") || name.starts_with("u."))
+    );
+    assert_eq!(specifiers, ["def", "t", "t.a", "u", "css"]);
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -116,25 +147,4 @@ fn exports_read_before_the_first_scan_leave_the_file_to_it() {
     let output = transform_source(&mut project, &env(&dir, "app.tsx")).unwrap();
     assert!(output.code.contains("className={\""));
     std::fs::remove_dir_all(&dir).unwrap();
-}
-
-#[test]
-fn names_a_namespace_read_in_a_message_as_written() {
-    let namespaces = Namespaces {
-        source: String::new(),
-        original_len: 0,
-        separated: false,
-        imports: vec![NamespaceImport {
-            local: "t".into(),
-            span: Span::default(),
-            appended: Span::default(),
-            unused: true,
-            dots: Vec::new(),
-            bindings: vec!["t$n".into(), "t$nn".into()],
-        }],
-    };
-    assert_eq!(
-        as_written(Some(&namespaces), "(t$n) (t$nn[0]) (at$n) (t$no)".into()),
-        "(t.n) (t.nn[0]) (at$n) (t$no)"
-    );
 }
