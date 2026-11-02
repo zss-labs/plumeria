@@ -19,11 +19,11 @@ use crate::fs::glob::{GlobOptions, glob_sync};
 use crate::fs::path::{basename, resolve};
 use crate::js::{Object, Value, deep_merge, entries_object};
 use crate::policy::{PropertyPolicy, assert_property_policy};
-use crate::project::namespace::as_written;
 use crate::project::{KeyTable, LocalImport, LocalImports, Project, Tables};
 use crate::style::ondemand::extract_ondemand_styles;
 use crate::style::records::style_records;
 use crate::style::theme::{checked_var_type_hash, theme_hash_of};
+use crate::syntax::component::component_functions;
 use crate::syntax::expr::{BinOp, E, K, Prop, root_identifier, unwrap};
 use crate::syntax::module::{
     Aliases, CORE, SpecKind, add_core_aliases, import_specs, plumeria_method,
@@ -32,8 +32,7 @@ use crate::syntax::parse::{parse_object_text, parse_program};
 use crate::transform::context::{EnvParts, StaticStack, Visibility, extend, span_text};
 use crate::transform::overlay::{Chain, Map, Writes};
 use crate::transform::{
-    OverlayView, component_functions, first_param_pattern, is_static_arg_value,
-    unwrap_pattern_default,
+    OverlayView, first_param_pattern, is_static_arg_value, unwrap_pattern_default,
 };
 
 const REACT: &str = "react";
@@ -195,18 +194,13 @@ pub fn compile_css(project: &mut Project, options: &CompileOptions) -> Result<St
                         Err(error) => return Err(error.to_string()),
                     },
                 };
-                let namespaces = project.expand_namespaces(&resource, &source);
-                let source = namespaces
-                    .as_ref()
-                    .map_or(source, |namespaces| namespaces.source.clone());
                 let mut writes = Writes::default();
                 #[cfg(test)]
                 {
                     cache.extractions += 1;
                 }
                 let (sheets, imports) =
-                    process_file(project, &tables, &mut writes, &resource, &source, options)
-                        .map_err(|message| as_written(namespaces.as_deref(), message))?;
+                    process_file(project, &tables, &mut writes, &resource, &source, options)?;
                 let dependencies = imports
                     .into_iter()
                     .map(|import| {
@@ -307,7 +301,8 @@ fn process_file(
 ) -> R<(Vec<String>, Vec<String>)> {
     let allocator = Allocator::default();
     let source: &str = allocator.alloc_str(source);
-    let program = parse_program(&allocator, source)?;
+    let mut program = parse_program(&allocator, source)?;
+    project.resolve_namespace_members(&allocator, &mut program, resource);
     let program: &Program = allocator.alloc(program);
     assert_property_policy(program, options.policy, resource)?;
     let semantic = SemanticBuilder::new().build(program).semantic;
