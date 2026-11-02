@@ -20,6 +20,12 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   const APP = path.join(DIR, 'App.tsx');
   const UNSEEN = path.join(DIR, 'Unseen.tsx');
   const VIA_USE = path.join(DIR, 'ViaUse.tsx');
+  const DEFAULT_FN = path.join(DIR, 'DefaultFn.tsx');
+  const DEFAULT_ARROW = path.join(DIR, 'DefaultArrow.tsx');
+  const WRAPPED = path.join(DIR, 'Wrapped.tsx');
+  const COMPARED = path.join(DIR, 'Compared.tsx');
+  const AMBIGUOUS = path.join(DIR, 'Ambiguous.tsx');
+  const PLAIN = path.join(DIR, 'Plain.tsx');
 
   const sources: Record<string, string> = {
     [STYLES]: `import * as css from '@plumeria/core';
@@ -46,6 +52,12 @@ import { styles } from './styles';
 import Link from 'next/link';
 import { Alone, Merged, Renamed } from './Receivers';
 import { UseAlone, UseWithBase, UseListed } from './ViaUse';
+import DefaultFn from './DefaultFn';
+import DefaultArrow from './DefaultArrow';
+import WrappedDefault, { Memo, Forwarded } from './Wrapped';
+import { MemoCompared, MemoInner, WithOptions } from './Compared';
+import { PassesClassName } from './Plain';
+import { Both } from './Ambiguous';
 export const OnElement = () => <div classStyle={styles.a} />;
 export const OnForwarder = () => <Link href="/x" classStyle={styles.a} />;
 export const OnAlone = () => <Alone classStyle={styles.a} />;
@@ -65,7 +77,17 @@ export const DynamicListed = ({ w }: { w: number }) => (
 );
 export const DynamicOnElement = ({ w }: { w: number }) => (
   <div classStyle={styles.box(w)} />
-);`,
+);
+export const OnDefaultFn = () => <DefaultFn classStyle={styles.a} />;
+export const OnDefaultArrow = () => <DefaultArrow classStyle={styles.a} />;
+export const OnMemo = () => <Memo classStyle={styles.a} />;
+export const OnForwarded = () => <Forwarded classStyle={styles.a} />;
+export const OnWrappedDefault = () => <WrappedDefault classStyle={styles.a} />;
+export const OnMemoCompared = () => <MemoCompared classStyle={styles.a} />;
+export const OnMemoInner = () => <MemoInner classStyle={styles.a} />;
+export const OnWithOptions = () => <WithOptions classStyle={styles.a} />;
+export const OnPassesClassName = () => <PassesClassName classStyle={styles.a} />;
+export const OnBoth = () => <Both classStyle={styles.a} />;`,
     [VIA_USE]: `import * as css from '@plumeria/core';
 import { styles } from './styles';
 export const UseAlone = ({ classStyle }: { classStyle?: css.StaticStyles }) => (
@@ -78,6 +100,70 @@ export const UseWithBase = ({
 }) => <span className={css.use(styles.base, classStyle)} />;
 export const UseListed = ({ classStyle }: { classStyle?: css.StaticStyles }) => (
   <span className={css.use([styles.base, classStyle])} />
+);`,
+    [DEFAULT_FN]: `import * as css from '@plumeria/core';
+import { styles } from './styles';
+export default function DefaultFn({ classStyle }: { classStyle?: css.Style }) {
+  return <div classStyle={[styles.base, classStyle]} />;
+}`,
+    [DEFAULT_ARROW]: `import * as css from '@plumeria/core';
+import { styles } from './styles';
+export default ({ classStyle }: { classStyle?: css.Style }) => (
+  <div classStyle={[styles.base, classStyle]} />
+);`,
+    [WRAPPED]: `import * as css from '@plumeria/core';
+import { forwardRef, memo } from 'react';
+import { styles } from './styles';
+export const Memo = memo(({ classStyle }: { classStyle?: css.Style }) => (
+  <div classStyle={[styles.base, classStyle]} />
+));
+export const Forwarded = forwardRef(
+  ({ classStyle }: { classStyle?: css.Style }, ref: any) => (
+    <div ref={ref} classStyle={[styles.base, classStyle]} />
+  ),
+);
+export default memo(function Card({ classStyle }: { classStyle?: css.Style }) {
+  return <div classStyle={[styles.base, classStyle]} />;
+});`,
+    [COMPARED]: `import * as css from '@plumeria/core';
+import { memo } from 'react';
+import { styles } from './styles';
+const withOptions = (options: unknown, component: any) => component;
+const options = { displayName: 'WithOptions' };
+function Inner({ classStyle }: { classStyle?: css.Style }) {
+  return <div classStyle={[styles.base, classStyle]} />;
+}
+export const MemoCompared = memo(
+  ({ classStyle }: { classStyle?: css.Style }) => (
+    <div classStyle={[styles.base, classStyle]} />
+  ),
+  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+);
+export const MemoInner = memo(
+  Inner,
+  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+);
+export const WithOptions = withOptions(
+  options,
+  ({ classStyle }: { classStyle?: css.Style }) => (
+    <div classStyle={[styles.base, classStyle]} />
+  ),
+);
+`,
+    [PLAIN]: `import '@plumeria/core';
+import { memo } from 'react';
+function Plain({ className }: { className?: string }) {
+  return <div className={className} />;
+}
+export const PassesClassName = memo(
+  Plain,
+  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+);`,
+    [AMBIGUOUS]: `import * as css from '@plumeria/core';
+const withFallback = (component: any, fallback: any) => component;
+export const Both = withFallback(
+  ({ classStyle }: { classStyle?: css.Style }) => <div classStyle={classStyle} />,
+  (error: unknown) => <p>{String(error)}</p>,
 );`,
     [UNSEEN]: `import '@plumeria/core';
 import { styles } from './styles';
@@ -131,6 +217,21 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       const code = await compile(RECEIVERS);
       expect(declarationOf(code, 'Merged')).toMatch(/"\w+" \+ " " \+ \(\{/);
     });
+
+    it.each([
+      ['DefaultFn', () => DEFAULT_FN, 'export default function'],
+      ['DefaultArrow', () => DEFAULT_ARROW, 'export default ('],
+      ['Memo', () => WRAPPED, 'export const Memo'],
+      ['Forwarded', () => WRAPPED, 'export const Forwarded'],
+      ['Card', () => WRAPPED, 'export default memo'],
+    ])('gives %s the same table', async (_name, file, marker) => {
+      const code = await compile(file());
+      const start = code.indexOf(marker);
+      const next = code.indexOf('\nexport ', start + 1);
+      expect(code.slice(start, next === -1 ? undefined : next)).toMatch(
+        /\[classStyle\] \|\| ""\)/,
+      );
+    });
   });
 
   describe('the call site', () => {
@@ -154,6 +255,56 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       const code = await compile(APP);
       expect(declarationOf(code, 'OnAlone')).toMatch(/classStyle=\{"\w+"\}/);
       expect(declarationOf(code, 'OnMerged')).toMatch(/classStyle=\{"\w+"\}/);
+    });
+
+    // A default export and a component a call such as `memo` or `forwardRef`
+    // wraps are given the same table, so they are handed the key as well, not
+    // the element's reading their table never looks up.
+    it.each([
+      'OnDefaultFn',
+      'OnDefaultArrow',
+      'OnMemo',
+      'OnForwarded',
+      'OnWrappedDefault',
+    ])('hands the key to the component %s renders', async (name) => {
+      expect(declarationOf(await compile(APP), name)).toMatch(
+        /classStyle=\{"\w+"\}/,
+      );
+    });
+
+    // The component is the argument that renders, wherever it sits, and a
+    // component name the call takes stands for that component. A comparator or
+    // an options value is neither.
+    it.each(['OnMemoCompared', 'OnMemoInner', 'OnWithOptions'])(
+      'hands the key to the component %s renders through a call',
+      async (name) => {
+        expect(declarationOf(await compile(APP), name)).toMatch(
+          /classStyle=\{"\w+"\}/,
+        );
+      },
+    );
+
+    it('builds a table where the wrapped component applies the prop', async () => {
+      const code = await compile(COMPARED);
+      expect(code.match(/\[classStyle\] \|\| ""\)/g)).toHaveLength(3);
+    });
+
+    // memo(Plain) is Plain, so a style passed to it is read as one passed to
+    // Plain, which does not apply it.
+    it('reads a style passed through memo(Plain) as one passed to Plain', async () => {
+      expect(declarationOf(await compile(APP), 'OnPassesClassName')).toContain(
+        'className={"',
+      );
+      await expect(compile(PLAIN)).rejects.toThrow(
+        /"classStyle" is a style received through a prop but is never applied/,
+      );
+    });
+
+    // Two arguments render, and nothing tells which one the style is for.
+    it('stops the build when the component cannot be told', async () => {
+      await expect(compile(AMBIGUOUS)).rejects.toThrow(
+        /"Both" is made by a call with more than one argument that could be the component/,
+      );
     });
 
     // The same mechanism, reached by a name the element does not take.
