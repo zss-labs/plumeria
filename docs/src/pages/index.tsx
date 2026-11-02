@@ -31,7 +31,7 @@ const styles = css.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 'calc(var(--hero-height, 100svh) - 56px)',
+    minHeight: 'calc(100svh - 56px)',
     paddingBlock: 48,
     textAlign: 'center',
     [breakpoints.md]: {
