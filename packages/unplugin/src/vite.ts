@@ -36,6 +36,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     setRoot,
     setCssImport,
     setClassProp,
+    setPackages,
     resolveSource,
   } = plugin.__plumeriaInternal;
 
@@ -168,14 +169,15 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
 
     config(userConfig: UserConfig, { command }: { command: string }) {
       plugin.vite?.config?.(userConfig, { command });
+      const root = path.resolve(userConfig.root ?? '');
+      const packages = sourcePackages(root);
+      setPackages(root, packages);
       const configToReturn: UserConfig = {
         optimizeDeps: {
           exclude: [
             ...(userConfig.optimizeDeps?.exclude ?? []),
             '@plumeria/core',
-            ...sourcePackages(path.resolve(userConfig.root ?? '')).map(
-              (pkg) => pkg.name,
-            ),
+            ...packages.map((pkg) => pkg.name),
           ],
         },
       };
