@@ -58,8 +58,14 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   let isDev = false;
   let cssImport: CssImportFormatter | null = null;
   let viteRoot: string = process.cwd();
-  let packages: SourcePackage[] | undefined;
-  const packagesOf = () => (packages ??= sourcePackages(viteRoot));
+  let packages: { root: string; list: SourcePackage[] } | undefined;
+  const packagesOf = () => {
+    const root = path.resolve(viteRoot);
+    if (packages?.root !== root) {
+      packages = { root, list: sourcePackages(root) };
+    }
+    return packages.list;
+  };
 
   const lint = options.lint !== false;
   const startLint = () => {
@@ -111,7 +117,9 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
       },
       setRoot(root: string) {
         viteRoot = root;
-        packages = undefined;
+      },
+      setPackages(root: string, list: SourcePackage[]) {
+        packages = { root: path.resolve(root), list };
       },
       setCssImport(formatter: CssImportFormatter | null) {
         cssImport = formatter;
