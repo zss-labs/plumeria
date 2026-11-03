@@ -69,7 +69,7 @@ it('merges Vite config for serve and build commands', () => {
 // The dependency scan resolves imports with Vite's own conditions, and a package
 // exporting its source under `plumeria` alone has no entry for them. One with a
 // fallback is resolvable and keeps its pre-bundling.
-it('leaves a package exporting only Plumeria source out of pre-bundling', () => {
+it('leaves packages exporting Plumeria source out of pre-bundling', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-vite-'));
   const write = (file: string, manifest: object) => {
     fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
@@ -91,7 +91,7 @@ it('leaves a package exporting only Plumeria source out of pre-bundling', () => 
   try {
     expect(
       (vite() as any).config({ root }, { command: 'serve' }).optimizeDeps,
-    ).toEqual({ exclude: ['@plumeria/core', '@acme/tokens'] });
+    ).toEqual({ exclude: ['@plumeria/core', '@acme/tokens', '@acme/ui'] });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -356,6 +356,47 @@ it('adds affected components and dependent targets to a hot update', () => {
     [],
   );
 });
+
+// The parent→child watch edge makes the edited file and the re-transformed
+// child import each other, so Vite finds neither a dead end nor a boundary.
+// When either side cannot accept the update, only a full reload is correct.
+it.each([
+  ['the child', { isSelfAccepting: false }, { isSelfAccepting: true }],
+  ['the edited file', { isSelfAccepting: true }, { isSelfAccepting: false }],
+])(
+  'fully reloads when %s cannot accept a prop-driven update',
+  (_, childState, editedState) => {
+    const child = {
+      id: '/project/node_modules/ui/src/Child.tsx',
+      ...childState,
+    };
+    const edited = { id: ID, ...editedState };
+    const plugin = vite() as any;
+    const send = jest.fn();
+    const invalidateModule = jest.fn();
+
+    mockScanAll.mockReturnValue({ componentPropsTable: {} });
+    plugin.configureServer({
+      moduleGraph: {
+        getModulesByFile: jest.fn(() => new Set([child])),
+        getModuleById: jest.fn(() => null),
+        invalidateModule,
+      },
+      ws: { send },
+    });
+    plugin.handleHotUpdate({ modules: [edited], file: ID });
+
+    mockScanAll.mockReturnValue({
+      componentPropsTable: {
+        [`${child.id}-Child`]: { classStyle: [{ key: 'a' }] },
+      },
+    });
+    expect(plugin.handleHotUpdate({ modules: [edited], file: ID })).toEqual([]);
+    expect(invalidateModule).toHaveBeenCalledWith(edited);
+    expect(invalidateModule).toHaveBeenCalledWith(child);
+    expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' });
+  },
+);
 
 it('ignores hot updates before a development server is configured', () => {
   const plugin = vite() as any;
