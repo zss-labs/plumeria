@@ -202,8 +202,8 @@ A rule reports and offers the rename; it cannot hold the count at zero, because
 it can be switched off for one developer and does nothing where no linter runs.
 `withoutLogicalProperties` and `withoutPhysicalProperties` make the same choice
 in the bundler, and every file the compiler processes is checked against it —
-[Next.js](/docs/api-reference/plugins/next-plugin) and
-[every other bundler](/docs/api-reference/plugins/unplugin). Run the rule first,
+[Next.js](/docs/api/plugins/next-plugin) and
+[every other bundler](/docs/api/plugins/unplugin). Run the rule first,
 since it reports every occurrence at once and that is what moving an existing
 codebase needs; turn the build option on once the count has reached zero.
 
@@ -339,6 +339,6 @@ export default [
 
 With the spelling rule on as well, every pair on this page except the overlapping conditions and the
 two states becomes impossible to write. See
-[Optional rules](/docs/api-reference/plugins/eslint-plugin/optional-rules).
+[Optional rules](/docs/api/plugins/eslint-plugin/optional-rules).
 </Step>
 </Steps>
