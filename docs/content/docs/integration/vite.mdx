@@ -6,7 +6,7 @@ description: 'Add Plumeria to a Vite project, with one command or by hand.'
 [`examples/example-vite-react`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-react) shows how to use [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) in Vite.  
 The plugin compiles Plumeria styles into CSS, with HMR in development.
 
-`npx @plumeria/init` detects Vite and writes this setup for you; see [@plumeria/init](/docs/api-reference/tools/init). The rest of this page is the same setup by hand.
+`npx @plumeria/init` detects Vite and writes this setup for you; see [@plumeria/init](/docs/api/migrate/init). The rest of this page is the same setup by hand.
 
 ## Installation
 ```sh title="Terminal"
@@ -42,7 +42,7 @@ export default defineConfig({
 - `exclude` — The path to the file to be excluded from conversion.
 - `styleProp` — The JSX prop that carries styles. The default is `'classStyle'`.
 
-These are the options a project usually sets. `devEmitToDisk` writes the stylesheet to disk in development, and `withoutLogicalProperties` / `withoutPhysicalProperties` reject one spelling of a property that carries both names, so the pair cannot be written; see [@plumeria/unplugin](/docs/api-reference/plugins/unplugin) for every option and its type.
+These are the options a project usually sets. `devEmitToDisk` writes the stylesheet to disk in development, and `withoutLogicalProperties` / `withoutPhysicalProperties` reject one spelling of a property that carries both names, so the pair cannot be written; see [@plumeria/unplugin](/docs/api/plugins/unplugin) for every option and its type.
 
 ## plumeria.d.ts
 
@@ -54,9 +54,9 @@ For the default name (`classStyle`), reference the declaration that ships with t
 /// <reference types="@plumeria/core/class-style" />
 ```
 
-If you set a custom `styleProp` (such as `'sx'`), declare that name instead, and keep it the same as the one in `vite.config.ts`; see [Declaring the styling prop](/docs/api-reference/types/Style#declaring-the-styling-prop).
+If you set a custom `styleProp` (such as `'sx'`), declare that name instead, and keep it the same as the one in `vite.config.ts`; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
 <Cards>
-  <Card title="Shipping this as a component library" href="/docs/integration/component-library" />
+  <Card title="Shipping this as a package" href="/docs/creating-packages" />
   <Card title="See more about Installation unplugin" href="/docs/installation" />
 </Cards>
