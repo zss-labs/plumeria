@@ -14,6 +14,7 @@ import { noOrderDependentOverlap } from './rules/no-order-dependent-overlap';
 import { noUnknownCssProperties } from './rules/no-unknown-css-properties';
 import { noUnresolvedComposition } from './rules/no-unresolved-composition';
 import { noUnusedKeys } from './rules/no-unused-keys';
+import { noUseInJsx } from './rules/no-use-in-jsx';
 import { sortProperties } from './rules/sort-properties';
 import { formatProperties } from './rules/format-properties';
 import { validateValues } from './rules/validate-values';
@@ -44,6 +45,7 @@ const rules: Rules = {
   'no-unknown-css-properties': noUnknownCssProperties,
   'no-unused-keys': noUnusedKeys,
   'no-unresolved-composition': noUnresolvedComposition,
+  'no-use-in-jsx': noUseInJsx,
   'sort-properties': sortProperties,
   'format-properties': formatProperties,
   'validate-values': validateValues,
@@ -73,6 +75,7 @@ const configs: Configs = {
       '@plumeria/no-unknown-css-properties': 'error',
       '@plumeria/no-unused-keys': 'warn',
       '@plumeria/no-unresolved-composition': 'warn',
+      '@plumeria/no-use-in-jsx': 'error',
       '@plumeria/sort-properties': 'warn',
       '@plumeria/format-properties': 'warn',
       '@plumeria/validate-values': 'warn',
