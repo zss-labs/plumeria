@@ -11,6 +11,7 @@ jest.mock('@plumeria/compiler', () => ({
   compileCSS: (options: unknown) => mockCompileCSS(options),
   DEFAULT_STYLE_PROP: 'classStyle',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
+  sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: (css: string) => css,
   resolvePropertyPolicy: () => ({}),
   transformSource: (options: unknown) => mockTransformSource(options),
