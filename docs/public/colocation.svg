@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+    .accent { stroke: var(--accent); }
+    .soft { stroke: var(--soft); }
+    .dash { stroke-dasharray: 6 7; }
+    .code { fill: var(--ink); font-size: 13px; }
+    .out { fill: var(--ink); font-size: 14px; text-anchor: middle; }
+    .hl { fill: var(--accent); }
+    .dim { fill: var(--soft); }
+    .title { fill: var(--ink); font-size: 15px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1000" height="420" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M30 70 L338 68 L340 250 L28 252 Z" />
+    <path class="ghost" d="M33 73 L335 72 L336 246 L32 249 Z" />
+
+    <path class="ghost dash" d="M412 52 L978 50 L980 262 L410 264 Z" />
+
+    <path class="line accent" d="M428 70 L680 68 L682 250 L426 252 Z" />
+    <path class="ghost accent" d="M431 73 L677 72 L678 246 L430 249 Z" />
+    <path class="line" d="M716 68 L964 70 L962 252 L718 250 Z" />
+    <path class="ghost" d="M719 72 L959 73 L958 248 L721 246 Z" />
+
+    <path class="line accent" d="M686 158 L710 159" />
+    <path class="line accent" d="M701 151 L711 159 L701 167" />
+
+    <path class="line" d="M184 258 C184 330 210 362 264 364" />
+    <path class="line" d="M250 356 L265 364 L251 372" />
+    <path class="line" d="M840 258 C840 330 800 362 736 364" />
+    <path class="line" d="M750 356 L735 364 L749 372" />
+
+    <path class="line" d="M270 338 L730 336 L732 392 L268 394 Z" />
+  </g>
+
+  <g filter="url(#ink)">
+    <text class="title" x="36" y="56">Notice.tsx</text>
+    <text class="code" x="48" y="104">const styles = css.create({</text>
+    <text class="code" x="64" y="126">notice: { … },</text>
+    <text class="code" x="48" y="148">});</text>
+    <text class="code" x="48" y="196">&lt;div classStyle={styles.notice} /&gt;</text>
+
+    <text class="title" x="418" y="38">Notice/</text>
+    <text class="title" x="444" y="96">styles.ts</text>
+    <text class="code" x="444" y="130">export const styles =</text>
+    <text class="code" x="460" y="152">css.create({</text>
+    <text class="code" x="476" y="174">notice: { … },</text>
+    <text class="code" x="460" y="196">});</text>
+
+    <text class="title" x="732" y="96">index.tsx</text>
+    <text class="code" x="732" y="130">import { <tspan class="hl">styles</tspan> }</text>
+    <text class="code" x="748" y="152">from './styles';</text>
+    <text class="code" x="732" y="196">&lt;div classStyle=</text>
+    <text class="code" x="748" y="218">{styles.notice} /&gt;</text>
+
+    <text class="code dim" x="420" y="292">app/  styles.ts <tspan class="hl">→</tspan> page.tsx</text>
+
+    <text class="out" x="500" y="371"><tspan class="hl">"xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7"</tspan></text>
+  </g>
+</svg>
