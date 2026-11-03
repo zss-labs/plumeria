@@ -24,32 +24,30 @@ const readJson = (file: string): any => {
   }
 };
 
-const conditionsOf = (exports: unknown, into = new Set<string>()) => {
-  if (exports && typeof exports === 'object' && !Array.isArray(exports))
-    for (const [key, value] of Object.entries(exports)) {
-      if (!key.startsWith('.')) into.add(key);
-      conditionsOf(value, into);
-    }
-  return into;
+const conditionsOf = (exports: unknown): string[] => {
+  if (!exports || typeof exports !== 'object' || Array.isArray(exports))
+    return [];
+  return Object.entries(exports).flatMap(([key, value]) => [
+    ...(key.startsWith('.') ? [] : [key]),
+    ...conditionsOf(value),
+  ]);
 };
 
 function sourceOnlyPackages(root: string): string[] {
   const manifest = readJson(path.join(root, 'package.json')) ?? {};
-  const names = new Set(
-    [
-      'dependencies',
-      'devDependencies',
-      'peerDependencies',
-      'optionalDependencies',
-    ].flatMap((field) => Object.keys(manifest[field] ?? {})),
-  );
-  return [...names].filter((name) => {
+  const names = Object.keys({
+    ...manifest.dependencies,
+    ...manifest.devDependencies,
+    ...manifest.peerDependencies,
+    ...manifest.optionalDependencies,
+  });
+  return names.filter((name) => {
     for (let dir = root; ; dir = path.dirname(dir)) {
       const pkg = readJson(
         path.join(dir, 'node_modules', name, 'package.json'),
       );
       if (pkg) {
-        const conditions = [...conditionsOf(pkg.exports)];
+        const conditions = conditionsOf(pkg.exports);
         return (
           conditions.includes('plumeria') &&
           conditions.every((c) => c === 'plumeria' || c === 'types')
