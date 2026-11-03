@@ -33,7 +33,11 @@ export const blog = loader({
   },
 });
 
-const specialBlogSlugs = ['how-to-leave-plumeria', 'how-to-plumeria'];
+const specialBlogSlugs = ['how-to-plumeria'];
+
+const blogDates = new Map(
+  blogDocs.map((doc) => [doc.info.path.replace(/\.mdx?$/, ''), doc.date.replaceAll('/', '-')] as const),
+);
 
 function getBlogSlug(node: Node): string {
   if (node.type !== 'page') return '';
@@ -62,10 +66,14 @@ function compareBlogNodes(a: Node, b: Node): number {
   const aVersion = getBlogVersion(aSlug);
   const bVersion = getBlogVersion(bSlug);
 
-  if (aVersion && bVersion) {
-    for (let index = 0; index < aVersion.length; index += 1) {
-      if (aVersion[index] !== bVersion[index]) return bVersion[index] - aVersion[index];
-    }
+  if (!aVersion && !bVersion) {
+    return (blogDates.get(bSlug) ?? '').localeCompare(blogDates.get(aSlug) ?? '');
+  }
+  if (!aVersion) return 1;
+  if (!bVersion) return -1;
+
+  for (let index = 0; index < aVersion.length; index += 1) {
+    if (aVersion[index] !== bVersion[index]) return bVersion[index] - aVersion[index];
   }
 
   return aSlug.localeCompare(bSlug);
