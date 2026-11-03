@@ -337,7 +337,7 @@ npx @plumeria/codemod migrate --from plumeria
 
 The first turns each `*.module.css` into a `*.styles.ts` beside it and points its consumers there. The second sends styles back to `*.module.css`, theme tokens and animations to global CSS, and call sites to `className`. What returns is an equivalent stylesheet, not the files you started from: a dynamic style leaves as a custom property, and a marker as the `@container style()` rule it compiles to.
 
-CI runs the whole trip on this site and on the e2e app: out to CSS Modules, back to Plumeria and out again, and a new type error fails it. [How to leave Plumeria](/blog/how-to-leave-plumeria) has the details.
+CI runs the whole trip on this site and on the e2e app: out to CSS Modules, back to Plumeria and out again, and a new type error fails it. [Running it twice](/docs/api/migrate/codemod#running-it-twice) has the details.
 
 From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
 
