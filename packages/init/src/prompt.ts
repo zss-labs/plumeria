@@ -101,6 +101,14 @@ export const ask = async (
     }
   }
 
+  if (preset.stylePropOnly === undefined) {
+    answers.stylePropOnly = await confirm(
+      asker,
+      `Apply styles in .jsx/.tsx only through ${answers.styleProp}?`,
+      true,
+    );
+  }
+
   if (preset.eslint === undefined) {
     answers.eslint = await confirm(
       asker,
