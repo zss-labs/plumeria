@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; }
+    .accent { stroke: var(--accent); }
+    .dash { stroke-dasharray: 6 7; }
+    .code { fill: var(--ink); font-size: 13px; }
+    .hl { fill: var(--accent); }
+    .title { fill: var(--ink); font-size: 15px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1000" height="470" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M60 46 L438 43 L440 250 L58 253 Z" />
+    <path class="ghost" d="M63 49 L435 47 L436 246 L62 249 Z" />
+
+    <path class="line accent" d="M60 300 L296 298 L298 424 L62 426 Z" />
+    <path class="ghost accent" d="M64 304 L293 302 L294 420 L65 422 Z" />
+
+    <path class="line" d="M352 298 L652 300 L650 456 L354 454 Z" />
+    <path class="ghost" d="M356 302 L647 303 L646 452 L357 450 Z" />
+
+    <path class="line accent dash" d="M52 110 C18 150 16 280 50 340" />
+    <path class="line accent" d="M38 332 L51 342 L54 326" />
+
+    <path class="line accent" d="M302 360 C326 362 322 434 344 438" />
+    <path class="line accent" d="M332 430 L345 438 L332 446" />
+
+    <path class="line" d="M446 148 C570 146 620 200 686 212" />
+    <path class="line" d="M672 204 L687 212 L673 220" />
+    <path class="line" d="M656 380 C680 370 670 270 686 254" />
+    <path class="line" d="M672 258 L687 252 L684 267" />
+
+    <path class="line" d="M696 172 L978 169 L980 290 L698 293 Z" />
+    <path class="ghost" d="M700 176 L974 173 L975 286 L701 289 Z" />
+  </g>
+
+  <g filter="url(#ink)">
+    <text class="title" x="66" y="32">Notice.tsx</text>
+    <text class="code" x="78" y="76">notice: {</text>
+    <text class="code hl" x="94" y="98">display: 'flex',</text>
+    <text class="code hl" x="94" y="120">flexDirection: 'column',</text>
+    <text class="code hl" x="94" y="142">gap: 12,</text>
+    <text class="code" x="94" y="164">padding: 16,</text>
+    <text class="code" x="94" y="186">borderRadius: 8,</text>
+    <text class="code" x="78" y="208">},</text>
+    <text class="code" x="78" y="236">&lt;div classStyle={styles.notice} /&gt;</text>
+
+    <text class="title" x="66" y="286">styles/layout.ts</text>
+    <text class="code" x="78" y="330">stack: {</text>
+    <text class="code hl" x="94" y="352">display: 'flex',</text>
+    <text class="code hl" x="94" y="374">flexDirection: 'column',</text>
+    <text class="code hl" x="94" y="396">gap: 12,</text>
+    <text class="code" x="78" y="416">},</text>
+
+    <text class="title" x="358" y="286">Notice.tsx</text>
+    <text class="code" x="370" y="330">notice: {</text>
+    <text class="code" x="386" y="352">padding: 16,</text>
+    <text class="code" x="386" y="374">borderRadius: 8,</text>
+    <text class="code" x="370" y="396">},</text>
+    <text class="code" x="370" y="424">&lt;div classStyle={[</text>
+    <text class="code" x="386" y="446"><tspan class="hl">layout.stack</tspan>, styles.notice]} /&gt;</text>
+
+    <text class="code" x="716" y="206">&lt;div className={</text>
+    <text class="code" x="732" y="232"><tspan class="hl">"xxp6epoh xi0vg1kw xkhnu0f1</tspan></text>
+    <text class="code" x="740" y="258">xqqbxt1d xyqr9vb7"} /&gt;</text>
+  </g>
+</svg>
