@@ -149,9 +149,9 @@ developer, and it does nothing where no linter runs. Once the 56 pairs are gone,
 the bundler can keep them gone. `withoutLogicalProperties` and
 `withoutPhysicalProperties` reject the same spelling at build time and take the
 same `{ sizes }` option, on
-[Next.js](/docs/api-reference/plugins/next-plugin#withoutlogicalproperties-and-withoutphysicalproperties)
+[Next.js](/docs/api/plugins/next-plugin#withoutlogicalproperties-and-withoutphysicalproperties)
 and on
-[every other bundler](/docs/api-reference/plugins/unplugin#withoutlogicalproperties-and-withoutphysicalproperties).
+[every other bundler](/docs/api/plugins/unplugin#withoutlogicalproperties-and-withoutphysicalproperties).
 They do not depend on each developer running ESLint, and they apply to every
 file the compiler processes — which `include` and `exclude` decide, so a file
 outside that set is not compiled and not checked.
