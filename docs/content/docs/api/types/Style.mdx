@@ -8,7 +8,7 @@ type Style = StyleList<StyleNamespace>;
 export type { Style };
 ```
 
-`Style` is the type of the `classStyle` prop and of every argument to [css.use()](/docs/api-reference/javascript/use). It accepts a style created by [css.create](/docs/api-reference/javascript/create), the falsy values `false`, `null` and `undefined`, and arrays nesting any of those.
+`Style` is the type of the `classStyle` prop and of every argument to [css.use()](/docs/api/javascript/use). It accepts a style created by [css.create](/docs/api/javascript/create), the falsy values `false`, `null` and `undefined`, and arrays nesting any of those.
 
 ## Example
 
@@ -97,11 +97,11 @@ export function Example() {
 }
 ```
 
-A component has to apply the style it receives on an element it renders. One that only passes it on stops the build; see [`no-style-prop-relay`](/docs/api-reference/plugins/eslint-plugin#no-style-prop-relay).
+A component has to apply the style it receives on an element it renders. One that only passes it on stops the build; see [`no-style-prop-relay`](/docs/api/plugins/eslint-plugin#no-style-prop-relay).
 
 ## One style rather than a list
 
-`Style` describes a list, so a prop typed with it can be handed an array, a conditional or nothing at all. A prop that instead takes exactly one created style, because the component reads a property off it, is [AtomicStyle](/docs/api-reference/types/AtomicStyle):
+`Style` describes a list, so a prop typed with it can be handed an array, a conditional or nothing at all. A prop that instead takes exactly one created style, because the component reads a property off it, is [AtomicStyle](/docs/api/types/AtomicStyle):
 
 ```tsx
 function Glyph({ glyphStyle }: { glyphStyle: css.AtomicStyle<{ color: string }> }) {
@@ -114,5 +114,5 @@ That is the whole difference: `Style` is what a styling prop accepts, `AtomicSty
 It is also the name TypeScript writes when it emits a declaration for an exported style, so a package that ships styles compiles with `declaration: true`.
 
 <Callout title="Good to know">
-`Style` accepts every property. To constrain what a component accepts through a style prop, use [StyleProps](/docs/api-reference/types/StyleProps), [WithoutProperties](/docs/api-reference/types/WithoutProperties) or [StaticStyles](/docs/api-reference/types/StaticStyles).
+`Style` accepts every property. To constrain what a component accepts through a style prop, use [StyleProps](/docs/api/types/StyleProps), [WithoutProperties](/docs/api/types/WithoutProperties) or [StaticStyles](/docs/api/types/StaticStyles).
 </Callout>
