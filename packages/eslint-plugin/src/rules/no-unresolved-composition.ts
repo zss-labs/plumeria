@@ -3,15 +3,9 @@
  */
 
 import type { Rule } from 'eslint';
-import type { Node, Identifier, MemberExpression } from 'estree';
+import type { Node } from 'estree';
 import { resolveStyleProp, stylePropSchema } from '../util/style-prop';
-
-const memberName = (node: MemberExpression) =>
-  !node.computed && node.property.type === 'Identifier'
-    ? node.property.name
-    : node.computed && node.property.type === 'Literal'
-      ? node.property.value
-      : null;
+import { callsCore, memberName, variableOf } from '../util/coreImport';
 
 export const noUnresolvedComposition: Rule.RuleModule = {
   meta: {
@@ -35,47 +29,11 @@ export const noUnresolvedComposition: Rule.RuleModule = {
     const styleProp = resolveStyleProp(context);
     const reported = new Set<Node>();
 
-    function variableOf(node: Identifier) {
-      let scope = context.sourceCode.getScope(node);
-      while (scope) {
-        const variable = scope.set.get(node.name);
-        if (variable) return variable;
-        if (!scope.upper) break;
-        scope = scope.upper;
-      }
-      return null;
-    }
-
-    function imported(node: Node, name: string): boolean {
-      if (node.type !== 'Identifier') return false;
-      {
-        const variable = variableOf(node);
-        if (variable) {
-          return variable.defs.some((def) => {
-            if (
-              def.type !== 'ImportBinding' ||
-              def.parent.source.value !== '@plumeria/core'
-            )
-              return false;
-            const specifier = def.node;
-            return name === '*'
-              ? specifier.type === 'ImportNamespaceSpecifier' ||
-                  specifier.type === 'ImportDefaultSpecifier'
-              : specifier.type === 'ImportSpecifier' &&
-                  (specifier.imported.type === 'Identifier'
-                    ? specifier.imported.name
-                    : specifier.imported.value) === name;
-          });
-        }
-      }
-      return false;
-    }
-
     function resolve(node: Node, seen: Set<Node>): Node[] {
       if (seen.has(node)) return [];
       seen.add(node);
       if (node.type === 'Identifier') {
-        const variable = variableOf(node);
+        const variable = variableOf(context, node);
         if (!variable || variable.defs.some((def) => def.type !== 'Variable'))
           return [];
         const start = node.range?.[0] ?? 0;
@@ -113,21 +71,8 @@ export const noUnresolvedComposition: Rule.RuleModule = {
       );
     }
 
-    function isUse(node: Node): boolean {
-      if (node.type !== 'CallExpression') return false;
-      const callee = node.callee;
-      return callee.type === 'MemberExpression'
-        ? memberName(callee) === 'use' && imported(callee.object, '*')
-        : callee.type === 'Identifier' && imported(callee, 'use');
-    }
-
-    function isCreate(node: Node): boolean {
-      if (node.type !== 'CallExpression') return false;
-      const callee = node.callee;
-      return callee.type === 'MemberExpression'
-        ? memberName(callee) === 'create' && imported(callee.object, '*')
-        : callee.type === 'Identifier' && imported(callee, 'create');
-    }
+    const isUse = (node: Node) => callsCore(context, node, 'use');
+    const isCreate = (node: Node) => callsCore(context, node, 'create');
 
     function dynamic(node: Node, seen = new Set<Node>()): boolean {
       if (seen.has(node)) return false;
