@@ -36,9 +36,7 @@
     "cjs": "tsc --project tsconfig.cjs.json"
   },
   "dependencies": {
-    "@plumeria/compiler": "workspace:*"
-  },
-  "devDependencies": {
+    "@plumeria/compiler": "workspace:*",
     "zss-engine": "catalog:"
   },
   "publishConfig": {
