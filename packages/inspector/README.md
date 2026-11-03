@@ -4,7 +4,7 @@ A development inspector for visualizing and debugging styled components in the b
 
 ## Documentation(Demo)
 
-Read the [documentation](https://plumeria.dev/docs/api-reference/components/inspector) for more details.
+Read the [documentation](https://plumeria.dev/docs/api/packages/inspector) for more details.
 ## Installation
 
 ```bash
