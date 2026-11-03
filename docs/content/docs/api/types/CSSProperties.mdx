@@ -8,7 +8,7 @@ type CSSProperties;
 export type { CSSProperties };
 ```
 
-`CSSProperties` is the shape of the style objects handed to [css.create](/docs/api-reference/javascript/create). Use it with `satisfies`, which checks the object while leaving its inferred type intact.
+`CSSProperties` is the shape of the style objects handed to [css.create](/docs/api/javascript/create). Use it with `satisfies`, which checks the object while leaving its inferred type intact.
 
 ## Example
 
@@ -29,7 +29,7 @@ export const styles = css.create({
 });
 ```
 
-See [createStatic](/docs/api-reference/javascript/createStatic) for what the spread compiles to.
+See [createStatic](/docs/api/javascript/createStatic) for what the spread compiles to.
 
 <Callout title="Use satisfies, not an annotation">
 Annotating a variable with `css.CSSProperties` widens every value to its declared type and makes each generated class name optional, because the properties of `CSSProperties` are themselves optional. Write `satisfies css.CSSProperties` so the literal types survive.
