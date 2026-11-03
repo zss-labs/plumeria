@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json::Value as Json;
 
 use super::path::{dirname, exists, extname, is_dir, is_file, resolve};
@@ -518,6 +518,10 @@ fn manifest_mtime(dir: &Path) -> Option<std::time::SystemTime> {
 }
 
 impl SourcePackage {
+    pub fn exports(&self) -> &Json {
+        &self.exports
+    }
+
     fn is_stale(&self) -> bool {
         std::fs::canonicalize(&self.linked).ok().as_ref() != Some(&self.dir)
             || manifest_mtime(&self.dir) != self.manifest_mtime
@@ -625,28 +629,59 @@ pub fn load_source_packages(cwd: &Path) -> Vec<SourcePackage> {
         .collect()
 }
 
+struct LoadedPackages {
+    manifest_mtime: Option<std::time::SystemTime>,
+    list: Vec<SourcePackage>,
+}
+
 #[derive(Default)]
 pub struct Resolver {
     matcher: Option<Option<PathsMatcher>>,
-    packages: Option<Vec<SourcePackage>>,
+    packages: FxHashMap<PathBuf, LoadedPackages>,
+    active: Option<PathBuf>,
 }
 
 impl Resolver {
     pub fn reset(&mut self, cwd: &Path) {
         self.matcher = Some(load_paths_matcher(&cwd.join("tsconfig.json")));
-        self.packages = Some(load_source_packages(cwd));
+        self.active = Some(cwd.to_path_buf());
+        self.packages_for(cwd);
     }
 
     pub fn source_packages_stale(&self) -> bool {
-        self.packages
+        self.active
             .as_ref()
-            .is_some_and(|packages| packages.iter().any(SourcePackage::is_stale))
+            .and_then(|root| self.packages.get(root))
+            .is_some_and(|packages| packages.list.iter().any(SourcePackage::is_stale))
+    }
+
+    pub fn packages_for(&mut self, cwd: &Path) -> &[SourcePackage] {
+        let manifest = manifest_mtime(cwd);
+        let fresh = self.packages.get(cwd).is_some_and(|packages| {
+            packages.manifest_mtime == manifest
+                && !packages.list.iter().any(SourcePackage::is_stale)
+        });
+        if !fresh {
+            self.packages.insert(
+                cwd.to_path_buf(),
+                LoadedPackages {
+                    manifest_mtime: manifest,
+                    list: load_source_packages(cwd),
+                },
+            );
+        }
+        &self.packages[cwd].list
     }
 
     pub fn source_packages(&mut self) -> &[SourcePackage] {
-        self.packages.get_or_insert_with(|| {
-            load_source_packages(&std::env::current_dir().unwrap_or_default())
-        })
+        let root = self
+            .active
+            .clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+        if !self.packages.contains_key(&root) {
+            return self.packages_for(&root);
+        }
+        &self.packages[&root].list
     }
 
     fn resolve_source_package(&mut self, import_path: &str) -> Option<String> {
