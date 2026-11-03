@@ -4,6 +4,8 @@ description: 'How Plumeria decides which atomic class wins when styles conflict.
 ---
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
+<img src="/specificity-steps.svg" width={1000} height={420} alt="Each step toward a longhand or a condition adds :not(#\#) to the class, and within one step the right side of the array wins" />
+
 In short: a longhand beats its shorthand, a condition or a nested selector beats its base, and in a `classStyle` array the right side wins. Four pairs have nothing to rank them by, and [What source order still decides](#what-source-order-still-decides) covers them.
 
 <Steps>
@@ -38,14 +40,14 @@ xatom1 {
   padding: 20px;
 }
 
-xatom2:not(#\#) {
+xatom2:not(#\#):not(#\#) {
   padding-top: 10px;
 }
 ```
 And this too
 
 ```css
-xatom2:not(#\#) {
+xatom2:not(#\#):not(#\#) {
   padding-top: 10px;
 }
 
@@ -60,6 +62,7 @@ Logical intermediate properties use the intermediate depth. For example:
 padding:             0 - :not(#\#) x 0
 padding-block:       1 - :not(#\#) x 1
 padding-block-start: 2 - :not(#\#) x 2
+padding-top:         2 - :not(#\#) x 2
 ```
 
 Only the property's graph depth is added. A shorthand does not receive extra
@@ -86,7 +89,7 @@ The longhand's higher specificity keeps the top value while the shorthand sets
 the remaining sides:
 
 ```css
-xatom1:not(#\#) {
+xatom1:not(#\#):not(#\#) {
   padding-top: 20px;
 }
 
