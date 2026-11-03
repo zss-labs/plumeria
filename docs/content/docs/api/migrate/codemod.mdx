@@ -73,13 +73,13 @@ export const styles = css.create({
   </div>
 ```
 
-A descendant rule has no combinator to translate into — `no-combinator` rejects one — so it becomes [`css.marker`](/docs/api-reference/javascript/marker) on the parent and `css.extended` on the child. Both class names sit in the same selector, so which is which is read from the stylesheet.
+A descendant rule has no combinator to translate into — `no-combinator` rejects one — so it becomes [`css.marker`](/docs/api/javascript/marker) on the parent and `css.extended` on the child. Both class names sit in the same selector, so which is which is read from the stylesheet.
 
 Class names become camel-case keys, and a bare pixel length loses its unit, because `padding: 16` and `padding: '16px'` compile to the same rule.
 
 ### Keyframes
 
-A `@keyframes` the stylesheet declares becomes a [`css.keyframes`](/docs/api-reference/javascript/keyframes) binding written above the `css.create`, and `animation-name` reads that binding instead of the name. An `animation` shorthand naming one is split into its longhands:
+A `@keyframes` the stylesheet declares becomes a [`css.keyframes`](/docs/api/javascript/keyframes) binding written above the `css.create`, and `animation-name` reads that binding instead of the name. An `animation` shorthand naming one is split into its longhands:
 
 ```css
 /* Spinner.module.css */
@@ -625,7 +625,7 @@ export default [
 ];
 ```
 
-And point the type declaration at the same name — see [Declaring the styling prop](/docs/api-reference/types/Style#declaring-the-styling-prop).
+And point the type declaration at the same name — see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
 One practical note: the codemod does not reformat. If the new name is longer than the old one, lines that were near your print width can cross it. Run your formatter afterwards.
 
