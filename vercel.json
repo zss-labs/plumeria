@@ -11,12 +11,52 @@
     },
     {
       "source": "/docs/api-reference/javascript/viewTransition",
-      "destination": "/docs/api-reference/javascript/viewTransitionClass",
+      "destination": "/docs/api/javascript/viewTransitionClass",
       "permanent": true
     },
     {
       "source": "/docs/api-reference/javascript/wind",
-      "destination": "/docs/api-reference/wind",
+      "destination": "/docs/api/packages/wind",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/wind",
+      "destination": "/docs/api/packages/wind",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/wind.md",
+      "destination": "/docs/api/packages/wind.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/integration/component-library",
+      "destination": "/docs/creating-packages",
+      "permanent": true
+    },
+    {
+      "source": "/docs/integration/component-library.md",
+      "destination": "/docs/creating-packages.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/tools/:path*",
+      "destination": "/docs/api/migrate/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/components/:path*",
+      "destination": "/docs/api/packages/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference.md",
+      "destination": "/docs/api.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api-reference/:path*",
+      "destination": "/docs/api/:path*",
       "permanent": true
     },
     {
