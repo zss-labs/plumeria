@@ -102,6 +102,7 @@ describe('startLintGuard', () => {
     expect(args.slice(1)).toEqual([
       '-c',
       expect.stringMatching(/eslint-plugin[\\/]oxlint\.json$/),
+      '--ignore-pattern=**/node_modules/**',
       '--deny-warnings',
       '--no-error-on-unmatched-pattern',
       '--threads=2',
