@@ -3,13 +3,19 @@ title: 'Thinking in Plumeria'
 description: 'How to place, compose and share styles, from one component to a project split across packages.'
 ---
 
+<img src="/project-grows.svg" width={1000} height={400} alt="The project grows from one component file to styles modules and a shared package, while the classes Notice receives stay the same" />
+
 Two facts decide most of what follows. A class name comes from the property and the value alone, so where a style is written never reaches the output. The array on `classStyle` is the merge, so the order you read is the order that wins. Structure has one job left, which is to be easy to read, and it can change whenever that stops being true.
 
 Here is one component, `Notice`, from its first style to a project that shares its values across packages.
 
-## Start in the component's file
+## Start beside the component
 
-A style one component uses stays in that component's file and is not exported.
+A style one component uses stays with that component: in its file, or in a `styles.ts` beside it in the component's own folder. Both compile to the same classes, so a project picks one and keeps to it.
+
+<img src="/colocation.svg" width={1000} height={420} alt="Notice.tsx with its styles inside, and a Notice folder with styles.ts imported by index.tsx, compile to the same class list" />
+
+In one file, the styles are not exported:
 
 ```tsx title="components/Notice.tsx"
 import * as css from '@plumeria/core';
@@ -34,7 +40,38 @@ export const Notice = ({ title }: { title: string }) => (
 );
 ```
 
-`css.create` stays at the top level of the module; inside a function, the build stops. A key nothing reads stops it too, so deleting an element cannot leave its styles behind.
+In a folder, the same module splits in two, and only `index.tsx` imports `styles.ts`:
+
+```ts title="components/Notice/styles.ts"
+import * as css from '@plumeria/core';
+
+export const styles = css.create({
+  notice: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+  },
+  title: {
+    fontWeight: 600,
+  },
+});
+```
+
+```tsx title="components/Notice/index.tsx"
+import { styles } from './styles';
+
+export const Notice = ({ title }: { title: string }) => (
+  <div classStyle={styles.notice}>
+    <strong classStyle={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+Callers still import `components/Notice`. A page takes the same shape, with `page.tsx` and a `styles.ts` beside it.
+
+`css.create` stays at the top level of the module; inside a function, the build stops. In one file, a key nothing reads stops it too, so deleting an element cannot leave its styles behind. That check reads a single file, so a key left unused in `styles.ts` is not reported.
 
 ## Compose in the order you mean
 
@@ -375,10 +412,9 @@ styles/
 ├─ theme.ts
 └─ tokens.ts
 ```
-
-Styles that crowd a component's markup can move to a `styles.ts` beside it. Only that component imports the file, until a second one needs a style from it.
-
 ## Refactoring is free
+
+<img src="/refactoring-is-free.svg" width={1000} height={470} alt="Moving the stack styles from Notice.tsx into styles/layout.ts leaves the class names on the element unchanged" />
 
 That move changed nothing the browser receives. A class name comes from the property and the value alone, so `Notice` ends up with the classes it started with:
 
