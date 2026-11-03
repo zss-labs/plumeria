@@ -12,6 +12,24 @@ import {
 } from '@plumeria/compiler';
 import type { PropertyPolicyOptions } from '@plumeria/compiler';
 import { carryStylesheet } from './dev-bridge-client';
+import { inSourcePackage, sourcePackages } from 'zss-engine';
+import type { SourcePackage } from 'zss-engine';
+
+export {
+  sourcePackages,
+  resolveSourcePackage,
+  inSourcePackage,
+} from 'zss-engine';
+
+const packagesByRoot = new Map<string, SourcePackage[]>();
+const packagesOf = (root: string) => {
+  let packages = packagesByRoot.get(root);
+  if (!packages) {
+    packages = sourcePackages(root);
+    packagesByRoot.set(root, packages);
+  }
+  return packages;
+};
 
 export interface LoaderOptions extends PropertyPolicyOptions {
   include?: string[];
@@ -61,16 +79,38 @@ export const devGenerationsPath = (cwd: string) =>
 
 const DEFAULT_INCLUDE = ['**/*.{js,jsx,ts,tsx}'];
 const DEFAULT_EXCLUDE = ['**/node_modules/**', '**/dist/**', '**/.next/**'];
+const BROAD_NODE_MODULES = new Set(['**/node_modules/**', 'node_modules/**']);
 
 export function compileStylesheet(options: LoaderOptions, cwd: string) {
-  return compileCSS({
-    include: options.include ?? DEFAULT_INCLUDE,
-    exclude: options.exclude ?? DEFAULT_EXCLUDE,
+  const shared = {
     cwd,
     styleProp: options.styleProp ?? DEFAULT_STYLE_PROP,
     withoutLogicalProperties: options.withoutLogicalProperties,
     withoutPhysicalProperties: options.withoutPhysicalProperties,
+  };
+  const css = compileCSS({
+    ...shared,
+    include: options.include ?? DEFAULT_INCLUDE,
+    exclude: options.exclude ?? DEFAULT_EXCLUDE,
   });
+  const include = packagesOf(cwd).flatMap((pkg) =>
+    pkg.sourceDirs.map(
+      (dir) =>
+        `${path.relative(cwd, dir).replace(/\\/g, '/')}/**/*.{js,jsx,ts,tsx}`,
+    ),
+  );
+  if (include.length === 0) return css;
+  return (
+    compileCSS({
+      ...shared,
+      include,
+      exclude: (options.exclude ?? []).filter(
+        (pattern) => !BROAD_NODE_MODULES.has(pattern),
+      ),
+    }) +
+    '\n' +
+    css
+  );
 }
 
 export const generationId = (css: string) =>
@@ -135,7 +175,8 @@ export default async function loader(this: LoaderContext, source: string) {
   const resourcePath = this.resourcePath;
 
   if (
-    resourcePath.includes('node_modules') ||
+    (resourcePath.includes('node_modules') &&
+      !inSourcePackage(packagesOf(process.cwd()), resourcePath)) ||
     !needsCompile(source, styleProp, resourcePath)
   ) {
     return callback(null, source);
