@@ -78,6 +78,8 @@ export const MyComponent = ({ isActive }) => {
 
 **Definitions from a package.** A package whose `exports` point a `plumeria` condition at its TypeScript source, such as `@plumeria/wind`, is read like a local module by an app that lists it in its dependencies. A package without the condition is not read. A package that reads definitions from another Plumeria package needs both in the app's dependencies. If the app lists only the first, the build succeeds, but declarations that read the second are dropped.
 
+**Components from a package.** The app's build compiles the components in such a package along with its own files, so a `classStyle` the app passes to one is settled at build time, as for a local component, and the bundler plugin needs no configuration for it. Write the component with Pattern 1 or Pattern 2 below: apply the received style on an element it renders. Every file in the directories the exports point to is compiled, so keep tests and stories outside them. A package that also keeps a `default` condition pointing at a dist gives that dist to apps without Plumeria, where the app's `classStyle` is not applied.
+
 **Imports that compile away.** An import whose names are all compiled away is removed from the output, so a module imported only for its definitions is not loaded through it. If the module also has to run on import, add `import './tokens';` beside it. An import still read at runtime, rendered as a component or re-exported stays.
 
 ## Forbidden Patterns
