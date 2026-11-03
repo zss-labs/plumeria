@@ -9,17 +9,14 @@ import {
   transformSource,
   DEFAULT_STYLE_PROP,
   needsCompile,
-} from '@plumeria/compiler';
-import type { PropertyPolicyOptions } from '@plumeria/compiler';
-import { carryStylesheet } from './dev-bridge-client';
-import { inSourcePackage, sourcePackages } from 'zss-engine';
-import type { SourcePackage } from 'zss-engine';
-
-export {
   sourcePackages,
-  resolveSourcePackage,
-  inSourcePackage,
-} from 'zss-engine';
+} from '@plumeria/compiler';
+import type { PropertyPolicyOptions, SourcePackage } from '@plumeria/compiler';
+import { carryStylesheet } from './dev-bridge-client';
+import { inSourcePackage } from 'zss-engine';
+
+export { sourcePackages } from '@plumeria/compiler';
+export { resolveSourcePackage, inSourcePackage } from 'zss-engine';
 
 const packagesByRoot = new Map<string, SourcePackage[]>();
 const packagesOf = (root: string) => {
