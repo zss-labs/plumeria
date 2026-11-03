@@ -122,6 +122,69 @@ it('keeps resolving for the scanned root after listing another root', () => {
   expect(resolveImportPath('ui-kit/colors', importer)).toBe(colors);
 });
 
+// Listing the packages after an exports change refreshes the list before the
+// next scan sees it, so the refresh itself has to reach that scan.
+it.each([false, true])(
+  'recompiles with an exports change the list picked up first (transform: %s)',
+  async (transform) => {
+    const cwd = path.join(DIR, String(count++));
+    const pkg = path.join(cwd, 'node_modules/ui-kit');
+    const filePath = path.join(cwd, 'app.tsx');
+    const exportsTo = (entry: string) => {
+      const manifest = path.join(pkg, 'package.json');
+      fs.writeFileSync(
+        manifest,
+        JSON.stringify({
+          name: 'ui-kit',
+          exports: { '.': { plumeria: entry } },
+        }),
+      );
+      touch(manifest);
+    };
+    write(cwd, {
+      'package.json': JSON.stringify({
+        name: 'app',
+        dependencies: { 'ui-kit': '1.0.0' },
+      }),
+      'app.tsx': `import * as css from '@plumeria/core';
+import { colors } from 'ui-kit';
+const styles = css.create({ main: { color: colors.ink } });
+export const App = () => <div classStyle={styles.main} />;
+`,
+    });
+    write(pkg, {
+      'src/red.ts': `import * as css from '@plumeria/core';
+export const colors = css.createStatic({ ink: '#ab1234' });
+`,
+      'src/blue.ts': `import * as css from '@plumeria/core';
+export const colors = css.createStatic({ ink: '#12ab34' });
+`,
+    });
+    exportsTo('./src/red.ts');
+    const compile = async () => {
+      if (transform) {
+        await transformSource({
+          source: fs.readFileSync(filePath, 'utf-8'),
+          moduleId: filePath,
+          filePath,
+          root: cwd,
+          cwd,
+          isDev: true,
+        });
+      }
+      return compileCSS({ cwd, include: ['app.tsx'], exclude: [] });
+    };
+    expect(await compile()).toContain('#ab1234');
+
+    exportsTo('./src/blue.ts');
+    expect(sourcePackages(cwd)).toHaveLength(1);
+
+    const css = await compile();
+    expect(css).toContain('#12ab34');
+    expect(css).not.toContain('#ab1234');
+  },
+);
+
 it('keeps resolving through the list a bundler read first', async () => {
   const cwd = setup({ 'ui-kit': '1.0.0' });
   expect(sourcePackages(cwd)).toHaveLength(1);
