@@ -8,7 +8,7 @@ type StaticStyles<K extends StyleKey = StyleKey> = StyleList<StaticNamespace<K>>
 export type { StaticStyles };
 ```
 
-`StaticStyles` rejects a dynamic style, which is what calling a [function key](/docs/api-reference/javascript/create#dynamic-values) gives. A dynamic style has to reach the element as a custom property, so a component that turns its styles into a class name string with [css.use()](/docs/api-reference/javascript/use) cannot carry one.
+`StaticStyles` rejects a dynamic style, which is what calling a [function key](/docs/api/javascript/create#dynamic-values) gives. A dynamic style has to reach the element as a custom property, so a component that turns its styles into a class name string with [css.use()](/docs/api/javascript/use) cannot carry one.
 
 ## Without a type argument
 
@@ -45,7 +45,7 @@ export function Chip({ classStyle }: ChipProps) {
 
 ## With a type argument
 
-A type argument narrows the properties as well, so `StaticStyles<'color'>` is [StyleProps](/docs/api-reference/types/StyleProps)`<'color'>` without dynamic styles:
+A type argument narrows the properties as well, so `StaticStyles<'color'>` is [StyleProps](/docs/api/types/StyleProps)`<'color'>` without dynamic styles:
 
 ```tsx
 type BadgeProps = {
@@ -54,5 +54,5 @@ type BadgeProps = {
 ```
 
 <Callout title="Good to know">
-A component that applies its styles through the `classStyle` prop can carry a dynamic style. Use [StyleProps](/docs/api-reference/types/StyleProps) or [WithoutProperties](/docs/api-reference/types/WithoutProperties) there instead.
+A component that applies its styles through the `classStyle` prop can carry a dynamic style. Use [StyleProps](/docs/api/types/StyleProps) or [WithoutProperties](/docs/api/types/WithoutProperties) there instead.
 </Callout>
