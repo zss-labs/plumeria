@@ -9,7 +9,7 @@ Each component is a pure passthrough — it forwards refs and spreads props onto
 
 ## Documentation
 
-Read the [documentation](https://plumeria.dev/docs/api-reference/components/headlessui) for more details.
+Read the [documentation](https://plumeria.dev/docs/api/packages/headlessui) for more details.
 
 ## Installation
 
