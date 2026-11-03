@@ -8,7 +8,7 @@ type WithoutProperties<K extends StyleKey> = StyleProps<Exclude<StyleKey, K>>;
 export type { WithoutProperties };
 ```
 
-`WithoutProperties` is the inverse of [StyleProps](/docs/api-reference/types/StyleProps). Every property is accepted except the ones named, which is the shorter way to write a component that has to protect a few properties from being overridden while leaving the rest open.
+`WithoutProperties` is the inverse of [StyleProps](/docs/api/types/StyleProps). Every property is accepted except the ones named, which is the shorter way to write a component that has to protect a few properties from being overridden while leaving the rest open.
 
 ## Example
 
