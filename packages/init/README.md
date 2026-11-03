@@ -48,6 +48,12 @@ two cannot disagree. It has to be an identifier TypeScript can declare, and a
 name React leaves free; `className`, `style`, `key`, `ref` and `children` are
 refused, from the prompt and from `--style-prop` alike.
 
+**Apply styles in .jsx/.tsx only through `classStyle`?** — yes by default, which
+adds `@plumeria/no-use-in-jsx` to the lint config, so `css.use()` is reported in
+`.jsx` and `.tsx` files and the styling prop is the one way to apply styles
+there. Answer no, or pass `--allow-use`, when the project styles a third-party
+component that takes a class name only through `css.use()`.
+
 **Set up `@plumeria/eslint-plugin` for ESLint?** — adds the plugin and writes or
 extends the flat config, so a style error is reported while you type. The build
 lints either way: the bundler plugin runs the same rules alongside the build and
@@ -90,6 +96,7 @@ npx @plumeria/init --dry-run            # show the plan, write nothing
 npx @plumeria/init --yes                # take every default, ask nothing
 npx @plumeria/init --physical --sizes   # answer the spelling question up front
 npx @plumeria/init --style-prop sx
+npx @plumeria/init --allow-use          # keep css.use() in .jsx/.tsx files
 npx @plumeria/init --bundler rollup
 npx @plumeria/init --no-eslint          # leave ESLint out
 npx @plumeria/init --no-install         # write the configs, print the command
