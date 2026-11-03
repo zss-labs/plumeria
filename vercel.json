@@ -5,6 +5,11 @@
   "cleanUrls": true,
   "redirects": [
     {
+      "source": "/blog/component-libraries-without-a-runtime",
+      "destination": "/blog/ui-libraries-without-a-runtime",
+      "permanent": true
+    },
+    {
       "source": "/blog/eating-up-the-libraries",
       "destination": "https://refirst11.vercel.app/posts/2026-05-10",
       "permanent": true
