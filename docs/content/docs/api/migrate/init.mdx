@@ -29,7 +29,7 @@ Commit before running, so the writes can be reverted with `git checkout`.
 
 The package manager comes from `packageManager`, or from the lockfile when that field is absent. Both are looked for upwards from the directory init runs in, so a package inside a workspace is installed with the manager the workspace root uses rather than with `npm`.
 
-The bundler comes from the dependencies, and from the config files when nothing is installed yet — `next`, `vite`, `astro`, `webpack`, `rspack`, `rollup`, `rolldown`, `esbuild`, `farm` and `bun`. Next.js is read before the bundler Next.js carries, so a Next project gets [`@plumeria/next-plugin`](/docs/api-reference/plugins/next-plugin); everything else gets [`@plumeria/unplugin`](/docs/api-reference/plugins/unplugin) with the factory that matches. Pass `--bundler <name>` to decide it yourself.
+The bundler comes from the dependencies, and from the config files when nothing is installed yet — `next`, `vite`, `astro`, `webpack`, `rspack`, `rollup`, `rolldown`, `esbuild`, `farm` and `bun`. Next.js is read before the bundler Next.js carries, so a Next project gets [`@plumeria/next-plugin`](/docs/api/plugins/next-plugin); everything else gets [`@plumeria/unplugin`](/docs/api/plugins/unplugin) with the factory that matches. Pass `--bundler <name>` to decide it yourself.
 
 ## What it asks
 
@@ -45,7 +45,7 @@ One answer reaches both levels. The bundler plugin receives `withoutPhysicalProp
 
 `--sizes` extends both to the size axis, where `width` and `inlineSize` are the pair.
 
-On a codebase that already has styles, answer `3` and follow [Optional rules](/docs/api-reference/plugins/eslint-plugin/optional-rules) instead: the rule offers a rename on every occurrence, which is what a migration needs, and the build option belongs afterwards.
+On a codebase that already has styles, answer `3` and follow [Optional rules](/docs/api/plugins/eslint-plugin/optional-rules) instead: the rule offers a rename on every occurrence, which is what a migration needs, and the build option belongs afterwards.
 
 ### Which JSX prop carries styles?
 
@@ -132,5 +132,5 @@ pnpm i -D @plumeria/init
 
 <Cards>
   <Card title="Set it up by hand instead" href="/docs/installation" />
-  <Card title="Move an existing codebase onto Plumeria" href="/docs/api-reference/tools/codemod" />
+  <Card title="Move an existing codebase onto Plumeria" href="/docs/api/migrate/codemod" />
 </Cards>
