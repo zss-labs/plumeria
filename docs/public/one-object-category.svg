@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+    .accent { stroke: var(--accent); }
+    .soft { stroke: var(--soft); }
+    .dash { stroke-dasharray: 5 6; }
+    .dot { fill: var(--ink); }
+    .label { fill: var(--ink); font-size: 17px; text-anchor: middle; }
+    .code { fill: var(--ink); font-size: 14px; }
+    .hl { fill: var(--accent); }
+    .dim { fill: var(--soft); }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1000" height="380" />
+
+  <g filter="url(#rough)">
+    <circle class="dot" cx="340" cy="210" r="11" />
+
+    <path class="line" d="M330 202 C230 120 190 250 326 216" />
+    <path class="line" d="M307 213 L327 216 L313 230" />
+
+    <path class="line accent" d="M350 202 C450 120 490 250 354 216" />
+    <path class="line accent" d="M373 213 L353 216 L367 230" />
+
+    <path class="line" d="M334 198 C220 10 460 10 346 198" />
+    <path class="line" d="M333 179 L344 198 L353 180" />
+
+    <path class="line soft dash" d="M334 222 C290 320 390 320 346 222" />
+    <path class="line soft" d="M338 240 L346 222 L357 238" />
+
+    <path class="line" d="M500 210 C540 206 580 214 640 210" />
+    <path class="line" d="M626 202 L641 210 L627 218" />
+
+    <path class="line" d="M656 164 L966 161 L968 258 L658 261 Z" />
+    <path class="ghost" d="M660 168 L962 165 L963 254 L661 257 Z" />
+  </g>
+
+  <g filter="url(#ink)">
+    <text class="label" x="206" y="168">a</text>
+    <text class="label hl" x="474" y="168">b</text>
+    <text class="label" x="340" y="40">[a, <tspan class="hl">b</tspan>]</text>
+    <text class="label dim" x="340" y="330">false</text>
+
+    <text class="code" x="678" y="202">&lt;div className={</text>
+    <text class="code" x="694" y="230"><tspan class="hl">"xgmn1kmt</tspan> x8ti24uy"} /&gt;</text>
+  </g>
+</svg>
