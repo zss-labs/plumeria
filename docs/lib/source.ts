@@ -21,6 +21,7 @@ export const blog = loader({
   baseUrl: '/blog',
   source: toFumadocsSource(blogDocs, blogMeta),
   pageTree: {
+    idPrefix: 'blog',
     transformers: [
       {
         root(tree: Root) {
