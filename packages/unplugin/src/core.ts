@@ -4,6 +4,12 @@ import * as path from 'path';
 import compiler from '@plumeria/compiler';
 import type { PropertyPolicyOptions } from '@plumeria/compiler';
 import { lintOverrides, startLintGuard } from '@plumeria/eslint-plugin/guard';
+import {
+  sourcePackages,
+  resolveSourcePackage,
+  inSourcePackage,
+} from 'zss-engine';
+import type { SourcePackage } from 'zss-engine';
 
 const {
   resolvePropertyPolicy,
@@ -52,6 +58,8 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   let isDev = false;
   let cssImport: CssImportFormatter | null = null;
   let viteRoot: string = process.cwd();
+  let packages: SourcePackage[] | undefined;
+  const packagesOf = () => (packages ??= sourcePackages(viteRoot));
 
   const lint = options.lint !== false;
   const startLint = () => {
@@ -103,12 +111,19 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
       },
       setRoot(root: string) {
         viteRoot = root;
+        packages = undefined;
       },
       setCssImport(formatter: CssImportFormatter | null) {
         cssImport = formatter;
       },
       setClassProp(value: string) {
         classProp = value;
+      },
+      resolveSource(id: string) {
+        return resolveSourcePackage(packagesOf(), id);
+      },
+      inSource(file: string) {
+        return inSourcePackage(packagesOf(), path.resolve(file));
       },
     },
 
@@ -124,7 +139,7 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
         }
         return query ? `${pathId}?${query}` : pathId;
       }
-      return null;
+      return resolveSourcePackage(packagesOf(), id);
     },
 
     loadInclude(id) {
@@ -145,8 +160,9 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
     transform: {
       order: 'pre',
       async handler(source, id) {
-        if (id.includes('node_modules')) return null;
         const [baseId] = id.split('?');
+        const fromPackage = inSourcePackage(packagesOf(), path.resolve(baseId));
+        if (baseId.includes('node_modules') && !fromPackage) return null;
         if (!filter(baseId)) return null;
         if (!needsCompile(source, styleProp, baseId)) return null;
 
@@ -161,7 +177,7 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
         const relative = path.relative(viteRoot, baseId).replace(/\\/g, '/');
         const insideRoot =
           !relative.startsWith('..') && !path.isAbsolute(relative);
-        const cwd = insideRoot ? viteRoot : path.dirname(baseId);
+        const cwd = insideRoot || fromPackage ? viteRoot : path.dirname(baseId);
 
         const { code: transformedSource } = transformSource({
           source,
