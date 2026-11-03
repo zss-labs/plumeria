@@ -87,7 +87,7 @@ describe('source generators', () => {
     expect(bundlerSource('astro', answers(), true)).toContain('vite:');
     expect(bundlerSource('webpack', answers(), true)).toBeUndefined();
     expect(eslintSource(answers(), false)).toContain('**/*.{js,jsx}');
-    expect(eslintEntries(answers(), false)).toEqual([
+    expect(eslintEntries(answers({ stylePropOnly: false }), false)).toEqual([
       'plumeria.configs.recommended',
     ]);
   });
@@ -99,7 +99,9 @@ describe('source generators', () => {
     );
     const source = eslintSource(answers({ styleProp: 'sx' }), true);
     expect(source).toContain("      plumeria: { styleProp: 'sx' },");
-    expect(eslintEntries(answers({ styleProp: 'sx' }), true)).toEqual([
+    expect(
+      eslintEntries(answers({ styleProp: 'sx', stylePropOnly: false }), true),
+    ).toEqual([
       'plumeria.configs.recommended',
       [
         '{',
@@ -337,10 +339,28 @@ describe('plan', () => {
     );
 
     const written = contentsOf(
-      on(plan(detect(dir), answers()), 'eslint.config.ts'),
+      on(
+        plan(detect(dir), answers({ stylePropOnly: false })),
+        'eslint.config.ts',
+      ),
     );
     expect(written).toContain('plumeria.configs.recommended,');
     expect(written).not.toContain('rules:');
+  });
+
+  it('keeps css.use() out of JSX files by default', () => {
+    project(
+      { name: 'app', devDependencies: { vite: '^8.0.13' } },
+      { 'tsconfig.json': '{}' },
+    );
+
+    const written = contentsOf(
+      on(plan(detect(dir), answers()), 'eslint.config.ts'),
+    );
+    expect(written).toContain("'@plumeria/no-use-in-jsx': 'error',");
+    expect(eslintEntries(answers(), true)[1]).toContain(
+      "    '@plumeria/no-use-in-jsx': 'error',",
+    );
   });
 
   it('guards the build script of a bundler the plugin cannot lint', () => {
@@ -628,10 +648,20 @@ describe('plan', () => {
     );
 
     add(dir, '.oxlintrc.json', `{\n  // project rules\n  "rules": {}\n}\n`);
-    const action = on(plan(detect(dir), answers()), '.oxlintrc.json');
+    const action = on(
+      plan(detect(dir), answers({ stylePropOnly: false })),
+      '.oxlintrc.json',
+    );
     expect(action.kind).toBe('manual');
     if (action.kind === 'manual') {
       expect(JSON.parse(action.snippet).rules).toEqual(OXLINT_RECOMMENDED);
+    }
+    const strict = on(plan(detect(dir), answers()), '.oxlintrc.json');
+    if (strict.kind === 'manual') {
+      expect(JSON.parse(strict.snippet).rules).toEqual({
+        ...OXLINT_RECOMMENDED,
+        '@plumeria/no-use-in-jsx': 'error',
+      });
     }
   });
 
