@@ -10,6 +10,8 @@ Plumeria takes that decision away from stylesheet order. The compiler merges sty
 
 ## The right side wins
 
+<img src="/right-side-wins.svg" width={1000} height={460} alt="Whichever order the chunks load in, the style passed in last wins on the element" />
+
 A component applies its own style first and the one it receives last. Here the two live in different modules, and both set `color`:
 
 ```tsx title="Badge.tsx"
