@@ -1,0 +1,5 @@
+{
+  "defaultOpen": false,
+  "title": "API Reference",
+  "pages": ["plugins", "javascript", "types", "migrate"]
+}
