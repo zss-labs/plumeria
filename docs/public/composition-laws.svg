@@ -37,27 +37,27 @@
     <path class="ghost" d="M500 24 L502 396" />
     <path class="ghost" d="M24 210 L976 208" />
 
-    <path class="line" d="M64 86 L110 85 L111 125 L63 126 Z" />
-    <path class="line accent" d="M120 85 L166 86 L165 126 L121 125 Z" />
-    <path class="line soft" d="M186 86 L232 85 L233 125 L185 126 Z" />
+    <circle class="line" cx="87" cy="106" r="22" />
+    <circle class="line accent" cx="143" cy="106" r="22" />
+    <circle class="line soft" cx="209" cy="106" r="22" />
     <path class="line" d="M54 76 C50 100 52 120 56 136 M174 76 C178 100 177 120 172 136" />
-    <path class="line" d="M276 86 L322 85 L323 125 L275 126 Z" />
-    <path class="line accent" d="M342 85 L388 86 L387 126 L343 125 Z" />
-    <path class="line soft" d="M398 86 L444 85 L445 125 L397 126 Z" />
+    <circle class="line" cx="299" cy="106" r="22" />
+    <circle class="line accent" cx="365" cy="106" r="22" />
+    <circle class="line soft" cx="421" cy="106" r="22" />
     <path class="line" d="M334 76 C330 100 332 120 336 136 M454 76 C458 100 457 120 452 136" />
 
-    <path class="line" d="M590 86 L636 85 L637 125 L589 126 Z" />
-    <path class="line soft dash" d="M656 85 L726 86 L725 126 L657 125 Z" />
-    <path class="line" d="M830 86 L876 85 L877 125 L829 126 Z" />
+    <circle class="line" cx="613" cy="106" r="22" />
+    <ellipse class="line soft dash" cx="691" cy="106" rx="38" ry="22" />
+    <circle class="line" cx="853" cy="106" r="22" />
 
-    <path class="line" d="M100 292 L146 291 L147 331 L99 332 Z" />
-    <path class="line" d="M156 291 L202 292 L201 332 L157 331 Z" />
-    <path class="line" d="M320 292 L366 291 L367 331 L319 332 Z" />
+    <circle class="line" cx="123" cy="312" r="22" />
+    <circle class="line" cx="179" cy="312" r="22" />
+    <circle class="line" cx="343" cy="312" r="22" />
 
-    <path class="line" d="M574 292 L620 291 L621 331 L573 332 Z" />
-    <path class="line accent" d="M630 291 L676 292 L675 332 L631 331 Z" />
-    <path class="line accent" d="M800 292 L846 291 L847 331 L799 332 Z" />
-    <path class="line" d="M856 291 L902 292 L901 332 L857 331 Z" />
+    <circle class="line" cx="597" cy="312" r="22" />
+    <circle class="line accent" cx="653" cy="312" r="22" />
+    <circle class="line accent" cx="823" cy="312" r="22" />
+    <circle class="line" cx="879" cy="312" r="22" />
   </g>
 
   <circle class="swatch-accent" cx="625" cy="368" r="9" filter="url(#rough)" />
