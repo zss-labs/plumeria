@@ -82,6 +82,7 @@ describe('ask', () => {
       spelling: 'physical',
       sizes: false,
       styleProp: 'sx',
+      stylePropOnly: false,
       eslint: false,
     });
     expect(asker.asked).toEqual([]);
@@ -104,8 +105,17 @@ describe('ask', () => {
   });
 
   it('turns ESLint off when told to', async () => {
-    const answers = await ask(scripted(['3', '', 'n']), {});
+    const answers = await ask(scripted(['3', '', '', 'n']), {});
     expect(answers.eslint).toBe(false);
+  });
+
+  it('asks whether JSX files apply styles only through the styling prop', async () => {
+    const asker = scripted(['3', 'sx', 'n']);
+    const answers = await ask(asker, {});
+    expect(answers.stylePropOnly).toBe(false);
+    expect(asker.asked[2]).toContain(
+      'Apply styles in .jsx/.tsx only through sx?',
+    );
   });
 });
 
