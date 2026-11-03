@@ -1,0 +1,109 @@
+---
+title: 'Component libraries without a runtime'
+description: 'A package can ship its components as source, and a style the app passes in is settled when the app builds.'
+date: '2026-11-03'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+<GitHubUser username="refirst11" subtext="Core team members" />
+</div>
+
+A component library has two jobs that pull apart. It ships a default look, and it lets
+the app change that look. Whatever settles the change usually runs in the browser,
+because the library is built before the app that overrides it exists.
+
+Since 21.2.6 a Plumeria package can ship its components as source. The app's build
+compiles them along with its own files, so a style the app passes in is settled at
+build time.
+
+## Shipping the source
+
+The package points a `plumeria` export condition at its source, as
+[`@plumeria/wind`](/docs/api/packages/wind) already does for tokens:
+
+```json title="package.json"
+{
+  "name": "ui-kit",
+  "exports": {
+    ".": { "plumeria": "./src/index.ts", "types": "./src/index.ts" },
+    "./*": { "plumeria": "./src/*.tsx", "types": "./src/*.tsx" }
+  }
+}
+```
+
+A component applies a received style last, so the caller wins:
+
+```tsx title="src/Button.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: { paddingInline: 16, color: 'white', backgroundColor: 'gray' },
+});
+
+export const Button = ({
+  children,
+  classStyle,
+}: {
+  children: React.ReactNode;
+  classStyle?: css.Style;
+}) => <button classStyle={[styles.base, classStyle]}>{children}</button>;
+```
+
+The app lists `ui-kit` in its dependencies and overrides it as it would a local
+component:
+
+```tsx title="app.tsx"
+const styles = css.create({
+  primary: { backgroundColor: 'royalblue' },
+});
+
+<Button classStyle={styles.primary}>Primary</Button>;
+```
+
+No configuration names the package. The bundler plugin finds it through the
+condition, compiles its source directories, and in development an edit to the
+override reaches the component without a reload.
+
+## What reaches the browser
+
+The app's build writes `Button` with every style the app hands it:
+
+```js
+className:
+  'xnuwkl3w xgxw0ba0 xf882boo ' +
+  ({ x9ct19gt: 'xbpntsfg' }[classStyle] || 'xc4k1q4z'),
+```
+
+The conflict between `gray` and `royalblue` was decided by the compiler. What is
+left is a property lookup on a literal object: nothing merges styles, builds class
+names or injects rules while the app renders.
+
+| How a library settles the app's override | At runtime |
+| :-- | :-- |
+| Generates styles at render (styled components, emotion) | Generation and injection |
+| Merges class names (tailwind-merge, `stylex.props`) | A merge per render |
+| Concatenates class names | Nothing, but stylesheet order decides the winner |
+| Compiles the library with the app (Plumeria source packages) | A lookup |
+
+## What it asks for
+
+**The app builds with Plumeria.** The override is settled by the app's compiler, so
+an app without the bundler plugin cannot use the source. A library that has to reach
+those apps can still [ship a dist](/docs/creating-packages#ship-a-dist),
+whose users need no setup but cannot override through `classStyle`.
+
+**A style stops where it is applied.** A component applies a received style on an
+element it renders. Passing it on to another component stops the build, which is
+what keeps the lookup a lookup. See
+[Make the boundary a prop](/docs/thinking-in-plumeria#make-the-boundary-a-prop).
+
+**Values are known at build time.** A value that only exists at runtime goes through
+a CSS variable, as it does in your own components.
+
+## Next
+
+`@plumeria/wind` was the first package built from source, and it holds tokens. The
+next step is a component package built the same way. [Creating
+Packages](/docs/creating-packages) has the full setup for both ways of shipping.
