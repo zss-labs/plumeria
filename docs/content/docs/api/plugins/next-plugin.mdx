@@ -54,7 +54,7 @@ export default withPlumeria(nextConfig, {
 - `styleProp`: The JSX prop that carries styles. The default is `'classStyle'`.
 - `withoutLogicalProperties`: Rejects the logical name of a property that also has a physical name. The default is `false`.
 - `withoutPhysicalProperties`: Rejects the physical name of a property that also has a logical name. The default is `false`.
-- `lint`: Lints the project with [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) during `next build`. The default is `true`.
+- `lint`: Lints the project with [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) during `next build`. The default is `true`.
 
 ```ts
 interface PlumeriaOptions {
@@ -75,15 +75,15 @@ Renaming the prop takes two steps, and they have to agree. Tell the plugin:
 export default withPlumeria(nextConfig, { styleProp: 'sx' });
 ```
 
-and declare the same name for TypeScript; see [Declaring the styling prop](/docs/api-reference/types/Style#declaring-the-styling-prop).
+and declare the same name for TypeScript; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
-If the two disagree, the prop type-checks but is never compiled away. [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) reads the same name from `settings.plumeria.styleProp`.
+If the two disagree, the prop type-checks but is never compiled away. [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) reads the same name from `settings.plumeria.styleProp`.
 
 ### withoutLogicalProperties and withoutPhysicalProperties
 
 These reject one spelling of a property that has both a logical and a physical
 name. They behave exactly as on
-[`@plumeria/unplugin`](/docs/api-reference/plugins/unplugin#withoutlogicalproperties-and-withoutphysicalproperties),
+[`@plumeria/unplugin`](/docs/api/plugins/unplugin#withoutlogicalproperties-and-withoutphysicalproperties),
 which covers the error, the `{ sizes }` option and the lint rule each direction
 has to match:
 
@@ -99,9 +99,9 @@ export default withPlumeria(nextConfig, {
 
 ### lint
 
-The lint is integrated into the build by default, so it needs no setup. `next build` runs [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) through oxlint alongside the compile and stops on any error or warning. The build waits for the lint before it exits, so a build that finishes first still fails when the lint does. `next dev` does not lint.
+The lint is integrated into the build by default, so it needs no setup. `next build` runs [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) through oxlint alongside the compile and stops on any error or warning. The build waits for the lint before it exits, so a build that finishes first still fails when the lint does. `next dev` does not lint.
 
-The lint runs the recommended rules, and `withoutLogicalProperties` or `withoutPhysicalProperties` adds the [spelling rule](/docs/api-reference/plugins/eslint-plugin/optional-rules) that matches, `{ sizes }` included. `styleProp` reaches the rules that read the styling prop. It does not read `eslint.config.*`.
+The lint runs the recommended rules, and `withoutLogicalProperties` or `withoutPhysicalProperties` adds the [spelling rule](/docs/api/plugins/eslint-plugin/optional-rules) that matches, `{ sizes }` included. `styleProp` reaches the rules that read the styling prop. It does not read `eslint.config.*`.
 
 oxlint skips the files `.gitignore` ignores, and runs only the Plumeria rules, not oxlint's own.
 
