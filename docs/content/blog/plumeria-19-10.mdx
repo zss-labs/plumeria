@@ -6,7 +6,7 @@ date: '2026-10-07'
 
 import { GitHubUser } from 'component/GitHubUser'
 
-> **Current API:** `plumerialint` is now `plumeria-lint` ([19.11](/blog/plumeria-19-11)); see [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin).
+> **Current API:** `plumerialint` is now `plumeria-lint` ([19.11](/blog/plumeria-19-11)); see [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin).
 
 <div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
   <GitHubUser username="refirst11" subtext="Plumeria Core" />
@@ -19,7 +19,7 @@ Plumeria v19.10 integrates the lint into the bundler plugins by default. A style
 
 The compiler stops only what would break its output, such as a key nested deeper than 16 levels. A misspelled property or a selector like `&:hover` compiles to nothing, and catching it is the lint's job. Until 19.9 that lint stopped a build only when the build script ran it: `plumerialint -- next build`.
 
-Now oxlint starts inside the bundler and runs [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) alongside the compile. It runs with `--deny-warnings`, so any error or warning fails the build, and the build waits for its result before it exits. A build that passes has passed both:
+Now oxlint starts inside the bundler and runs [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) alongside the compile. It runs with `--deny-warnings`, so any error or warning fails the build, and the build waits for its result before it exits. A build that passes has passed both:
 
 ```json title="package.json"
 {
@@ -69,7 +69,7 @@ Or pass `lint: false` to build without the lint:
 export default withPlumeria(nextConfig, { lint: false });
 ```
 
-See [`@plumeria/next-plugin`](/docs/api-reference/plugins/next-plugin#lint) and [`@plumeria/unplugin`](/docs/api-reference/plugins/unplugin#lint).
+See [`@plumeria/next-plugin`](/docs/api/plugins/next-plugin#lint) and [`@plumeria/unplugin`](/docs/api/plugins/unplugin#lint).
 
 ---
 
