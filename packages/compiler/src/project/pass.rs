@@ -20,7 +20,7 @@ use crate::eval::{Env, EvalResult, Evaluator, Lookup, argument_expr, resolve_the
 use crate::js::{Object, Value, deep_merge, entries_object};
 use crate::style::records::{atom_class_string, atom_map};
 use crate::style::theme::{checked_var_type_hash, theme_atomic_map, theme_hash_of};
-use crate::syntax::component::component_functions;
+use crate::syntax::component::{Wrapped, component_functions, wrapped_bindings};
 use crate::syntax::expr::{BinOp, E, K, Prop, unwrap};
 use crate::syntax::module::{
     Aliases, CORE, SpecKind, add_core_aliases, import_specs, plumeria_method,
@@ -229,6 +229,13 @@ pub fn scan_file_pass<'b, 'a>(
                 }
             }
             _ => {}
+        }
+    }
+    for (_, _, found) in wrapped_bindings(program) {
+        if let Wrapped::Import(source, _) = found
+            && let Some(actual) = project.resolve_import_path(source, file)
+        {
+            dependencies.insert(actual);
         }
     }
 
