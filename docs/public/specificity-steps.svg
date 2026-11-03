@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; --error: #d9480f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; --error: #fb923c; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+    .accent { stroke: var(--accent); }
+    .hatch { stroke: var(--accent); stroke-width: 1; opacity: 0.35; }
+    .strike { stroke: var(--error); stroke-width: 1.8; }
+    .code { fill: var(--ink); font-size: 14px; }
+    .sel { fill: var(--ink); font-size: 12px; }
+    .dim { fill: var(--soft); }
+    .hl { fill: var(--accent); }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+    <clipPath id="top-step"><rect x="642" y="132" width="316" height="268" /></clipPath>
+  </defs>
+
+  <rect class="bg" width="1000" height="420" />
+
+  <g filter="url(#rough)">
+    <g clip-path="url(#top-step)">
+      <path class="hatch" d="M600 420 L900 120 M630 420 L930 120 M660 420 L960 120 M690 420 L990 120 M720 420 L1020 120 M750 420 L1050 120 M780 420 L1080 120 M810 420 L1110 120 M840 420 L1140 120 M870 420 L1170 120 M900 420 L1200 120 M570 420 L870 120" />
+    </g>
+
+    <path class="line" d="M30 332 L340 330 L342 230 L640 232 L642 130 L962 128 L964 398 L28 400 Z" />
+    <path class="ghost" d="M34 336 L336 334 L338 234 L636 236 L638 134 L958 132 L960 394 L32 396 Z" />
+    <path class="line accent" d="M642 130 L962 128 L964 398 L640 400 Z" />
+
+    <path class="strike" d="M52 374 L150 371" />
+  </g>
+
+  <g filter="url(#ink)">
+    <text class="code" x="44" y="292">margin: 10</text>
+    <text class="sel" x="44" y="316">.x38w6p7d</text>
+
+    <text class="code" x="356" y="192">marginTop: 20</text>
+    <text class="sel" x="356" y="216">.x0wb6ff3<tspan class="hl">:not(#\#):not(#\#)</tspan></text>
+
+    <text class="code" x="656" y="92">':hover': { marginTop: 24 }</text>
+    <text class="sel" x="656" y="116">.xz2hprdo<tspan class="hl">:not(#\#):not(#\#):not(#\#)</tspan>:hover</text>
+
+    <text class="code" x="44" y="378"><tspan class="dim">[styles.gray</tspan>, <tspan class="hl">styles.teal</tspan>]</text>
+  </g>
+</svg>
