@@ -75,7 +75,6 @@ const configs: Configs = {
       '@plumeria/no-unknown-css-properties': 'error',
       '@plumeria/no-unused-keys': 'warn',
       '@plumeria/no-unresolved-composition': 'warn',
-      '@plumeria/no-use-in-jsx': 'error',
       '@plumeria/sort-properties': 'warn',
       '@plumeria/format-properties': 'warn',
       '@plumeria/validate-values': 'warn',
