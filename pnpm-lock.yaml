@@ -34,8 +34,8 @@ catalogs:
       specifier: 5.109.2
       version: 5.109.2
     zss-engine:
-      specifier: 3.0.1
-      version: 3.0.1
+      specifier: 3.1.1
+      version: 3.1.1
 
 overrides:
   '@vercel/og>sharp': '-'
@@ -115,7 +115,7 @@ importers:
         version: 6.0.3
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
 
   docs:
     dependencies:
@@ -193,7 +193,7 @@ importers:
         version: 4.4.3
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -977,7 +977,7 @@ importers:
         version: 7.1.1
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
 
   packages/compiler:
     devDependencies:
@@ -1000,7 +1000,7 @@ importers:
         version: 1.87.0
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
     devDependencies:
       '@types/eslint':
         specifier: ^9.6.1
@@ -1159,10 +1159,9 @@ importers:
       '@plumeria/compiler':
         specifier: workspace:*
         version: link:../compiler
-    devDependencies:
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
 
   packages/unplugin:
     dependencies:
@@ -1178,6 +1177,9 @@ importers:
       unplugin:
         specifier: ^3.0.0
         version: 3.0.0
+      zss-engine:
+        specifier: 'catalog:'
+        version: 3.1.1
     devDependencies:
       vite:
         specifier: ^8.0.13
@@ -1199,7 +1201,7 @@ importers:
         version: 8.5.26
       zss-engine:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.1.1
 
   packages/wind:
     dependencies:
@@ -12113,8 +12115,8 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
-  zss-engine@3.0.1:
-    resolution: {integrity: sha512-j3A+V79icZQuhSSQRI6dz7+XWl2+Imch7Gy5Tp53gEoj+SXKpriMlLkBCQwFyP2tq63cst5Db7KmBZaidopmyA==}
+  zss-engine@3.1.1:
+    resolution: {integrity: sha512-qlRngPedZD86UIxc8UkXV2cYpeego24N0Xyl+Qft5difoGHv1JEaRsXUC160IrmlgAflfB3FL5go8xM3ey72Fw==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -23917,7 +23919,7 @@ snapshots:
 
   zod@4.4.3: {}
 
-  zss-engine@3.0.1:
+  zss-engine@3.1.1:
     dependencies:
       csstype: 3.2.3
 
