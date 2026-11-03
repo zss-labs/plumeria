@@ -3,6 +3,8 @@ title: 'Composition laws'
 description: 'The four laws a style array obeys, and how two of them make the merge a monoid, a category with one object.'
 ---
 
+<img src="/composition-laws.svg" width={1000} height={420} alt="Regrouping keeps the result, false drops out, a repeated style counts once, and swapping two styles changes which one wins" />
+
 A `classStyle` array merges its styles property by property. Written as an
 operation, where $\oplus$ merges the style on its right into the one on its left,
 that merge obeys four laws. Each one is something you can rely on when you
@@ -55,6 +57,12 @@ A shorthand against its longhand is the exception: the longhand wins in either
 order. See [Specificity](/docs/specificity).
 
 ## What the laws add up to
+
+A monoid is a category with one object. Every style is an arrow from that object
+back to itself, an array composes its arrows into one, and `false` is the
+identity arrow:
+
+<img src="/one-object-category.svg" width={1000} height={380} alt="Styles a and b drawn as loops on one object, [a, b] as their composite loop, false as the identity loop, and the composite reduced to one class list" />
 
 Together, associativity and identity make the merge a **monoid**: any array,
 however it is nested or wherever its conditions fall, reduces to one style. The
