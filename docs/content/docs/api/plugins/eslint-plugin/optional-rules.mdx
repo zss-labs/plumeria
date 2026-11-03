@@ -1,17 +1,17 @@
 ---
 title: 'Optional rules'
-description: 'Rules that make an order-dependent pair impossible to write'
+description: 'Rules that narrow how styles are written, so an order-dependent pair or a second way to apply them cannot occur'
 ---
 
-`recommended` reports defects. The two spelling rules do something else: they
-take away the room for one, at the cost of narrowing how you are allowed to
-write. Neither is on by default. `expand-border-shorthands`, which takes away
-the other shape, is part of `recommended` as a warning and is covered here with
-them.
+`recommended` reports defects. The two spelling rules and `no-use-in-jsx` do
+something else: they take away the room for one, at the cost of narrowing how
+you are allowed to write. None is on by default. `expand-border-shorthands`,
+which takes away the other shape of an order-dependent pair, is part of
+`recommended` as a warning and is covered here with the spelling rules.
 
-The spelling rules are turned on in an ESLint config. The lint the bundler
-plugins run, and `plumeria-lint`, use a fixed oxlint config that does not list
-them; the bundler plugins add the one that matches `withoutLogicalProperties` or
+These rules are turned on in an ESLint config. The lint the bundler plugins
+run, and `plumeria-lint`, use a fixed oxlint config that does not list them; the
+bundler plugins add the spelling rule that matches `withoutLogicalProperties` or
 `withoutPhysicalProperties`.
 
 ## What they are for
@@ -175,3 +175,32 @@ not decidable in general, so a pair that overlaps without either containing the
 other is left to source order. `no-order-dependent-overlap` reports a nested
 pair written in the losing order, which the stylesheet corrects but the source
 still reads the wrong way round.
+
+## no-use-in-jsx
+
+In a `.jsx` or `.tsx` file the styling prop can apply every style, so a second
+way to apply one only gives two spellings of the same thing. This rule reports
+every call of `use` imported from `@plumeria/core` in those files, wherever it
+is written:
+
+```jsx
+<div className={css.use(styles.base)} />
+
+const className = css.use(styles.base);
+```
+
+Other files keep `css.use()`, as Vue, Svelte and Astro templates need it, and a
+result imported from one of them is left alone.
+
+It is off by default because `css.use()` is the only way to style a third-party
+component whose props have no `Style` type, or one that takes a class name under
+another prop, such as `overlayClassName`. Turn it on when the project renders no
+such component. [`@plumeria/init`](/docs/api/migrate/init) turns it on unless it is
+run with `--allow-use`.
+
+```js
+'@plumeria/no-use-in-jsx': 'error'
+```
+
+Accepts `{ styleProp }`, which names the prop in the message; see
+[Configuring the styling prop](/docs/api/plugins/eslint-plugin#configuring-the-styling-prop).
