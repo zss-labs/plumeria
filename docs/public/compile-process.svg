@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #777; --accent: #0d9488; --error: #d9480f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #8a8a8a; --accent: #2dd4bf; --error: #fb923c; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; }
+    .accent { stroke: var(--accent); }
+    .error { stroke: var(--error); stroke-dasharray: 6 6; }
+    .code { fill: var(--ink); font-size: 13px; }
+    .dim { fill: var(--soft); }
+    .hl { fill: var(--accent); }
+    .title { fill: var(--ink); font-size: 15px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+    .note { fill: var(--ink); font-size: 14px; font-family: "Inter", system-ui, sans-serif; }
+    .err { fill: var(--error); }
+    .hatch { stroke: var(--accent); stroke-width: 1; opacity: 0.35; }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <clipPath id="compiler-clip"><rect x="346" y="128" width="176" height="148" /></clipPath>
+  </defs>
+
+  <rect class="bg" width="1000" height="440" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M24 60 L286 57 L289 268 L22 271 Z" />
+    <path class="ghost" d="M27 63 L283 61 L285 264 L26 268 Z" />
+
+    <g clip-path="url(#compiler-clip)">
+      <path class="hatch" d="M330 300 L500 130 M350 300 L520 130 M370 300 L540 130 M390 300 L560 130 M410 300 L580 130 M430 300 L600 130 M450 300 L620 130 M470 300 L640 130 M310 300 L480 130 M290 300 L460 130" />
+    </g>
+    <path class="line accent" d="M344 126 L524 129 L522 278 L346 275 Z" />
+    <path class="ghost accent" d="M348 130 L520 131 L519 274 L349 272 Z" />
+
+    <path class="line" d="M590 42 L862 40 L864 158 L592 161 Z" />
+    <path class="ghost" d="M593 45 L859 44 L860 155 L595 157 Z" />
+
+    <path class="line" d="M590 212 L862 214 L860 316 L592 313 Z" />
+    <path class="ghost" d="M594 216 L858 217 L857 312 L596 310 Z" />
+
+    <path class="line" d="M902 92 L982 90 L984 262 L904 264 Z" />
+    <path class="line" d="M903 112 L983 110" />
+    <circle class="line" cx="914" cy="101" r="3" />
+    <circle class="line" cx="926" cy="101" r="3" />
+
+    <path class="line" d="M292 164 C312 160 324 192 340 198" />
+    <path class="line" d="M330 190 L341 199 L327 204" />
+
+    <path class="line" d="M526 176 C550 160 560 110 584 102" />
+    <path class="line" d="M572 98 L586 101 L576 112" />
+    <path class="line" d="M526 230 C552 240 560 262 584 264" />
+    <path class="line" d="M572 256 L586 264 L573 272" />
+
+    <path class="line" d="M866 102 C880 110 886 140 898 152" />
+    <path class="line" d="M886 148 L899 154 L894 140" />
+    <path class="line" d="M864 266 C882 262 886 230 898 214" />
+    <path class="line" d="M887 220 L899 212 L898 227" />
+
+    <path class="line error" d="M434 282 C432 310 440 330 436 356" />
+    <path class="line" style="stroke: var(--error)" d="M427 346 L436 358 L444 345" />
+  </g>
+
+  <text class="title" x="30" y="44">Button.tsx</text>
+  <text class="code" x="40" y="92"><tspan class="dim">const</tspan> styles = css.create({</text>
+  <text class="code" x="56" y="114">base: { padding: 16 },</text>
+  <text class="code" x="56" y="136">active: { color: <tspan class="hl">'teal'</tspan> },</text>
+  <text class="code" x="40" y="158">});</text>
+  <text class="code" x="40" y="196">&lt;p classStyle={[</text>
+  <text class="code" x="56" y="218">styles.base,</text>
+  <text class="code" x="56" y="240">on &amp;&amp; styles.active,</text>
+  <text class="code" x="40" y="262">]} /&gt;</text>
+
+  <text class="title" x="370" y="166">compiler</text>
+  <text class="note" x="370" y="200">every file</text>
+  <text class="note" x="370" y="226">right side wins</text>
+  <text class="note" x="370" y="252">property + value</text>
+
+  <text class="title" x="598" y="30">JS</text>
+  <text class="code" x="606" y="76">&lt;p className={on</text>
+  <text class="code" x="622" y="100">? <tspan class="hl">"xqqbxt1d xxcejlqg"</tspan></text>
+  <text class="code" x="622" y="124">: <tspan class="hl">"xqqbxt1d"</tspan></text>
+  <text class="code" x="606" y="146">} /&gt;</text>
+
+  <text class="title" x="598" y="342">CSS</text>
+  <text class="code" x="606" y="252"><tspan class="hl">.xqqbxt1d</tspan> { padding: 16px }</text>
+  <text class="code" x="606" y="282"><tspan class="hl">.xxcejlqg</tspan> { color: teal }</text>
+
+  <text class="note" x="943" y="168" text-anchor="middle">class</text>
+  <text class="note" x="943" y="194" text-anchor="middle">+</text>
+  <text class="note" x="943" y="220" text-anchor="middle">CSS</text>
+
+  <text class="note err" x="372" y="386">✕ build stops at the line</text>
+</svg>
