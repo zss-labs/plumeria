@@ -36,9 +36,9 @@ export default [plumeria.configs.recommended];
 ## Configuring the styling prop
 
 `custom-props-require-import`, `no-inline-object`, `no-mixed-styling-props`,
-`no-style-prop-relay` and `no-unresolved-composition` need to know which JSX
-prop carries styles. It is `classStyle` unless you changed it, so most projects
-configure nothing.
+`no-style-prop-relay`, `no-unresolved-composition` and `no-use-in-jsx` need to
+know which JSX prop carries styles. It is `classStyle` unless you changed it, so
+most projects configure nothing.
 
 If you did rename it — via `styleProp` on `withPlumeria` or on the unplugin
 options — tell the plugin the same name. The lint the bundler plugins run in the
@@ -202,7 +202,7 @@ Validates at-rules inside `css.create()`. It accepts `@media`, `@container`, and
 ## Optional rules
 
 These rules are not enabled by `plumeria.configs.recommended`. Enable the
-spelling policy that fits the project:
+ones that fit the project:
 
 ```js
 export default [
@@ -234,6 +234,28 @@ either rule and stays reported.
 The bundler plugins turn the matching rule on in the build lint as well:
 `withoutPhysicalProperties` runs `no-physical-properties`, and
 `withoutLogicalProperties` runs `no-logical-properties`, `{ sizes }` included.
+
+### no-use-in-jsx
+
+Disallow `css.use()` in JSX, so the styling prop is the one way to apply
+styles there. It reports a call written in JSX and a `const` in the same file
+that holds one and reaches JSX:
+
+```jsx
+<div className={css.use(styles.base)} />
+
+const className = css.use(styles.base);
+<div className={className} />
+```
+
+`css.use()` outside JSX stays available, as it is for Vue, Svelte and Astro
+templates, and so does a result imported from another module. The rule is off
+by default because `css.use()` is the only way to style a third-party component
+whose props have no `Style` type, or one that takes a class name under another
+prop, such as `overlayClassName`. Turn it on when the project renders no such
+component.
+
+Accepts `{ styleProp }`; see [Configuring the styling prop](#configuring-the-styling-prop).
 
 ## CLI (plumeria-lint)
 
