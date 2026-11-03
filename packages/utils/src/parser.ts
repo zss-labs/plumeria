@@ -2454,6 +2454,11 @@ function runScan(scanCwd: string, styleProp: string): Tables {
             }
           }
         }
+        for (const { wrapped } of wrappedBindings(ast)) {
+          if (typeof wrapped !== 'object' || !('source' in wrapped)) continue;
+          const actualPath = resolveImportPath(wrapped.source, filePath);
+          if (actualPath) localDependencies.add(actualPath);
+        }
 
         const initializers = new Map<string, Expression>();
         for (const statement of ast.body) {
@@ -3521,6 +3526,13 @@ function extractAndCacheExports(
     {};
   for (const { name, wrapped } of wrappedBindings(ast)) {
     if (typeof wrapped !== 'object' || !('name' in wrapped)) continue;
+    if ('source' in wrapped) {
+      const actualPath = resolveImportPath(wrapped.source, filePath);
+      if (actualPath) localDependencies.add(actualPath);
+      else unresolvedImports.push(wrapped.source);
+      aliases[name] = { source: wrapped.source, localName: wrapped.name };
+      continue;
+    }
     const imported = imports[wrapped.name];
     aliases[name] = imported
       ? { source: imported.source, localName: imported.importedName }
