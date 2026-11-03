@@ -41,9 +41,9 @@ const styles = css.create({
 ```
 
 ## Combinators
-A key cannot contain a combinator (`>`, `+`, `~` or a space) except inside a functional pseudo-class such as `:has()`. To style a child from its parent's state, use [marker and extended](/docs/api-reference/javascript/marker).
+A key cannot contain a combinator (`>`, `+`, `~` or a space) except inside a functional pseudo-class such as `:has()`. To style a child from its parent's state, use [marker and extended](/docs/api/javascript/marker).
 
-`no-invalid-selector` and `no-combinator` in [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) report each of these.
+`no-invalid-selector` and `no-combinator` in [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) report each of these.
 
 ## Functional pseudo-classes
 A functional pseudo-class cannot appear inside another one of the same name, at any depth. Different names can nest, such as `':is(:where(:not(:has(.a))))'`. `:not()` is the exception: it may nest inside `:not()`, because `':not(:not(.a), .b)'` has no flat form.
@@ -65,5 +65,5 @@ Allowing the reverse would give the same rule two spellings, and the style's typ
 
 
 <Cards>
-  <Card title="See more about API create" href="/docs/api-reference/javascript/create" />
+  <Card title="See more about API create" href="/docs/api/javascript/create" />
 </Cards>
