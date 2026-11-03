@@ -110,12 +110,23 @@ import './tokens';
 
 ## Release notes
 
+## 21.2.7 (Nov 3, 2026)
+
+- Feat: opt-in `no-use-in-jsx` rule that disallows `css.use()` in `.jsx` and `.tsx` files, so the styling prop is the one way to apply styles there
+- Feat: init asks whether `.jsx` and `.tsx` files apply styles only through the styling prop, and turns on `no-use-in-jsx` unless told otherwise with `--allow-use`
+
 ## 21.2.6 (Nov 3, 2026)
 
 - Fix: resolve and compile component source from packages exposing the plumeria condition, so a style the app passes to a component from such a package is resolved at build time. See [Creating Packages](/docs/creating-packages)
 - Fix: full-reload when a prop-driven update reaches a module that cannot accept it
 - Fix: keep node_modules out of the lint guard
 - Feat: `sourcePackages()` in the compiler lists the packages exposing the plumeria condition, so the bundler plugins share the compiler's discovery instead of scanning dependencies themselves
+
+## 21.2.5 (Nov 3, 2026)
+
+- Fix: a style passed to a component that React's `lazy` loads is handed to the export its `import()` names, as in `lazy(() => import('./Card'))` or `lazy(() => import('./Card').then((m) => ({ default: m.Card })))`, instead of being resolved to a `className` the component never reads
+- Fix: only a `lazy` imported from `react`, including `React.lazy` and a renamed import, is read this way, and a loader or pick written as a block is read like one written as an expression
+- Fix: the module a lazy component loads is a dependency of the file that loads it, so a change to that module, or the module appearing later, rescans the call site
 
 ## 21.2.4 (Nov 3, 2026)
 
