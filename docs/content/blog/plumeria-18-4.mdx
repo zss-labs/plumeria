@@ -57,7 +57,7 @@ Enabling both at once is a configuration error. They contradict each other, so p
 
 ## Lint migrates, the build locks
 
-[`no-physical-properties` and `no-logical-properties`](/docs/api-reference/plugins/eslint-plugin/optional-rules) have covered this since 18.2.9, and they are still where an existing codebase starts. A rule reports every occurrence at once and offers the rename, which is what moving a codebase needs.
+[`no-physical-properties` and `no-logical-properties`](/docs/api/plugins/eslint-plugin/optional-rules) have covered this since 18.2.9, and they are still where an existing codebase starts. A rule reports every occurrence at once and offers the rename, which is what moving a codebase needs.
 
 What a rule cannot do is hold the count at zero afterwards. It can be set to `'off'` for one developer, and it does nothing where no linter runs. The build option does not depend on anyone running ESLint, and it applies to every file the compiler processes — which `include` and `exclude` decide, so a file outside that set is not compiled and not checked.
 
