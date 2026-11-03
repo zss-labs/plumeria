@@ -931,17 +931,10 @@ impl Project {
             }
         }
 
-        let new_deps: Vec<String> = dependencies.into_iter().collect();
-        let previous = self
-            .files
-            .get(file)
-            .and_then(|cached| cached.dependencies.clone());
-        self.update_dependency_edges(file, previous.as_deref(), Some(&new_deps));
-
         let mut aliases: Ordered<ReExport> = Ordered::default();
         for (name, _, found) in wrapped_bindings(program) {
-            if let Wrapped::Name(inner) = found {
-                let alias = match imports.get(inner) {
+            let alias = match found {
+                Wrapped::Name(inner) => match imports.get(inner) {
                     Some(imported) => ReExport {
                         source: Some(imported.source.clone()),
                         local_name: imported.imported_name.clone(),
@@ -950,10 +943,25 @@ impl Project {
                         source: None,
                         local_name: inner.to_string(),
                     },
-                };
-                aliases.insert(name, alias);
-            }
+                },
+                Wrapped::Import(source, inner) => {
+                    track(self, source, &mut dependencies, &mut unresolved);
+                    ReExport {
+                        source: Some(source.to_string()),
+                        local_name: inner.to_string(),
+                    }
+                }
+                _ => continue,
+            };
+            aliases.insert(name, alias);
         }
+
+        let new_deps: Vec<String> = dependencies.into_iter().collect();
+        let previous = self
+            .files
+            .get(file)
+            .and_then(|cached| cached.dependencies.clone());
+        self.update_dependency_edges(file, previous.as_deref(), Some(&new_deps));
         let exports = Exports {
             local_exports,
             re_exports,
