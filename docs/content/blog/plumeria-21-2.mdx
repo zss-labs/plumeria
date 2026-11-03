@@ -77,7 +77,7 @@ const styles = css.create({
 });
 ```
 
-It is built the way section 1 describes: its `package.json` points a `plumeria` condition at `src/index.ts`, and there is no build output. Every value is compiled into the styles that read it and the import is removed, so nothing from the package reaches the bundle. It generates no utility classes. The full list is in [@plumeria/wind](/docs/api-reference/wind).
+It is built the way section 1 describes: its `package.json` points a `plumeria` condition at `src/index.ts`, and there is no build output. Every value is compiled into the styles that read it and the import is removed, so nothing from the package reaches the bundle. It generates no utility classes. The full list is in [@plumeria/wind](/docs/api/packages/wind).
 
 ## 3. Namespace imports
 
@@ -109,6 +109,13 @@ import './tokens';
 ---
 
 ## Release notes
+
+## 21.2.6 (Nov 3, 2026)
+
+- Fix: resolve and compile component source from packages exposing the plumeria condition, so a style the app passes to a component from such a package is resolved at build time. See [Creating Packages](/docs/creating-packages)
+- Fix: full-reload when a prop-driven update reaches a module that cannot accept it
+- Fix: keep node_modules out of the lint guard
+- Feat: `sourcePackages()` in the compiler lists the packages exposing the plumeria condition, so the bundler plugins share the compiler's discovery instead of scanning dependencies themselves
 
 ## 21.2.4 (Nov 3, 2026)
 
