@@ -5,7 +5,7 @@ description: 'Hover any element to see the Plumeria rules applied to it, in deve
 
 import { Inspector } from '@plumeria/inspector/production';
 
-<Inspector />
+<Inspector initial />
 `@plumeria/inspector` is a component you render once. It outlines the element under the cursor and shows the Plumeria rules applied to it, in the browser.
 
 ---
@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <html>
       <body>
         {/* Render the inspector component */}
-        <Inspector />
+        <Inspector initial />
         {children}
       </body>
     </html>
@@ -74,7 +74,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html>
       <body>
-        <Inspector />
+        <Inspector initial />
         {children}
       </body>
     </html>
