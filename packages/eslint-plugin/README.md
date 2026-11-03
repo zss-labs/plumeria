@@ -237,19 +237,18 @@ The bundler plugins turn the matching rule on in the build lint as well:
 
 ### no-use-in-jsx
 
-Disallow `css.use()` in JSX, so the styling prop is the one way to apply
-styles there. It reports a call written in JSX and a `const` in the same file
-that holds one and reaches JSX:
+Disallow `css.use()` in `.jsx` and `.tsx` files, so the styling prop is the one
+way to apply styles there. It reports every call of `use` imported from
+`@plumeria/core` in those files, wherever it is written:
 
 ```jsx
 <div className={css.use(styles.base)} />
 
 const className = css.use(styles.base);
-<div className={className} />
 ```
 
-`css.use()` outside JSX stays available, as it is for Vue, Svelte and Astro
-templates, and so does a result imported from another module. The rule is off
+Other files keep `css.use()`, as Vue, Svelte and Astro templates need it, and a
+result imported from one of them is left alone. The rule is off
 by default because `css.use()` is the only way to style a third-party component
 whose props have no `Style` type, or one that takes a class name under another
 prop, such as `overlayClassName`. Turn it on when the project renders no such
