@@ -1,5 +1,11 @@
 # @plumeria/wind
 
+## 21.2.5
+
+### Patch Changes
+
+- 40fb1e0: Bump version to 21.2.5
+
 ## 21.2.4
 
 ### Patch Changes
