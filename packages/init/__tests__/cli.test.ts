@@ -45,12 +45,20 @@ describe('parseArgs', () => {
 
   it('reads the flags that answer a question', () => {
     expect(
-      parseArgs(['--physical', '--sizes', '--style-prop', 'sx', '--no-eslint']),
+      parseArgs([
+        '--physical',
+        '--sizes',
+        '--style-prop',
+        'sx',
+        '--allow-use',
+        '--no-eslint',
+      ]),
     ).toMatchObject({
       preset: {
         spelling: 'physical',
         sizes: true,
         styleProp: 'sx',
+        stylePropOnly: false,
         eslint: false,
       },
     });
