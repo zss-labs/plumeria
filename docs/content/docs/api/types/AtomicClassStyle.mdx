@@ -8,7 +8,7 @@ type AtomicClassStyle<T>;
 export type { AtomicClassStyle };
 ```
 
-`AtomicClassStyle` is the type of one dynamic style, which is what calling a [function key](/docs/api-reference/javascript/create#dynamic-values) gives. It reads the same as [AtomicStyle](/docs/api-reference/types/AtomicStyle) — the type argument names the properties the style has to set, and a call names them with what it produced — and adds that a static style will not do.
+`AtomicClassStyle` is the type of one dynamic style, which is what calling a [function key](/docs/api/javascript/create#dynamic-values) gives. It reads the same as [AtomicStyle](/docs/api/types/AtomicStyle) — the type argument names the properties the style has to set, and a call names them with what it produced — and adds that a static style will not do.
 
 The name says where such a style has to go. The values the caller computed reach the element as custom properties, so the style is applied through `classStyle` rather than as a bare class name, and that is the whole reason a prop has to be able to tell the two apart.
 
@@ -41,7 +41,7 @@ const a: css.AtomicClassStyle<{ width: number }> = styles.offset(8); // Type err
 
 ## What a called style shows
 
-A call gives the map of what it produced, and each entry is an [atomic class style](/docs/api-reference/types/AtomicClassStyleFor):
+A call gives the map of what it produced, and each entry is an [atomic class style](/docs/api/types/AtomicClassStyleFor):
 
 ```ts title="TypeScript"
 const styles = css.create({
@@ -55,7 +55,7 @@ Readonly<{
 }>;
 ```
 
-The mark is on each entry rather than on the style that holds them, so reading one property off the style carries it too. That is what [StaticStyles](/docs/api-reference/types/StaticStyles) reads to reject a dynamic style. It records where the entry came from, not that its value is computed: `padding` is written with a literal and is marked all the same, because the map reaches the element as one thing.
+The mark is on each entry rather than on the style that holds them, so reading one property off the style carries it too. That is what [StaticStyles](/docs/api/types/StaticStyles) reads to reject a dynamic style. It records where the entry came from, not that its value is computed: `padding` is written with a literal and is marked all the same, because the map reaches the element as one thing.
 
 ## Choosing between the three
 
@@ -63,12 +63,12 @@ A dynamic style reaches the element as a custom property, so whether a prop can 
 
 | Type | A static style | A called style |
 | --- | --- | --- |
-| [AtomicStyle](/docs/api-reference/types/AtomicStyle) | accepted | accepted |
+| [AtomicStyle](/docs/api/types/AtomicStyle) | accepted | accepted |
 | `AtomicClassStyle` | rejected | accepted |
-| [StaticStyles](/docs/api-reference/types/StaticStyles) | accepted | rejected |
+| [StaticStyles](/docs/api/types/StaticStyles) | accepted | rejected |
 
-`StaticStyles` is the one a component reaches for most, because [css.use()](/docs/api-reference/javascript/use) returns only a class name and cannot carry one of these. `AtomicClassStyle` is the opposite case: a component that exists to apply a caller's computed value.
+`StaticStyles` is the one a component reaches for most, because [css.use()](/docs/api/javascript/use) returns only a class name and cannot carry one of these. `AtomicClassStyle` is the opposite case: a component that exists to apply a caller's computed value.
 
 <Callout title="Good to know">
-`StaticStyles` is a style list, so it accepts arrays and the falsy members. `AtomicClassStyle` is one style, the same as `AtomicStyle`. See [Style](/docs/api-reference/types/Style) for the list forms.
+`StaticStyles` is a style list, so it accepts arrays and the falsy members. `AtomicClassStyle` is one style, the same as `AtomicStyle`. See [Style](/docs/api/types/Style) for the list forms.
 </Callout>
