@@ -152,10 +152,11 @@ ruleTester.run('no-use-in-jsx', noUseInJsx, {
 });
 
 describe('no-use-in-jsx config', () => {
-  it('is an error in the recommended config', () => {
+  // Opt-in: a component without a Style prop can take styles only through css.use().
+  it('is registered but left out of the recommended config', () => {
     expect(plugin.rules['no-use-in-jsx']).toBe(noUseInJsx);
-    expect(plugin.configs.recommended.rules?.['@plumeria/no-use-in-jsx']).toBe(
-      'error',
-    );
+    expect(
+      plugin.configs.recommended.rules?.['@plumeria/no-use-in-jsx'],
+    ).toBeUndefined();
   });
 });
