@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+    .accent { stroke: var(--accent); }
+    .tree { fill: var(--ink); font-size: 13px; }
+    .code { fill: var(--ink); font-size: 14px; text-anchor: middle; }
+    .hl { fill: var(--accent); }
+    .dim { fill: var(--soft); }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1000" height="400" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M24 30 L234 28 L236 252 L22 254 Z" />
+    <path class="ghost" d="M27 33 L231 32 L232 248 L26 251 Z" />
+    <path class="line" d="M270 28 L480 30 L482 254 L268 252 Z" />
+    <path class="ghost" d="M273 32 L477 33 L478 250 L272 248 Z" />
+    <path class="line" d="M516 30 L726 28 L728 252 L514 254 Z" />
+    <path class="ghost" d="M519 33 L723 32 L724 248 L518 251 Z" />
+    <path class="line" d="M762 28 L972 30 L974 254 L760 252 Z" />
+    <path class="ghost" d="M765 32 L969 33 L970 250 L764 248 Z" />
+
+    <path class="line" d="M240 140 L264 141" />
+    <path class="line" d="M256 134 L265 141 L256 148" />
+    <path class="line" d="M486 141 L510 140" />
+    <path class="line" d="M502 133 L511 140 L502 147" />
+    <path class="line" d="M732 140 L756 141" />
+    <path class="line" d="M748 134 L757 141 L748 148" />
+
+    <path class="line" d="M129 258 L130 312" />
+    <path class="line" d="M375 258 L376 312" />
+    <path class="line" d="M621 258 L620 312" />
+    <path class="line" d="M867 258 L868 312" />
+    <path class="line accent" d="M60 318 C300 314 700 322 940 316" />
+  </g>
+
+  <g filter="url(#ink)">
+    <text class="tree" x="42" y="64">components/</text>
+    <text class="tree" x="42" y="86">└─ Notice.tsx</text>
+
+    <text class="tree" x="288" y="64">components/</text>
+    <text class="tree" x="288" y="86">├─ Card.tsx</text>
+    <text class="tree" x="288" y="108">└─ Notice.tsx</text>
+    <text class="tree hl" x="288" y="130">styles/</text>
+    <text class="tree hl" x="288" y="152">└─ layout.ts</text>
+
+    <text class="tree" x="534" y="64">components/</text>
+    <text class="tree" x="534" y="86">├─ Card.tsx</text>
+    <text class="tree" x="534" y="108">└─ Notice.tsx</text>
+    <text class="tree" x="534" y="130">styles/</text>
+    <text class="tree" x="534" y="152">├─ layout.ts</text>
+    <text class="tree hl" x="534" y="174">├─ theme.ts</text>
+    <text class="tree hl" x="534" y="196">└─ tokens.ts</text>
+
+    <text class="tree" x="780" y="64">components/</text>
+    <text class="tree" x="780" y="86">├─ Card.tsx</text>
+    <text class="tree" x="780" y="108">└─ Notice.tsx</text>
+    <text class="tree" x="780" y="130">styles/</text>
+    <text class="tree" x="780" y="152">├─ layout.ts</text>
+    <text class="tree" x="780" y="174">└─ theme.ts</text>
+    <text class="tree hl" x="780" y="196">packages/tokens/</text>
+    <text class="tree hl" x="780" y="218">└─ src/index.ts</text>
+
+    <text class="code" x="500" y="354"><tspan class="hl">"xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d</tspan> <tspan class="dim">…</tspan><tspan class="hl">"</tspan></text>
+  </g>
+</svg>
