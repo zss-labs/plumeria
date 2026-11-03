@@ -278,6 +278,35 @@ pub fn style_receivers() -> std::collections::HashMap<String, Vec<String>> {
         .collect()
 }
 
+#[napi(object)]
+pub struct SourcePackage {
+    pub name: String,
+    pub dir: String,
+    pub exports: serde_json::Value,
+    pub source_dirs: Vec<String>,
+}
+
+#[napi(js_name = "sourcePackages")]
+pub fn source_packages(cwd: Option<String>) -> Result<Vec<SourcePackage>> {
+    let cwd = current_dir(cwd)?;
+    let mut project = lock_project();
+    Ok(project
+        .resolver
+        .packages_for(std::path::Path::new(&cwd))
+        .iter()
+        .map(|package| SourcePackage {
+            name: package.name.clone(),
+            dir: package.dir.to_string_lossy().into_owned(),
+            exports: package.exports().clone(),
+            source_dirs: package
+                .source_dirs()
+                .iter()
+                .map(|dir| dir.to_string_lossy().into_owned())
+                .collect(),
+        })
+        .collect())
+}
+
 #[napi(js_name = "resolveImportPath")]
 pub fn resolve_import_path(import_path: String, importer: String) -> Option<String> {
     lock_project().resolve_import_path(&import_path, &importer)
