@@ -12,6 +12,8 @@ const createBase = () => ({
     setDev: jest.fn(),
     setRoot: jest.fn(),
     setCssImport: jest.fn(),
+    resolveSource: jest.fn(() => null),
+    inSource: jest.fn(() => false),
   },
   transform: jest.fn(async (code: string) => {
     if (code === 'null') return null;
