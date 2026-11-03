@@ -7,6 +7,9 @@ let mockCompiledSource = '';
 jest.mock('@plumeria/compiler', () => ({
   DEFAULT_STYLE_PROP: 'classStyle',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
+  sourcePackages: jest.fn(
+    jest.requireActual('@plumeria/compiler').sourcePackages,
+  ),
   optimizer: jest.fn((css: string) => css),
   resolvePropertyPolicy: () => ({}),
   scanAll: jest.fn(() => ({ componentPropsTable: {} })),
@@ -17,10 +20,6 @@ jest.mock('@plumeria/compiler', () => ({
   compileCSS: () =>
     mockCompiledSource.includes('blue') ? '.box { color: blue; }' : '.box {}',
 }));
-jest.mock('zss-engine', () => {
-  const actual = jest.requireActual('zss-engine');
-  return { ...actual, sourcePackages: jest.fn(actual.sourcePackages) };
-});
 jest.mock('../src/disk-css', () => ({
   ensureVirtualCssFile: jest.fn(),
   resolveVirtualCssPath: () => '/package/zero-virtual.css',
@@ -101,9 +100,9 @@ it('leaves packages exporting Plumeria source out of pre-bundling', () => {
   }
 });
 
-it('reads the source packages once for the root it configures', () => {
+it('reads the source packages from the compiler for the root it configures', () => {
   const { sourcePackages } = jest.requireMock<{ sourcePackages: jest.Mock }>(
-    'zss-engine',
+    '@plumeria/compiler',
   );
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-vite-'));
   fs.writeFileSync(path.join(root, 'package.json'), '{}');
@@ -113,7 +112,11 @@ it('reads the source packages once for the root it configures', () => {
     plugin.config({ root }, { command: 'serve' });
     plugin.configResolved({ root, command: 'serve', plugins: [] });
     plugin.resolveId('ui-kit');
-    expect(sourcePackages).toHaveBeenCalledTimes(1);
+    plugin.resolveId('ui-kit/Button');
+    expect(sourcePackages.mock.calls).toEqual([
+      [path.resolve(root)],
+      [path.resolve(root)],
+    ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
