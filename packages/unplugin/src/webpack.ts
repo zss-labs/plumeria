@@ -22,7 +22,8 @@ export function attachWebpackHooks(plugin: any) {
     const [pathId] = id.split('?', 1);
     return (
       /\.(ts|tsx|js|jsx)$/.test(pathId) &&
-      !pathId.includes('node_modules') &&
+      (!pathId.includes('node_modules') ||
+        plugin.__plumeriaInternal.inSource(pathId)) &&
       !pathId.endsWith('.html')
     );
   };
@@ -54,7 +55,7 @@ export function attachWebpackHooks(plugin: any) {
         return query ? `${resolvedAbsolute}?${query}` : resolvedAbsolute;
       }
     }
-    return null;
+    return plugin.__plumeriaInternal.resolveSource(id);
   };
 
   plugin.load = function (this: any, id: string) {
