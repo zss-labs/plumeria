@@ -1,0 +1,5 @@
+{
+  "defaultOpen": false,
+  "title": "Plugins",
+  "pages": ["next-plugin", "unplugin", "eslint-plugin", "swc-jest"]
+}
