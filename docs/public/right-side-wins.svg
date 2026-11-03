@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #8a8a8a; --accent: #0d9488; --error: #d9480f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #777; --accent: #2dd4bf; --error: #fb923c; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; }
+    .accent { stroke: var(--accent); }
+    .soft { stroke: var(--soft); }
+    .code { fill: var(--ink); font-size: 13px; }
+    .big { fill: var(--ink); font-size: 20px; }
+    .dim { fill: var(--soft); }
+    .hl { fill: var(--accent); }
+    .title { fill: var(--ink); font-size: 15px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+    .chip { fill: var(--ink); font-size: 12px; font-family: "Inter", system-ui, sans-serif; }
+    .hatch { stroke: var(--accent); stroke-width: 1; opacity: 0.35; }
+    .strike { stroke: var(--error); stroke-width: 1.8; }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+    <clipPath id="pill-clip"><rect x="700" y="368" width="120" height="40" rx="18" /></clipPath>
+  </defs>
+
+  <rect class="bg" width="1000" height="460" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M40 46 L330 43 L332 160 L38 163 Z" />
+    <path class="ghost" d="M43 49 L327 47 L328 156 L42 159 Z" />
+
+    <path class="line accent" d="M668 46 L958 44 L960 140 L670 142 Z" />
+    <path class="ghost accent" d="M672 50 L955 48 L956 136 L673 138 Z" />
+
+    <path class="line soft" d="M186 168 C206 196 300 206 362 222" />
+    <path class="line soft" d="M348 214 L363 222 L349 230" />
+    <path class="line accent" d="M812 146 C800 190 720 204 660 222" />
+    <path class="line accent" d="M672 213 L659 222 L674 229" />
+
+    <path class="strike" d="M368 262 L506 258" />
+    <path class="line accent" d="M560 268 C620 272 676 270 690 266" />
+
+    <path class="line" d="M40 330 L170 328 L171 356 L41 358 Z" />
+    <path class="line" d="M174 328 L304 330 L303 358 L173 356 Z" />
+    <path class="line" d="M40 384 L170 386 L169 414 L41 412 Z" />
+    <path class="line" d="M174 386 L304 384 L305 412 L175 414 Z" />
+
+    <path class="line" d="M312 344 C420 346 520 370 630 382" />
+    <path class="line" d="M616 374 L631 382 L617 390" />
+    <path class="line" d="M312 398 C420 398 520 392 630 390" />
+    <path class="line" d="M617 383 L631 390 L618 398" />
+
+    <g clip-path="url(#pill-clip)">
+      <path class="hatch" d="M680 420 L740 360 M696 420 L756 360 M712 420 L772 360 M728 420 L788 360 M744 420 L804 360 M760 420 L820 360 M776 420 L836 360 M792 420 L852 360 M808 420 L868 360" />
+    </g>
+    <path class="line accent" d="M718 368 L802 367 C816 368 820 378 820 388 C820 399 814 408 802 409 L718 408 C706 408 700 399 700 388 C700 377 706 368 718 368 Z" />
+  </g>
+
+  <g filter="url(#ink)">
+  <text class="title" x="46" y="32">Badge.tsx</text>
+  <text class="code" x="58" y="78">badge: {</text>
+  <text class="code" x="74" y="100">padding: 4,</text>
+  <text class="code" x="74" y="122">color: <tspan class="dim">'gray'</tspan>,</text>
+  <text class="code" x="58" y="144">},</text>
+
+  <text class="title" x="674" y="32">accent.ts</text>
+  <text class="code" x="686" y="78">text: {</text>
+  <text class="code" x="702" y="100">color: <tspan class="hl">'teal'</tspan>,</text>
+  <text class="code" x="686" y="122">},</text>
+
+  <text class="big" x="120" y="252">&lt;span classStyle={[<tspan class="dim">styles.badge</tspan>, <tspan class="hl">classStyle</tspan>]} /&gt;</text>
+
+  <text class="code dim" x="404" y="290">gray</text>
+  <text class="code hl" x="600" y="290">teal</text>
+
+  <text class="chip" x="54" y="347">Badge.tsx</text>
+  <text class="chip" x="188" y="347">accent.ts</text>
+  <text class="chip" x="54" y="403">accent.ts</text>
+  <text class="chip" x="188" y="403">Badge.tsx</text>
+
+  <text class="code" x="660" y="440">"x8ti24uy <tspan class="hl">xxcejlqg</tspan>"</text>
+  <text x="730" y="393" style="fill: var(--accent); font-family: Inter, system-ui, sans-serif; font-size: 14px">Badge</text>
+  </g>
+</svg>
