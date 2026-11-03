@@ -1,7 +1,9 @@
 ---
 title: 'Introduction'
-description: 'What Plumeria is, what writing styles with it looks like, and how far its types reach.'
+description: 'What Plumeria is, what your styles compile to, and why none of the library ships.'
 ---
+
+<img src="/compile-process.svg" width={1000} height={440} alt="The compiler turns css.create and classStyle into class names and atomic CSS" />
 
 Plumeria is a React styling library. You write style objects in TypeScript, and the compiler turns them into atomic CSS and rewrites every call site, so no library code reaches your JavaScript bundle and no style is computed in the browser.
 
