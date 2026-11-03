@@ -4,7 +4,7 @@ export const footerGroups = [
   {
     heading: 'Develop',
     links: [
-      { label: 'API', href: '/docs/api-reference' },
+      { label: 'API', href: '/docs/api' },
       { label: 'Testing', href: '/docs/testing' },
     ],
   },
