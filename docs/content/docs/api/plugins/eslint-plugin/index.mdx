@@ -39,117 +39,33 @@ A key resolves when it is a `const` holding a string, a member of a `const` obje
 `sort-properties` reads a computed key the same way, and sorts one that holds an at-rule with the other at-rules, after the pseudo-classes. `no-combinator` checks a `css.createStatic` value only when it starts with `:` or `[`, the ones that become a selector when used as a key, so a shadow or a font stack is not reported.
 
 ## Rules
-`Rules: recommended`
-- `'@plumeria/custom-props-require-import': 'error'`
-- `'@plumeria/expand-border-shorthands': 'warn'`
-- `'@plumeria/no-combinator': 'error'`
-- `'@plumeria/no-destructure': 'error'`
-- `'@plumeria/no-inline-object': 'error'`
-- `'@plumeria/no-inner-call': 'error'`
-- `'@plumeria/no-invalid-selector': 'error'`
-- `'@plumeria/no-mixed-styling-props': 'error'`
-- `'@plumeria/no-mutable-binding': 'warn'`
-- `'@plumeria/no-order-dependent-overlap': 'warn'`
-- `'@plumeria/no-style-prop-relay': 'error'`
-- `'@plumeria/no-unknown-css-properties': 'error'`
-- `'@plumeria/no-unused-keys': 'warn'`
-- `'@plumeria/no-unresolved-composition': 'warn'`
-- `'@plumeria/sort-properties': 'warn'`
-- `'@plumeria/format-properties': 'warn'`
-- `'@plumeria/validate-values': 'warn'`
-- `'@plumeria/validate-pseudos': 'warn'`
-- `'@plumeria/validate-at-rules': 'warn'`
+`recommended` turns on every rule below. Each one is prefixed with `@plumeria/`.
 
-When using `recommended`, all rules are turned on.
+| Rule | Level | Reports |
+| :-- | :-- | :-- |
+| `custom-props-require-import` | error | a style passed through a prop other than the styling prop in a file that does not import `@plumeria/core` |
+| `expand-border-shorthands` | warn | a border shorthand that bundles a width, a style and a color; fixable |
+| `no-combinator` | error | `>`, `+`, `~` and the descendant combinator outside a functional pseudo-class |
+| `no-destructure` | error | destructuring the Plumeria API |
+| `no-inline-object` | error | an inline object on the styling prop or in `css.use()` |
+| `no-inner-call` | error | an API call inside a function |
+| `no-invalid-selector` | error | a selector or nesting order the compiler cannot place |
+| `no-mixed-styling-props` | error | the styling prop on an element that also has `className` or `style` |
+| `no-mutable-binding` | warn | a `let` or `var` in a style definition |
+| `no-order-dependent-overlap` | warn | two declarations in one style that only source order can rank |
+| `no-style-prop-relay` | error | a style prop a component only passes on |
+| `no-unknown-css-properties` | error | a property CSS does not have |
+| `no-unused-keys` | warn | a key nothing in the same component file reads |
+| `no-unresolved-composition` | warn | a `css.use()` result combined with other class names |
+| `sort-properties` | warn | properties out of the recommended order; fixable |
+| `format-properties` | warn | a style written on one line or without blank lines; fixable |
+| `validate-values` | warn | a value the property does not accept |
+| `validate-pseudos` | warn | a misspelled or malformed pseudo-class or pseudo-element |
+| `validate-at-rules` | warn | an at-rule other than `@media`, `@container`, `@supports` and `@starting-style` |
 
-Two more rules ship with the plugin and stay off until you ask for them. They
+Three more rules ship with the plugin and stay off until you ask for them. They
 do not report a defect; they remove the room for one. See
 [Optional rules](/docs/api/plugins/eslint-plugin/optional-rules).
-
-## no-unresolved-composition
-
-Warns when a `css.use()` result is combined with other class names using `+`,
-a template literal, or an inline array's `.join()`, or passed to a function such
-as `clsx` or `css.use()` itself. Enabled by `recommended` as `warn`:
-
-```js
-'@plumeria/no-unresolved-composition': 'warn'
-```
-
-```js
-// Warns: merge separate css.use() calls.
-`${css.use(styles.base)} ${css.use(styles.active)}`
-css.use(styles.base) + ' ' + (active ? css.use(styles.active) : '')
-
-// Warns: pass styles, not css.use() results, to one call.
-clsx(css.use(styles.base), className)
-css.use(css.use(styles.base), styles.active)
-
-// Warns: rewrite external classes with css.create().
-css.use(styles.base) + ' external'
-[css.use(styles.base), 'external'].join(' ')
-
-// Compose everything in one call; nested arrays are allowed.
-css.use(styles.base, [active && styles.active, styles.external])
-
-// Warns: function keys cannot go through css.use().
-css.use(styles.palette(color))
-
-// Apply them to classStyle instead.
-<div classStyle={styles.palette(color)} />
-```
-
-When a `css.use()` result is a function argument, directly, inside an array or
-spread, or in a conditional branch, the rule reports that the styles should be
-passed to one `css.use()` call instead; this is reported before the other two.
-When two or more `css.use()` results are combined, the rule reports that they
-should be merged into one call; this is reported first, even if external classes
-are also present. When a `css.use()` result is combined with external class
-names, it lists them as written in the source and reports that their precedence is left to the CSS cascade and that they
-should be rewritten as styles with `css.create()` and passed into the same
-`css.use()` call. It offers no automatic fix. Whitespace-only
-additions are allowed. Imports and their aliases are resolved with scope, so
-unrelated or shadowed `use` functions are ignored. Detection covers calls within
-these expressions, including conditional branches, and follows results through
-local variables, `+=` assignments, arrays joined through a variable, and object
-properties. It does not follow values returned from functions or imported from
-other modules.
-
-## no-style-prop-relay
-
-Reports a style prop that a component receives but never applies to
-`classStyle` or `css.use()`, and a received style passed through `classStyle` to
-a component that declares it, even from another file and even when the same
-style is applied to an element as well. The build stops on both. Enabled by
-`recommended` as `error`:
-
-```js
-'@plumeria/no-style-prop-relay': 'error'
-```
-
-```tsx
-// Errors: headerStyle is only passed on.
-const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => (
-  <Header headerStyle={headerStyle} />
-);
-
-// Errors: Header declares classStyle.
-const Layout = ({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={classStyle}>
-    <Header classStyle={classStyle} />
-  </div>
-);
-
-// Apply it on an element this component renders.
-const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => (
-  <header classStyle={[styles.base, headerStyle]} />
-);
-
-// A component the build never scans declares nothing, so a style composes onto it.
-const OpenButton = ({ classStyle }: { classStyle?: css.Style }) => (
-  <Dialog.Trigger classStyle={[styles.base, classStyle]} />
-);
-```
 
 ## Configuring the styling prop
 
