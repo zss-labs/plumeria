@@ -27,6 +27,7 @@ Options
       --logical        this project writes logical properties
       --physical       this project writes physical properties
       --sizes          extend the spelling policy to the size axis
+      --allow-use      keep css.use() in .jsx/.tsx files
       --no-eslint      leave ESLint out
       --no-install     write the configs, print the install command
       --cwd <dir>      run against another directory
@@ -83,6 +84,9 @@ export function parseArgs(argv: string[]): Options | null {
         break;
       case '--sizes':
         options.preset.sizes = true;
+        break;
+      case '--allow-use':
+        options.preset.stylePropOnly = false;
         break;
       case '--no-eslint':
         options.preset.eslint = false;
