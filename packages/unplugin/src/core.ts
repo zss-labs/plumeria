@@ -2,14 +2,9 @@ import type { UnpluginFactory } from 'unplugin';
 import { createFilter } from '@rollup/pluginutils';
 import * as path from 'path';
 import compiler from '@plumeria/compiler';
-import type { PropertyPolicyOptions } from '@plumeria/compiler';
+import type { PropertyPolicyOptions, SourcePackage } from '@plumeria/compiler';
 import { lintOverrides, startLintGuard } from '@plumeria/eslint-plugin/guard';
-import {
-  sourcePackages,
-  resolveSourcePackage,
-  inSourcePackage,
-} from 'zss-engine';
-import type { SourcePackage } from 'zss-engine';
+import { resolveSourcePackage, inSourcePackage } from 'zss-engine';
 
 const {
   resolvePropertyPolicy,
@@ -62,7 +57,7 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   const packagesOf = () => {
     const root = path.resolve(viteRoot);
     if (packages?.root !== root) {
-      packages = { root, list: sourcePackages(root) };
+      packages = { root, list: compiler.sourcePackages(root) };
     }
     return packages.list;
   };
@@ -117,9 +112,6 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
       },
       setRoot(root: string) {
         viteRoot = root;
-      },
-      setPackages(root: string, list: SourcePackage[]) {
-        packages = { root: path.resolve(root), list };
       },
       setCssImport(formatter: CssImportFormatter | null) {
         cssImport = formatter;
