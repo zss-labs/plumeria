@@ -8,9 +8,9 @@ type AtomicStyle<T>;
 export type { AtomicStyle };
 ```
 
-`AtomicStyle` is the type of one style that came out of [css.create](/docs/api-reference/javascript/create). Its type argument can be written either way: the rule the style was created from, or the [atomic class names](/docs/api-reference/types/AtomicClassNameFor) the style holds. Both resolve to the same type, so a prop names the rule, which is the short form.
+`AtomicStyle` is the type of one style that came out of [css.create](/docs/api/javascript/create). Its type argument can be written either way: the rule the style was created from, or the [atomic class names](/docs/api/types/AtomicClassNameFor) the style holds. Both resolve to the same type, so a prop names the rule, which is the short form.
 
-Where [StyleProps](/docs/api-reference/types/StyleProps) and [WithoutProperties](/docs/api-reference/types/WithoutProperties) say which properties a prop accepts, `AtomicStyle` says which properties a style has to set, down to the value it sets them to.
+Where [StyleProps](/docs/api/types/StyleProps) and [WithoutProperties](/docs/api/types/WithoutProperties) say which properties a prop accepts, `AtomicStyle` says which properties a style has to set, down to the value it sets them to.
 
 ## Requiring a property
 
@@ -34,7 +34,7 @@ The type argument names what has to be there. Anything the style sets beyond it 
 
 ## Reading a class name off the prop
 
-Requiring a property is what makes it readable. A prop typed with `Style` is a list, so there is nothing to index; a prop typed with `AtomicStyle` hands the component the [atomic class name](/docs/api-reference/types/AtomicClassNameFor) for the property it named:
+Requiring a property is what makes it readable. A prop typed with `Style` is a list, so there is nothing to index; a prop typed with `AtomicStyle` hands the component the [atomic class name](/docs/api/types/AtomicClassNameFor) for the property it named:
 
 ```tsx title="TypeScript"
 function Glyph({ glyphStyle }: { glyphStyle: css.AtomicStyle<{ color: string }> }) {
@@ -107,11 +107,11 @@ const styles = css.create({
 const a: NeedsColor = styles.sized(120); // ok
 ```
 
-When only a dynamic style will do, [AtomicClassStyle](/docs/api-reference/types/AtomicClassStyle) says so. When it must not be one, [StaticStyles](/docs/api-reference/types/StaticStyles) does.
+When only a dynamic style will do, [AtomicClassStyle](/docs/api/types/AtomicClassStyle) says so. When it must not be one, [StaticStyles](/docs/api/types/StaticStyles) does.
 
 ## One style, not a list
 
-Neither type is a style list. Arrays and the falsy members belong to [Style](/docs/api-reference/types/Style) and its narrowed forms:
+Neither type is a style list. Arrays and the falsy members belong to [Style](/docs/api/types/Style) and its narrowed forms:
 
 ```tsx
 const a: NeedsColor = [styles.tinted]; // Type error
@@ -122,7 +122,7 @@ So a styling prop still wants `Style`, `StyleProps`, `WithoutProperties` or `Sta
 
 ## In a generated declaration file
 
-An exported style carries the same map into a declaration file, so a package that ships styles compiles with `declaration: true`. A called style is written the same way, its entries named by [AtomicClassStyleFor](/docs/api-reference/types/AtomicClassStyleFor) — the mark that keeps them out of [StaticStyles](/docs/api-reference/types/StaticStyles):
+An exported style carries the same map into a declaration file, so a package that ships styles compiles with `declaration: true`. A called style is written the same way, its entries named by [AtomicClassStyleFor](/docs/api/types/AtomicClassStyleFor) — the mark that keeps them out of [StaticStyles](/docs/api/types/StaticStyles):
 
 ```ts title="styles.d.ts"
 export declare const styles: Readonly<{
