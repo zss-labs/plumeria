@@ -456,7 +456,7 @@ export const styles = css.create({
 
 ## Styling Custom Components
 
-There are exactly **3 patterns** for applying Plumeria styles to custom components. In all of them, compilation happens at the `classStyle` / `css.use()` call sites; the component itself just passes the compiled `className` / `style` through to the DOM.
+There are exactly **2 patterns** for applying Plumeria styles to custom components. In both, compilation happens at the `classStyle` call sites; the component itself just passes the compiled `className` / `style` through to the DOM.
 
 > **Core principle**: Custom props typed as `Style` are statically traced by the compiler, so styles pass seamlessly across component boundaries.
 
@@ -537,68 +537,19 @@ const styles = css.create({
 <Button styleArray={[styles.primary, styles.text]}>Click me</Button>;
 ```
 
-### Pattern 3: `className` bypass with `css.use()`
+### Not a pattern: `className={css.use(...)}` on your own element
 
-The component resolves the `Style` prop into a class name string with `css.use()` and passes it to `className`. The compiler traces the prop into the `css.use()` call the same way:
-
-```tsx
-// --- Button.tsx ---
-import React from 'react';
-import * as css from '@plumeria/core';
-
-type ButtonProps = {
-  children: React.ReactNode;
-  styleArray?: css.Style;
-};
-
-// base style
-const styles = css.create({
-  text: {
-    fontSize: '12px',
-  },
-});
-
-// Pass styleArray into css.use() to generate the className
-export const Button = ({ children, styleArray }: ButtonProps) => {
-  return (
-    <button className={css.use(styles.text, styleArray)}>
-      {children}
-    </button>
-  );
-};
-
-// --- Usage (call site) ---
-import * as css from '@plumeria/core';
-import { Button } from './Button';
-
-const styles = css.create({
-  primary: {
-    padding: '10px',
-    backgroundColor: 'navy',
-    color: '#fff',
-  },
-  text: {
-    fontSize: '24px',
-  },
-});
-
-// The compiler traces styleArray inside css.use() and resolves it statically
-<Button styleArray={[styles.primary, styles.text]}>Click me</Button>;
-```
-
-This pattern cannot carry a function key. The call site's value reaches the element as a CSS variable, and `css.use()` returns a class name with nowhere to put it:
+NEVER resolve styles with `css.use()` to apply them to an element your component renders. `classStyle` does the same job, and it also carries function keys, which `css.use()` cannot. Pattern 1 or Pattern 2 covers every element you render:
 
 ```tsx
-// ❌ INVALID: palette is a function key, so its variable has no element to land on
-<Button styleArray={styles.palette(color)}>Click me</Button>;
+// ❌ AVOID: classStyle applies these to an element you render
+<button className={css.use(styles.text, styleArray)}>{children}</button>
+
+// ✅ CORRECT
+<button classStyle={[styles.text, styleArray]}>{children}</button>
 ```
 
-```
-[plumeria] "styleArray" carries a dynamic function key, and css.use() returns
-only a class name. Apply it to classStyle on the element instead.
-```
-
-Use Pattern 2 for a prop that may carry one: `classStyle` sets the variable next to the class.
+`css.use()` is for the places `classStyle` cannot reach: a third-party component whose props have no `Style` type, a class name prop with another name such as `overlayClassName`, and templates that are not JSX (Vue, Svelte, Astro). The opt-in `@plumeria/no-use-in-jsx` lint rule reports every `css.use()` in JSX for projects that never need those.
 
 ### Anti-pattern: relaying a `Style` prop
 
@@ -677,9 +628,8 @@ Prop drilling is an anti-pattern in React on its own terms; here it is also unre
 |---------|-----------------|-----------------|
 | 1. Direct `classStyle` | Inside the component | Self-contained styles |
 | 2. `Style` prop | Traced and compiled | Receives and applies `Style` |
-| 3. `className` bypass | Inside the component (`css.use`) | Resolves `Style` into `className` |
 
-In every pattern the component **applies** the style it receives. None of them forward it.
+In both patterns the component **applies** the style it receives. None of them forward it.
 
 ## Migrating from Tailwind CSS
 
