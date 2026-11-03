@@ -86,7 +86,7 @@ Where a style is written does not reach the output either. A class name comes fr
 
 ## The build stops
 
-`next build` runs [`@plumeria/eslint-plugin`](/docs/api-reference/plugins/eslint-plugin) through oxlint alongside the compile, with nothing to configure, and stops on any error or warning. [The unplugin](/docs/api-reference/plugins/unplugin#lint) does the same on every bundler except esbuild and Bun, where [`@plumeria/init`](/docs/api-reference/tools/init) prefixes the build script with `plumeria-lint --`.
+`next build` runs [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) through oxlint alongside the compile, with nothing to configure, and stops on any error or warning. [The unplugin](/docs/api/plugins/unplugin#lint) does the same on every bundler except esbuild and Bun, where [`@plumeria/init`](/docs/api/migrate/init) prefixes the build script with `plumeria-lint --`.
 
 ```tsx title="components/Menu.tsx"
 import * as css from '@plumeria/core';
@@ -148,7 +148,7 @@ Some carry the whole fix. Two states that can match at once have nothing to rank
 
 ### A component sets its own limits
 
-A component can refuse styles at its boundary. [`WithoutProperties`](/docs/api-reference/types/WithoutProperties) names what a caller may not set, and [`StyleProps`](/docs/api-reference/types/StyleProps) names the only things it may:
+A component can refuse styles at its boundary. [`WithoutProperties`](/docs/api/types/WithoutProperties) names what a caller may not set, and [`StyleProps`](/docs/api/types/StyleProps) names the only things it may:
 
 ```tsx title="Panel.tsx"
 import * as css from '@plumeria/core';
@@ -280,7 +280,7 @@ export const MenuItem = () => (
 
 `aria-current` is the state assistive technology reads and the state the style matches, so the two cannot disagree. The repeated `:not(#\#)` is how the compiler ranks a rule without depending on its position in the stylesheet.
 
-A selector never names a path through the DOM. Combinators are rejected, and a descendant reacts to a parent's state through [`css.marker` and `css.extended`](/docs/api-reference/javascript/marker):
+A selector never names a path through the DOM. Combinators are rejected, and a descendant reacts to a parent's state through [`css.marker` and `css.extended`](/docs/api/javascript/marker):
 
 ```tsx title="Card.tsx"
 import * as css from '@plumeria/core';
@@ -309,7 +309,7 @@ export const Card = () => (
 
 Move the button anywhere inside the card and the rule still holds, because nothing in it spells out the markup.
 
-Themes are variables. [`createTheme`](/docs/api-reference/javascript/createTheme) takes the selector or the query that switches them, so components contain no dark-mode branch and no provider:
+Themes are variables. [`createTheme`](/docs/api/javascript/createTheme) takes the selector or the query that switches them, so components contain no dark-mode branch and no provider:
 
 ```ts title="theme.ts"
 import * as css from '@plumeria/core';
@@ -328,7 +328,7 @@ export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
 
 ## A way in, and a way out
 
-Adopting Plumeria is a command, and so is leaving it. [`@plumeria/codemod`](/docs/api-reference/tools/codemod) has a `--dry-run` for both, and it lists what it cannot convert by file and line rather than guessing:
+Adopting Plumeria is a command, and so is leaving it. [`@plumeria/codemod`](/docs/api/migrate/codemod) has a `--dry-run` for both, and it lists what it cannot convert by file and line rather than guessing:
 
 ```sh
 npx @plumeria/codemod migrate --from css-modules
@@ -339,7 +339,7 @@ The first turns each `*.module.css` into a `*.styles.ts` beside it and points it
 
 CI runs the whole trip on this site and on the e2e app: out to CSS Modules, back to Plumeria and out again, and a new type error fails it. [How to leave Plumeria](/blog/how-to-leave-plumeria) has the details.
 
-From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api-reference/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api-reference/javascript/createTheme) declares each variable's default and themed values in one call.
+From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
 
 ## Next steps
 
