@@ -2,7 +2,6 @@ import { createVitePlugin } from 'unplugin';
 import { unpluginFactory, EXTENSION_PATTERN } from './core';
 import type { PluginOptions } from './core';
 import compiler from '@plumeria/compiler';
-import * as fs from 'fs';
 import * as path from 'path';
 import type {
   ViteDevServer,
@@ -13,50 +12,9 @@ import type {
   UserConfig,
 } from 'vite';
 import { createDiskCssImport } from './disk-css';
+import { sourcePackages } from 'zss-engine';
 
 const { scanAll, optimizer } = compiler;
-
-const readJson = (file: string): any => {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return undefined;
-  }
-};
-
-const conditionsOf = (exports: unknown): string[] => {
-  if (!exports || typeof exports !== 'object' || Array.isArray(exports))
-    return [];
-  return Object.entries(exports).flatMap(([key, value]) => [
-    ...(key.startsWith('.') ? [] : [key]),
-    ...conditionsOf(value),
-  ]);
-};
-
-function sourceOnlyPackages(root: string): string[] {
-  const manifest = readJson(path.join(root, 'package.json')) ?? {};
-  const names = Object.keys({
-    ...manifest.dependencies,
-    ...manifest.devDependencies,
-    ...manifest.peerDependencies,
-    ...manifest.optionalDependencies,
-  });
-  return names.filter((name) => {
-    for (let dir = root; ; dir = path.dirname(dir)) {
-      const pkg = readJson(
-        path.join(dir, 'node_modules', name, 'package.json'),
-      );
-      if (pkg) {
-        const conditions = conditionsOf(pkg.exports);
-        return (
-          conditions.includes('plumeria') &&
-          conditions.every((c) => c === 'plumeria' || c === 'types')
-        );
-      }
-      if (path.dirname(dir) === dir) return false;
-    }
-  });
-}
 
 function isRscConfig(userConfig: UserConfig): boolean {
   if ((userConfig as any).environments?.rsc) return true;
@@ -78,6 +36,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     setRoot,
     setCssImport,
     setClassProp,
+    resolveSource,
   } = plugin.__plumeriaInternal;
 
   const useDiskEmit = options?.devEmitToDisk ?? false;
@@ -214,7 +173,9 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
           exclude: [
             ...(userConfig.optimizeDeps?.exclude ?? []),
             '@plumeria/core',
-            ...sourceOnlyPackages(path.resolve(userConfig.root ?? '')),
+            ...sourcePackages(path.resolve(userConfig.root ?? '')).map(
+              (pkg) => pkg.name,
+            ),
           ],
         },
       };
@@ -309,6 +270,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
         ...Object.keys(prevSnapshot),
         ...Object.keys(snapshot),
       ]);
+      let needsReload = false;
       for (const compKey of compKeys) {
         const prevProps = prevSnapshot[compKey] || {};
         const nextProps = snapshot[compKey] || {};
@@ -321,7 +283,13 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
         );
         if (changed) {
           const defFile = compKey.slice(0, compKey.lastIndexOf('-'));
-          devServer.moduleGraph.getModulesByFile(defFile)?.forEach(addModule);
+          devServer.moduleGraph.getModulesByFile(defFile)?.forEach((m) => {
+            if (m.isSelfAccepting === false) needsReload = true;
+            addModule(m);
+          });
+          if (ctx.modules.some((m) => m.isSelfAccepting === false)) {
+            needsReload = true;
+          }
         }
       }
 
@@ -334,6 +302,12 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
         )
         .map((t: any) => devServer!.moduleGraph.getModuleById(t.id))
         .forEach((m: any) => addModule(m as ModuleNode | null));
+
+      if (needsReload) {
+        modules.forEach((m) => devServer!.moduleGraph.invalidateModule(m));
+        devServer.ws.send({ type: 'full-reload', path: '*' });
+        return [];
+      }
 
       return modules;
     },
@@ -354,7 +328,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
       if (resolved) {
         return resolved + query;
       }
-      return null;
+      return resolveSource(importeeUrl);
     };
 
     vitePlugin.load = function (url: string) {
