@@ -6,7 +6,7 @@ date: '2026-08-27'
 
 import { GitHubUser } from 'component/GitHubUser'
 
-> **Current API:** `css.viewTransition` is now `css.viewTransitionClass` ([21.0](/blog/plumeria-21-0)); see [css.viewTransitionClass](/docs/api-reference/javascript/viewTransitionClass).<br />
+> **Current API:** `css.viewTransition` is now `css.viewTransitionClass` ([21.0](/blog/plumeria-21-0)); see [css.viewTransitionClass](/docs/api/javascript/viewTransitionClass).<br />
 > `plugin.transform` is now `{ order, handler }` ([19.2](/blog/plumeria-19-2)); call `plugin.transform.handler.call(...)`.
 
 <div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
@@ -138,7 +138,7 @@ npx @plumeria/codemod migrate --from plumeria
 
 The reverse migration handles function styles through CSS variables, writes themes and animations to `global.css`, follows aliased and indexed imports, and expands `marker` and `extended` to the CSS they represent. Use `--dry-run` before writing files.
 
-Fixes from 18.2.20 through 18.2.27 closed the round trip. Exporting, adopting, and exporting again now reaches a fixed point on the second pass in each direction. See the [codemod documentation](/docs/api-reference/tools/codemod) for supported conversions and reports.
+Fixes from 18.2.20 through 18.2.27 closed the round trip. Exporting, adopting, and exporting again now reaches a fixed point on the second pass in each direction. See the [codemod documentation](/docs/api/migrate/codemod) for supported conversions and reports.
 
 ### Normalized merging and specificity
 
@@ -161,7 +161,7 @@ The complete cascade model is documented in [Specificity](/docs/specificity).
 - `no-physical-properties` keeps a project on logical property names.
 - `no-logical-properties` keeps a project on physical property names.
 
-The last three are optional. Used together in the appropriate direction, border expansion and a property-naming rule remove the property pairs that specificity alone cannot rank. See [Optional rules](/docs/api-reference/plugins/eslint-plugin/optional-rules) for configuration and examples.
+The last three are optional. Used together in the appropriate direction, border expansion and a property-naming rule remove the property pairs that specificity alone cannot rank. See [Optional rules](/docs/api/plugins/eslint-plugin/optional-rules) for configuration and examples.
 
 ESLint checks also reach properties inside function style keys, and `validate-values` gained fixes for CSS variables, easing functions, and border values.
 
@@ -187,10 +187,10 @@ File scanning is sorted for reproducible stylesheet output. The dependency updat
 
 <Cards>
   <Card title="Testing" href="/docs/testing" description="Learn more about testing styles that are resolved at build time" />
-  <Card title="unplugin" href="/docs/api-reference/plugins/unplugin" description="Learn more about @plumeria/unplugin" />
-  <Card title="Codemod" href="/docs/api-reference/tools/codemod" description="Migrate between Plumeria and CSS Modules" />
+  <Card title="unplugin" href="/docs/api/plugins/unplugin" description="Learn more about @plumeria/unplugin" />
+  <Card title="Codemod" href="/docs/api/migrate/codemod" description="Migrate between Plumeria and CSS Modules" />
   <Card title="Specificity" href="/docs/specificity" description="Understand property, condition, and composition priority" />
-  <Card title="Optional ESLint rules" href="/docs/api-reference/plugins/eslint-plugin/optional-rules" description="Remove property pairs that depend on source order" />
+  <Card title="Optional ESLint rules" href="/docs/api/plugins/eslint-plugin/optional-rules" description="Remove property pairs that depend on source order" />
 </Cards>
 
 ---
