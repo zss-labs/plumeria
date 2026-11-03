@@ -5,6 +5,11 @@
   "cleanUrls": true,
   "redirects": [
     {
+      "source": "/blog/how-to-leave-plumeria",
+      "destination": "/docs/api/migrate/codemod",
+      "permanent": true
+    },
+    {
       "source": "/blog/component-libraries-without-a-runtime",
       "destination": "/blog/ui-libraries-without-a-runtime",
       "permanent": true
