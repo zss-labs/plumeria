@@ -65,7 +65,7 @@ What this protects is the build itself. It does not depend on what your code doe
 
 A style is a type schema, not an object the library inspects at run time. That is why the package can be a `.d.ts` file at all: the types are the whole interface, and they are written by hand rather than generated from an implementation.
 
-Property names and their values are typed, so the editor completes them and marks a wrong one before the file is saved. A component that accepts styles can say which properties it accepts with [`StyleProps`](/docs/api-reference/types/StyleProps), and a caller that passes anything else is a type error at the call site, not a surprise in the browser.
+Property names and their values are typed, so the editor completes them and marks a wrong one before the file is saved. A component that accepts styles can say which properties it accepts with [`StyleProps`](/docs/api/types/StyleProps), and a caller that passes anything else is a type error at the call site, not a surprise in the browser.
 
 What this protects is the gap between writing a style and finding out it is wrong. That gap is measured in keystrokes, not in page loads.
 
@@ -75,14 +75,14 @@ What this protects is the gap between writing a style and finding out it is wron
 
 Some mistakes are valid code. A selector that reaches through a combinator, two styles that set the same property under two different names, a style relayed through a prop the compiler cannot follow — all of these compile. They just stop meaning what they look like they mean.
 
-That is what the [ESLint plugin](/docs/api-reference/plugins/eslint-plugin) is for, and why `recommended` turns every rule on. A few examples of what it reports:
+That is what the [ESLint plugin](/docs/api/plugins/eslint-plugin) is for, and why `recommended` turns every rule on. A few examples of what it reports:
 
 - `no-combinator` — a descendant or sibling selector, which would make a style depend on markup the compiler cannot see.
 - `no-order-dependent-overlap` — two styles whose winner would depend on source order, because neither contains the other.
 - `no-unresolved-composition` — `css.use()` results glued together with `+` or `clsx`, which skips the merge and lets two classes for one property reach an element.
 - `no-unknown-css-properties` — a property the browser will silently ignore.
 
-In the editor a rule is advice. In the build it is not. The [Next.js plugin](/docs/api-reference/plugins/next-plugin) and the [unplugin](/docs/api-reference/plugins/unplugin) run the same `recommended` rules beside a production build with `--deny-warnings`, and stop the build when anything is reported. A warning that would be scrolled past in a terminal is a build that does not ship.
+In the editor a rule is advice. In the build it is not. The [Next.js plugin](/docs/api/plugins/next-plugin) and the [unplugin](/docs/api/plugins/unplugin) run the same `recommended` rules beside a production build with `--deny-warnings`, and stop the build when anything is reported. A warning that would be scrolled past in a terminal is a build that does not ship.
 
 It is on by default, and the set of rules is fixed. Your own lint config does not change it. That is deliberate: what the editor marks is exactly what stops the build, no more and no less, so neither can surprise you about the other.
 
@@ -107,7 +107,7 @@ Here is what is not guaranteed, because a guarantee nobody can keep is worse tha
 
 **A value decided at run time is yours.** A function key compiles to a CSS variable, and the variable is set from the expression you wrote. The compiler can promise where that value goes. It cannot promise what the value is.
 
-**The markup is yours.** The compiler sees styles and the call sites that apply them. It does not see what you render inside what. That is the whole reason combinators are refused: a relation between two elements is a fact about markup, and a stylesheet that depends on it is making a promise about code it cannot read. Where that relation is genuinely needed, a [marker](/docs/api-reference/javascript/marker) states it by name instead of by path.
+**The markup is yours.** The compiler sees styles and the call sites that apply them. It does not see what you render inside what. That is the whole reason combinators are refused: a relation between two elements is a fact about markup, and a stylesheet that depends on it is making a promise about code it cannot read. Where that relation is genuinely needed, a [marker](/docs/api/javascript/marker) states it by name instead of by path.
 
 ---
 
