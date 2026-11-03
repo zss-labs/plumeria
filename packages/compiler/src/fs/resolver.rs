@@ -638,6 +638,7 @@ struct LoadedPackages {
 pub struct Resolver {
     matcher: Option<Option<PathsMatcher>>,
     packages: FxHashMap<PathBuf, LoadedPackages>,
+    refreshed: FxHashSet<PathBuf>,
     active: Option<PathBuf>,
 }
 
@@ -646,13 +647,17 @@ impl Resolver {
         self.matcher = Some(load_paths_matcher(&cwd.join("tsconfig.json")));
         self.active = Some(cwd.to_path_buf());
         self.packages_for(cwd);
+        self.refreshed.remove(cwd);
     }
 
     pub fn source_packages_stale(&self) -> bool {
-        self.active
-            .as_ref()
-            .and_then(|root| self.packages.get(root))
-            .is_some_and(|packages| packages.list.iter().any(SourcePackage::is_stale))
+        self.active.as_ref().is_some_and(|root| {
+            self.refreshed.contains(root)
+                || self
+                    .packages
+                    .get(root)
+                    .is_some_and(|packages| packages.list.iter().any(SourcePackage::is_stale))
+        })
     }
 
     pub fn packages_for(&mut self, cwd: &Path) -> &[SourcePackage] {
@@ -662,6 +667,9 @@ impl Resolver {
                 && !packages.list.iter().any(SourcePackage::is_stale)
         });
         if !fresh {
+            if self.packages.contains_key(cwd) {
+                self.refreshed.insert(cwd.to_path_buf());
+            }
             self.packages.insert(
                 cwd.to_path_buf(),
                 LoadedPackages {
