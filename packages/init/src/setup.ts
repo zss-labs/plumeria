@@ -24,6 +24,7 @@ export interface Answers {
   spelling: Spelling;
   sizes: boolean;
   styleProp: string;
+  stylePropOnly: boolean;
   eslint: boolean;
   install: boolean;
 }
@@ -77,6 +78,7 @@ export const DEFAULT_ANSWERS: Answers = {
   spelling: 'none',
   sizes: false,
   styleProp: DEFAULT_STYLE_PROP,
+  stylePropOnly: true,
   eslint: true,
   install: true,
 };
@@ -128,6 +130,12 @@ export const spellingRule = (answers: Answers): string | undefined => {
     ? `${name}: ['error', { sizes: true }]`
     : `${name}: 'error'`;
 };
+
+export const lintRules = (answers: Answers): string[] =>
+  [
+    spellingRule(answers),
+    answers.stylePropOnly ? `'@plumeria/no-use-in-jsx': 'error'` : undefined,
+  ].filter((rule): rule is string => rule !== undefined);
 
 export const pluginOptions = (answers: Answers): string => {
   const entries: string[] = [];
@@ -221,9 +229,7 @@ const settingsLines = (answers: Answers): string[] =>
       ];
 
 export const eslintSource = (answers: Answers, typescript: boolean): string => {
-  const rules = [spellingRule(answers)].filter(
-    (rule): rule is string => rule !== undefined,
-  );
+  const rules = lintRules(answers);
 
   const block = [
     `  {`,
@@ -264,9 +270,7 @@ export const eslintEntries = (
   answers: Answers,
   typescript: boolean,
 ): string[] => {
-  const rules = [spellingRule(answers)].filter(
-    (rule): rule is string => rule !== undefined,
-  );
+  const rules = lintRules(answers);
 
   const settings = settingsLines(answers);
   const entries = ['plumeria.configs.recommended'];
@@ -568,6 +572,7 @@ export const oxlintEntries = (answers: Answers): JsonObject => {
       ? ['error', { sizes: true }]
       : 'error';
   }
+  if (answers.stylePropOnly) rules['@plumeria/no-use-in-jsx'] = 'error';
   const entries: JsonObject = { jsPlugins: [OXLINT_PLUGIN], rules };
   if (answers.styleProp !== DEFAULT_STYLE_PROP) {
     entries.settings = { plumeria: { styleProp: answers.styleProp } };
