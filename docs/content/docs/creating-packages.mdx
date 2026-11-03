@@ -1,0 +1,168 @@
+---
+title: 'Creating Packages'
+description: 'Ship the source for overrides resolved at build time, or a dist that needs no setup.'
+---
+
+A component library built with Plumeria ships one of two ways.
+
+|                                  | Source                          | Dist                    |
+| -------------------------------- | ------------------------------- | ----------------------- |
+| What you publish                 | `src`                           | `dist` and a stylesheet |
+| The app needs the bundler plugin | Yes                             | No                      |
+| The app overrides with `classStyle` | Yes, resolved at build time  | No                      |
+| Style work at runtime            | None                            | None                    |
+
+Ship the source when the people installing it build with Plumeria. Ship a dist when
+they might not.
+
+## Ship the source
+
+The package points a `plumeria` export condition at its TypeScript source, as
+[tokens do](/docs/thinking-in-plumeria#across-packages), and the app's build compiles
+its components along with the app's own files.
+
+```json title="package.json"
+{
+  "name": "ui-kit",
+  "type": "module",
+  "files": ["src"],
+  "exports": {
+    ".": { "plumeria": "./src/index.ts", "types": "./src/index.ts" },
+    "./*": { "plumeria": "./src/*.tsx", "types": "./src/*.tsx" }
+  },
+  "peerDependencies": {
+    "@plumeria/core": "*",
+    "react": ">=18"
+  }
+}
+```
+
+A component takes a style through a prop and applies it last, so the caller wins:
+
+```tsx title="src/Button.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    paddingBlock: 8,
+    paddingInline: 16,
+    color: 'white',
+    backgroundColor: 'gray',
+    borderRadius: 6,
+  },
+});
+
+export const Button = ({
+  children,
+  classStyle,
+}: {
+  children: React.ReactNode;
+  classStyle?: css.Style;
+}) => <button classStyle={[styles.base, classStyle]}>{children}</button>;
+```
+
+The app lists the package in its dependencies and passes its own styles:
+
+```tsx title="app.tsx"
+import * as css from '@plumeria/core';
+import { Button } from 'ui-kit';
+
+const styles = css.create({
+  primary: { backgroundColor: 'royalblue' },
+  danger: { backgroundColor: 'crimson' },
+});
+
+export const App = () => (
+  <>
+    <Button>Default</Button>
+    <Button classStyle={styles.primary}>Primary</Button>
+    <Button classStyle={styles.danger}>Danger</Button>
+  </>
+);
+```
+
+The app's build compiles `Button` with every style the app hands it:
+
+```js title="dist/assets/index.js"
+var Button = ({ children, classStyle }) =>
+  jsx('button', {
+    className:
+      'xnuwkl3w xgxw0ba0 xf882boo x1b4ohri ' +
+      ({ x9ct19gt: 'xbpntsfg', x409xipj: 'x5iwg3of' }[classStyle] ||
+        'xc4k1q4z'),
+    children,
+  });
+```
+
+The override is a lookup the compiler wrote, not a merge. Crossing the package
+boundary leaves nothing to resolve while your users render, and editing an override
+in the app updates the component in development.
+
+The bundler plugin needs no extra setup. It resolves the package to its source,
+keeps it out of dependency pre-bundling in Vite, and adds it to `transpilePackages`
+in Next.js. Every file in the directories the exports point to is compiled, so keep
+only what ships there, and tests and stories outside them.
+
+<Callout title="Keep the overrides within reach">
+  A received style is applied on an element the component renders. Passing it on to
+  another component stops the build, as in your own code. See
+  [Make the boundary a prop](/docs/thinking-in-plumeria#make-the-boundary-a-prop).
+
+  A `default` condition pointing at a dist is allowed for apps without Plumeria, but
+  those apps get the dist and its overrides are not applied.
+</Callout>
+
+## Ship a dist
+
+The library compiles itself. The class names sit in the JavaScript and the rules in
+a stylesheet, so the people installing it need no bundler plugin and no dependency
+on Plumeria. A `classStyle` from the app is not read.
+
+```js title="build.js"
+import esbuild from 'esbuild';
+import fs from 'node:fs';
+import plumeria from '@plumeria/unplugin';
+
+await esbuild.build({
+  entryPoints: ['src/index.tsx'],
+  bundle: true,
+  outfile: 'dist/index.js',
+  external: ['react', 'react/jsx-runtime'],
+  plugins: [plumeria.esbuild({ include: /\.[jt]sx?$/ })],
+  loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  format: 'esm',
+  jsx: 'automatic',
+});
+
+fs.writeFileSync(
+  'dist/index.js',
+  `import './index.css';\n${fs.readFileSync('dist/index.js', 'utf-8')}`,
+);
+```
+
+The last line points the JavaScript back at its stylesheet. esbuild, Bun, Rollup
+and Rolldown leave the extracted stylesheet unattached, and a library has no HTML to
+link it, so your users inherit it by importing the component.
+
+```json title="package.json"
+{
+  "name": "your-lib",
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@plumeria/core": "latest",
+    "@plumeria/unplugin": "latest"
+  }
+}
+```
+
+<Cards>
+  <Card title="Across packages" href="/docs/thinking-in-plumeria#across-packages" />
+  <Card title="@plumeria/wind" href="/docs/api/packages/wind" />
+</Cards>
