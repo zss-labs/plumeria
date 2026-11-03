@@ -97,6 +97,14 @@ export default withPlumeria(nextConfig, {
 });
 ```
 
+Dependencies that export Plumeria source through the `plumeria` condition are automatically compiled, with no configuration. Excluding `**/node_modules/**` or `node_modules/**` does not drop them. To leave out files inside such a package, exclude those files by path:
+
+```ts
+export default withPlumeria(nextConfig, {
+  exclude: ['**/node_modules/**', '**/node_modules/ui-kit/src/**/*.test.tsx'],
+});
+```
+
 ## Requirements
 
 Turbopack rule conditions keep the compiler from being handed every module in the graph, `node_modules` included. They are a Next.js 16 option, and the plugin applies them only from 16.0.0 up — on 15.x the rule stays unfiltered and builds are slower. Everything else works on both.
