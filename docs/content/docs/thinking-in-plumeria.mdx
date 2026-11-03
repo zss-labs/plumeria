@@ -126,7 +126,7 @@ const styles = css.create({
 
 `:hover`, `:focus-visible`, `:disabled` and `[aria-*]` work the same way. [Selector rules](/docs/selector-rules) lists what can nest in what.
 
-A descendant reacts to its ancestor through a [marker](/docs/api-reference/javascript/marker), not a path through the DOM. Combinators are rejected, so markup can change without taking a rule with it:
+A descendant reacts to its ancestor through a [marker](/docs/api/javascript/marker), not a path through the DOM. Combinators are rejected, so markup can change without taking a rule with it:
 
 ```tsx
 const styles = css.create({
@@ -172,7 +172,7 @@ const styles = css.create({
 .xbjfqarc:not(#\#) { background-color: currentColor; }
 ```
 
-A runtime value in any other declaration stops the build and points here. A computed key has to be known at build time too, so a selector or a breakpoint is a literal or comes from [`createStatic`](/docs/api-reference/javascript/createStatic).
+A runtime value in any other declaration stops the build and points here. A computed key has to be known at build time too, so a selector or a breakpoint is a literal or comes from [`createStatic`](/docs/api/javascript/createStatic).
 
 ## Make the boundary a prop
 
@@ -185,7 +185,7 @@ type NoticeProps = {
 };
 ```
 
-[`Style`](/docs/api-reference/types/Style) accepts any style, [`StyleProps`](/docs/api-reference/types/StyleProps) only the properties it names, and [`WithoutProperties`](/docs/api-reference/types/WithoutProperties) everything but the ones it names.
+[`Style`](/docs/api/types/Style) accepts any style, [`StyleProps`](/docs/api/types/StyleProps) only the properties it names, and [`WithoutProperties`](/docs/api/types/WithoutProperties) everything but the ones it names.
 
 Apply a style prop on an element the component renders. Passing it on to another component stops the build, because the compiler would have to trace it through a chain of wrappers. A wrapper that only forwards styles is one to remove, so the caller styles the component that owns the element:
 
@@ -277,7 +277,7 @@ export const Notice = ({
 
 ## Keep values apart from styles
 
-`Notice` spells out its colors, so a dark theme would mean a branch in every component like it. Move the values into a file of their own. [`createTheme`](/docs/api-reference/javascript/createTheme) holds what changes with a selector or a query:
+`Notice` spells out its colors, so a dark theme would mean a branch in every component like it. Move the values into a file of their own. [`createTheme`](/docs/api/javascript/createTheme) holds what changes with a selector or a query:
 
 ```ts title="styles/theme.ts"
 import * as css from '@plumeria/core';
@@ -321,7 +321,7 @@ The style now reads a variable, so `Notice` has no dark-mode branch and needs no
 .xshf6edi:not(#\#) { background-color: var(--x2cyw8xi-info-surface); }
 ```
 
-[`createStatic`](/docs/api-reference/javascript/createStatic) holds what never changes, such as a breakpoint, and is written in place wherever it is read. [`@plumeria/wind`](/docs/api-reference/wind) carries Tailwind's design values the same way.
+[`createStatic`](/docs/api/javascript/createStatic) holds what never changes, such as a breakpoint, and is written in place wherever it is read. [`@plumeria/wind`](/docs/api/packages/wind) carries Tailwind's design values the same way.
 
 ```ts title="styles/tokens.ts"
 import * as css from '@plumeria/core';
@@ -497,7 +497,7 @@ The compiler follows the condition through subpath and pattern exports such as `
 
 A package that reads definitions from another Plumeria package needs both in the app's dependencies, such as `@plumeria/wind` alongside a package built on it. If the app lists only the package built on it, the build succeeds, but declarations that read `@plumeria/wind` are dropped.
 
-The import compiles away, so a package that exports only definitions can ship its source alone, as [`@plumeria/wind`](/docs/api-reference/wind) does. One that also exports runtime code keeps a `default` condition for it.
+The import compiles away, so a package that exports only definitions can ship its source alone, as [`@plumeria/wind`](/docs/api/packages/wind) does. One that also exports runtime code keeps a `default` condition for it.
 
 ## Next steps
 
@@ -505,5 +505,5 @@ The import compiles away, so a package that exports only definitions can ship it
   <Card title="Composition laws" href="/docs/composition-laws" />
   <Card title="Specificity" href="/docs/specificity" />
   <Card title="Selector rules" href="/docs/selector-rules" />
-  <Card title="API reference" href="/docs/api-reference" />
+  <Card title="API reference" href="/docs/api" />
 </Cards>
