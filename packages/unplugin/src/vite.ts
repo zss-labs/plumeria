@@ -12,7 +12,6 @@ import type {
   UserConfig,
 } from 'vite';
 import { createDiskCssImport } from './disk-css';
-import { sourcePackages } from 'zss-engine';
 
 const { scanAll, optimizer } = compiler;
 
@@ -36,7 +35,6 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     setRoot,
     setCssImport,
     setClassProp,
-    setPackages,
     resolveSource,
   } = plugin.__plumeriaInternal;
 
@@ -169,15 +167,14 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
 
     config(userConfig: UserConfig, { command }: { command: string }) {
       plugin.vite?.config?.(userConfig, { command });
-      const root = path.resolve(userConfig.root ?? '');
-      const packages = sourcePackages(root);
-      setPackages(root, packages);
       const configToReturn: UserConfig = {
         optimizeDeps: {
           exclude: [
             ...(userConfig.optimizeDeps?.exclude ?? []),
             '@plumeria/core',
-            ...packages.map((pkg) => pkg.name),
+            ...compiler
+              .sourcePackages(path.resolve(userConfig.root ?? ''))
+              .map((pkg) => pkg.name),
           ],
         },
       };
