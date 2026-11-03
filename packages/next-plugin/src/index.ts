@@ -5,7 +5,12 @@ import type { Configuration } from 'webpack';
 import type { WebpackConfigContext } from 'next/dist/server/config-shared';
 import * as fs from 'fs';
 import * as path from 'path';
-import { devGenerationsPath } from '@plumeria/turbopack-loader';
+import {
+  devGenerationsPath,
+  inSourcePackage,
+  resolveSourcePackage,
+  sourcePackages,
+} from '@plumeria/turbopack-loader';
 import { lintOverrides } from '@plumeria/eslint-plugin/guard';
 import { startNextLintGuard } from './lint';
 
@@ -59,6 +64,36 @@ export function withPlumeria(
     ...options,
     version: loaderVersion(),
   };
+
+  const packages = sourcePackages(process.cwd());
+  const turbopackAliases = Object.fromEntries(
+    packages.flatMap((pkg) => {
+      const exports = pkg.exports as Record<string, any>;
+      const map = Object.keys(exports).some((key) => key.startsWith('.'))
+        ? exports
+        : { '.': exports };
+      return Object.entries(map).flatMap(([subpath, entry]) =>
+        typeof entry?.plumeria === 'string'
+          ? [
+              [
+                pkg.name + subpath.slice(1),
+                `./${path
+                  .relative(
+                    process.cwd(),
+                    path.resolve(pkg.dir, entry.plumeria),
+                  )
+                  .replace(/\\/g, '/')}`,
+              ],
+            ]
+          : [],
+      );
+    }),
+  );
+  const packageRequest = new RegExp(
+    `^(${packages
+      .map((pkg) => pkg.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')})(/|$)`,
+  );
 
   const turbopackLoaders: TurbopackLoaderItem[] = [
     {
@@ -126,8 +161,16 @@ export function withPlumeria(
 
   return {
     ...nextConfig,
+    transpilePackages: [
+      ...(nextConfig.transpilePackages ?? []),
+      ...packages.map((pkg) => pkg.name),
+    ],
     turbopack: {
       ...nextConfig?.turbopack,
+      resolveAlias: {
+        ...turbopackAliases,
+        ...nextConfig?.turbopack?.resolveAlias,
+      },
       rules: mergeTurbopackRules(nextConfig?.turbopack?.rules, plumeriaRules),
     },
 
@@ -158,10 +201,25 @@ export function withPlumeria(
         ignored: mergedIgnored,
       };
 
+      if (packages.length > 0) {
+        config.plugins = [
+          ...(config.plugins ?? []),
+          new context.webpack.NormalModuleReplacementPlugin(
+            packageRequest,
+            (resource: { request: string }) => {
+              const target = resolveSourcePackage(packages, resource.request);
+              if (target) resource.request = target;
+            },
+          ),
+        ];
+      }
+
       config.module?.rules?.unshift({
         enforce: 'pre',
         test: /\.(tsx|ts|jsx|js)$/,
-        exclude: [/node_modules/, /\.next/, /\.git/],
+        exclude: (file: string) =>
+          /\.next|\.git/.test(file) ||
+          (file.includes('node_modules') && !inSourcePackage(packages, file)),
         use: { loader: '@plumeria/turbopack-loader', options },
       });
 
