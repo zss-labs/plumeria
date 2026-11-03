@@ -1,5 +1,14 @@
 # @plumeria/compiler
 
+## 21.2.6
+
+### Patch Changes
+
+- d708d87: - Fix: resolve and compile component source from packages exposing the plumeria condition
+  - Fix: full-reload when a prop-driven update reaches a module that cannot accept it
+  - Fix: keep node_modules out of the lint guard
+  - Feat: `sourcePackages()` in the compiler lists the packages exposing the plumeria condition, so the bundler plugins share the compiler's discovery instead of scanning dependencies themselves
+
 ## 21.2.5
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # Release Notes
 
+## 21.2.6 (Nov 3, 2026)
+
+- Fix: resolve and compile component source from packages exposing the plumeria condition
+
+- Fix: full-reload when a prop-driven update reaches a module that cannot accept it
+
+- Fix: keep node_modules out of the lint guard
+
+- Feat: `sourcePackages()` in the compiler lists the packages exposing the plumeria condition, so the bundler plugins share the compiler's discovery instead of scanning dependencies themselves
+
 ## 21.2.5 (Nov 3, 2026)
 
 - Fix: a style passed to a component that React's `lazy` loads is handed to the export its `import()` names, as in `lazy(() => import('./Card'))` or `lazy(() => import('./Card').then((m) => ({ default: m.Card })))`, instead of being resolved to a `className` the component never reads
