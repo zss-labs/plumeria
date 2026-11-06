@@ -127,7 +127,7 @@ const carried = async (color: string) => {
   const source = `'use client';
 import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: '${color}' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `;
   fs.writeFileSync(path.join(projectDir, 'Client.tsx'), source);
   await transformClient(`${source}\nexport const before = 0;\n`);
