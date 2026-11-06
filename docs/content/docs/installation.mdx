@@ -32,9 +32,9 @@ pnpm i -D @plumeria/core
 ```
 
 ### plumeria.d.ts
-`@plumeria/core` ships no prop declaration of its own. In `src/` when the project has one, or at the application root otherwise, reference the one for the default `classStyle` prop:
+`@plumeria/core` ships no prop declaration of its own. In `src/` when the project has one, or at the application root otherwise, reference the one for the default `sx` prop:
 ```ts title="plumeria.d.ts"
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 To use another name, see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
@@ -70,8 +70,8 @@ export default defineConfig(
 
 The bundler plugins lint the build with these rules by default, so a style error
 or warning stops it with no setup. On esbuild and Bun, put `plumeria-lint --` in
-front of the build command instead. If you renamed the styling prop to `sx`,
-use `plumeria-lint --style-prop sx --` before the build command.
+front of the build command instead. If you renamed the styling prop to `classStyle`,
+use `plumeria-lint --style-prop classStyle --` before the build command.
 
 </Step>
 
