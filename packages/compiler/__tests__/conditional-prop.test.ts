@@ -56,7 +56,7 @@ export const Gated = ({
 }: {
   styleArray?: css.Style;
   cond?: boolean;
-}) => <div classStyle={[styles.base, cond && styleArray]} />;
+}) => <div sx={[styles.base, cond && styleArray]} />;
 `,
     [EITHER]: `
 import * as css from '@plumeria/core';
@@ -67,7 +67,7 @@ export const Either = ({
 }: {
   styleArray?: css.Style;
   cond?: boolean;
-}) => <div classStyle={cond ? styleArray : styles.base} />;
+}) => <div sx={cond ? styleArray : styles.base} />;
 `,
     [PARENT]: `
 import '@plumeria/core';
