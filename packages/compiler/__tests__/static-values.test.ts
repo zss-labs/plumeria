@@ -33,7 +33,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       const css = compile(
         `const theme = { colors: { brand: { primary: 'blue' } } };\n` +
           `const styles = css.create({ root: { color: theme.colors.brand.primary } });\n` +
-          `export const App = () => <div classStyle={styles.root} />;`,
+          `export const App = () => <div sx={styles.root} />;`,
       );
       expect(css).toContain('color: blue');
     });
@@ -45,7 +45,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       const css = compile(
         `const theme = { space: { sm: '4px' } };\n` +
           'const styles = css.create({ root: { padding: `${theme.space.sm} 0` } });\n' +
-          `export const App = () => <div classStyle={styles.root} />;`,
+          `export const App = () => <div sx={styles.root} />;`,
       );
       expect(css).toContain('padding: 4px 0');
     });
