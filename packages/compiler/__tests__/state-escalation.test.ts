@@ -38,7 +38,7 @@ const wide = css.create({
   const compile = async (styleExpr: string) => {
     const result = await transformSource(
       env(
-        `${HEAD}export const B = ({ on }: any) => <div classStyle={${styleExpr}} />;`,
+        `${HEAD}export const B = ({ on }: any) => <div sx={${styleExpr}} />;`,
         `${DIR}/fixture.tsx`,
       ),
     );
