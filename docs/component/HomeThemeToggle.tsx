@@ -70,7 +70,7 @@ export const HomeThemeToggle = () => {
   }, []);
 
   return (
-    <div role="group" aria-label="Theme" classStyle={styles.toggle}>
+    <div role="group" aria-label="Theme" sx={styles.toggle}>
       {options.map(({ value, label, icon }) => {
         const active = mounted && theme === value;
 
@@ -80,7 +80,7 @@ export const HomeThemeToggle = () => {
             type="button"
             aria-label={label}
             aria-pressed={active}
-            classStyle={[styles.option, active && styles.active]}
+            sx={[styles.option, active && styles.active]}
             onClick={() => setTheme(value)}
           >
             <svg
