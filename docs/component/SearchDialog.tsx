@@ -67,7 +67,7 @@ const renderMarks = (text: string): ReactNode[] =>
     .filter(Boolean)
     .map((part, index) =>
       part.startsWith('<mark>') ? (
-        <span key={index} classStyle={styles.mark}>
+        <span key={index} sx={styles.mark}>
           {unescape(part.slice('<mark>'.length, -'</mark>'.length))}
         </span>
       ) : (
@@ -81,7 +81,7 @@ const renderContent = (content: string): ReactNode[] =>
     .filter(Boolean)
     .map((part, index) =>
       part.startsWith('`') ? (
-        <code key={index} classStyle={styles.code}>
+        <code key={index} sx={styles.code}>
           {renderMarks(part.slice(1, -1))}
         </code>
       ) : (
@@ -152,7 +152,7 @@ const Hash = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden="true"
-    classStyle={styles.hash}
+    sx={styles.hash}
   >
     <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />
   </svg>
@@ -181,7 +181,7 @@ export const SearchDialog = (props: SharedProps) => {
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Search documentation"
-            classStyle={styles.input}
+            sx={styles.input}
           />
           <SearchDialogClose />
         </SearchDialogHeader>
@@ -193,7 +193,7 @@ export const SearchDialog = (props: SharedProps) => {
             ) : (
               <SearchDialogListItem item={item} onClick={onClick}>
                 {item.breadcrumbs && item.breadcrumbs.length > 0 && (
-                  <div classStyle={styles.breadcrumbs}>
+                  <div sx={styles.breadcrumbs}>
                     {item.breadcrumbs.map((crumb, index) => (
                       <Fragment key={index}>
                         {index > 0 && <Chevron />}
@@ -202,7 +202,7 @@ export const SearchDialog = (props: SharedProps) => {
                     ))}
                   </div>
                 )}
-                <div classStyle={styles.title}>
+                <div sx={styles.title}>
                   {item.type === 'heading' && <Hash />}
                   <span>{typeof item.content === 'string' ? renderContent(item.content) : item.content}</span>
                 </div>
