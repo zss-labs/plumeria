@@ -23,7 +23,7 @@ Options
   -y, --yes            accept every default, ask nothing
   -d, --dry-run        show the plan without writing
       --bundler <name> ${BUNDLERS.join(', ')}
-      --style-prop <p> the JSX prop that carries styles (default classStyle)
+      --style-prop <p> the JSX prop that carries styles (default sx)
       --logical        this project writes logical properties
       --physical       this project writes physical properties
       --sizes          extend the spelling policy to the size axis
