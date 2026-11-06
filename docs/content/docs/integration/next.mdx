@@ -34,13 +34,13 @@ export default withPlumeria(nextConfig);
 export default withPlumeria(nextConfig, {
   include: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   exclude: ['**/node_modules/**', '**/.next/**'],
-  styleProp: 'sx',
+  styleProp: 'classStyle',
 });
 ```
 
 - `include` — Globs the stylesheet is compiled from. The default is every `js/jsx/ts/tsx` file.
 - `exclude` — Globs excluded from that compilation. The default is `node_modules`, `dist` and `.next`.
-- `styleProp` — The JSX prop that carries styles. The default is `'classStyle'`.
+- `styleProp` — The JSX prop that carries styles. The default is `'sx'`.
 
 These are the options a project usually sets. `withoutLogicalProperties` and `withoutPhysicalProperties` reject one spelling of a property that carries both names, so the pair cannot be written; see [@plumeria/next-plugin](/docs/api/plugins/next-plugin) for every option and its type.
 
@@ -48,13 +48,13 @@ These are the options a project usually sets. `withoutLogicalProperties` and `wi
 
 `@plumeria/core` ships no prop declaration of its own, so name the styling prop your project compiles with.
 
-For the default name (`classStyle`), reference the declaration that ships with the package, in `src/` when the project has one or at the application root otherwise:
+For the default name (`sx`), reference the declaration that ships with the package, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
-If you set a custom `styleProp` (such as `'sx'`), declare that name instead, and keep it the same as the one in `next.config.ts`; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
+If you set a custom `styleProp` (such as `'classStyle'`), declare that name instead, and keep it the same as the one in `next.config.ts`; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
 <Cards>
   <Card title="Shipping this as a package" href="/docs/creating-packages" />
