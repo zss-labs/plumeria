@@ -11,7 +11,7 @@ import { implementations } from '../compiler-implementations';
 
 const box = (color: string) => `import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: '${color}' } });
-export const Box = () => <div classStyle={styles.box} />;`;
+export const Box = () => <div sx={styles.box} />;`;
 
 describe.each(implementations)(
   '$name incremental CSS',
@@ -94,7 +94,7 @@ describe.each(implementations)(
         'a.tsx',
         `import * as css from '@plumeria/core';
 import { styles } from './colors';
-export const Box = () => <div classStyle={styles.box} />;`,
+export const Box = () => <div sx={styles.box} />;`,
       );
       expect(compile()).toContain('red');
       write(
@@ -111,7 +111,7 @@ export const Box = () => <div classStyle={styles.box} />;`,
     it('updates an unchanged receiver when its parent supplies a different style', () => {
       write(
         'Child.tsx',
-        `export const Child = ({ look }: any) => <div classStyle={look} />;`,
+        `export const Child = ({ look }: any) => <div sx={look} />;`,
       );
       const parent = (color: string) => `import * as css from '@plumeria/core';
 import { Child } from './Child';
@@ -195,7 +195,7 @@ export const Parent = () => <Child look={s.box} />;`;
 const theme = css.createTheme('.dark', { primary: { default: '${color}', theme: 'pink' } });
 const sizes = css.createStatic({ gap: 4 });
 const styles = css.create({ box: { color: theme.primary, padding: sizes.gap } });
-export const Box = () => <div classStyle={styles.box} />;`;
+export const Box = () => <div sx={styles.box} />;`;
       write('a.tsx', themedBox('red'));
       write('b.tsx', box('blue'));
       const initial = compile();
@@ -205,8 +205,8 @@ export const Box = () => <div classStyle={styles.box} />;`;
       const sources = {
         [path.join(dir, 'a.tsx')]: themedBox('green'),
         [path.join(dir, 'b.tsx')]: themedBox('purple').replace(
-          'classStyle={styles.box}',
-          'classStyle={unknownStyle}',
+          'sx={styles.box}',
+          'sx={unknownStyle}',
         ),
       };
       expect(() => compile({ sources })).toThrow();
@@ -217,10 +217,10 @@ export const Box = () => <div classStyle={styles.box} />;`;
 
     it('does not reuse a result across include, styleProp, or policy changes', () => {
       write('a.tsx', box('red'));
-      write('b.tsx', box('green').replace('classStyle=', 'sx='));
+      write('b.tsx', box('green').replace('sx=', 'classStyle='));
       compile();
       expect(compile({ include: ['a.tsx'] })).not.toContain('green');
-      expect(compile({ styleProp: 'sx' })).toContain('green');
+      expect(compile({ styleProp: 'classStyle' })).toContain('green');
       write('a.tsx', box('red').replace("color: 'red'", 'marginLeft: 1'));
       compile();
       expect(() => compile({ withoutPhysicalProperties: true })).toThrow();
