@@ -6,7 +6,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 
 <img src="/specificity-steps.svg" width={1000} height={420} alt="Each step toward a longhand or a condition adds :not(#\#) to the class, and within one step the right side of the array wins" />
 
-In short: a longhand beats its shorthand, a condition or a nested selector beats its base, and in a `classStyle` array the right side wins. Four pairs have nothing to rank them by, and [What source order still decides](#what-source-order-still-decides) covers them.
+In short: a longhand beats its shorthand, a condition or a nested selector beats its base, and in a `sx` array the right side wins. Four pairs have nothing to rank them by, and [What source order still decides](#what-source-order-still-decides) covers them.
 
 <Steps>
 <Step>
@@ -27,8 +27,8 @@ const styles = css.create({
 });
 
 // Both produce the same result
-classStyle={[styles.base, styles.custom]}
-classStyle={[styles.custom, styles.base]}
+sx={[styles.base, styles.custom]}
+sx={[styles.custom, styles.base]}
 
 // Result: margin 10px on all sides, except top is 20px
 ```
@@ -106,9 +106,9 @@ shorthands.
 </Step>
 
 <Step>
-## `classStyle` prop merge styles
+## `sx` prop merge styles
 
-Also, when `classStyle` prop has duplicate properties on its array, the style properties on the right always take precedence and duplicate properties on the left are filtered. In that case no filtered hash is generated.
+Also, when `sx` prop has duplicate properties on its array, the style properties on the right always take precedence and duplicate properties on the left are filtered. In that case no filtered hash is generated.
 
 ```js
 const styles = css.create({
@@ -121,8 +121,8 @@ const styles = css.create({
 });
 
 // The right always wins
-classStyle={[styles.base, styles.custom]} // 16px
-classStyle={[styles.custom, styles.base]} // 10px
+sx={[styles.base, styles.custom]} // 16px
+sx={[styles.custom, styles.base]} // 10px
 ```
 Generated as follows:
 ```css
@@ -277,8 +277,8 @@ more specific description of an element than `:focus`. Composing the two styles
 is what says which one wins:
 
 ```js
-classStyle={[styles.hovered, styles.focused]} // blue where both hold
-classStyle={[styles.focused, styles.hovered]} // red where both hold
+sx={[styles.hovered, styles.focused]} // blue where both hold
+sx={[styles.focused, styles.hovered]} // red where both hold
 ```
 
 The atom from the source written further right receives one more `:not(#\#)`, so
