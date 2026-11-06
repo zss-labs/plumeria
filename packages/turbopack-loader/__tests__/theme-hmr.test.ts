@@ -28,7 +28,7 @@ const theme = css.createTheme('${selector}', {
   textColor: { default: '${def}', theme: '${theme}' },
 });
 const styles = css.create({ box: { color: theme.textColor } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 };
 
