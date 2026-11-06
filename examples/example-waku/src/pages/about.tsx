@@ -20,9 +20,9 @@ export default async function AboutPage() {
   return (
     <div>
       <title>{data.title}</title>
-      <h1 classStyle={styles.headline}>{data.headline}</h1>
+      <h1 sx={styles.headline}>{data.headline}</h1>
       <p>{data.body}</p>
-      <Link to="/" classStyle={styles.link}>
+      <Link to="/" sx={styles.link}>
         Return home
       </Link>
     </div>
