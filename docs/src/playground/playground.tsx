@@ -374,43 +374,43 @@ export function Playground() {
   }
 
   return (
-    <div classStyle={styles.root}>
-      <div classStyle={styles.bar}>
-        <div classStyle={styles.editorBar}>
-          <span classStyle={styles.label}>Example</span>
-          <div classStyle={styles.group}>
+    <div sx={styles.root}>
+      <div sx={styles.bar}>
+        <div sx={styles.editorBar}>
+          <span sx={styles.label}>Example</span>
+          <div sx={styles.group}>
             {EXAMPLE_LINKS.map((item) => (
               <a
                 key={item.value}
                 href={item.value === 'card' ? '/playground' : `/playground?example=${item.value}`}
                 aria-current={example === item.value ? 'page' : undefined}
-                classStyle={[styles.option, example === item.value && styles.optionActive]}
+                sx={[styles.option, example === item.value && styles.optionActive]}
               >
                 {item.label}
               </a>
             ))}
           </div>
-          <span classStyle={styles.label}>Property spelling</span>
-          <div classStyle={styles.group}>
+          <span sx={styles.label}>Property spelling</span>
+          <div sx={styles.group}>
             {POLICIES.map((item) => (
               <button
                 key={item.value}
                 type="button"
                 onClick={() => setPolicy(item.value)}
-                classStyle={[styles.option, policy === item.value && styles.optionActive]}
+                sx={[styles.option, policy === item.value && styles.optionActive]}
               >
                 {item.label}
               </button>
             ))}
           </div>
         </div>
-        <span classStyle={styles.count}>
+        <span sx={styles.count}>
           <span>{counts.errors} errors</span>
           <span>{counts.warnings} warnings</span>
         </span>
       </div>
       <div
-        classStyle={[styles.split, !outputOpen && styles.splitCollapsed]}
+        sx={[styles.split, !outputOpen && styles.splitCollapsed]}
         data-playground="stage"
         data-ready={ready || failed}
         aria-busy={!ready && !failed}
@@ -431,9 +431,9 @@ export function Playground() {
           </span>
           <span>Preparing your playground…</span>
         </div>
-        <div classStyle={styles.pane}>
-          <div classStyle={styles.tabs}>
-            <div classStyle={styles.tabList} role="tablist" aria-label="Playground files">
+        <div sx={styles.pane}>
+          <div sx={styles.tabs}>
+            <div sx={styles.tabList} role="tablist" aria-label="Playground files">
               {EXAMPLES[example].map((item) => (
                 <button
                   key={item.path}
@@ -441,16 +441,16 @@ export function Playground() {
                   role="tab"
                   aria-selected={file === item.path}
                   onClick={() => setFile(item.path)}
-                  classStyle={[styles.tab, file === item.path && styles.tabActive]}
+                  sx={[styles.tab, file === item.path && styles.tabActive]}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
-            <div classStyle={styles.actions}>
+            <div sx={styles.actions}>
               <button
                 type="button"
-                classStyle={styles.action}
+                sx={styles.action}
                 disabled={!editorReady}
                 title="Reset to the sample"
                 aria-label="Reset code to the sample"
@@ -475,7 +475,7 @@ export function Playground() {
               </button>
               <button
                 type="button"
-                classStyle={styles.action}
+                sx={styles.action}
                 disabled={!editorReady}
                 onClick={copySource}
                 title="Copy code"
@@ -497,10 +497,10 @@ export function Playground() {
               </button>
             </div>
           </div>
-          <div ref={container} classStyle={styles.editor} />
+          <div ref={container} sx={styles.editor} />
         </div>
-        <div classStyle={styles.outputBar}>
-          <div classStyle={styles.tabList} role="tablist" aria-label="Compiled output">
+        <div sx={styles.outputBar}>
+          <div sx={styles.tabList} role="tablist" aria-label="Compiled output">
             {OUTPUT_TABS.map((item) => (
               <button
                 key={item.value}
@@ -511,7 +511,7 @@ export function Playground() {
                   setOutputTab(item.value);
                   setOutputOpen(true);
                 }}
-                classStyle={[
+                sx={[
                   styles.tab,
                   styles.outputTab,
                   outputTab === item.value && styles.tabActive,
@@ -523,10 +523,10 @@ export function Playground() {
               </button>
             ))}
           </div>
-          <div classStyle={[styles.actions, styles.collapse]}>
+          <div sx={[styles.actions, styles.collapse]}>
             <button
               type="button"
-              classStyle={styles.action}
+              sx={styles.action}
               aria-expanded={outputOpen}
               aria-label={outputOpen ? 'Collapse the compiled output' : 'Expand the compiled output'}
               onClick={() => setOutputOpen(!outputOpen)}
@@ -539,22 +539,22 @@ export function Playground() {
                 stroke="currentColor"
                 strokeWidth="1.7"
                 aria-hidden="true"
-                classStyle={!outputOpen && styles.chevronCollapsed}
+                sx={!outputOpen && styles.chevronCollapsed}
               >
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>
           </div>
         </div>
-        <div ref={output} classStyle={[styles.output, outputTab === 'preview' && styles.narrowHidden]} />
+        <div ref={output} sx={[styles.output, outputTab === 'preview' && styles.narrowHidden]} />
         <iframe
           ref={preview}
-          classStyle={[styles.preview, outputTab !== 'preview' && styles.narrowHidden]}
+          sx={[styles.preview, outputTab !== 'preview' && styles.narrowHidden]}
           src="/playground/preview"
           title="Preview"
         />
       </div>
-      <p role="status" classStyle={styles.status}>
+      <p role="status" sx={styles.status}>
         {status}
       </p>
     </div>
