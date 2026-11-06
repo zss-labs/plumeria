@@ -3,7 +3,7 @@ title: 'Introduction'
 description: 'What Plumeria is, what your styles compile to, and why none of the library ships.'
 ---
 
-<img src="/compile-process.svg" width={1000} height={440} alt="The compiler turns css.create and classStyle into class names and atomic CSS" />
+<img src="/compile-process.svg" width={1000} height={440} alt="The compiler turns css.create and sx into class names and atomic CSS" />
 
 Plumeria is a React styling library. You write style objects in TypeScript, and the compiler turns them into atomic CSS and rewrites every call site, so no library code reaches your JavaScript bundle and no style is computed in the browser.
 
@@ -11,7 +11,7 @@ Which value wins is never left to stylesheet order. Styles merge property by pro
 
 ## Write a style
 
-Define styles with `css.create()` and attach them with the `classStyle` prop:
+Define styles with `css.create()` and attach them with the `sx` prop:
 
 ```tsx title="Footer.tsx"
 import * as css from '@plumeria/core';
@@ -23,7 +23,7 @@ const styles = css.create({
   },
 });
 
-export const Footer = () => <p classStyle={styles.text}>MyText</p>;
+export const Footer = () => <p sx={styles.text}>MyText</p>;
 ```
 
 The import and the `css.create()` call compile away, and the declarations move to a generated stylesheet:
@@ -39,7 +39,7 @@ export const Footer = () => <p className={"xqqbxt1d xuifcaas"}>MyText</p>;
 
 ## Compose from the right
 
-`classStyle` accepts arrays, ternaries and conditions. When two styles set the same property, the one on the right wins:
+`sx` accepts arrays, ternaries and conditions. When two styles set the same property, the one on the right wins:
 
 ```tsx title="Item.tsx"
 import * as css from '@plumeria/core';
@@ -55,7 +55,7 @@ const styles = css.create({
 });
 
 export const Item = ({ isActive }: { isActive: boolean }) => (
-  <p classStyle={[styles.base, isActive && styles.active]}>MyText</p>
+  <p sx={[styles.base, isActive && styles.active]}>MyText</p>
 );
 ```
 
@@ -88,11 +88,11 @@ export const styles = css.create({
 import { styles } from './styles';
 
 export const Component = () => {
-  return <p classStyle={styles.common}>Shared style</p>;
+  return <p sx={styles.common}>Shared style</p>;
 };
 ```
 
-A file that applies them with `classStyle` needs nothing else. A file that passes them to a component through any other prop imports `@plumeria/core`, which is how the compiler finds it; importing it in every file that uses Plumeria is always safe and keeps each file on the fastest path.
+A file that applies them with `sx` needs nothing else. A file that passes them to a component through any other prop imports `@plumeria/core`, which is how the compiler finds it; importing it in every file that uses Plumeria is always safe and keeps each file on the fastest path.
 
 ## Types all the way down
 
@@ -105,8 +105,8 @@ Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** 
     ".": {
       "types": "./lib/css.d.ts"
     },
-    "./class-style": {
-      "types": "./lib/class-style.d.ts"
+    "./sx": {
+      "types": "./lib/sx.d.ts"
     }
   }
 }
