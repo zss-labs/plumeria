@@ -37,7 +37,7 @@ export default [plumeria.configs.recommended];
 
 `custom-props-require-import`, `no-inline-object`, `no-mixed-styling-props`,
 `no-style-prop-relay`, `no-unresolved-composition` and `no-use-in-jsx` need to
-know which JSX prop carries styles. It is `classStyle` unless you changed it, so
+know which JSX prop carries styles. It is `sx` unless you changed it, so
 most projects configure nothing.
 
 If you did rename it — via `styleProp` on `withPlumeria` or on the unplugin
@@ -52,7 +52,7 @@ export default [
   plumeria.configs.recommended,
   {
     settings: {
-      plumeria: { styleProp: 'sx' },
+      plumeria: { styleProp: 'classStyle' },
     },
   },
 ];
@@ -63,7 +63,7 @@ A single rule can override that if you need it to:
 ```js
 {
   rules: {
-    '@plumeria/no-mixed-styling-props': ['error', { styleProp: 'sx' }],
+    '@plumeria/no-mixed-styling-props': ['error', { styleProp: 'classStyle' }],
   },
 }
 ```
@@ -117,7 +117,7 @@ Disallow destructuring APIs.
 
 ### no-inline-object
 
-Disallow passing inline object to `classStyle` and `css.use()`. Only compiled styles from `css.create()` are allowed.
+Disallow passing inline object to `sx` and `css.use()`. Only compiled styles from `css.create()` are allowed.
 
 ### no-inner-call
 
@@ -131,7 +131,7 @@ Also reports a functional pseudo-class nested inside one of the same name, such 
 
 ### no-mixed-styling-props
 
-Disallow mixing the styling prop with `className` or `style`. `classStyle` can handle both `className` and `style`.
+Disallow mixing the styling prop with `className` or `style`. `sx` can handle both `className` and `style`.
 
 Accepts `{ styleProp }`; see [Configuring the styling prop](#configuring-the-styling-prop).
 
@@ -285,10 +285,10 @@ making it suitable for use in CI and build pipelines.
 
 If the styling prop is renamed, pass the name with `--style-prop`. Without the
 flag, `plumeria-lint` asks ESLint for `settings.plumeria.styleProp` when ESLint
-and a flat config are installed, and uses `classStyle` otherwise:
+and a flat config are installed, and uses `sx` otherwise:
 
 ```bash
-plumeria-lint --style-prop sx
+plumeria-lint --style-prop classStyle
 ```
 
 ### Aborting Builds on Lint Errors (Parallel Pipeline)
