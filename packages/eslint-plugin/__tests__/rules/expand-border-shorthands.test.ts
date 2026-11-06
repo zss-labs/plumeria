@@ -24,6 +24,12 @@ ruleTester.run('expand-border-shorthands', expandBorderShorthands, {
   valid: [
     {
       code: `
+        import * as css from '@plumeria/core';
+        css.positionTry({ borderTopWidth: '1px' });
+      `,
+    },
+    {
+      code: `
         import css from '@plumeria/core';
         const dynamic = 'borderTop';
         css.unknown({ box: { borderTop: '1px solid red' } });
