@@ -59,23 +59,23 @@ import '@plumeria/core';
 import { styles } from './styles';
 export const Inline = ({ color, n }: { color: string; n: number }) => (
   <div>
-    <div classStyle={styles.tone(color)} />
-    <div classStyle={styles.sized(n)} />
-    <div classStyle={styles.tinted()} />
+    <div sx={styles.tone(color)} />
+    <div sx={styles.sized(n)} />
+    <div sx={styles.tinted()} />
   </div>
 );
 `,
     [LEAF]: `
 import * as css from '@plumeria/core';
 export const Leaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
     [MERGED]: `
 import * as css from '@plumeria/core';
 import { styles } from './styles';
 export const Merged = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={[styles.base, styleArray]} />
+  <div sx={[styles.base, styleArray]} />
 );
 `,
     [USED]: `
@@ -94,7 +94,7 @@ export const Relay = ({ styleArray }: { styleArray?: css.Style }) => (
     [GATED]: `
 import * as css from '@plumeria/core';
 export const Gated = ({ on, styleArray }: { on: boolean; styleArray?: css.Style }) => (
-  <div classStyle={on && styleArray} />
+  <div sx={on && styleArray} />
 );
 `,
     [USED_PLAIN]: `
@@ -120,7 +120,7 @@ import { Leaf } from './Leaf';
 export const Mixed = ({ color, flag }: { color: string; flag: boolean }) => (
   <div>
     <Leaf styleArray={[styles.base, flag && styles.base, styles.tone(color)]} />
-    <div classStyle={[styles.base, styles.tone(color)]} />
+    <div sx={[styles.base, styles.tone(color)]} />
   </div>
 );
 `,
