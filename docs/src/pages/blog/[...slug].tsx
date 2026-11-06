@@ -24,8 +24,8 @@ export default async function Page({ slug }: { slug?: Array<string> }): Promise<
       tableOfContentPopover={{ enabled: false }}
     >
       <Seo title={page.data.title as string} subtitle={page.data.description} path={page.url} />
-      {page.data.title && <h1 classStyle={styles.title}>{page.data.title}</h1>}
-      <p classStyle={styles.date}>
+      {page.data.title && <h1 sx={styles.title}>{page.data.title}</h1>}
+      <p sx={styles.date}>
         <time dateTime={page.data.date}>{formatDate(page.data.date)}</time>
       </p>
       <DocsBody>
