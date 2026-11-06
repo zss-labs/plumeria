@@ -43,7 +43,7 @@ ${body}
       ['an && nested inside a ternary', `a ? (b && s[k]) : s.p3`],
     ])('emits every key of the group in %s', (_label, expr) => {
       const out = compile(
-        `export const A = ({ on, a, b, k }: any) => <div classStyle={${expr}} />;`,
+        `export const A = ({ on, a, b, k }: any) => <div sx={${expr}} />;`,
       );
       for (const color of ['green', 'olive', 'teal']) {
         expect(out).toContain(`color: ${color}`);
