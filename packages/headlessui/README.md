@@ -3,9 +3,9 @@
 ![License](https://img.shields.io/badge/License-MIT-10B981)
 ![npm](https://img.shields.io/npm/v/@plumeria/headlessui?&color=10B981)
 
-A curated set of essential headless primitives, built on [Radix UI](https://www.radix-ui.com/) and designed to work seamlessly with Plumeria's `classStyle` abstraction layer.
+A curated set of essential headless primitives, built on [Radix UI](https://www.radix-ui.com/) and designed to work seamlessly with Plumeria's `sx` abstraction layer.
 
-Each component is a pure passthrough — it forwards refs and spreads props onto the underlying Radix primitive. `classStyle` is compiled to `className`/`style` at the call site before the component runs, so no Plumeria-specific logic is needed inside the components.
+Each component is a pure passthrough — it forwards refs and spreads props onto the underlying Radix primitive. `sx` is compiled to `className`/`style` at the call site before the component runs, so no Plumeria-specific logic is needed inside the components.
 
 ## Documentation
 
@@ -52,14 +52,14 @@ const styles = css.create({
 });
 
 export const FAQ = () => (
-  <Accordion type="single" collapsible classStyle={styles.root}>
+  <Accordion type="single" collapsible sx={styles.root}>
     <Accordion.Item value="item-1">
       <Accordion.Header>
-        <Accordion.Trigger classStyle={styles.trigger}>
+        <Accordion.Trigger sx={styles.trigger}>
           Is it accessible?
         </Accordion.Trigger>
       </Accordion.Header>
-      <Accordion.Content classStyle={styles.content}>
+      <Accordion.Content sx={styles.content}>
         Yes. It adheres to the WAI-ARIA design pattern.
       </Accordion.Content>
     </Accordion.Item>
