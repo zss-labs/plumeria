@@ -1,5 +1,11 @@
 # @plumeria/headlessui
 
+## 22.0.0
+
+### Major Changes
+
+- eb43320: Bump version to 22.0.0
+
 ## 21.2.7
 
 ### Patch Changes
