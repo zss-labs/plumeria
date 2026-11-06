@@ -56,7 +56,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       `import * as css from '@plumeria/core';\n` +
         `${importLine}\n` +
         `function Test() { return 'x'; }\n` +
-        `export const App = () => <div classStyle={${usage}} />;\n`,
+        `export const App = () => <div sx={${usage}} />;\n`,
       'utf-8',
     );
 
