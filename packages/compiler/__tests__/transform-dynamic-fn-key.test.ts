@@ -69,7 +69,7 @@ const d = css.create({
 
     it('applies a parameter default without an inline style', async () => {
       const { code } = await run(
-        defaults + 'export const A = () => <div classStyle={d.tinted()} />;',
+        defaults + 'export const A = () => <div sx={d.tinted()} />;',
         'default-omitted.tsx',
       );
       expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
@@ -80,12 +80,11 @@ const d = css.create({
     // only add the variable.
     it('keeps the same class when a defaulted parameter is given a value', async () => {
       const omitted = await run(
-        defaults + 'export const A = () => <div classStyle={d.tinted()} />;',
+        defaults + 'export const A = () => <div sx={d.tinted()} />;',
         'default-a.tsx',
       );
       const given = await run(
-        defaults +
-          "export const A = () => <div classStyle={d.tinted('blue')} />;",
+        defaults + "export const A = () => <div sx={d.tinted('blue')} />;",
         'default-b.tsx',
       );
       expect(classOf(given.code)).toBe(classOf(omitted.code));
@@ -95,7 +94,7 @@ const d = css.create({
 
     it('applies a destructured default when the key is omitted', async () => {
       const { code } = await run(
-        defaults + 'export const A = () => <div classStyle={d.toned({})} />;',
+        defaults + 'export const A = () => <div sx={d.toned({})} />;',
         'default-named.tsx',
       );
       expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
@@ -104,11 +103,11 @@ const d = css.create({
 
     it('applies a destructured default when the call takes no argument', async () => {
       const omitted = await run(
-        defaults + 'export const A = () => <div classStyle={d.toned()} />;',
+        defaults + 'export const A = () => <div sx={d.toned()} />;',
         'default-named-omitted.tsx',
       );
       const empty = await run(
-        defaults + 'export const A = () => <div classStyle={d.toned({})} />;',
+        defaults + 'export const A = () => <div sx={d.toned({})} />;',
         'default-named-empty.tsx',
       );
       expect(classOf(omitted.code)).toBe(classOf(empty.code));
@@ -120,7 +119,7 @@ const d = css.create({
         run(
           `import * as css from '@plumeria/core';
 const s = css.create({ bare: ({ tone }: { tone: string }) => ({ backgroundColor: tone }) });
-export const B = () => <div classStyle={s.bare()} />;`,
+export const B = () => <div sx={s.bare()} />;`,
           'named-omitted-unset.tsx',
         ),
       ).rejects.toThrow('leaves "tone" unset');
@@ -128,7 +127,7 @@ export const B = () => <div classStyle={s.bare()} />;`,
 
     it('resolves a call on a style function that takes no parameter', async () => {
       const { code } = await run(
-        defaults + 'export const A = () => <div classStyle={d.plain()} />;',
+        defaults + 'export const A = () => <div sx={d.plain()} />;',
         'default-none.tsx',
       );
       expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
@@ -139,7 +138,7 @@ export const B = () => <div classStyle={s.bare()} />;`,
       const file = path.join(DIR, 'imported-consumer.tsx');
       const source = `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const Imported = (p: any) => <p classStyle={importedStyles.tone(p.color)} />;`;
+export const Imported = (p: any) => <p sx={importedStyles.tone(p.color)} />;`;
       fs.writeFileSync(file, source);
 
       const { code } = await transformSource(env(source, file));
@@ -167,14 +166,14 @@ ${leadIn}export const scoped = css.create(${declaration});
         const consumerFile = path.join(DIR, 'scoped-consumer.tsx');
         const consumer = `import '@plumeria/core';
 import { scoped } from './scoped.styles';
-export const A = (p: any) => <div classStyle={scoped.tone(p.c)} />;`;
+export const A = (p: any) => <div sx={scoped.tone(p.c)} />;`;
         fs.writeFileSync(consumerFile, consumer);
         const imported = await transformSource(env(consumer, consumerFile));
 
         const inline = await run(
           `import * as css from '@plumeria/core';
 ${leadIn}const scoped = css.create(${declaration});
-export const A = (p: any) => <div classStyle={scoped.tone(p.c)} />;`,
+export const A = (p: any) => <div sx={scoped.tone(p.c)} />;`,
           'scoped-inline.tsx',
         );
 
@@ -219,7 +218,7 @@ export const named = css.create({
         const consumerFile = path.join(DIR, 'named-consumer.tsx');
         const consumer = `import '@plumeria/core';
 import { named } from './named.styles';
-export const A = (p: any) => <div classStyle={named.tone({ color: p.c })} />;`;
+export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`;
         fs.writeFileSync(consumerFile, consumer);
         const { code } = await transformSource(env(consumer, consumerFile));
 
@@ -229,7 +228,7 @@ const weight = 700;
 const named = css.create({
   tone: ({ color }: { color: string }) => ({ color, fontWeight: weight }),
 });
-export const A = (p: any) => <div classStyle={named.tone({ color: p.c })} />;`,
+export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
           'named-inline.tsx',
         );
 
@@ -239,8 +238,7 @@ export const A = (p: any) => <div classStyle={named.tone({ color: p.c })} />;`,
 
     it('resolves a prop argument into a class name and a CSS variable', async () => {
       const { code } = await run(
-        header +
-          `export const A = (p: any) => <div classStyle={s.palette(p.c)} />;`,
+        header + `export const A = (p: any) => <div sx={s.palette(p.c)} />;`,
         'a.tsx',
       );
       expect(code).toContain('className={"xokp0532"}');
@@ -257,7 +255,7 @@ export const A = (p: any) => <div classStyle={named.tone({ color: p.c })} />;`,
         `import * as css from '@plumeria/core';
 const a = css.create({ palette: (color: string) => ({ backgroundColor: color }) });
 const b = css.create({ palette: (color: string) => ({ borderColor: color }) });
-export const B = (p: any) => <div classStyle={[a.palette(p.x), b.palette(p.y)]} />;`,
+export const B = (p: any) => <div sx={[a.palette(p.x), b.palette(p.y)]} />;`,
         'b.tsx',
       );
       expect(code).toContain('"--xav007xm-color"');
@@ -270,13 +268,13 @@ export const B = (p: any) => <div classStyle={[a.palette(p.x), b.palette(p.y)]} 
       const one = await run(
         `import * as css from '@plumeria/core';
 const styles = css.create({ box: (w: number) => ({ width: w }) });
-export const C = (p: any) => <div classStyle={styles.box(p.w)} />;`,
+export const C = (p: any) => <div sx={styles.box(p.w)} />;`,
         'c.tsx',
       );
       const two = await run(
         `import * as css from '@plumeria/core';
 const styles = css.create({ box: (w: number) => ({ height: w }) });
-export const D = (p: any) => <div classStyle={styles.box(p.w)} />;`,
+export const D = (p: any) => <div sx={styles.box(p.w)} />;`,
         'd.tsx',
       );
       const nameOf = (code: string) => code.match(/"(--[^"]+-w)"/)?.[1];
@@ -293,7 +291,7 @@ const s = css.create({
   link: (base: string, hovered: string) => ({ color: base, ':hover': { color: hovered } }),
   deep: (size: number) => ({ '@media (min-width: 600px)': { ':hover': { fontSize: size } } }),
 });
-export const E = (p: any) => (<div><a classStyle={s.link(p.b, p.h)} /><i classStyle={s.deep(p.s)} /></div>);`,
+export const E = (p: any) => (<div><a sx={s.link(p.b, p.h)} /><i sx={s.deep(p.s)} /></div>);`,
         'nested.tsx',
       );
       const vars = code.match(/"--[^"]+"/g) ?? [];
@@ -306,7 +304,7 @@ export const E = (p: any) => (<div><a classStyle={s.link(p.b, p.h)} /><i classSt
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ fade: (o: number) => ({ ':hover': { opacity: o } }) });
-export const F = (p: any) => <div classStyle={s.fade(p.o)} />;`,
+export const F = (p: any) => <div sx={s.fade(p.o)} />;`,
         'unitless.tsx',
       );
       expect(code).toMatch(/"--[^"]+": p\.o }}/);
@@ -318,7 +316,7 @@ export const F = (p: any) => <div classStyle={s.fade(p.o)} />;`,
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ grow: (n: number) => ({ flexGrow: n }), weight: (n: number) => ({ fontWeight: n }) });
-export const F2 = (p: any) => (<div><i classStyle={s.grow(1)} /><b classStyle={s.weight(p.w)} /></div>);`,
+export const F2 = (p: any) => (<div><i sx={s.grow(1)} /><b sx={s.weight(p.w)} /></div>);`,
         'unitless-multiword.tsx',
       );
       expect(code).toMatch(/"--[^"]+-n": "1"/);
@@ -331,7 +329,7 @@ export const F2 = (p: any) => (<div><i classStyle={s.grow(1)} /><b classStyle={s
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ gap: (n: number) => ({ '--gap': n, gap: 'var(--gap)' }) });
-export const F3 = (p: any) => (<div><i classStyle={s.gap(4)} /><b classStyle={s.gap(p.n)} /></div>);`,
+export const F3 = (p: any) => (<div><i sx={s.gap(4)} /><b sx={s.gap(p.n)} /></div>);`,
         'custom-prop.tsx',
       );
       expect(code).toMatch(/"--[^"]+-n": "4"/);
@@ -344,7 +342,7 @@ export const F3 = (p: any) => (<div><i classStyle={s.gap(4)} /><b classStyle={s.
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ units: (n: number) => ({ padding: n, zIndex: n }) });
-export const U = (p: any) => <div classStyle={s.units(p.n)} />;`,
+export const U = (p: any) => <div sx={s.units(p.n)} />;`,
         'unit-split.tsx',
       );
       expect(code).toMatch(
@@ -356,7 +354,7 @@ export const U = (p: any) => <div classStyle={s.units(p.n)} />;`,
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ same: (c: string) => ({ color: c, borderColor: c }) });
-export const S = (p: any) => <div classStyle={s.same(p.c)} />;`,
+export const S = (p: any) => <div sx={s.same(p.c)} />;`,
         'unit-same.tsx',
       );
       expect(code.match(/"--[^"]+"/g)).toHaveLength(1);
@@ -367,7 +365,7 @@ export const S = (p: any) => <div classStyle={s.same(p.c)} />;`,
       // one variable name serves every branch that shares the declaration.
       const { code } = await run(
         header +
-          `export const G = (p: any) => (<div><i classStyle={p.on && s.palette(p.c)} /><b classStyle={p.on ? s.palette(p.a) : s.palette(p.b)} /></div>);`,
+          `export const G = (p: any) => (<div><i sx={p.on && s.palette(p.c)} /><b sx={p.on ? s.palette(p.a) : s.palette(p.b)} /></div>);`,
         'conditional.tsx',
       );
       expect(code).toContain(
@@ -388,8 +386,8 @@ const s = css.create({
   renamed: ({ tone: t }: { tone: string }) => ({ backgroundColor: t }),
 });
 export const H = (p: any) => (<div>
-  <i classStyle={s.named({ color: p.c, size: 12 })} />
-  <b classStyle={s.renamed({ tone: p.t })} />
+  <i sx={s.named({ color: p.c, size: 12 })} />
+  <b sx={s.renamed({ tone: p.t })} />
 </div>);`,
         'named.tsx',
       );
@@ -409,9 +407,9 @@ export const H = (p: any) => (<div>
 const GAP = 'blue';
 const s = css.create({ tint: ({ color }: { color: string }) => ({ backgroundColor: color }) });
 export const K = (p: any) => (<div>
-  <i classStyle={s.tint({ color: "red" })} />
-  <b classStyle={s.tint({ color: GAP })} />
-  <u classStyle={s.tint({ color: \`rgb(\${p.r} 0 0)\` })} />
+  <i sx={s.tint({ color: "red" })} />
+  <b sx={s.tint({ color: GAP })} />
+  <u sx={s.tint({ color: \`rgb(\${p.r} 0 0)\` })} />
 </div>);`,
         'folding.tsx',
       );
@@ -427,7 +425,7 @@ export const K = (p: any) => (<div>
         run(
           `import * as css from '@plumeria/core';
 const s = css.create({ named: ({ color, size }: { color: string; size: number }) => ({ color, fontSize: size }) });
-export const I = (p: any) => <div classStyle={s.named({ color: p.c })} />;`,
+export const I = (p: any) => <div sx={s.named({ color: p.c })} />;`,
           'unset.tsx',
         ),
       ).rejects.toThrow('leaves "size" unset');
@@ -438,7 +436,7 @@ export const I = (p: any) => <div classStyle={s.named({ color: p.c })} />;`,
         run(
           `import * as css from '@plumeria/core';
 const s = css.create({ named: ({ color }: { color: string }) => ({ color }) });
-export const J = (p: any) => <div classStyle={s.named(p.c)} />;`,
+export const J = (p: any) => <div sx={s.named(p.c)} />;`,
           'positional.tsx',
         ),
       ).rejects.toThrow('takes one object argument');
@@ -454,7 +452,7 @@ export const J = (p: any) => <div classStyle={s.named(p.c)} />;`,
           'c.tsx',
         ),
       ).rejects.toThrow(
-        '[plumeria] s.palette(p.c) is only supported in the classStyle prop.',
+        '[plumeria] s.palette(p.c) is only supported in the sx prop.',
       );
     });
 
@@ -462,10 +460,10 @@ export const J = (p: any) => <div classStyle={s.named(p.c)} />;`,
       await expect(
         run(
           header +
-            `export const D = (p: any) => { s.palette(p.c); return <div classStyle={s.stat} />; };`,
+            `export const D = (p: any) => { s.palette(p.c); return <div sx={s.stat} />; };`,
           'd.tsx',
         ),
-      ).rejects.toThrow('is only supported in the classStyle prop.');
+      ).rejects.toThrow('is only supported in the sx prop.');
     });
 
     it('keeps static keys usable through component props', async () => {
@@ -484,7 +482,7 @@ export const J = (p: any) => <div classStyle={s.named(p.c)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ fill: (pct: number) => ({ width: \`\${pct}%\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.fill(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.fill(r)} />;`,
         'unit-percent.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
@@ -495,7 +493,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.fill(r)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ box: (w: number) => ({ width: \`\${w}px\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-px.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
@@ -506,7 +504,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ box: (w: number) => ({ width: \`calc(100% - \${w}px)\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-calc-suffix.tsx',
       );
       expect(sheets.join('')).toMatch(
@@ -519,13 +517,13 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
       const bare = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ box: (w: number) => ({ width: w }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-bare.tsx',
       );
       const inCalc = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ box: (w: number) => ({ width: \`calc(\${w} * 2)\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-calc-factor.tsx',
       );
       expect(bare.sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
@@ -540,7 +538,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
       const { sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ fill: (pct: number = 0) => ({ width: \`\${pct}%\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.fill(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.fill(r)} />;`,
         'unit-default.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+, 0%\);/);
@@ -554,7 +552,7 @@ const styles = css.create({
   fillW: (pct: number = 0) => ({ width: \`\${pct}%\` }),
 });
 export const Bar = ({ p }: { p: { rating: number } }) => (
-  <div classStyle={[styles.ratingFill, styles.fillW((p.rating / 5) * 100)]} />
+  <div sx={[styles.ratingFill, styles.fillW((p.rating / 5) * 100)]} />
 );`,
         'unit-rating-bar.tsx',
       );
@@ -568,7 +566,7 @@ export const Bar = ({ p }: { p: { rating: number } }) => (
       const { code } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ fill: (pct: number) => ({ width: \`\${pct}%\` }) });
-export const A = () => <div classStyle={s.fill(40)} />;`,
+export const A = () => <div sx={s.fill(40)} />;`,
         'unit-literal.tsx',
       );
       expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": "40%"/);
@@ -580,7 +578,7 @@ export const A = () => <div classStyle={s.fill(40)} />;`,
 const s = css.create({
   k: (n: number) => ({ width: \`\${n}px\`, margin: \`\${n}rem\`, translate: \`\${n}%\` }),
 });
-export const A = ({ r }: { r: number }) => <div classStyle={s.k(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
         'unit-three.tsx',
       );
       const css = sheets.join('');
@@ -599,7 +597,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.k(r)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ k: (n: number) => ({ width: \`calc(\${n}px + \${n}%)\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.k(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
         'unit-two-in-one.tsx',
       );
       expect(sheets.join('')).toMatch(
@@ -612,7 +610,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.k(r)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ box: (w: number) => ({ width: w, marginTop: \`\${w}%\` }) });
-export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
+export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-split.tsx',
       );
       const css = sheets.join('');
@@ -628,7 +626,7 @@ export const A = ({ r }: { r: number }) => <div classStyle={s.box(r)} />;`,
       const { code, sheets } = await run(
         `import * as css from '@plumeria/core';
 const s = css.create({ k: (h: number, d: number) => ({ color: \`hsl(\${h} 85% 72%)\`, transform: \`scaleX(\${d})\` }) });
-export const A = ({ h, d }: { h: number; d: number }) => <div classStyle={s.k(h, d)} />;`,
+export const A = ({ h, d }: { h: number; d: number }) => <div sx={s.k(h, d)} />;`,
         'unit-unitless-function.tsx',
       );
       const css = sheets.join('');
