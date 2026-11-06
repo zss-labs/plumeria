@@ -98,7 +98,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('rejects one in a style function', async () => {
       await expect(
         run(
-          `import { MOBILE } from './constants';\nconst s = css.create({ a: (width: string) => ({ width, [MOBILE]: { padding: 12 } }) });\nexport const A = () => <div classStyle={s.a('1px')} />;`,
+          `import { MOBILE } from './constants';\nconst s = css.create({ a: (width: string) => ({ width, [MOBILE]: { padding: 12 } }) });\nexport const A = () => <div sx={s.a('1px')} />;`,
         ),
       ).rejects.toThrow('Cannot inline the computed key [MOBILE]');
     });
@@ -131,7 +131,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       ],
       [
         'a runtime key in the argument of a style function',
-        `declare const k: string;\nconst s = css.create({ a: (width: string) => ({ width }) });\nexport const A = () => <div classStyle={s.a({ [k]: 1, width: '1px' })} />;`,
+        `declare const k: string;\nconst s = css.create({ a: (width: string) => ({ width }) });\nexport const A = () => <div sx={s.a({ [k]: 1, width: '1px' })} />;`,
       ],
     ])('accepts %s', async (_name, body) => {
       await expect(run(body)).resolves.toBeDefined();
@@ -188,7 +188,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('rejects one in a style function', async () => {
       await expect(
         run(
-          `${mixin}\nconst s = css.create({ a: (width: string) => ({ ...mixin(), width }) });\nexport const A = () => <div classStyle={s.a('1px')} />;`,
+          `${mixin}\nconst s = css.create({ a: (width: string) => ({ ...mixin(), width }) });\nexport const A = () => <div sx={s.a('1px')} />;`,
         ),
       ).rejects.toThrow('Cannot spread a function call');
     });
@@ -217,7 +217,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
     it('keeps a shorthand holding a const', async () => {
       const code = await accepted(
-        `const margin = 8;\nconst s = css.create({ a: { margin } });\nexport const A = () => <div classStyle={s.a} />;`,
+        `const margin = 8;\nconst s = css.create({ a: { margin } });\nexport const A = () => <div sx={s.a} />;`,
       );
       expect(code).toMatch(/className=\{?"x[a-z0-9]+"/);
     });
@@ -234,7 +234,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       async (_name, form, read) => {
         const compile = (imported: string, written: string) =>
           accepted(
-            `import { ${imported} } from './tokens';\nconst s = css.create({ a: ${written} });\nexport const A = () => <div classStyle={${read}} />;`,
+            `import { ${imported} } from './tokens';\nconst s = css.create({ a: ${written} });\nexport const A = () => <div sx={${read}} />;`,
           );
         const short = await compile('fade as animationName', form);
         const long = await compile(
@@ -248,15 +248,15 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it.each([
       [
         'a parameter of a style function',
-        `const s = css.create({ a: (width: string) => ({ width }) });\nexport const A = () => <div classStyle={s.a('1px')} />;`,
+        `const s = css.create({ a: (width: string) => ({ width }) });\nexport const A = () => <div sx={s.a('1px')} />;`,
       ],
       [
         'a named parameter of a style function',
-        `const s = css.create({ a: ({ width }: { width: string }) => ({ width }) });\nexport const A = () => <div classStyle={s.a({ width: '1px' })} />;`,
+        `const s = css.create({ a: ({ width }: { width: string }) => ({ width }) });\nexport const A = () => <div sx={s.a({ width: '1px' })} />;`,
       ],
       [
         'a runtime shorthand in the argument of a style function',
-        `const s = css.create({ a: ({ width }: { width: string }) => ({ width }) });\nexport const A = ({ width }: { width: string }) => <div classStyle={s.a({ width })} />;`,
+        `const s = css.create({ a: ({ width }: { width: string }) => ({ width }) });\nexport const A = ({ width }: { width: string }) => <div sx={s.a({ width })} />;`,
       ],
       [
         'a shorthand replaced later',
