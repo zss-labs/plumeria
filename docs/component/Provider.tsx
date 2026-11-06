@@ -26,9 +26,9 @@ const hotKey = [
   {
     key: (event: KeyboardEvent) => (event.metaKey || event.ctrlKey) && event.key === 'k',
     display: (
-      <span classStyle={styles.hotKey}>
+      <span sx={styles.hotKey}>
         <span>⌘</span>
-        <span classStyle={styles.key}>K</span>
+        <span sx={styles.key}>K</span>
       </span>
     ),
   },
