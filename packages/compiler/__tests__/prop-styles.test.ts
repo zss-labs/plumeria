@@ -89,8 +89,8 @@ ${body}
     });
 
     it.each([
-      '<Card classStyle={{ ...baseOptions.nav }} />',
-      '<div classStyle={{ ...baseOptions.nav }} />',
+      '<Card sx={{ ...baseOptions.nav }} />',
+      '<div sx={{ ...baseOptions.nav }} />',
       '<Card className={css.use({ ...baseOptions.nav })} />',
     ])(
       'still diagnoses unresolved spreads in explicit styling expressions: %s',
@@ -104,38 +104,39 @@ ${body}
     it('keeps inline object evaluation for the configured styling prop', () => {
       expect(
         compile(
-          'export const A = () => <Card sx={{ color: "red" }} nav={{ ...baseOptions.nav }} />;',
-          'sx',
+          'export const A = () => <Card classStyle={{ color: "red" }} nav={{ ...baseOptions.nav }} />;',
+          'classStyle',
         ),
       ).toContain('color: red');
       expect(() =>
         compile(
-          'export const A = () => <Card sx={{ ...baseOptions.nav }} />;',
-          'sx',
+          'export const A = () => <Card classStyle={{ ...baseOptions.nav }} />;',
+          'classStyle',
         ),
       ).toThrow('Cannot resolve static member expression');
     });
 
-    it('still emits classStyle on a host element', () => {
-      const css = compile(
-        `export const A = () => <div classStyle={s.boxed} />;`,
-      );
+    it('still emits sx on a host element', () => {
+      const css = compile(`export const A = () => <div sx={s.boxed} />;`);
       expect(css).toContain('color: purple');
     });
   });
 
   describe('compiler: a configured styleProp', () => {
     it('collects the configured prop on a host element', () => {
-      const css = compile(`export const A = () => <div sx={s.boxed} />;`, 'sx');
+      const css = compile(
+        `export const A = () => <div classStyle={s.boxed} />;`,
+        'classStyle',
+      );
       expect(css).toContain('color: purple');
     });
 
     it('stops treating the default name as the styling prop', () => {
-      // With `sx` configured, `classStyle` on a host element is just an attribute
+      // With `classStyle` configured, `sx` on a host element is just an attribute
       // the transform will not rewrite, so collecting its CSS would be dead output.
       const css = compile(
-        `export const A = () => <div classStyle={s.boxed} />;`,
-        'sx',
+        `export const A = () => <div sx={s.boxed} />;`,
+        'classStyle',
       );
       expect(css).not.toContain('color: purple');
     });
@@ -144,8 +145,8 @@ ${body}
       // The component branch skips the styling prop so it is not collected twice;
       // that exemption has to follow the configured name, not the default.
       const css = compile(
-        `export const A = () => <Card sx={s.boxed} />;`,
-        'sx',
+        `export const A = () => <Card classStyle={s.boxed} />;`,
+        'classStyle',
       );
       expect(css).toContain('color: purple');
     });
