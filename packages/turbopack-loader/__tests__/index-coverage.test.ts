@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as os from 'os';
 
 const mockCompileCSS = jest.fn((_options: unknown) => '.production {}');
 const mockTransformSource = jest.fn((_options: unknown) => ({
@@ -9,7 +10,7 @@ const mockWriteFileSync = jest.fn();
 
 jest.mock('@plumeria/compiler', () => ({
   compileCSS: (options: unknown) => mockCompileCSS(options),
-  DEFAULT_STYLE_PROP: 'classStyle',
+  DEFAULT_STYLE_PROP: 'sx',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: (css: string) => css,
@@ -21,7 +22,15 @@ jest.mock('fs', () => ({
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
 }));
 
-import loader from '../src/index';
+import loader, {
+  VIRTUAL_FILE_PATH,
+  devBridge,
+  generationId,
+  inSourcePackage,
+  resolveSourcePackage,
+  sourcePackages,
+  watchSources,
+} from '../src/index';
 
 type Loader = (this: unknown, source: string) => Promise<void>;
 
@@ -69,11 +78,11 @@ it('returns sources outside the loader scope unchanged', async () => {
 
 it('supports query options and prefixes a same-directory virtual import', async () => {
   const output = await runLoader(SOURCE, {
-    query: { styleProp: 'sx' },
+    query: { styleProp: 'classStyle' },
   });
 
   expect(mockTransformSource).toHaveBeenCalledWith(
-    expect.objectContaining({ styleProp: 'sx' }),
+    expect.objectContaining({ styleProp: 'classStyle' }),
   );
   expect(output).toBe('transformed\nimport "./zero-virtual.css";');
 });
@@ -90,3 +99,31 @@ it.each(['development', 'production'])(
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   },
 );
+
+it('exposes helpers and watches only source files', () => {
+  const actualFs = jest.requireActual<typeof import('fs')>('fs');
+  const dir = actualFs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-watch-'));
+  actualFs.mkdirSync(path.join(dir, 'src'));
+  actualFs.mkdirSync(path.join(dir, 'node_modules'));
+  actualFs.writeFileSync(path.join(dir, 'src', 'index.ts'), '');
+  actualFs.writeFileSync(path.join(dir, 'src', 'note.txt'), '');
+  actualFs.writeFileSync(path.join(dir, 'node_modules', 'ignored.ts'), '');
+  actualFs.writeFileSync(path.join(dir, 'package.json'), '{}');
+  const dependencies: string[] = [];
+  watchSources({ addDependency: (file) => dependencies.push(file) }, dir);
+  expect(dependencies).toEqual([path.join(dir, 'src', 'index.ts')]);
+  expect(VIRTUAL_FILE_PATH).toMatch(/zero-virtual\.css$/);
+  expect(generationId('css')).toHaveLength(16);
+  expect(sourcePackages(dir)).toEqual([]);
+  expect(resolveSourcePackage([], 'missing')).toBeNull();
+  expect(inSourcePackage([], path.join(dir, 'src', 'index.ts'))).toBe(false);
+  actualFs.rmSync(dir, { recursive: true, force: true });
+});
+
+it('skips a development bridge when the edited file has disappeared', () => {
+  setNodeEnv('development');
+  const resourcePath = path.join(os.tmpdir(), 'missing-plumeria-module.tsx');
+  const module = { resourcePath, code: 'first', dependencies: [] };
+  expect(devBridge(module, {}, process.cwd())).toBe('');
+  expect(devBridge({ ...module, code: 'second' }, {}, process.cwd())).toBe('');
+});
