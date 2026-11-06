@@ -35,7 +35,7 @@ const setup = (dependencies: Record<string, string>) => {
     'app.tsx': `import * as css from '@plumeria/core';
 import { colors } from 'ui-kit/colors';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `,
   });
   write(path.join(cwd, 'node_modules/ui-kit'), {
@@ -149,7 +149,7 @@ it.each([false, true])(
       'app.tsx': `import * as css from '@plumeria/core';
 import { colors } from 'ui-kit';
 const styles = css.create({ main: { color: colors.ink } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `,
     });
     write(pkg, {
