@@ -21,7 +21,7 @@ export function ClientCounter() {
   return (
     <button
       data-testid="rsc-client-counter"
-      classStyle={[shared.panel, styles.button, styles.wide]}
+      sx={[shared.panel, styles.button, styles.wide]}
       onClick={() => setCount((count) => count + 1)}
     >
       Client Counter: {count}
