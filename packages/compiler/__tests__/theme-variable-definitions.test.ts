@@ -50,7 +50,7 @@ export const styles = css.create({
     [COMPONENT]: `
 import '@plumeria/core';
 import { styles } from './styles';
-export const Component = () => <span classStyle={styles.label} />;
+export const Component = () => <span sx={styles.label} />;
 `,
   };
 
