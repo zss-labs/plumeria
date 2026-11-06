@@ -15,8 +15,7 @@ const STYLE_APIS = new Set([
   'varType',
 ]);
 
-const isReference = (node: Node, parent: Node | undefined): boolean => {
-  if (!parent) return true;
+const isReference = (node: Node, parent: Node): boolean => {
   if (parent.type === 'Property' && parent.key === node && !parent.computed)
     return false;
   if (
@@ -72,7 +71,7 @@ export const noMutableBinding: Rule.RuleModule = {
       );
     };
 
-    const check = (node: Node, parent: Node | undefined): void => {
+    const check = (node: Node, parent: Node): void => {
       if (node.type === 'Identifier' && isReference(node, parent)) {
         const variable = findVariable(
           sourceCode.getScope(node as Rule.Node),
