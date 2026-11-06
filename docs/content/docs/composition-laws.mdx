@@ -5,7 +5,7 @@ description: 'The four laws a style array obeys, and how two of them make the me
 
 <img src="/composition-laws.svg" width={1000} height={420} alt="Regrouping keeps the result, false drops out, a repeated style counts once, and swapping two styles changes which one wins" />
 
-A `classStyle` array merges its styles property by property. Written as an
+A `sx` array merges its styles property by property. Written as an
 operation, where $\oplus$ merges the style on its right into the one on its left,
 that merge obeys four laws. Each one is something you can rely on when you
 restructure styles.
@@ -18,8 +18,8 @@ Grouping does not change the result. Arrays can be nested, so these are the
 same:
 
 ```tsx
-<div classStyle={[[styles.a, styles.b], styles.c]} />
-<div classStyle={[styles.a, [styles.b, styles.c]]} />
+<div sx={[[styles.a, styles.b], styles.c]} />
+<div sx={[styles.a, [styles.b, styles.c]]} />
 ```
 
 That is what lets you pull part of an array into a variable, or a prop, and put
@@ -33,7 +33,7 @@ $$A \oplus I = I \oplus A = A$$
 identity $I$. That is why a condition can sit in the array:
 
 ```tsx
-<div classStyle={[styles.base, isActive && styles.active]} />
+<div sx={[styles.base, isActive && styles.active]} />
 ```
 
 When `isActive` is false, the array is `styles.base` alone.
@@ -81,7 +81,7 @@ const styles = css.create({
   b: { color: 'blue' },
 });
 
-<div classStyle={[styles.a, styles.b]} />
+<div sx={[styles.a, styles.b]} />
 ```
 
 The element receives two classes, `padding: 4px` and `color: blue`; the class
