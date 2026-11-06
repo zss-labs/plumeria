@@ -26,7 +26,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
   const style = (declaration: string) => `
 import * as css from '@plumeria/core';
 export const s = css.create({ a: { ${declaration} } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `;
 
   describe('compiler: withoutLogicalProperties', () => {
@@ -131,7 +131,7 @@ export const A = () => <div classStyle={s.a} />;
 import * as css from '@plumeria/core';
 export const k = css.keyframes({ from: { marginBlockStart: 0 } });
 export const s = css.create({ a: { animationName: k } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
           { withoutLogicalProperties: true },
         ),
@@ -144,7 +144,7 @@ export const A = () => <div classStyle={s.a} />;
           `
 import * as css from '@plumeria/core';
 export const s = css.create({ a: (v: number) => ({ marginBlockStart: v }) });
-export const A = () => <div classStyle={s.a(0)} />;
+export const A = () => <div sx={s.a(0)} />;
 `,
           { withoutLogicalProperties: true },
         ),
