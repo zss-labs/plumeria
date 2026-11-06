@@ -361,11 +361,11 @@ it('restores a consumer entry when a deleted file comes back', () => {
   const leaf = write('restored-leaf.ts', leafSource);
   const child = write(
     'restored-child.tsx',
-    "import * as css from '@plumeria/core'; type P = { classStyle?: css.StaticStyles<'color'> }; export function Child({classStyle}: P) { return <div classStyle={classStyle} />; }",
+    "import * as css from '@plumeria/core'; type P = { sx?: css.StaticStyles<'color'> }; export function Child({sx}: P) { return <div sx={sx} />; }",
   );
   const parent = write(
     'restored-parent.tsx',
-    "import * as css from '@plumeria/core'; import {styles} from './restored-leaf'; import {Child} from './restored-child'; export const Parent = () => <Child classStyle={styles.box} />;",
+    "import * as css from '@plumeria/core'; import {styles} from './restored-leaf'; import {Child} from './restored-child'; export const Parent = () => <Child sx={styles.box} />;",
   );
   const entriesOf = (tables: any) =>
     Object.values(tables.componentPropsTable ?? {}).flatMap((props: any) =>
@@ -395,11 +395,11 @@ it('restores a consumer entry behind a star re-export', () => {
   const barrel = write('star-barrel.ts', "export * from './star-leaf';");
   const child = write(
     'star-child.tsx',
-    "import * as css from '@plumeria/core'; type P = { classStyle?: css.StaticStyles<'color'> }; export function Child({classStyle}: P) { return <div classStyle={classStyle} />; }",
+    "import * as css from '@plumeria/core'; type P = { sx?: css.StaticStyles<'color'> }; export function Child({sx}: P) { return <div sx={sx} />; }",
   );
   const parent = write(
     'star-parent.tsx',
-    "import * as css from '@plumeria/core'; import {styles} from './star-barrel'; import {Child} from './star-child'; export const Parent = () => <Child classStyle={styles.box} />;",
+    "import * as css from '@plumeria/core'; import {styles} from './star-barrel'; import {Child} from './star-child'; export const Parent = () => <Child sx={styles.box} />;",
   );
   const entriesOf = (tables: any) =>
     Object.values(tables.componentPropsTable ?? {}).flatMap((props: any) =>
