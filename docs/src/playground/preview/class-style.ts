@@ -33,13 +33,13 @@ export function resolveClassStyle(value: ClassStyle): string {
 }
 
 export function withClassName<P extends Record<string, unknown>>(type: unknown, props: P | null): P | null {
-  if (typeof type !== 'string' || !props || !('classStyle' in props)) return props;
+  if (typeof type !== 'string' || !props || !('sx' in props)) return props;
 
-  const { classStyle, className, ...rest } = props as P & {
-    classStyle?: ClassStyle;
+  const { sx, className, ...rest } = props as P & {
+    sx?: ClassStyle;
     className?: string;
   };
 
-  const resolved = [className, resolveClassStyle(classStyle)].filter(Boolean).join(' ');
+  const resolved = [className, resolveClassStyle(sx)].filter(Boolean).join(' ');
   return { ...rest, ...(resolved ? { className: resolved } : {}) } as unknown as P;
 }
