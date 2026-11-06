@@ -30,7 +30,7 @@ const FILES: Record<string, string> = {
   'barrel.ts': `export * from './tokens';\n`,
   'Leaf.tsx': `import * as css from '@plumeria/core';
 export const Leaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
   'node_modules/theme-pkg/package.json': JSON.stringify({
@@ -48,14 +48,14 @@ const CASES: Array<[string, string, string[], (r: Ref) => string]> = [
     './tokens',
     ['blue'],
     (r) => `const s = css.create({ a: { color: ${r('blue')}[500] } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
   ],
   [
     'a createTheme variable',
     './tokens',
     ['theme'],
     (r) => `const s = css.create({ a: { color: ${r('theme')}.ink } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
   ],
   [
     'a keyframes name',
@@ -64,7 +64,7 @@ export const A = () => <div classStyle={s.a} />;`,
     (
       r,
     ) => `const s = css.create({ a: { animation: \`\${${r('spin')}} 1s linear infinite\` } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
   ],
   [
     'a viewTransitionClass name',
@@ -73,7 +73,7 @@ export const A = () => <div classStyle={s.a} />;`,
     (
       r,
     ) => `const s = css.create({ a: { viewTransitionClass: \`\${${r('vt')}}\` } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
   ],
   [
     'a positionTry name',
@@ -82,20 +82,20 @@ export const A = () => <div classStyle={s.a} />;`,
     (
       r,
     ) => `const s = css.create({ a: { positionTryFallbacks: \`\${${r('above')}}, flip-inline\` } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
   ],
   [
-    'a css.create style on classStyle',
+    'a css.create style on sx',
     './tokens',
     ['styles'],
-    (r) => `export const A = () => <div classStyle={${r('styles')}.card} />;`,
+    (r) => `export const A = () => <div sx={${r('styles')}.card} />;`,
   ],
   [
     'css.create styles in a conditional array',
     './tokens',
     ['styles'],
     (r) => `export const A = ({ on }: { on: boolean }) => (
-  <div classStyle={[${r('styles')}.card, on && ${r('styles')}.accent]} />
+  <div sx={[${r('styles')}.card, on && ${r('styles')}.accent]} />
 );`,
   ],
   [
@@ -109,8 +109,7 @@ export const A = () => <div classStyle={s.a} />;`,
     'a dynamic css.create style',
     './tokens',
     ['styles'],
-    (r) =>
-      `export const A = () => <div classStyle={${r('styles')}.box(10)} />;`,
+    (r) => `export const A = () => <div sx={${r('styles')}.box(10)} />;`,
   ],
   [
     'a css.create style passed to a component prop',
@@ -124,7 +123,7 @@ export const A = () => <Leaf styleArray={${r('styles')}.card} />;`,
     './barrel',
     ['blue', 'styles'],
     (r) => `const s = css.create({ a: { color: ${r('blue')}[500] } });
-export const A = () => <div classStyle={[s.a, ${r('styles')}.card]} />;`,
+export const A = () => <div sx={[s.a, ${r('styles')}.card]} />;`,
   ],
   [
     'a package exposing the plumeria condition',
@@ -133,7 +132,7 @@ export const A = () => <div classStyle={[s.a, ${r('styles')}.card]} />;`,
     (
       r,
     ) => `const s = css.create({ a: { color: ${r('blue')}[500], animation: \`\${${r('spin')}} 1s\` } });
-export const A = () => <div classStyle={[s.a, ${r('styles')}.card]} />;`,
+export const A = () => <div sx={[s.a, ${r('styles')}.card]} />;`,
   ],
 ];
 
@@ -182,7 +181,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
     const { code, sheet } = await build(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `);
     expect(code).toContain('className={"');
     expect(sheet).toContain('#3b82f6');
@@ -206,7 +205,7 @@ ${body((name) => `t.${name}`)}
       build(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t.nope } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `),
     ).rejects.toThrow(/Cannot resolve/);
   });
@@ -215,7 +214,7 @@ export const A = () => <div classStyle={s.a} />;
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { width: t.n } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `);
     await expect(transform(cwd)).rejects.toThrow('(t.n)');
   });
@@ -223,7 +222,7 @@ export const A = () => <div classStyle={s.a} />;
   it('names a spread namespace style as written', async () => {
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
-export const A = () => <div classStyle={[...t.styles.card]} />;
+export const A = () => <div sx={[...t.styles.card]} />;
 `);
     await expect(transform(cwd)).rejects.toThrow('"...t.styles.card"');
     expect(() =>
@@ -235,7 +234,7 @@ export const A = () => <div classStyle={[...t.styles.card]} />;
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <div classStyle={[s.a, t.styles.card]} />;
+export const A = () => <div sx={[s.a, t.styles.card]} />;
 `);
     const { code } = await transform(cwd);
     expect(code).not.toContain('./tokens');
@@ -246,7 +245,7 @@ export const A = () => <div classStyle={[s.a, t.styles.card]} />;
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <p classStyle={s.a}>{String(t.n)}</p>;
+export const A = () => <p sx={s.a}>{String(t.n)}</p>;
 `);
     const { code } = await transform(cwd);
     expect(code).toContain(`import * as t from './tokens';`);
@@ -267,7 +266,7 @@ export const A = () => <p classStyle={s.a}>{String(t.n)}</p>;
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <p classStyle={s.a}>{t.label('y')}</p>;
+export const A = () => <p sx={s.a}>{t.label('y')}</p>;
 ${touch}
 `);
     const { code } = await transform(cwd);
@@ -281,11 +280,11 @@ ${touch}
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 
-export const A = () => <div classStyle={[s.a, ...t.styles.card]} />;
+export const A = () => <div sx={[s.a, ...t.styles.card]} />;
 const s = css.create({ a: { color: t.blue[500] } });
 `);
     await expect(transform(cwd)).rejects.toThrow(
-      '"...t.styles.card". List each style explicitly. (app.tsx:4:50)',
+      '"...t.styles.card". List each style explicitly. (app.tsx:4:42)',
     );
   });
 
@@ -294,7 +293,7 @@ const s = css.create({ a: { color: t.blue[500] } });
 import * as t from './tokens';
 const t$blue = 'x';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <p classStyle={s.a}>{t$blue}</p>;
+export const A = () => <p sx={s.a}>{t$blue}</p>;
 `);
     expect(code).toContain('className={"');
     expect(code).toContain('{t$blue}');
@@ -305,7 +304,7 @@ export const A = () => <p classStyle={s.a}>{t$blue}</p>;
     const { code, sheet } = await build(`import * as css from '@plumeria/core';
 import def, * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
-export const A = () => <div classStyle={[s.a, t.styles.card]} />;
+export const A = () => <div sx={[s.a, t.styles.card]} />;
 `);
     expect(code).toContain('className={"');
     expect(code).not.toContain('t.');
@@ -316,7 +315,7 @@ export const A = () => <div classStyle={[s.a, t.styles.card]} />;
     const cwd = write(`import * as css from '@plumeria/core';
 import * as t from './tokens';
 const s = css.create({ a: { color: t?.blue[500] } });
-export const A = () => <p classStyle={s.a} />;
+export const A = () => <p sx={s.a} />;
 `);
     await expect(transform(cwd)).rejects.toThrow(
       'Cannot resolve the value of "color" at build time (t?.blue[500])',
@@ -328,7 +327,7 @@ export const A = () => <p classStyle={s.a} />;
 import * as t from './tokens';
 const s = css.create({ a: { color: t.blue[500] } });
 export const A = ({ t }: { t: { blue: string } }) => (
-  <p classStyle={s.a}>{t.blue}</p>
+  <p sx={s.a}>{t.blue}</p>
 );
 `);
     expect(code).toContain('{t.blue}');
