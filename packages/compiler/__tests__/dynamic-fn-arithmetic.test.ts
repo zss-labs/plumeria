@@ -48,7 +48,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
   ) => `import * as css from '@plumeria/core';
 ${lead}
 const st = css.create({ fn: ${params} => (${body}) });
-export const A = (p: any) => <div classStyle={${call}} />;`;
+export const A = (p: any) => <div sx={${call}} />;`;
 
   const local = (body: string, options?: Options) =>
     transform({ 'app.tsx': source(body, options) });
@@ -267,7 +267,7 @@ const GAP = 4;
 export const st = css.create({ fn: (n: number) => ({ width: (n + GAP) * 2, height: \`\${n / 2}%\` }) });`,
         'app.tsx': `import '@plumeria/core';
 import { st } from './styles';
-export const A = (p: any) => <div classStyle={st.fn(p.n)} />;`,
+export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
       });
       expect(code).toMatch(sets('n-1', numeric('((p.n) + 4) * 2')));
       expect(code).toMatch(sets('n-2', `(((p.n) / 2) + '%')`));
@@ -280,7 +280,7 @@ export const A = (p: any) => <div classStyle={st.fn(p.n)} />;`,
         'app.tsx': `import * as css from '@plumeria/core';
 const GAP = 4;
 const st = css.create({ fn: (n: number) => ({ width: n + GAP }) });
-const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;
+const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;
 export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`,
       });
       expect(code).toContain('style={{ ...(cardStyle && cardStyle.vars) }}');
