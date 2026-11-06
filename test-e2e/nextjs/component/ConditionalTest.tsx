@@ -34,7 +34,7 @@ export function ConditionalTest() {
       <h3>Conditional Styles Test</h3>
       <div
         data-testid="conditional-div"
-        classStyle={[
+        sx={[
           styles.base,
           isActive ? styles.active : styles.inactive,
           isLarge && styles.large,
