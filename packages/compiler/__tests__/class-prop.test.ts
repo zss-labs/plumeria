@@ -34,9 +34,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
 
   it('writes className when no class prop is configured', async () => {
-    const code = await run(
-      `export const A = () => <div classStyle={styles.a} />;`,
-    );
+    const code = await run(`export const A = () => <div sx={styles.a} />;`);
 
     expect(code).toContain('className={');
     expect(code).not.toContain('<div class=');
@@ -44,7 +42,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   it('writes the configured attribute instead of className', async () => {
     const code = await run(
-      `export const A = () => <div classStyle={styles.a} />;`,
+      `export const A = () => <div sx={styles.a} />;`,
       'class',
     );
 
@@ -54,7 +52,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   it('keeps the style attribute for a dynamic function key', async () => {
     const code = await run(
-      `export const A = () => <div classStyle={[styles.a, styles.dyn(1)]} />;`,
+      `export const A = () => <div sx={[styles.a, styles.dyn(1)]} />;`,
       'class',
     );
 
@@ -65,7 +63,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   it('merges an existing attribute written under the configured name', async () => {
     const code = await run(
-      `export const A = () => <div class="kept" classStyle={styles.a} />;`,
+      `export const A = () => <div class="kept" sx={styles.a} />;`,
       'class',
     );
 
