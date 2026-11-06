@@ -20,7 +20,7 @@ export type PositionTryHashTable = Record<string, string>; // varName -> hash
 export type ViewTransitionObjectTable = Record<string, CSSObject>; // hashKey: { new: { string: string| number }, old: { string: string| number } }
 export type CreateThemeObjectTable = Record<string, CSSObject>; // { string: { varName: { varName: value }, ... } }
 export type CreateHashTable = Record<string, string>; // varName -> hash
-export type CreateObjectTable = Record<string, CSSObject>; // hash -> { classStyle: { prop: value }, ... }
+export type CreateObjectTable = Record<string, CSSObject>; // hash -> { sx: { prop: value }, ... }
 export type CreateFunctionTable = Record<string, ObjectExpression>; // varName -> create argument holding function keys
 export type CreateAtomicMapTable = Record<
   string,
