@@ -7,7 +7,7 @@ jest.mock('@plumeria/eslint-plugin/guard', () => ({
   startLintGuard: jest.fn(),
 }));
 jest.mock('@plumeria/compiler', () => ({
-  DEFAULT_STYLE_PROP: 'classStyle',
+  DEFAULT_STYLE_PROP: 'sx',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: jest.fn((css: string) => css),
