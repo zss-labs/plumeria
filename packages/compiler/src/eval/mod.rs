@@ -41,6 +41,53 @@ pub fn marker_var(id: &str, pseudo: &str) -> String {
     format!("--{hash}-{}-{}", to_ident(id), to_ident(head))
 }
 
+fn is_marker_entry(name: &str, value: &Value, pseudo: &str) -> bool {
+    if *value != Value::Num(1.0) {
+        return false;
+    }
+    let Some((_, rest)) = name
+        .strip_prefix("--")
+        .and_then(|rest| rest.split_once('-'))
+    else {
+        return false;
+    };
+    let head = to_ident(pseudo.split('(').next().unwrap_or(""));
+    let Some(id) = rest
+        .strip_suffix(head.as_str())
+        .and_then(|rest| rest.strip_suffix('-'))
+    else {
+        return false;
+    };
+    marker_var(id, pseudo) == name
+}
+
+fn insert_keeping_markers(obj: &mut Object, key: String, value: Value) {
+    let merged = match (obj.get(&key), &value) {
+        (Some(Value::Obj(existing)), Value::Obj(incoming)) if key.starts_with(':') => {
+            let only_markers = !incoming.is_empty()
+                && incoming
+                    .iter()
+                    .all(|(name, value)| is_marker_entry(name, value, &key));
+            let mut merged = Object::new();
+            for (name, value) in existing.iter() {
+                if !incoming.contains_key(name)
+                    && (only_markers || is_marker_entry(name, value, &key))
+                {
+                    merged.insert(name, value.clone());
+                }
+            }
+            if merged.is_empty() {
+                None
+            } else {
+                merged.assign(incoming);
+                Some(Value::obj(merged))
+            }
+        }
+        _ => None,
+    };
+    obj.insert(key, merged.unwrap_or(value));
+}
+
 pub fn argument_expr<'b, 'a>(argument: &'b Argument<'a>) -> E<'b, 'a> {
     match argument {
         Argument::SpreadElement(spread) => E::new(&spread.argument),
@@ -124,7 +171,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
             ObjectPropertyKind::SpreadProperty(spread) => {
                 let argument = E::new(&spread.argument);
                 match self.plain().expression(argument)? {
-                    Value::Obj(spread_obj) => obj.assign(&spread_obj),
+                    Value::Obj(spread_obj) => {
+                        for (key, value) in spread_obj.iter() {
+                            insert_keeping_markers(obj, key.to_string(), value.clone());
+                        }
+                    }
                     Value::Null if !matches!(unwrap(argument).kind(), K::Null) => {
                         return Err(format!(
                             "[plumeria] Cannot spread {} at build time. Spread a const object, or pass a runtime value through the function form, css.create({{ name: (value) => ({{ ... }}) }}).",
@@ -189,7 +240,7 @@ impl<'e, 'r> Evaluator<'e, 'r> {
                     }
                 }
                 if let Some(value) = self.property_value(E::new(&prop.value))? {
-                    obj.insert(key, value);
+                    insert_keeping_markers(obj, key, value);
                 }
                 Ok(())
             }
