@@ -7,7 +7,7 @@ export function KeyframesTest() {
       style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}
     >
       <h3>Keyframes Test</h3>
-      <div data-testid="keyframes-box" classStyle={keyframesStyle.box} />
+      <div data-testid="keyframes-box" sx={keyframesStyle.box} />
     </div>
   );
 }
