@@ -59,15 +59,15 @@ export const GitHubUser = ({ username, subtext }: GitHubUserProps) => (
     href={`https://github.com/${username}`}
     target="_blank"
     rel="noopener noreferrer"
-    classStyle={styles.container}
+    sx={styles.container}
     id={`github-user-${username}`}
   >
-    <div classStyle={styles.avatarContainer}>
-      <img src={`https://github.com/${username}.png`} alt={username} classStyle={styles.avatar} />
+    <div sx={styles.avatarContainer}>
+      <img src={`https://github.com/${username}.png`} alt={username} sx={styles.avatar} />
     </div>
-    <div classStyle={styles.info}>
-      <span classStyle={styles.name}>{username}</span>
-      <span classStyle={styles.company}>{subtext}</span>
+    <div sx={styles.info}>
+      <span sx={styles.name}>{username}</span>
+      <span sx={styles.company}>{subtext}</span>
     </div>
   </a>
 );
