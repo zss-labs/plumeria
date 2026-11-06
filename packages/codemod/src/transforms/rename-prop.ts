@@ -78,14 +78,14 @@ export const renameProp: Rule.RuleModule = {
       context.report({ node, messageId: 'manual', data: { from, to } });
 
     return {
-      // <div classStyle={styles.text} />
+      // <div sx={styles.text} />
       JSXAttribute(node: any) {
         if (node.name.type !== 'JSXIdentifier') return;
         if (node.name.name !== from) return;
         rename(node.name);
       },
 
-      // interface Props { classStyle?: Style }
+      // interface Props { sx?: Style }
       TSPropertySignature(node: any) {
         if (!includeTypes) return;
         if (node.key.type !== 'Identifier' || node.key.name !== from) return;
@@ -93,7 +93,7 @@ export const renameProp: Rule.RuleModule = {
         rename(node.key);
       },
 
-      // function Card({ classStyle }) {}
+      // function Card({ sx }) {}
       Property(node: any) {
         if (node.parent?.type !== 'ObjectPattern') return;
         if (node.computed) return;
@@ -101,7 +101,7 @@ export const renameProp: Rule.RuleModule = {
         manual(node.key);
       },
 
-      // props.classStyle
+      // props.sx
       MemberExpression(node: any) {
         if (node.computed) return;
         if (node.property.type !== 'Identifier') return;
