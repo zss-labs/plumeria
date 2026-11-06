@@ -13,7 +13,7 @@
 
 ## Installation
 
-`@plumeria/core` contains type definitions only. Which JSX prop carries styles is declared in your project — one line for the default `classStyle`, see [Declaring the styling prop](#declaring-the-styling-prop). Styles are compiled away at build time by a bundler integration — [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) for Next.js, or [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) for Vite, Webpack, and others.
+`@plumeria/core` contains type definitions only. Which JSX prop carries styles is declared in your project — one line for the default `sx`, see [Declaring the styling prop](#declaring-the-styling-prop). Styles are compiled away at build time by a bundler integration — [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) for Next.js, or [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) for Vite, Webpack, and others.
 
 ```sh
 npx @plumeria/init
@@ -29,7 +29,7 @@ See the [installation guide](https://plumeria.dev/docs/installation) for full se
 
 ## Example
 
-Styles can be passed to the `classStyle` prop. That prop accepts static and dynamic styles as an array. At build time, the compiler resolves `classStyle` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
+Styles can be passed to the `sx` prop. That prop accepts static and dynamic styles as an array. At build time, the compiler resolves `sx` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
 
 ```tsx
 import * as css from '@plumeria/core';
@@ -50,7 +50,7 @@ export default function App({ cond }) {
   const scale = useScale(); // from your own hook
   return (
     <div
-      classStyle={[
+      sx={[
         styles.text,
         cond && styles.cond,
         styles.scale(scale)
@@ -87,11 +87,11 @@ export default function App({ cond }) {
 
 The prop name is a build-time setting — `styleProp` on the bundler plugin — so `@plumeria/core` declares no prop of its own. Baking one in would let the types and the compiler disagree. Add one file to your project naming the prop you compile with.
 
-For the default, `classStyle`, reference the declaration that ships with the package:
+For the default, `sx`, reference the declaration that ships with the package:
 
 ```ts
 // plumeria.d.ts
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
 If you renamed the prop, declare that name on React's attribute interfaces instead. `Style` is the type of anything the prop accepts — a style, a conditional, or an array of them:
@@ -103,17 +103,17 @@ import type { Style } from '@plumeria/core';
 declare global {
   namespace React {
     interface HTMLAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
     interface SVGAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
   }
 }
 ```
 
 ```tsx
-<div sx={[styles.text, cond && styles.cond]} />
+<div classStyle={[styles.text, cond && styles.cond]} />
 ```
 
 Declaration merging is additive, so several names can coexist during a migration. Whichever you declare has to match what the bundler plugin was given — if they disagree the prop type-checks but is never compiled away.
@@ -135,9 +135,9 @@ Plumeria publishes frequently. To make that legible, every public API is rated f
 | `css.varType`             | ★★★★☆     | Stable |
 | `css.marker`              | ★★★★☆     | Stable |
 | `css.extended`            | ★★★★☆     | Stable |
-| `css.use`/`classStyle`    | ★★★★★     | Frozen |
+| `css.use`/`sx`    | ★★★★★     | Frozen |
 
-> The **`classStyle`** can be renamed via configuration
+> The **`sx`** can be renamed via configuration
 
 ## License
 
