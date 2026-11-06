@@ -5,7 +5,7 @@ jest.mock('@plumeria/eslint-plugin/guard', () => ({
 }));
 let mockCompiledSource = '';
 jest.mock('@plumeria/compiler', () => ({
-  DEFAULT_STYLE_PROP: 'classStyle',
+  DEFAULT_STYLE_PROP: 'sx',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: jest.fn((css: string) => css),
@@ -312,10 +312,13 @@ describe('the lint guard', () => {
   });
 
   it('lints with the styling prop the options name', () => {
-    const plugin = unpluginFactory({ styleProp: 'sx' }, {} as never) as any;
+    const plugin = unpluginFactory(
+      { styleProp: 'classStyle' },
+      {} as never,
+    ) as any;
     plugin.vite.config({}, { command: 'build' });
     expect(startLintGuard).toHaveBeenCalledWith({
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
     });
   });
 
