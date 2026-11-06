@@ -69,7 +69,7 @@ do not report a defect; they remove the room for one. See
 
 ## Configuring the styling prop
 
-`custom-props-require-import`, `no-inline-object`, `no-mixed-styling-props`, `no-style-prop-relay` and `no-unresolved-composition` need to know which JSX prop carries styles. It is `classStyle` unless you changed it, so most projects configure nothing.
+`custom-props-require-import`, `no-inline-object`, `no-mixed-styling-props`, `no-style-prop-relay` and `no-unresolved-composition` need to know which JSX prop carries styles. It is `sx` unless you changed it, so most projects configure nothing.
 
 If you did rename it — via `styleProp` on `withPlumeria` or on the unplugin options — tell the plugin the same name. The lint the bundler plugins run in the build is given that name already. `plumeria-lint` takes it with `--style-prop`, or reads it from the `settings` below when ESLint is installed. ESLint cannot read it from your bundler config, so set it once in `settings` and every rule picks it up:
 
@@ -80,7 +80,7 @@ export default [
   plumeria.configs.recommended,
   {
     settings: {
-      plumeria: { styleProp: 'sx' },
+      plumeria: { styleProp: 'classStyle' },
     },
   },
 ];
@@ -91,7 +91,7 @@ A single rule can override that if you need it to:
 ```js
 {
   rules: {
-    '@plumeria/no-mixed-styling-props': ['error', { styleProp: 'sx' }],
+    '@plumeria/no-mixed-styling-props': ['error', { styleProp: 'classStyle' }],
   },
 }
 ```
