@@ -15,7 +15,7 @@ const styles = css.create({
   box: { color: 'red' },
 });
 
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
   afterAll(() => fs.rmSync(FIXTURE_DIR, { recursive: true, force: true }));
