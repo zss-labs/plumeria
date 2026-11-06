@@ -38,7 +38,7 @@ export const vt = css.viewTransitionClass({ old: { animationDuration: '1s' }, ne
         keyframes +
           `
 export const s = css.create({ a: { animation: \`\${fade} 1s ease\` } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
       );
       expect(css).toMatch(/animation: kf-\w+ 1s ease/);
@@ -50,14 +50,14 @@ export const A = () => <div classStyle={s.a} />;
         keyframes +
           `
 export const s = css.create({ a: { animationName: fade } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
       );
       const templated = compile(
         keyframes +
           `
 export const s = css.create({ a: { animationName: \`\${fade}\` } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
       );
       const nameOf = (css: string) => css.match(/animation-name: (\S+);/)?.[1];
@@ -70,7 +70,7 @@ export const A = () => <div classStyle={s.a} />;
         viewTransitionClass +
           `
 export const s = css.create({ a: { viewTransitionClass: \`\${vt}\` } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
       );
       expect(css).toMatch(/view-transition-class: vt-\w+;/);
@@ -83,7 +83,7 @@ export const A = () => <div classStyle={s.a} />;
         keyframes +
           `
 export const s = css.create({ a: { animation: fade + ' 2s linear' } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `,
       );
       expect(css).toMatch(/animation: kf-\w+ 2s linear/);
