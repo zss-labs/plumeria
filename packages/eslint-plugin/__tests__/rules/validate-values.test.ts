@@ -9,6 +9,45 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('validate-values', validateValues, {
   valid: [
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, 20% red, white)' } });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType();`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ ...options });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: dynamic, initialValue: '1px' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: 1, initialValue: '1px' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>', initialValue: dynamic });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>', initialValue: true });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>+', initialValue: 'calc(1px + 2px) 3px' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: 'small+', initialValue: 'small' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>+', initialValue: ' 1px  2px ' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<length>+', initialValue: '' });`,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '*', other: true, initialValue: 'x' });`,
+    },
     // css.varType initial values the browser registers
     {
       code: `import * as css from '@plumeria/core'; const v = css.varType({ syntax: '<length>', initialValue: '10px' });`,
@@ -1531,6 +1570,50 @@ ruleTester.run('validate-values', validateValues, {
   ],
 
   invalid: [
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, red blue, white)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<color>', initialValue: 'color-mix(in srgb, red 20% extra, white)' });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<color>', initialValue: 'rgb(from)' });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'rgb(from)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'rgb(from red)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, "red)", blue)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: "color-mix(in srgb, 'red)', blue)" } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.varType({ syntax: '<color>', initialValue: 'color-mix(in srgb, var("x)"), red)' });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'rgb(red)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, var("x)"), red)' } });`,
+      errors: 1,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, red, blue' } });`,
+      errors: 1,
+    },
     {
       code: `import * as css from '@plumeria/core'; const above = css.positionTry({ width: 'wide' });`,
       errors: [{ messageId: 'validateValue' }],
