@@ -25,7 +25,7 @@ ruleTester.run('no-inline-object', noInlineObject, {
       code: "import * as css from '@plumeria/core'; const styles = css.create({ small: { color: 'red' }, large: { color: 'blue' } }); css.use(styles[size]);",
     },
     {
-      code: "import * as css from '@plumeria/core'; const styles = css.create({ small: { color: 'red' }, large: { color: 'blue' } }); <div classStyle={styles[size]} />;",
+      code: "import * as css from '@plumeria/core'; const styles = css.create({ small: { color: 'red' }, large: { color: 'blue' } }); <div sx={styles[size]} />;",
     },
 
     // Retired APIs are outside this rule; do not suggest using them differently.
@@ -34,19 +34,19 @@ ruleTester.run('no-inline-object', noInlineObject, {
     },
 
     { code: '<div style={{ color: "red" }} />' },
-    { code: '<div classStyle={styles.active} />' },
-    { code: '<div classStyle={[styles.base, isActive && styles.active]} />' },
+    { code: '<div sx={styles.active} />' },
+    { code: '<div sx={[styles.base, isActive && styles.active]} />' },
     { code: 'css.use(styles.active)' },
     { code: 'css.use(styles.base, isActive && styles.active)' },
     { code: '<div className={css.use(styles.active)} />' },
     { code: 'css.create({ text: { color: "red" } })' },
-    { code: '<div classStyle={[variants({ size: "small" })]} />' },
+    { code: '<div sx={[variants({ size: "small" })]} />' },
     { code: 'css.use(variants({ size: "small" }))' },
     { code: 'foo()()' },
     { code: "import React from 'react';" },
     { code: 'obj.prop.use()' },
     { code: 'css["use"]()' },
-    { code: '<div classStyle />' },
+    { code: '<div sx />' },
     { code: 'css.variants({ ...spread })' },
     { code: 'css.variants({ size: { ...spread } })' },
     { code: "import { use as myUse } from '@plumeria/core';" },
@@ -70,34 +70,34 @@ ruleTester.run('no-inline-object', noInlineObject, {
     },
     {
       // the default name stops being the styling prop once renamed
-      code: '<div classStyle={{ color: "red" }} />',
-      settings: { plumeria: { styleProp: 'sx' } },
+      code: '<div sx={{ color: "red" }} />',
+      settings: { plumeria: { styleProp: 'classStyle' } },
     },
   ],
   invalid: [
     {
-      code: '<div classStyle={{ color: "red" }} />',
+      code: '<div sx={{ color: "red" }} />',
       errors: [{ messageId: 'noInlineObjectInStyleProp' }],
     },
     {
-      code: '<div classStyle={[styles.base, { color: "red" }]} />',
+      code: '<div sx={[styles.base, { color: "red" }]} />',
       errors: [{ messageId: 'noInlineObjectInStyleProp' }],
     },
     {
-      code: '<div classStyle={{ [styles.active]: isActive }} />',
+      code: '<div sx={{ [styles.active]: isActive }} />',
       errors: [{ messageId: 'noInlineObjectInStyleProp' }],
     },
     {
       // settings retarget this rule too, without per-rule options
-      code: '<div sx={{ color: "red" }} />',
-      settings: { plumeria: { styleProp: 'sx' } },
+      code: '<div classStyle={{ color: "red" }} />',
+      settings: { plumeria: { styleProp: 'classStyle' } },
       errors: [{ messageId: 'noInlineObjectInStyleProp' }],
     },
     {
       // a per-rule option wins over the shared setting
-      code: '<div sx={[styles.base, { color: "red" }]} />',
-      settings: { plumeria: { styleProp: 'classStyle' } },
-      options: [{ styleProp: 'sx' }],
+      code: '<div classStyle={[styles.base, { color: "red" }]} />',
+      settings: { plumeria: { styleProp: 'sx' } },
+      options: [{ styleProp: 'classStyle' }],
       errors: [{ messageId: 'noInlineObjectInStyleProp' }],
     },
     {
