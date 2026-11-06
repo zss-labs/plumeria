@@ -20,12 +20,12 @@ const tsTester = new RuleTester({
   },
 });
 
-const options = [{ from: 'styleName', to: 'classStyle' }];
+const options = [{ from: 'styleName', to: 'sx' }];
 
 jsxTester.run('rename-prop (jsx)', renameProp, {
   valid: [
     {
-      code: '<div classStyle={styles.text} />',
+      code: '<div sx={styles.text} />',
       options,
     },
     {
@@ -34,7 +34,7 @@ jsxTester.run('rename-prop (jsx)', renameProp, {
     },
     {
       // the prop is matched by name, so an already migrated file is a no-op
-      code: '<div sx={styles.text} />',
+      code: '<div classStyle={styles.text} />',
       options,
     },
     {
@@ -42,7 +42,7 @@ jsxTester.run('rename-prop (jsx)', renameProp, {
       options,
     },
     {
-      code: "const Card = (props) => <div classStyle={props['styleName']} />;",
+      code: "const Card = (props) => <div sx={props['styleName']} />;",
       options,
     },
     {
@@ -62,27 +62,26 @@ jsxTester.run('rename-prop (jsx)', renameProp, {
     {
       code: '<div styleName={styles.text} />',
       options,
-      output: '<div classStyle={styles.text} />',
+      output: '<div sx={styles.text} />',
       errors: [{ messageId: 'rename' }],
     },
     {
       code: '<div styleName={styles.text} className="text" />',
       options,
-      output: '<div classStyle={styles.text} className="text" />',
+      output: '<div sx={styles.text} className="text" />',
       errors: [{ messageId: 'rename' }],
     },
     {
       // several attributes in one file are all fixed in a single pass
       code: '<><div styleName={styles.a} /><span styleName={styles.b} /></>',
       options,
-      output:
-        '<><div classStyle={styles.a} /><span classStyle={styles.b} /></>',
+      output: '<><div sx={styles.a} /><span sx={styles.b} /></>',
       errors: [{ messageId: 'rename' }, { messageId: 'rename' }],
     },
     {
       // from/to are plain arguments, so any pair of names works
-      code: '<div sx={styles.text} />',
-      options: [{ from: 'sx', to: 'cx' }],
+      code: '<div classStyle={styles.text} />',
+      options: [{ from: 'classStyle', to: 'cx' }],
       output: '<div cx={styles.text} />',
       errors: [{ messageId: 'rename' }],
     },
@@ -90,13 +89,13 @@ jsxTester.run('rename-prop (jsx)', renameProp, {
       // renaming onto a member expression is reported, not rewritten
       code: 'const Card = (props) => <div styleName={props.styleName} />;',
       options,
-      output: 'const Card = (props) => <div classStyle={props.styleName} />;',
+      output: 'const Card = (props) => <div sx={props.styleName} />;',
       errors: [{ messageId: 'rename' }, { messageId: 'manual' }],
     },
     {
       code: 'const Card = ({ styleName }) => <div styleName={styleName} />;',
       options,
-      output: 'const Card = ({ styleName }) => <div classStyle={styleName} />;',
+      output: 'const Card = ({ styleName }) => <div sx={styleName} />;',
       errors: [{ messageId: 'manual' }, { messageId: 'rename' }],
     },
   ],
@@ -111,10 +110,10 @@ tsTester.run('rename-prop (types)', renameProp, {
     },
     {
       code: 'interface Props { styleName?: Style }',
-      options: [{ from: 'styleName', to: 'classStyle', includeTypes: false }],
+      options: [{ from: 'styleName', to: 'sx', includeTypes: false }],
     },
     {
-      code: 'interface Props { classStyle?: Style }',
+      code: 'interface Props { sx?: Style }',
       options,
     },
     {
@@ -126,7 +125,7 @@ tsTester.run('rename-prop (types)', renameProp, {
     {
       code: 'interface Props { styleName?: Style }',
       options,
-      output: 'interface Props { classStyle?: Style }',
+      output: 'interface Props { sx?: Style }',
       errors: [{ messageId: 'rename' }],
     },
     {
@@ -134,19 +133,19 @@ tsTester.run('rename-prop (types)', renameProp, {
       code: 'declare global { namespace React { interface HTMLAttributes<T> { styleName?: Style } } }',
       options,
       output:
-        'declare global { namespace React { interface HTMLAttributes<T> { classStyle?: Style } } }',
+        'declare global { namespace React { interface HTMLAttributes<T> { sx?: Style } } }',
       errors: [{ messageId: 'rename' }],
     },
     {
       code: 'interface Props { styleName?: Style | undefined }',
       options,
-      output: 'interface Props { classStyle?: Style | undefined }',
+      output: 'interface Props { sx?: Style | undefined }',
       errors: [{ messageId: 'rename' }],
     },
     {
       code: 'interface Props { styleName?: Plumeria.Style }',
       options,
-      output: 'interface Props { classStyle?: Plumeria.Style }',
+      output: 'interface Props { sx?: Plumeria.Style }',
       errors: [{ messageId: 'rename' }],
     },
     {
