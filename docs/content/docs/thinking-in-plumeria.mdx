@@ -5,7 +5,7 @@ description: 'How to place, compose and share styles, from one component to a pr
 
 <img src="/project-grows.svg" width={1000} height={400} alt="The project grows from one component file to styles modules and a shared package, while the classes Notice receives stay the same" />
 
-Two facts decide most of what follows. A class name comes from the property and the value alone, so where a style is written never reaches the output. The array on `classStyle` is the merge, so the order you read is the order that wins. Structure has one job left, which is to be easy to read, and it can change whenever that stops being true.
+Two facts decide most of what follows. A class name comes from the property and the value alone, so where a style is written never reaches the output. The array on `sx` is the merge, so the order you read is the order that wins. Structure has one job left, which is to be easy to read, and it can change whenever that stops being true.
 
 Here is one component, `Notice`, from its first style to a project that shares its values across packages.
 
@@ -34,8 +34,8 @@ const styles = css.create({
 });
 
 export const Notice = ({ title }: { title: string }) => (
-  <div classStyle={styles.notice}>
-    <strong classStyle={styles.title}>{title}</strong>
+  <div sx={styles.notice}>
+    <strong sx={styles.title}>{title}</strong>
   </div>
 );
 ```
@@ -63,8 +63,8 @@ export const styles = css.create({
 import { styles } from './styles';
 
 export const Notice = ({ title }: { title: string }) => (
-  <div classStyle={styles.notice}>
-    <strong classStyle={styles.title}>{title}</strong>
+  <div sx={styles.notice}>
+    <strong sx={styles.title}>{title}</strong>
   </div>
 );
 ```
@@ -86,10 +86,10 @@ const styles = css.create({
   },
 });
 
-<div classStyle={[styles.notice, pinned && styles.pinned]}>
+<div sx={[styles.notice, pinned && styles.pinned]}>
 ```
 
-The right side wins, so the array answers which style overrides which. `classStyle` takes arrays, ternaries and conditions, so there is no helper to import and no class string to assemble.
+The right side wins, so the array answers which style overrides which. `sx` takes arrays, ternaries and conditions, so there is no helper to import and no class string to assemble.
 
 ## Make a choice a lookup
 
@@ -114,8 +114,8 @@ type NoticeProps = {
 };
 
 export const Notice = ({ title, tone = 'info', pinned }: NoticeProps) => (
-  <div classStyle={[styles.notice, toneStyles[tone], pinned && styles.pinned]}>
-    <strong classStyle={styles.title}>{title}</strong>
+  <div sx={[styles.notice, toneStyles[tone], pinned && styles.pinned]}>
+    <strong sx={styles.title}>{title}</strong>
   </div>
 );
 ```
@@ -158,7 +158,7 @@ const styles = css.create({
   },
 });
 
-<div data-state={state} classStyle={styles.notice}>
+<div data-state={state} sx={styles.notice}>
 ```
 
 `:hover`, `:focus-visible`, `:disabled` and `[aria-*]` work the same way. [Selector rules](/docs/selector-rules) lists what can nest in what.
@@ -196,7 +196,7 @@ const styles = css.create({
   }),
 });
 
-<div classStyle={styles.progress(`${remaining}%`)} />
+<div sx={styles.progress(`${remaining}%`)} />
 ```
 
 ```html title="Output"
@@ -218,7 +218,7 @@ A component takes a style the way it takes any other value: through a prop, appl
 ```tsx
 type NoticeProps = {
   // ...
-  classStyle?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+  sx?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
 };
 ```
 
@@ -285,7 +285,7 @@ type NoticeProps = {
   pinned?: boolean;
   state?: 'open' | 'closing';
   remaining: number;
-  classStyle?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+  sx?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
 };
 
 export const Notice = ({
@@ -294,20 +294,20 @@ export const Notice = ({
   pinned,
   state = 'open',
   remaining,
-  classStyle,
+  sx,
 }: NoticeProps) => (
   <div
     data-state={state}
-    classStyle={[
+    sx={[
       styles.notice,
       toneStyles[tone],
       pinned && styles.pinned,
-      classStyle,
+      sx,
     ]}
   >
-    <strong classStyle={styles.title}>{title}</strong>
-    <button classStyle={styles.dismiss}>Dismiss</button>
-    <div classStyle={styles.progress(`${remaining}%`)} />
+    <strong sx={styles.title}>{title}</strong>
+    <button sx={styles.dismiss}>Dismiss</button>
+    <div sx={styles.progress(`${remaining}%`)} />
   </div>
 );
 ```
@@ -395,7 +395,7 @@ import type { ReactNode } from 'react';
 import { layout } from '../styles/layout';
 
 export const Card = ({ children }: { children: ReactNode }) => (
-  <article classStyle={layout.stack}>{children}</article>
+  <article sx={layout.stack}>{children}</article>
 );
 ```
 
@@ -429,8 +429,8 @@ const styles = css.create({
   },
 });
 
-<div classStyle={styles.notice}> // [!code --]
-<div classStyle={[layout.stack, styles.notice]}> // [!code ++]
+<div sx={styles.notice}> // [!code --]
+<div sx={[layout.stack, styles.notice]}> // [!code ++]
 ```
 
 ```tsx title="Output, before and after"
@@ -443,7 +443,7 @@ The same holds for splitting a module or merging two of them, so the structure c
 
 Every read of a definition is written in place, and the rules for imports follow from that.
 
-A file that only writes `classStyle` needs no import of `@plumeria/core`. A file that hands a style to a component through any other prop does, because that import is how the compiler finds the file:
+A file that only writes `sx` needs no import of `@plumeria/core`. A file that hands a style to a component through any other prop does, because that import is how the compiler finds the file:
 
 ```text title="next build"
   × @plumeria(custom-props-require-import): bodyStyle passes a style from
