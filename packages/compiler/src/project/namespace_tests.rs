@@ -28,7 +28,7 @@ fn env(dir: &std::path::Path, name: &str) -> TransformEnv {
         module_id: file.clone(),
         file_path: file,
         root: cwd.clone(),
-        style_prop: "classStyle".into(),
+        style_prop: "sx".into(),
         class_prop: "className".into(),
         policy: None,
         is_dev: false,
@@ -118,7 +118,7 @@ fn compiles_a_namespace_read_before_anything_was_scanned() {
             ("tokens.ts", TOKENS),
             (
                 "app.tsx",
-                "import * as css from '@plumeria/core';\nimport * as t from './tokens';\nconst s = css.create({ a: { color: t.blue[500] } });\nexport const A = () => <div classStyle={s.a} />;\n",
+                "import * as css from '@plumeria/core';\nimport * as t from './tokens';\nconst s = css.create({ a: { color: t.blue[500] } });\nexport const A = () => <div sx={s.a} />;\n",
             ),
         ],
     );
@@ -137,7 +137,7 @@ fn exports_read_before_the_first_scan_leave_the_file_to_it() {
             ("tokens.ts", TOKENS),
             (
                 "app.tsx",
-                "import * as css from '@plumeria/core';\nimport { blue } from './tokens';\nconst s = css.create({ a: { color: blue[500] } });\nexport const A = () => <div classStyle={s.a} />;\n",
+                "import * as css from '@plumeria/core';\nimport { blue } from './tokens';\nconst s = css.create({ a: { color: blue[500] } });\nexport const A = () => <div sx={s.a} />;\n",
             ),
         ],
     );
