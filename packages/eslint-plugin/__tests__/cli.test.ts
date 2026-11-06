@@ -5,12 +5,12 @@ import { cliOverrides, stylePropFromESLint, takeStyleProp } from '../src/cli';
 
 describe('takeStyleProp', () => {
   it('takes the styling prop out of the oxlint arguments', () => {
-    expect(takeStyleProp(['--style-prop', 'sx', '--fix'])).toEqual({
-      styleProp: 'sx',
+    expect(takeStyleProp(['--style-prop', 'classStyle', '--fix'])).toEqual({
+      styleProp: 'classStyle',
       rest: ['--fix'],
     });
-    expect(takeStyleProp(['src', '--style-prop=sx'])).toEqual({
-      styleProp: 'sx',
+    expect(takeStyleProp(['src', '--style-prop=classStyle'])).toEqual({
+      styleProp: 'classStyle',
       rest: ['src'],
     });
     expect(takeStyleProp(['--fix'])).toEqual({ rest: ['--fix'] });
@@ -66,6 +66,17 @@ ${loadESLint ? 'exports.loadESLint = async () => ESLint;' : ''}
     await expect(stylePropFromESLint(cwd)).resolves.toBeUndefined();
   });
 
+  it('returns nothing when eslint cannot be loaded', async () => {
+    const dir = path.join(cwd, 'node_modules', 'eslint');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'eslint', main: 'index.js' }),
+    );
+    fs.writeFileSync(path.join(dir, 'index.js'), `throw new Error('broken');`);
+    await expect(stylePropFromESLint(cwd)).resolves.toBeUndefined();
+  });
+
   it('returns nothing without an eslint config', async () => {
     fakeESLint(null);
     await expect(stylePropFromESLint(cwd)).resolves.toBeUndefined();
@@ -77,17 +88,20 @@ ${loadESLint ? 'exports.loadESLint = async () => ESLint;' : ''}
   });
 
   it('reads the styling prop from the eslint settings', async () => {
-    fakeESLint({ plumeria: { styleProp: 'sx' } });
-    await expect(stylePropFromESLint(cwd)).resolves.toBe('sx');
+    fakeESLint({ plumeria: { styleProp: 'classStyle' } });
+    await expect(stylePropFromESLint(cwd)).resolves.toBe('classStyle');
   });
 
   it('reads the settings through an eslint without loadESLint', async () => {
-    fakeESLint({ plumeria: { styleProp: 'sx' } }, { loadESLint: false });
-    await expect(stylePropFromESLint(cwd)).resolves.toBe('sx');
+    fakeESLint(
+      { plumeria: { styleProp: 'classStyle' } },
+      { loadESLint: false },
+    );
+    await expect(stylePropFromESLint(cwd)).resolves.toBe('classStyle');
   });
 
   it('prefers the flag over the eslint settings', async () => {
-    fakeESLint({ plumeria: { styleProp: 'sx' } });
+    fakeESLint({ plumeria: { styleProp: 'classStyle' } });
     await expect(
       cliOverrides(['--style-prop', 'css', '--fix'], cwd),
     ).resolves.toEqual({
@@ -95,7 +109,7 @@ ${loadESLint ? 'exports.loadESLint = async () => ESLint;' : ''}
       rest: ['--fix'],
     });
     await expect(cliOverrides([], cwd)).resolves.toEqual({
-      overrides: { settings: { plumeria: { styleProp: 'sx' } } },
+      overrides: { settings: { plumeria: { styleProp: 'classStyle' } } },
       rest: [],
     });
   });
