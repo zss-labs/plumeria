@@ -21,7 +21,7 @@ const hmrAdded = css.create({
   marker: { outlineOffset: ${offset} },
 });
 
-export const HmrAdded = () => <div classStyle={hmrAdded.marker} />;
+export const HmrAdded = () => <div sx={hmrAdded.marker} />;
 `;
 
 const hasRule = (page: Page, declaration: string) =>
