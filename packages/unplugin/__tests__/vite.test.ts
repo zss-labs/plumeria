@@ -5,7 +5,7 @@ jest.mock('@plumeria/eslint-plugin/guard', () => ({
 }));
 let mockCompiledSource = '';
 jest.mock('@plumeria/compiler', () => ({
-  DEFAULT_STYLE_PROP: 'classStyle',
+  DEFAULT_STYLE_PROP: 'sx',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.fn(
     jest.requireActual('@plumeria/compiler').sourcePackages,
@@ -343,7 +343,7 @@ it('adds affected components and dependent targets to a hot update', () => {
   mockScanAll.mockReturnValue({
     componentPropsTable: {
       '/project/src/Child.tsx-Child': {
-        classStyle: [{ key: 'b' }, { key: 'a' }],
+        sx: [{ key: 'b' }, { key: 'a' }],
       },
     },
   });
@@ -413,7 +413,7 @@ it.each([
 
     mockScanAll.mockReturnValue({
       componentPropsTable: {
-        [`${child.id}-Child`]: { classStyle: [{ key: 'a' }] },
+        [`${child.id}-Child`]: { sx: [{ key: 'a' }] },
       },
     });
     expect(plugin.handleHotUpdate({ modules: [edited], file: ID })).toEqual([]);
