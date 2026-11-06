@@ -26,12 +26,12 @@ const styles = css.create({
 });
 
 type BadgeProps = {
-  classStyle?: css.Style;
+  sx?: css.Style;
   children: ReactNode;
 };
 
-export const Badge = ({ classStyle, children }: BadgeProps) => (
-  <span classStyle={[styles.badge, classStyle]}>{children}</span> // [!code hl]
+export const Badge = ({ sx, children }: BadgeProps) => (
+  <span sx={[styles.badge, sx]}>{children}</span> // [!code hl]
 );
 ```
 
@@ -49,7 +49,7 @@ export const accent = css.create({
 import { accent } from './accent';
 import { Badge } from './Badge';
 
-export const Page = () => <Badge classStyle={accent.text}>New</Badge>;
+export const Page = () => <Badge sx={accent.text}>New</Badge>;
 ```
 
 The element receives one class per property:
@@ -69,7 +69,7 @@ Gray is still in the stylesheet, because a `Badge` with no override needs it, an
 ```tsx title="Badge.tsx (output)"
 <span
   className={
-    "x8ti24uy" + " " + ({"x672n4nd":"xxcejlqg"}[classStyle] || "xuifcaas")
+    "x8ti24uy" + " " + ({"x672n4nd":"xxcejlqg"}[sx] || "xuifcaas")
   }
 >
   {children}
@@ -101,7 +101,7 @@ const styles = css.create({
   },
 });
 
-export const Menu = () => <nav classStyle={styles.menu} />;
+export const Menu = () => <nav sx={styles.menu} />;
 ```
 
 ```text title="next build"
@@ -127,10 +127,10 @@ A failure says what is wrong and, where it can, points at the code. A few more o
 | `colr: 'red'` | `Unknown CSS property 'colr'.` |
 | A key nothing reads | `The key 'stale' is defined but never referenced anywhere.` |
 | `'> a': { ... }` | `Combinator ">" is not allowed unless inside functional pseudo-classes.` |
-| `className` beside `classStyle` | `"classStyle" handles both "className" and "style". Avoid mixing them.` |
-| `classStyle={{ color: 'red' }}` | `Do not pass inline objects to "classStyle". It only accepts compiled styles from css.create().` |
+| `className` beside `sx` | `"sx" handles both "className" and "style". Avoid mixing them.` |
+| `sx={{ color: 'red' }}` | `Do not pass inline objects to "sx". It only accepts compiled styles from css.create().` |
 | `css.create` inside a component | `Do not use css.create inside functions` |
-| A style prop handed on instead of applied | `'headerStyle' is never applied here. Apply it to classStyle or css.use() on an element this component renders.` |
+| A style prop handed on instead of applied | `'headerStyle' is never applied here. Apply it to sx or css.use() on an element this component renders.` |
 
 Some carry the whole fix. Two states that can match at once have nothing to rank them, so the message says how to decide:
 
@@ -164,12 +164,12 @@ const styles = css.create({
 });
 
 type PanelProps = {
-  classStyle?: css.WithoutProperties<'position' | 'top' | 'left'>; // [!code hl]
+  sx?: css.WithoutProperties<'position' | 'top' | 'left'>; // [!code hl]
   children: ReactNode;
 };
 
-export const Panel = ({ classStyle, children }: PanelProps) => (
-  <div classStyle={[styles.panel, classStyle]}>{children}</div>
+export const Panel = ({ sx, children }: PanelProps) => (
+  <div sx={[styles.panel, sx]}>{children}</div>
 );
 ```
 
@@ -188,8 +188,8 @@ const styles = css.create({
 
 export const Page = () => (
   <>
-    <Panel classStyle={styles.tinted}>Accepted</Panel>
-    <Panel classStyle={styles.pinned}>Type error</Panel> {/* [!code hl] */}
+    <Panel sx={styles.tinted}>Accepted</Panel>
+    <Panel sx={styles.pinned}>Type error</Panel> {/* [!code hl] */}
   </>
 );
 ```
@@ -213,7 +213,7 @@ const styles = css.create({
   },
 });
 
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 ```
 
 ```text title="next build"
@@ -264,7 +264,7 @@ const styles = css.create({
 });
 
 export const MenuItem = () => (
-  <a href="/" aria-current="page" classStyle={styles.item}>
+  <a href="/" aria-current="page" sx={styles.item}>
     Home
   </a>
 );
@@ -301,9 +301,9 @@ const styles = css.create({
 });
 
 export const Card = () => (
-  <article classStyle={styles.card}>
+  <article sx={styles.card}>
     <footer>
-      <button classStyle={styles.action}>Open</button>
+      <button sx={styles.action}>Open</button>
     </footer>
   </article>
 );
@@ -341,7 +341,7 @@ The first turns each `*.module.css` into a `*.styles.ts` beside it and points it
 
 CI runs the whole trip on this site and on the e2e app: out to CSS Modules, back to Plumeria and out again, and a new type error fails it. [Running it twice](/docs/api/migrate/codemod#running-it-twice) has the details.
 
-From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `classStyle` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
+From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `sx` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
 
 ## Next steps
 
