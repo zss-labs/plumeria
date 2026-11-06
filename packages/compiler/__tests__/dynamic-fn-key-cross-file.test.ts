@@ -27,8 +27,8 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       write(
         'twins.tsx',
         `import * as css from '@plumeria/core';
-export const TwinA = ({ deco }: any) => <div classStyle={deco} />;
-export const TwinB = ({ deco }: any) => <span classStyle={deco} />;
+export const TwinA = ({ deco }: any) => <div sx={deco} />;
+export const TwinB = ({ deco }: any) => <span sx={deco} />;
 `,
       );
       write(
@@ -63,7 +63,7 @@ export const importedStyles = css.create({ tone: (color: string) => ({ color }) 
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.c)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
@@ -88,7 +88,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.c)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
@@ -111,7 +111,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.c)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
@@ -134,7 +134,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.c)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
@@ -159,7 +159,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.v)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.v)} />;
 `,
       );
 
@@ -187,7 +187,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone(p.c)} />;
+export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
@@ -210,7 +210,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = (p: any) => <div classStyle={importedStyles.tone({ color: p.c })} />;
+export const A = (p: any) => <div sx={importedStyles.tone({ color: p.c })} />;
 `,
       );
 
@@ -235,7 +235,7 @@ export const importedStyles = css.create({
         'consumer.tsx',
         `import '@plumeria/core';
 import { importedStyles } from './imported.styles';
-export const A = () => <div classStyle={importedStyles.plain} />;
+export const A = () => <div sx={importedStyles.plain} />;
 `,
       );
 
@@ -261,7 +261,7 @@ export const styles = css.create({
         `import * as css from '@plumeria/core';
 import { styles } from './styles';
 export const Merged = ({ deco }: any) => (
-  <div classStyle={[styles.base, deco]} />
+  <div sx={[styles.base, deco]} />
 );
 `,
       );
