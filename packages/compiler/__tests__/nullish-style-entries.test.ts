@@ -51,7 +51,7 @@ ${body}
   describe('transform: an entry that contributes nothing', () => {
     it.each(NOTHING)('keeps the styles written beside %s', async (nothing) => {
       const out = await run(
-        `export const A = () => <div classStyle={[s.p1, ${nothing}]} />;`,
+        `export const A = () => <div sx={[s.p1, ${nothing}]} />;`,
       );
       expect(out).toContain(P1);
     });
@@ -60,7 +60,7 @@ ${body}
       'keeps the element className beside %s',
       async (nothing) => {
         const out = await run(
-          `export const A = () => <div className="keep" classStyle={[s.p1, ${nothing}]} />;`,
+          `export const A = () => <div className="keep" sx={[s.p1, ${nothing}]} />;`,
         );
         expect(out).toContain('keep');
         expect(out).toContain(P1);
@@ -70,7 +70,7 @@ ${body}
     // Nothing is left to fold the className into, so it has to be left alone.
     it('keeps the element className when the whole prop is undefined', async () => {
       const out = await run(
-        `export const A = () => <div className="keep" classStyle={undefined} />;`,
+        `export const A = () => <div className="keep" sx={undefined} />;`,
       );
       expect(out).toContain('keep');
     });
@@ -78,7 +78,7 @@ ${body}
     it('rejects an unresolved style expression even with an existing className', async () => {
       await expect(
         run(
-          `export const A = () => <div className="keep" classStyle={s.p1 || s.p3} />;`,
+          `export const A = () => <div className="keep" sx={s.p1 || s.p3} />;`,
         ),
       ).rejects.toThrow('unresolvable style object');
     });
@@ -94,7 +94,7 @@ ${body}
     // reach the same result.
     it('keeps both sides of a condition that may yield nothing', async () => {
       const out = await run(
-        `export const A = ({ o }: { o: boolean }) => <div className="keep" classStyle={[s.p1, o && s.p3]} />;`,
+        `export const A = ({ o }: { o: boolean }) => <div className="keep" sx={[s.p1, o && s.p3]} />;`,
       );
       expect(out).toContain('keep');
       expect(out).toContain(P1);
