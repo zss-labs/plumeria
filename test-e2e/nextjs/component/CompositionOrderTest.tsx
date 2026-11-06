@@ -13,64 +13,49 @@ export function CompositionOrderTest() {
       style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}
     >
       <h3>Composition Order Test</h3>
-      <div
-        data-testid="cycle-surface-first"
-        classStyle={[cycle.surface, cycle.raised]}
-      >
+      <div data-testid="cycle-surface-first" sx={[cycle.surface, cycle.raised]}>
         raised wins
       </div>
-      <div
-        data-testid="cycle-raised-first"
-        classStyle={[cycle.raised, cycle.surface]}
-      >
+      <div data-testid="cycle-raised-first" sx={[cycle.raised, cycle.surface]}>
         surface wins
       </div>
       <span
         data-testid="disjoint-alpha-first"
-        classStyle={[disjoint.alpha, disjoint.beta]}
+        sx={[disjoint.alpha, disjoint.beta]}
       >
         nothing to disagree about
       </span>
       <span
         data-testid="disjoint-beta-first"
-        classStyle={[disjoint.beta, disjoint.alpha]}
+        sx={[disjoint.beta, disjoint.alpha]}
       >
         nothing to disagree about
       </span>
-      <div
-        data-testid="buckets-wide-first"
-        classStyle={[buckets.wide, buckets.narrow]}
-      >
+      <div data-testid="buckets-wide-first" sx={[buckets.wide, buckets.narrow]}>
         an at-rule outranks a base declaration either way
       </div>
       <div
         data-testid="buckets-narrow-first"
-        classStyle={[buckets.narrow, buckets.wide]}
+        sx={[buckets.narrow, buckets.wide]}
       >
         an at-rule outranks a base declaration either way
       </div>
       <div
         data-testid="triple-ascending"
-        classStyle={[triple.one, triple.two, triple.three]}
+        sx={[triple.one, triple.two, triple.three]}
       >
         three wins
       </div>
       <div
         data-testid="triple-descending"
-        classStyle={[triple.three, triple.two, triple.one]}
+        sx={[triple.three, triple.two, triple.one]}
       >
         one wins
       </div>
-      <div
-        data-testid="branch-ternary"
-        classStyle={[branch.neutral, branch.danger]}
-      >
+      <div data-testid="branch-ternary" sx={[branch.neutral, branch.danger]}>
         danger wins
       </div>
-      <div
-        data-testid="branch-inverted"
-        classStyle={[branch.danger, branch.neutral]}
-      >
+      <div data-testid="branch-inverted" sx={[branch.danger, branch.neutral]}>
         neutral wins
       </div>
     </div>
