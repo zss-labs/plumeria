@@ -56,7 +56,7 @@ const sparse = css.create({
 
   const classExpr = (styleExpr: string) =>
     compile(
-      `export const A = ({ a, b, c, k, j, m }: any) => <div classStyle={${styleExpr}} />;`,
+      `export const A = ({ a, b, c, k, j, m }: any) => <div sx={${styleExpr}} />;`,
     );
 
   const norm = (value: string) =>
