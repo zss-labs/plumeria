@@ -611,16 +611,18 @@ Files that fail to parse are reported at the end and the command exits with `1`,
 
 ## After the rewrite
 
-The codemod changes your source; it does not change your configuration. Point the toolchain at the new name:
+The codemod changes your source; it does not change your configuration. Moving to `sx`, the default since 22.0.0, needs no configuration: drop any `styleProp: 'classStyle'` from the bundler plugin and the ESLint settings, and switch the declaration to `/// <reference types="@plumeria/core/sx" />`.
+
+For any other name, point the toolchain at it:
 
 ```ts title="next.config.ts"
-export default withPlumeria({}, { styleProp: 'sx' });
+export default withPlumeria({}, { styleProp: 'styleName' });
 ```
 
 ```ts title="eslint.config.ts"
 export default [
   {
-    settings: { plumeria: { styleProp: 'sx' } },
+    settings: { plumeria: { styleProp: 'styleName' } },
   },
 ];
 ```
@@ -634,8 +636,8 @@ One practical note: the codemod does not reformat. If the new name is longer tha
 The names are arguments, so the transform is not tied to any particular release. Renaming the prop to whatever suits your codebase is the same command:
 
 ```sh title="Terminal"
-npx @plumeria/codemod rename-prop styleName classStyle
-npx @plumeria/codemod rename-prop classStyle sx
+npx @plumeria/codemod rename-prop sx styleName
+npx @plumeria/codemod rename-prop styleName sx
 ```
 
 ## Renaming an API
