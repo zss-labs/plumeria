@@ -301,45 +301,45 @@ const motion = css.create({
 const ratioOf = (value: string, max: string) => `${(parseFloat(value) / parseFloat(max)) * 100}%`;
 
 const rowPreviews: Partial<Record<ScaleName, (value: string) => ReactNode>> = {
-  color: (value) => <span classStyle={samples.color(value)} />,
-  text: (value) => <span classStyle={samples.fontSize(value)}>Aa</span>,
-  fontWeight: (value) => <span classStyle={samples.fontWeight(value)}>Aa</span>,
-  tracking: (value) => <span classStyle={samples.tracking(value)}>The quick brown fox</span>,
+  color: (value) => <span sx={samples.color(value)} />,
+  text: (value) => <span sx={samples.fontSize(value)}>Aa</span>,
+  fontWeight: (value) => <span sx={samples.fontWeight(value)}>Aa</span>,
+  tracking: (value) => <span sx={samples.tracking(value)}>The quick brown fox</span>,
   leading: (value) => (
-    <span classStyle={samples.leading(value)}>
+    <span sx={samples.leading(value)}>
       The quick brown fox
       <br />
       jumps over the lazy dog
     </span>
   ),
-  spacing: (value) => <span classStyle={samples.bar(value)} />,
-  aspect: (value) => <span classStyle={samples.aspect(value)} />,
-  breakpoint: (value) => <span classStyle={samples.bar(ratioOf(value, scales.breakpoint['2xl']))} />,
-  container: (value) => <span classStyle={samples.bar(ratioOf(value, scales.container['7xl']))} />,
+  spacing: (value) => <span sx={samples.bar(value)} />,
+  aspect: (value) => <span sx={samples.aspect(value)} />,
+  breakpoint: (value) => <span sx={samples.bar(ratioOf(value, scales.breakpoint['2xl']))} />,
+  container: (value) => <span sx={samples.bar(ratioOf(value, scales.container['7xl']))} />,
 };
 
 const tilePreviews: Partial<Record<ScaleName, (value: string, key: string) => ReactNode>> = {
-  font: (value) => <span classStyle={samples.fontFamily(value)}>Aa</span>,
-  radius: (value) => <span classStyle={samples.radius(value)} />,
-  shadow: (value) => <span classStyle={samples.shadow(value)} />,
-  insetShadow: (value) => <span classStyle={samples.shadow(value)} />,
-  dropShadow: (value) => <span classStyle={samples.dropShadow(`drop-shadow(${value})`)} />,
-  textShadow: (value) => <span classStyle={samples.textShadow(value)}>Aa</span>,
-  blur: (value) => <span classStyle={samples.blur(`blur(${value})`)} />,
+  font: (value) => <span sx={samples.fontFamily(value)}>Aa</span>,
+  radius: (value) => <span sx={samples.radius(value)} />,
+  shadow: (value) => <span sx={samples.shadow(value)} />,
+  insetShadow: (value) => <span sx={samples.shadow(value)} />,
+  dropShadow: (value) => <span sx={samples.dropShadow(`drop-shadow(${value})`)} />,
+  textShadow: (value) => <span sx={samples.textShadow(value)}>Aa</span>,
+  blur: (value) => <span sx={samples.blur(`blur(${value})`)} />,
   perspective: (value) => (
-    <span classStyle={samples.perspective(value)}>
-      <span classStyle={samples.tilted} />
+    <span sx={samples.perspective(value)}>
+      <span sx={samples.tilted} />
     </span>
   ),
   ease: (value) => {
     const [x1, y1, x2, y2] = (value.match(/[\d.]+/g) ?? []).map(Number);
     return (
-      <svg classStyle={samples.curve} viewBox="0 0 1 1">
+      <svg sx={samples.curve} viewBox="0 0 1 1">
         <path d={`M0 1C${x1} ${1 - y1} ${x2} ${1 - y2} 1 0`} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
       </svg>
     );
   },
-  animate: (_, key) => <span classStyle={[samples.animated, motion[key as keyof typeof motion]]} />,
+  animate: (_, key) => <span sx={[samples.animated, motion[key as keyof typeof motion]]} />,
 };
 
 const wideScales: ScaleName[] = ['font', 'shadow', 'insetShadow', 'dropShadow', 'textShadow', 'perspective', 'ease'];
@@ -353,8 +353,8 @@ const accessOf = (key: string) => {
 
 function Token({ name, entry }: { name: ScaleName; entry: string }) {
   return (
-    <span classStyle={styles.token}>
-      <span classStyle={styles.muted}>t.{name}</span>
+    <span sx={styles.token}>
+      <span sx={styles.muted}>t.{name}</span>
       {accessOf(entry)}
     </span>
   );
@@ -362,19 +362,19 @@ function Token({ name, entry }: { name: ScaleName; entry: string }) {
 
 function PaletteGrid({ palettes }: { palettes: Record<string, Record<string, string>> }) {
   return (
-    <div classStyle={styles.palette}>
+    <div sx={styles.palette}>
       <span />
       {shades.map((shade) => (
-        <span key={shade} classStyle={styles.shade}>
+        <span key={shade} sx={styles.shade}>
           {shade}
         </span>
       ))}
       {Object.entries(palettes).map(([name, palette]) => [
-        <span key={name} classStyle={styles.label}>
+        <span key={name} sx={styles.label}>
           {name}
         </span>,
         ...Object.entries(palette).map(([shade, value]) => (
-          <span key={`${name}-${shade}`} title={`t.${name}[${shade}] ${value}`} classStyle={styles.swatch(value)} />
+          <span key={`${name}-${shade}`} title={`t.${name}[${shade}] ${value}`} sx={styles.swatch(value)} />
         )),
       ])}
     </div>
@@ -397,14 +397,14 @@ export function Scale({ name }: { name: ScaleName }) {
 
   if (tilePreview) {
     return (
-      <div classStyle={[styles.tiles, wideScales.includes(name) && styles.wideTiles]}>
+      <div sx={[styles.tiles, wideScales.includes(name) && styles.wideTiles]}>
         {entries.map(([key, value]) => (
-          <div key={key} classStyle={styles.tile}>
-            <div aria-hidden="true" classStyle={[styles.stage, shadowScales.includes(name) && styles.shadowStage]}>
+          <div key={key} sx={styles.tile}>
+            <div aria-hidden="true" sx={[styles.stage, shadowScales.includes(name) && styles.shadowStage]}>
               {tilePreview(value, key)}
             </div>
             <Token name={name} entry={key} />
-            <span classStyle={[styles.token, styles.muted]}>{value}</span>
+            <span sx={[styles.token, styles.muted]}>{value}</span>
           </div>
         ))}
       </div>
@@ -412,13 +412,13 @@ export function Scale({ name }: { name: ScaleName }) {
   }
 
   return (
-    <div classStyle={styles.rows}>
+    <div sx={styles.rows}>
       {entries.map(([key, value]) => (
-        <div key={key} classStyle={styles.row}>
+        <div key={key} sx={styles.row}>
           <Token name={name} entry={key} />
-          <span classStyle={[styles.token, styles.muted]}>{value}</span>
+          <span sx={[styles.token, styles.muted]}>{value}</span>
           {rowPreview && (
-            <span aria-hidden="true" classStyle={styles.preview}>
+            <span aria-hidden="true" sx={styles.preview}>
               {rowPreview(value)}
             </span>
           )}
