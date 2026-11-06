@@ -33,7 +33,7 @@ Then declare the styling prop once in your project. `@plumeria/core` ships no pr
 
 ```ts
 // plumeria.d.ts
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
 ## Options
@@ -44,7 +44,7 @@ Options are passed as the second argument.
 export default withPlumeria(nextConfig, {
   include: ['./src/**/*.{ts,tsx}'],
   exclude: ['**/node_modules/**', '**/.next/**'],
-  styleProp: 'sx',
+  styleProp: 'classStyle',
 });
 ```
 
@@ -52,7 +52,7 @@ export default withPlumeria(nextConfig, {
 | :-- | :-- | :-- |
 | `include` | all `js/jsx/ts/tsx` | Globs the stylesheet is compiled from. |
 | `exclude` | `node_modules`, `dist`, `.next` | Globs excluded from that compilation. |
-| `styleProp` | `'classStyle'` | The JSX prop that carries styles. |
+| `styleProp` | `'sx'` | The JSX prop that carries styles. |
 | `withoutLogicalProperties` | `false` | Reject the logical name of a property that also has a physical name. Takes `true` or `{ sizes?: boolean }`. |
 | `withoutPhysicalProperties` | `false` | Reject the physical name of a property that also has a logical name. Takes `true` or `{ sizes?: boolean }`. |
 | `lint` | `true` | Lint with `@plumeria/eslint-plugin` during `next build`, integrated into the build so it needs no setup. `false` builds without it. |
@@ -64,7 +64,7 @@ The two spelling options contradict each other, so enabling both is a configurat
 Renaming the prop takes two steps, and they have to agree. Tell the plugin:
 
 ```ts
-export default withPlumeria(nextConfig, { styleProp: 'sx' });
+export default withPlumeria(nextConfig, { styleProp: 'classStyle' });
 ```
 
 and declare the same name for TypeScript instead of referencing the default:
@@ -76,10 +76,10 @@ import type { Style } from '@plumeria/core';
 declare global {
   namespace React {
     interface HTMLAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
     interface SVGAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
   }
 }
