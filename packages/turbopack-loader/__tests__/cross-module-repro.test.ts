@@ -11,11 +11,11 @@ const projectDir = fs.realpathSync(
 
 const sources: Record<string, string> = {
   'a.tsx':
-    "import * as css from '@plumeria/core'; export const a = css.create({ box: { '@media (min-width: 600px)': { color: 'red' } } }); export const A = () => <div classStyle={a.box} />;",
+    "import * as css from '@plumeria/core'; export const a = css.create({ box: { '@media (min-width: 600px)': { color: 'red' } } }); export const A = () => <div sx={a.box} />;",
   'b.tsx':
-    "import * as css from '@plumeria/core'; export const b = css.create({ box: { '@supports (display: grid)': { color: 'blue' } } }); export const B = () => <div classStyle={b.box} />;",
+    "import * as css from '@plumeria/core'; export const b = css.create({ box: { '@supports (display: grid)': { color: 'blue' } } }); export const B = () => <div sx={b.box} />;",
   'view.tsx':
-    "import * as css from '@plumeria/core'; import { a } from './a'; import { b } from './b'; export const View = () => <div classStyle={[a.box, b.box]} />;",
+    "import * as css from '@plumeria/core'; import { a } from './a'; import { b } from './b'; export const View = () => <div sx={[a.box, b.box]} />;",
 };
 
 const transform = (name: string): Promise<string> =>
