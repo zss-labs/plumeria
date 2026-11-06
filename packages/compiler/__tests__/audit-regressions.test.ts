@@ -28,7 +28,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: { color: 'purple' } } satisfies Record<string, css.CSSProperties>);
-        export const App = () => <div classStyle={(styles.box as css.Style)!} />;
+        export const App = () => <div sx={(styles.box as css.Style)!} />;
       `,
       });
 
@@ -40,7 +40,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ a: { color: 'red' }, b: { padding: 4 } });
-        export const App = ({ on }: { on: boolean }) => <div classStyle={[[styles.a], on ? [styles.b] : undefined]} />;
+        export const App = ({ on }: { on: boolean }) => <div sx={[[styles.a], on ? [styles.b] : undefined]} />;
         export const Other = () => <div className={css.use([styles.a, styles.b])} />;
       `,
       });
@@ -54,7 +54,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       writeProject({
         'App.tsx': `
         import * as css from '@plumeria/core';
-        export const Card = (props: { cardStyle?: css.Style }) => <div classStyle={props.cardStyle} />;
+        export const Card = (props: { cardStyle?: css.Style }) => <div sx={props.cardStyle} />;
         export const App = () => <Card />;
       `,
       });
@@ -82,7 +82,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         export const theme = css.createTheme('@nonsense', { color: { default: 'red', theme: 'blue' } });
-        export const App = () => <div classStyle={{ color: theme.color }} />;
+        export const App = () => <div sx={{ color: theme.color }} />;
       `,
       });
 
@@ -96,7 +96,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ a: { color: 'red' }, b: { padding: 4 } });
-        export const App = () => <div classStyle={[styles.a,,styles.b]} />;
+        export const App = () => <div sx={[styles.a,,styles.b]} />;
       `,
       });
 
@@ -111,7 +111,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ space: ({ n }: { n: number }) => ({ padding: n }) });
-        export const App = ({ n }: { n: number }) => <div classStyle={styles.space({ n: n + 1 })} />;
+        export const App = ({ n }: { n: number }) => <div sx={styles.space({ n: n + 1 })} />;
       `,
       });
 
@@ -123,8 +123,8 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: { color: 'purple' }, other: { backgroundColor: 'orange' } });
-        export const First = () => { const alias = styles.box; return <div classStyle={alias} />; };
-        export const Second = () => { const alias = styles.other; return <div classStyle={alias} />; };
+        export const First = () => { const alias = styles.box; return <div sx={alias} />; };
+        export const Second = () => { const alias = styles.other; return <div sx={alias} />; };
       `,
       });
 
@@ -139,7 +139,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         import * as css from '@plumeria/core';
         type CardProps = { cardStyle?: css.Style };
         const styles = css.create({ base: { backgroundColor: 'orange' } });
-        export const Card = ({ cardStyle }: CardProps) => <div classStyle={[styles.base, cardStyle]} />;
+        export const Card = ({ cardStyle }: CardProps) => <div sx={[styles.base, cardStyle]} />;
       `,
         'App.tsx': `
         import { Card } from './Card';
@@ -156,7 +156,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'Card.tsx': `
         import * as css from '@plumeria/core';
         type CardProps = { cardStyle?: css.Style; active: boolean };
-        export const Card = ({ cardStyle: incoming, active }: CardProps) => <div classStyle={active && (incoming)} />;
+        export const Card = ({ cardStyle: incoming, active }: CardProps) => <div sx={active && (incoming)} />;
       `,
         'App.tsx': `
         import * as css from '@plumeria/core';
@@ -175,7 +175,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         import * as css from '@plumeria/core';
         const n = 9;
         const styles = css.create({ space: (n = 4) => ({ padding: n }) });
-        export const App = () => <div classStyle={styles.space()} />;
+        export const App = () => <div sx={styles.space()} />;
       `,
       });
 
@@ -190,7 +190,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       `,
         'App.tsx': `
         import { styles } from './styles';
-        export const App = () => <div classStyle={styles.box} />;
+        export const App = () => <div sx={styles.box} />;
       `,
       });
 
@@ -210,7 +210,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
 
   it('restores the outer alias after a component-local shadow', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core'; const s=css.create({a:{color:'red'},b:{color:'blue'}});const alias=s.a;export const First=()=>{const alias=s.b;return <div classStyle={alias}/>};export const Second=()=> <div classStyle={alias}/>;`,
+      'App.tsx': `import * as css from '@plumeria/core'; const s=css.create({a:{color:'red'},b:{color:'blue'}});const alias=s.a;export const First=()=>{const alias=s.b;return <div sx={alias}/>};export const Second=()=> <div sx={alias}/>;`,
     });
     const output = compile();
     expect(output).toContain('color: red');
@@ -223,14 +223,14 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx':
           `import * as css from '@plumeria/core'; interface Base {cardStyle?:css.Style};interface Props extends Base {}; const s=css.create({a:{color:'red'}});export const Card=({cardStyle=s.a}:` +
           type +
-          `)=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+          `)=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
       });
       expect(compile()).toContain('color: red');
     },
   );
   it('accepts omitted interface Style props without defaults', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core'; interface Props {cardStyle?:css.Style};export const Card=({cardStyle}:Props)=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+      'App.tsx': `import * as css from '@plumeria/core'; interface Props {cardStyle?:css.Style};export const Card=({cardStyle}:Props)=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
     });
     expect(compile()).toBe('');
   });
@@ -240,14 +240,14 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         compilerOptions: { paths: { '@/*': ['./*'] } },
       }),
       'styles.ts': `import * as css from '@plumeria/core';export const s=css.create({a:{color:'red'}});`,
-      'App.tsx': `import {s} from '@/styles';export const App=()=> <div classStyle={s.a}/>;`,
+      'App.tsx': `import {s} from '@/styles';export const App=()=> <div sx={s.a}/>;`,
     });
     expect(compile(['App.tsx'])).toContain('color: red');
   });
 
   it('emits both default and supplied prop styles', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core';const s=css.create({a:{color:'red'},b:{color:'blue'}});export const Card=({cardStyle=s.a}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <><Card/><Card cardStyle={s.b}/></>;`,
+      'App.tsx': `import * as css from '@plumeria/core';const s=css.create({a:{color:'red'},b:{color:'blue'}});export const Card=({cardStyle=s.a}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <><Card/><Card cardStyle={s.b}/></>;`,
     });
     const output = compile();
     expect(output).toContain('color: red');
@@ -256,13 +256,10 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
 
   const spreadPrefix = `import * as css from '@plumeria/core';const s=css.create({a:{color:'red'},b:{padding:4}});`;
   it.each([
-    [
-      'a style prop',
-      `export const App=()=> <div classStyle={[s.a, ...[s.b]]}/>;`,
-    ],
+    ['a style prop', `export const App=()=> <div sx={[s.a, ...[s.b]]}/>;`],
     [
       'a prop default',
-      `export const Card=({cardStyle=[s.a,...[s.b]]}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+      `export const Card=({cardStyle=[s.a,...[s.b]]}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
     ],
     [
       'css.use',
@@ -270,7 +267,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
     ],
     [
       'a component prop',
-      `const Card=({boxStyle}:{boxStyle?:css.Style})=><div classStyle={boxStyle}/>;export const App=()=> <Card boxStyle={[s.a, ...[s.b]]}/>;`,
+      `const Card=({boxStyle}:{boxStyle?:css.Style})=><div sx={boxStyle}/>;export const App=()=> <Card boxStyle={[s.a, ...[s.b]]}/>;`,
     ],
   ])(
     'rejects a spread element in a style array passed to %s',
@@ -286,21 +283,21 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
     writeProject({
       'App.tsx':
         spreadPrefix +
-        `const rest=[2,3];export const App=()=> <div classStyle={s.a} data-x={[1, ...rest]}/>;`,
+        `const rest=[2,3];export const App=()=> <div sx={s.a} data-x={[1, ...rest]}/>;`,
     });
     expect(compile()).toContain('color: red');
   });
 
   it('accepts an omitted optional style prop read off rest props', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core';export const Card=({...rest}:{cardStyle?:css.Style})=><div classStyle={rest.cardStyle}/>;export const App=()=> <Card/>;`,
+      'App.tsx': `import * as css from '@plumeria/core';export const Card=({...rest}:{cardStyle?:css.Style})=><div sx={rest.cardStyle}/>;export const App=()=> <Card/>;`,
     });
     expect(() => compile()).not.toThrow();
   });
 
   it('rejects a member read off a destructured style prop', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core';export const Card=({styles}:{styles:any})=><div classStyle={styles.a}/>;export const App=()=> <Card styles={{}}/>;`,
+      'App.tsx': `import * as css from '@plumeria/core';export const Card=({styles}:{styles:any})=><div sx={styles.a}/>;export const App=()=> <Card styles={{}}/>;`,
     });
     expect(() => compile()).toThrow(/Dynamic or unresolvable style object/);
   });
@@ -309,7 +306,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
     writeProject({
       'App.tsx':
         spreadPrefix +
-        `const posts=[{text:'a',url:'/a'}];export const App=()=> <Nav items={[...posts, {text:'b',url:'/b'}]} classStyle={s.a}/>;`,
+        `const posts=[{text:'a',url:'/a'}];export const App=()=> <Nav items={[...posts, {text:'b',url:'/b'}]} sx={s.a}/>;`,
     });
     expect(compile()).toContain('color: red');
   });
@@ -323,7 +320,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
     writeProject({
       'App.tsx':
         defaultPrefix +
-        `export const Card=({on,cardStyle=${value}}:{on?:boolean;cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+        `export const Card=({on,cardStyle=${value}}:{on?:boolean;cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
     });
     expect(() => compile()).toThrow(
       /A style prop default must be a defined style/,
@@ -336,7 +333,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       writeProject({
         'App.tsx':
           defaultPrefix +
-          `export const Card=({cardStyle=${value}}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+          `export const Card=({cardStyle=${value}}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
       });
       expect(compile()).toBe('');
     },
@@ -344,7 +341,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
 
   it('resolves a constant that names another constant', () => {
     writeProject({
-      'App.tsx': `import * as css from '@plumeria/core';const red='red';const color=red;const s=css.create({box:{color}});export const App=()=> <div classStyle={s.box}/>;`,
+      'App.tsx': `import * as css from '@plumeria/core';const red='red';const color=red;const s=css.create({box:{color}});export const App=()=> <div sx={s.box}/>;`,
     });
     expect(compile()).toContain('color: red');
   });
