@@ -23,7 +23,7 @@ type BadgeProps = {
 
 function Badge({ styleArray }: BadgeProps) {
   return (
-    <span data-testid="static-badge" classStyle={[styles.base, styleArray]}>
+    <span data-testid="static-badge" sx={[styles.base, styleArray]}>
       Badge
     </span>
   );
@@ -35,7 +35,7 @@ type PanelProps = {
 
 function Panel({ styleArray }: PanelProps) {
   return (
-    <div data-testid="restricted-panel" classStyle={[styles.base, styleArray]}>
+    <div data-testid="restricted-panel" sx={[styles.base, styleArray]}>
       Panel
     </div>
   );
@@ -47,7 +47,7 @@ type ChipProps = {
 
 function Chip({ styleArray }: ChipProps) {
   return (
-    <span data-testid="static-chip" classStyle={[styles.base, styleArray]}>
+    <span data-testid="static-chip" sx={[styles.base, styleArray]}>
       Chip
     </span>
   );
