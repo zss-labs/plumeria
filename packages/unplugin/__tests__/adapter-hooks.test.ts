@@ -32,7 +32,7 @@ import { unpluginFactory } from '../src/core';
 const SOURCE = `
 import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: 'teal' } });
-export const Card = () => <div classStyle={styles.box} />;
+export const Card = () => <div sx={styles.box} />;
 `;
 
 beforeAll(() => {
