@@ -37,6 +37,23 @@ const fade = css['viewTransition'];
 const name = { viewTransition: 1 }.viewTransition;`,
       options,
     },
+    {
+      // an import named by a string is left alone
+      code: `import { "viewTransition" as vt } from '@plumeria/core';
+const fade = vt({ old: { opacity: 0 } });`,
+      options,
+    },
+    {
+      // a private name is the class's own, not Plumeria's
+      code: `import * as css from '@plumeria/core';
+class Fade {
+  #viewTransition = 0;
+  read() {
+    return css.#viewTransition;
+  }
+}`,
+      options,
+    },
   ],
   invalid: [
     {
