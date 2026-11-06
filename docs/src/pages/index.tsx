@@ -96,17 +96,17 @@ const styles = css.create({
 
 export default function Page() {
   return (
-    <main data-home classStyle={styles.home}>
+    <main data-home sx={styles.home}>
       <Seo
         title="Plumeria - React styling library"
         subtitle="The style on the right wins, not the one imported or loaded last."
       />
-      <div classStyle={styles.page}>
-        <div classStyle={styles.hero}>
-          <h1 classStyle={styles.title}>Plumeria</h1>
-          <p classStyle={styles.description}>React styling library for reliable interfaces</p>
-          <div classStyle={styles.actions}>
-            <Link to="/docs" unstable_prefetchOnView={{}} classStyle={[styles.button, styles.primary]}>
+      <div sx={styles.page}>
+        <div sx={styles.hero}>
+          <h1 sx={styles.title}>Plumeria</h1>
+          <p sx={styles.description}>React styling library for reliable interfaces</p>
+          <div sx={styles.actions}>
+            <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
               Get started
               <svg
                 width="16"
@@ -118,12 +118,12 @@ export default function Page() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
-                classStyle={styles.arrow}
+                sx={styles.arrow}
               >
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </Link>
-            <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} classStyle={styles.button}>
+            <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
               Why Plumeria
             </Link>
           </div>
