@@ -150,7 +150,7 @@ export const HomeSearchIcon = () => {
   const { setOpenSearch } = useSearchContext();
 
   return (
-    <button type="button" aria-label="Search" classStyle={styles.icon} onClick={() => setOpenSearch(true)}>
+    <button type="button" aria-label="Search" sx={styles.icon} onClick={() => setOpenSearch(true)}>
       <svg
         width="14"
         height="14"
@@ -185,7 +185,7 @@ export const HomeSearchTrigger = () => {
       <button
         type="button"
         aria-label="Search"
-        classStyle={[styles.trigger, isDocs && styles.centered]}
+        sx={[styles.trigger, isDocs && styles.centered]}
         onClick={() => setOpenSearch(true)}
       >
         <ViewTransition default="none" update={moved ? carried : 'none'}>
