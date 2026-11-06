@@ -11,6 +11,10 @@ const ruleTester = new RuleTester({
 ruleTester.run('no-mutable-binding', noMutableBinding, {
   valid: [
     `
+      import { 'create' as create } from '@plumeria/core';
+      create({ box: { color: missing } });
+    `,
+    `
       import * as css from '@plumeria/core';
       const key = 'color';
       const size = 4;
