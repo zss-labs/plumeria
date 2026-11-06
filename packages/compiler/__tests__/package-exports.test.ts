@@ -124,7 +124,7 @@ export const colors = css.createStatic({ navy: '#654321' });
     const cwd = setup(`import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     const code = await transform(cwd);
     expect(code).not.toContain("from 'tw-tokens'");
@@ -133,10 +133,10 @@ export const App = () => <div classStyle={styles.main} />;
 
   it('reads a css.create style from a package', async () => {
     const cwd = setup(`import { card } from 'tw-tokens';
-export const App = () => <div classStyle={card.base} />;
+export const App = () => <div sx={card.base} />;
 `);
     const code = await transform(cwd);
-    expect(code).not.toContain('classStyle');
+    expect(code).not.toContain('sx');
     expect(code).not.toContain("from 'tw-tokens'");
     expect(css(cwd)).toMatch(/padding:\s*12px/);
   });
@@ -145,7 +145,7 @@ export const App = () => <div classStyle={card.base} />;
     const cwd = setup(`import * as css from '@plumeria/core';
 import { theme } from 'tw-tokens';
 const styles = css.create({ main: { color: theme.ink } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     await transform(cwd);
     expect(css(cwd)).toMatch(/color:\s*var\(--[^)]*ink\)/);
@@ -155,7 +155,7 @@ export const App = () => <div classStyle={styles.main} />;
     const cwd = setup(`import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens/colors';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     await transform(cwd);
     expect(css(cwd)).toContain('#001f3f');
@@ -166,7 +166,7 @@ export const App = () => <div classStyle={styles.main} />;
       `import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `,
       { linked: true },
     );
@@ -178,7 +178,7 @@ export const App = () => <div classStyle={styles.main} />;
     const cwd = setup(`import * as css from '@plumeria/core';
 import { colors } from 'plain-tokens';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     await expect(transform(cwd)).rejects.toThrow(/Cannot resolve the value/);
   });
@@ -188,7 +188,7 @@ export const App = () => <div classStyle={styles.main} />;
       `import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `,
       { dependencies: {} },
     );
@@ -200,7 +200,7 @@ export const App = () => <div classStyle={styles.main} />;
       `import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `,
       { linked: true },
     );
@@ -239,7 +239,7 @@ export const colors = css.createStatic({ navy: '#123456' });
     const cwd = setup(`import * as css from '@plumeria/core';
 import { colors } from 'tw-tokens/palette';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     await expect(transform(cwd)).rejects.toThrow(/Cannot resolve the value/);
 
@@ -265,7 +265,7 @@ export const App = () => <div classStyle={styles.main} />;
     const cwd = setup(`import * as css from '@plumeria/core';
 import { colors } from '${source}';
 const styles = css.create({ main: { color: colors.navy } });
-export const App = () => <div classStyle={styles.main} />;
+export const App = () => <div sx={styles.main} />;
 `);
     await transform(cwd);
     expect(css(cwd)).toContain(value);
