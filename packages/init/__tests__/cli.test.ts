@@ -49,7 +49,7 @@ describe('parseArgs', () => {
         '--physical',
         '--sizes',
         '--style-prop',
-        'sx',
+        'classStyle',
         '--allow-use',
         '--no-eslint',
       ]),
@@ -57,7 +57,7 @@ describe('parseArgs', () => {
       preset: {
         spelling: 'physical',
         sizes: true,
-        styleProp: 'sx',
+        styleProp: 'classStyle',
         stylePropOnly: false,
         eslint: false,
       },
@@ -111,7 +111,9 @@ describe('parseArgs', () => {
 
 describe('--style-prop', () => {
   it('takes an identifier', () => {
-    expect(parseArgs(['--style-prop', 'sx'])?.preset.styleProp).toBe('sx');
+    expect(parseArgs(['--style-prop', 'classStyle'])?.preset.styleProp).toBe(
+      'classStyle',
+    );
   });
 
   it('refuses a name TypeScript cannot declare', () => {
