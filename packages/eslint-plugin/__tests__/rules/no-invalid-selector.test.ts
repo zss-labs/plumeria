@@ -405,6 +405,13 @@ ruleTesterNoType.run(
         errors: [{ messageId: 'flattenSameNamePseudo' }],
       },
       {
+        // `(]` closes at the call's depth but not on its own, so that argument
+        // is kept as written while the nesting before it flattens
+        code: pseudoNesting(':is(:is(.a)):where(.x(]y)'),
+        output: pseudoNesting(':is(.a):where(.x(]y)'),
+        errors: [{ messageId: 'flattenSameNamePseudo' }],
+      },
+      {
         code: pseudoNesting(':where(.x:where(.a))'),
         output: null,
         errors: [{ messageId: 'noSameNamePseudoNesting' }],
