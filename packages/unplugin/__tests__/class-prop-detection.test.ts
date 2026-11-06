@@ -17,7 +17,7 @@ const directory = fs.realpathSync(
 
 const SOURCE = `import * as css from '@plumeria/core';
 const styles = css.create({ a: { color: 'red' } });
-export const A = () => <div classStyle={styles.a} />;
+export const A = () => <div sx={styles.a} />;
 `;
 
 type Adapted = {
