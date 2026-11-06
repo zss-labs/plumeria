@@ -39,16 +39,16 @@ export const styles = css.create({ a: { color: 'teal' } });`,
     const receiver = write(
       'Alone.tsx',
       `import * as css from '@plumeria/core';
-export const Alone = ({ classStyle }: { classStyle?: css.Style }) => <div classStyle={classStyle} />;`,
+export const Alone = ({ sx }: { sx?: css.Style }) => <div sx={sx} />;`,
     );
     write(
       'App.tsx',
       `import { styles } from './styles';
 import { Alone } from './Alone';
-export const App = () => <Alone classStyle={styles.a} />;`,
+export const App = () => <Alone sx={styles.a} />;`,
     );
 
-    const { code } = await transform(receiver, 'classStyle');
+    const { code } = await transform(receiver, 'sx');
 
     expect(code).not.toContain('className={""}');
     expect(
@@ -60,19 +60,19 @@ export const App = () => <Alone classStyle={styles.a} />;`,
     const receiver = write(
       'Boxed.tsx',
       `import * as css from '@plumeria/core';
-export const Boxed = ({ sx }: { sx?: css.Style }) => <div sx={sx} />;`,
+export const Boxed = ({ classStyle }: { classStyle?: css.Style }) => <div classStyle={classStyle} />;`,
     );
     write(
       'Uses.tsx',
       `import { styles } from './styles';
 import { Boxed } from './Boxed';
-export const Uses = () => <Boxed sx={styles.a} />;`,
+export const Uses = () => <Boxed classStyle={styles.a} />;`,
     );
 
-    await transform(receiver, 'classStyle');
-    const { code } = await transform(receiver, 'sx');
+    await transform(receiver, 'sx');
+    const { code } = await transform(receiver, 'classStyle');
 
     expect(code).not.toContain('className={""}');
-    expect(code).toContain('[sx]');
+    expect(code).toContain('[classStyle]');
   });
 });
