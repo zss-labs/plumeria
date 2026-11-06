@@ -42,7 +42,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       import css from '@plumeria/core';
       const s = css.create({ a: { color: 'red' } });
       export const Card = ({ cardStyle: local = s.a }: { cardStyle?: css.Style }) =>
-        <div classStyle={local} />;
+        <div sx={local} />;
       export const App = () => <Card />;
     `);
       expect(result.code).toContain('className');
@@ -76,7 +76,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import { type Style, create as make } from '@plumeria/core';
       const s = make({ a: { color: 'red' } });
-      export const A = ({ value }: { value?: Style }) => <div classStyle={[s.a, value]} />;
+      export const A = ({ value }: { value?: Style }) => <div sx={[s.a, value]} />;
     `);
       expect(result.code).toContain(
         `import type { Style } from '@plumeria/core'`,
@@ -97,7 +97,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       import * as css from '@plumeria/core';
       const s = css.create({ a: (size: number) => ({ width: size }) });
       export const A = ({ size, style }: any) =>
-        <div style={style} classStyle={s.a(size)} />;
+        <div style={style} sx={s.a(size)} />;
     `);
       expect(result.code).toContain('...(style)');
     });
@@ -106,7 +106,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import * as css from '@plumeria/core';
       export const A = ({ name }: any) =>
-        <div className={name} classStyle={undefined} />;
+        <div className={name} sx={undefined} />;
     `);
       expect(result.code).toContain('className={(name)}');
     });
@@ -129,7 +129,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const theme = css.createTheme('.dark', { color: 'blue' });
       const statics = css.createStatic({ gap: 4 });
       const s = css.create({ a: { animationName: frames, color: theme.color } });
-      export const A = () => <div classStyle={s.a} data-values={[transition, statics.gap]} />;
+      export const A = () => <div sx={s.a} data-values={[transition, statics.gap]} />;
     `);
       expect(result.code).toContain('className');
     });
@@ -139,7 +139,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       import * as css from '@plumeria/core';
       const s = css.create({ a: { color: 'red' } });
       export const A = ({ on }: any) =>
-        <><div classStyle={{ color: 'blue' }} /><div classStyle={[s.a, , on && s.a]} /></>;
+        <><div sx={{ color: 'blue' }} /><div sx={[s.a, , on && s.a]} /></>;
     `);
       expect(result.code).toContain('className');
     });
@@ -148,7 +148,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const ok = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ a: ({ color }: { color: string }) => ({ color }) });
-      export const A = ({ color }: any) => <div classStyle={s.a({ color })} />;
+      export const A = ({ color }: any) => <div sx={s.a({ color })} />;
     `);
       expect(ok.code).toContain('className');
 
@@ -156,7 +156,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
         run(`
         import * as css from '@plumeria/core';
         const s = css.create({ a: ({ color }: { color: string }) => ({ color }) });
-        export const A = () => <div classStyle={s.a({})} />;
+        export const A = () => <div sx={s.a({})} />;
       `),
       ).rejects.toThrow(/leaves "color" unset/);
     });
@@ -165,7 +165,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ a: (value: any) => ({ color: value.color }) });
-      export const A = () => <div classStyle={s.a({ value: { color: 'red' } })} />;
+      export const A = () => <div sx={s.a({ value: { color: 'red' } })} />;
     `);
       expect(result.code).toContain('className');
     });
@@ -176,7 +176,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const s = css.create({ a: { color: 'red' } });
       declare const memo: <T>(value: T) => T;
       export default memo(({ cardStyle = s.a }: { cardStyle?: css.Style }) =>
-        <div classStyle={cardStyle} />);
+        <div sx={cardStyle} />);
     `);
       expect(result.code).toContain('className');
     });
@@ -185,7 +185,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const styles = css.create({ color: 'red', padding: 4 });
-      export const A = () => <div classStyle={styles} />;
+      export const A = () => <div sx={styles} />;
     `);
       expect(result.code).toContain('className');
     });
@@ -193,16 +193,16 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
     it('handles an empty style array without adding a class', async () => {
       const result = await run(`
       import * as css from '@plumeria/core';
-      export const A = () => <div classStyle={[]} />;
+      export const A = () => <div sx={[]} />;
     `);
-      expect(result.code).not.toContain('classStyle');
+      expect(result.code).not.toContain('sx');
     });
 
     it('rejects an unknown computed style group', async () => {
       await expect(
         run(`
         import * as css from '@plumeria/core';
-        export const A = ({ styles, kind }: any) => <div classStyle={styles[kind]} />;
+        export const A = ({ styles, kind }: any) => <div sx={styles[kind]} />;
       `),
       ).rejects.toThrow(/not supported/);
     });
@@ -211,7 +211,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ '#': { color: 'red' }, value: { color: 'blue' } });
-      export const A = ({ kind, on }: any) => <div classStyle={on ? s[kind] : s.value} />;
+      export const A = ({ kind, on }: any) => <div sx={on ? s[kind] : s.value} />;
     `);
       expect(result.code).toContain('##');
     });
@@ -221,7 +221,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
         run(`
         import * as css from '@plumeria/core';
         const s = css.create({ a: (size: number) => ({ width: size }) });
-        export const A = () => <div classStyle={s['a'](2)} />;
+        export const A = () => <div sx={s['a'](2)} />;
       `),
       ).rejects.toThrow(/not supported/);
     });
@@ -243,7 +243,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
 
       const source = `
       import { constant, frames, transition, styles, theme, statics } from './library';
-      export const A = () => <div classStyle={styles.a} data-values={[constant, frames, transition, theme.color, statics.gap]} />;
+      export const A = () => <div sx={styles.a} data-values={[constant, frames, transition, theme.color, statics.gap]} />;
     `;
       const consumer = path.join(directory, `fixture-${count}.tsx`);
       const dependencies: string[] = [];
@@ -264,7 +264,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       );
       const source = `
       import { styles } from './computed-library';
-      export const A = ({ kind }: any) => <div classStyle={styles[kind]} />;
+      export const A = ({ kind }: any) => <div sx={styles[kind]} />;
     `;
       const consumer = path.join(directory, `fixture-${count}.tsx`);
       const result = await run(source, { scan: [library, consumer] });
@@ -302,12 +302,12 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const source = `
       import * as css from '@plumeria/core';
       const s = css.create({ a: (value: any) => ({ color: value.color }) });
-      const Card = ({ boxStyle }: { boxStyle?: css.Style }) => <div classStyle={boxStyle} />;
+      const Card = ({ boxStyle }: { boxStyle?: css.Style }) => <div sx={boxStyle} />;
       export const A = () => <Card boxStyle={s.a({ value: { color: 'red' } })} />;
     `;
       const consumer = path.join(directory, `fixture-${count}.tsx`);
       await expect(run(source, { scan: [consumer] })).rejects.toThrow(
-        /only supported in the classStyle prop/,
+        /only supported in the sx prop/,
       );
     });
   });
@@ -317,7 +317,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ a: (value: string) => ({ color: value }) });
-      export const A = () => <div classStyle={s.a({ value: 'red' })} />;
+      export const A = () => <div sx={s.a({ value: 'red' })} />;
     `);
       expect(result.code).toContain('className');
       expect(result.code).not.toContain('style={');
@@ -332,7 +332,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
         import * as css from '@plumeria/core';
         const s = css.create({ a: { color: 'red' } });
         const palette = { a: s.a };
-        export const A = ({ kind }: any) => <div classStyle={palette[kind]} />;
+        export const A = ({ kind }: any) => <div sx={palette[kind]} />;
       `),
       ).rejects.toThrow(/"palette\[kind\]" is not supported/);
     });
