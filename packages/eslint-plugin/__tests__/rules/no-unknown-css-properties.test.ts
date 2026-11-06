@@ -13,6 +13,13 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
     {
       code: `
         import * as css from '@plumeria/core';
+        const dynamic = 'positionArea';
+        css.positionTry({ ...other, [dynamic]: 'top' });
+      `,
+    },
+    {
+      code: `
+        import * as css from '@plumeria/core';
         const styles = css.create({
           main: {
             backgroundColor: 'red',
