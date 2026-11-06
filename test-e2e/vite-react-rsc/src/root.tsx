@@ -59,7 +59,7 @@ function App(props: { url: URL }) {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1 data-testid="rsc-server-title" classStyle={styles.title}>
+      <h1 data-testid="rsc-server-title" sx={styles.title}>
         Vite + RSC
       </h1>
       <div className="card">
@@ -70,13 +70,13 @@ function App(props: { url: URL }) {
           <button>Server Counter: {getServerCounter()}</button>
         </form>
       </div>
-      <div data-testid="rsc-server-box" classStyle={styles.server}>
+      <div data-testid="rsc-server-box" sx={styles.server}>
         Request URL: {props.url?.href}
       </div>
-      <div data-testid="rsc-server-nested" classStyle={styles.nested}>
+      <div data-testid="rsc-server-nested" sx={styles.nested}>
         server component, nested block only
       </div>
-      <div data-testid="rsc-server-shared" classStyle={shared.panel}>
+      <div data-testid="rsc-server-shared" sx={shared.panel}>
         server component, shared module
       </div>
       <ul className="read-the-docs">
