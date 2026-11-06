@@ -74,7 +74,7 @@ describe('source generators', () => {
   });
 
   it('exposes setup defaults and helpers', () => {
-    expect(DEFAULT_STYLE_PROP).toBe('classStyle');
+    expect(DEFAULT_STYLE_PROP).toBe('sx');
     expect(CLEAN_SCRIPT).toBe('rimraf .next');
     expect(rejectedSpelling('none')).toBeUndefined();
     expect(packages).toEqual(expect.any(Function));
@@ -94,20 +94,23 @@ describe('source generators', () => {
 
   it('names a renamed styling prop in the ESLint settings', () => {
     expect(eslintSource(answers(), true)).not.toContain('settings:');
-    expect(eslintEntries(answers({ styleProp: 'sx' }), false)[1]).toContain(
-      "files: ['**/*.{js,jsx}']",
-    );
-    const source = eslintSource(answers({ styleProp: 'sx' }), true);
-    expect(source).toContain("      plumeria: { styleProp: 'sx' },");
     expect(
-      eslintEntries(answers({ styleProp: 'sx', stylePropOnly: false }), true),
+      eslintEntries(answers({ styleProp: 'classStyle' }), false)[1],
+    ).toContain("files: ['**/*.{js,jsx}']");
+    const source = eslintSource(answers({ styleProp: 'classStyle' }), true);
+    expect(source).toContain("      plumeria: { styleProp: 'classStyle' },");
+    expect(
+      eslintEntries(
+        answers({ styleProp: 'classStyle', stylePropOnly: false }),
+        true,
+      ),
     ).toEqual([
       'plumeria.configs.recommended',
       [
         '{',
         "  files: ['**/*.{ts,tsx}'],",
         '  settings: {',
-        "    plumeria: { styleProp: 'sx' },",
+        "    plumeria: { styleProp: 'classStyle' },",
         '  },',
         '}',
       ].join('\n'),
@@ -115,15 +118,13 @@ describe('source generators', () => {
   });
 
   it('covers plugin, script, and package-manager variants', () => {
-    expect(pluginOptions(answers({ styleProp: 'sx' }))).toContain(
-      "styleProp: 'sx'",
+    expect(pluginOptions(answers({ styleProp: 'classStyle' }))).toContain(
+      "styleProp: 'classStyle'",
     );
     expect(pluginCall('bun', answers(), 'p')).toBe('p.bun()');
+    expect(buildScript('vite build', 'sx')).toBe('plumeria-lint -- vite build');
     expect(buildScript('vite build', 'classStyle')).toBe(
-      'plumeria-lint -- vite build',
-    );
-    expect(buildScript('vite build', 'sx')).toBe(
-      'plumeria-lint --style-prop sx -- vite build',
+      'plumeria-lint --style-prop classStyle -- vite build',
     );
     expect(installCommand('yarn', ['a'])).toBe('yarn add -D a');
     expect(installCommand('bun', ['a'])).toBe('bun add -d a');
@@ -168,14 +169,14 @@ describe('the spelling answer', () => {
 describe('the declaration', () => {
   it('references the shipped one for the default prop', () => {
     expect(declarationSource(answers())).toBe(
-      '/// <reference types="@plumeria/core/class-style" />\n',
+      '/// <reference types="@plumeria/core/sx" />\n',
     );
   });
 
   it('declares the prop the project renamed to', () => {
-    const source = declarationSource(answers({ styleProp: 'sx' }));
+    const source = declarationSource(answers({ styleProp: 'classStyle' }));
     expect(source).toContain("import type { Style } from '@plumeria/core';");
-    expect(source).toContain('sx?: Style;');
+    expect(source).toContain('classStyle?: Style;');
   });
 });
 
@@ -259,13 +260,13 @@ describe('plan', () => {
 
     const actions = plan(
       detect(dir),
-      answers({ spelling: 'logical', styleProp: 'sx' }),
+      answers({ spelling: 'logical', styleProp: 'classStyle' }),
     );
     const patched = contentsOf(on(actions, 'vite.config.ts'));
 
     expect(patched).toContain("import plumeria from '@plumeria/unplugin';");
     expect(patched).toContain(
-      "plugins: [react(), plumeria.vite({ styleProp: 'sx', withoutPhysicalProperties: true })]",
+      "plugins: [react(), plumeria.vite({ styleProp: 'classStyle', withoutPhysicalProperties: true })]",
     );
   });
 
@@ -381,11 +382,24 @@ describe('plan', () => {
     expect(patched.scripts.build).toBe('plumeria-lint -- node build.mjs');
   });
 
+  it('explains when there is no build script to guard', () => {
+    project(
+      { name: 'app', devDependencies: { esbuild: '^0.28.0' } },
+      { 'tsconfig.json': '{}' },
+    );
+    expect(on(plan(detect(dir), answers()), 'package.json')).toMatchObject({
+      kind: 'skip',
+      note: 'no build script to guard',
+    });
+  });
+
   it('renames plumerialint to plumeria-lint in the build script', () => {
     project(
       {
         name: 'app',
-        scripts: { build: 'plumerialint --style-prop sx -- node build.mjs' },
+        scripts: {
+          build: 'plumerialint --style-prop classStyle -- node build.mjs',
+        },
         devDependencies: { esbuild: '^0.28.0' },
       },
       { 'tsconfig.json': '{}' },
@@ -397,7 +411,7 @@ describe('plan', () => {
       scripts: Record<string, string>;
     };
     expect(patched.scripts.build).toBe(
-      'plumeria-lint --style-prop sx -- node build.mjs',
+      'plumeria-lint --style-prop classStyle -- node build.mjs',
     );
   });
 
@@ -413,13 +427,16 @@ describe('plan', () => {
 
     const patched = JSON.parse(
       contentsOf(
-        on(plan(detect(dir), answers({ styleProp: 'sx' })), 'package.json'),
+        on(
+          plan(detect(dir), answers({ styleProp: 'classStyle' })),
+          'package.json',
+        ),
       ),
     ) as {
       scripts: Record<string, string>;
     };
     expect(patched.scripts.build).toBe(
-      'plumeria-lint --style-prop sx -- node build.mjs',
+      'plumeria-lint --style-prop classStyle -- node build.mjs',
     );
   });
 
@@ -471,8 +488,7 @@ describe('plan', () => {
       },
       {
         'tsconfig.json': '{}',
-        'plumeria.d.ts':
-          '/// <reference types="@plumeria/core/class-style" />\n',
+        'plumeria.d.ts': '/// <reference types="@plumeria/core/sx" />\n',
         'vite.config.ts': `import plumeria from '@plumeria/unplugin';\n\nexport default { plugins: [plumeria.vite()] };\n`,
         'eslint.config.ts': `import plumeria from '@plumeria/eslint-plugin';\n\nexport default [plumeria.configs.recommended];\n`,
       },
@@ -604,7 +620,7 @@ describe('plan', () => {
     );
     const actions = plan(
       detect(dir),
-      answers({ spelling: 'logical', sizes: true, styleProp: 'sx' }),
+      answers({ spelling: 'logical', sizes: true, styleProp: 'classStyle' }),
     );
     expect(
       actions.some(
@@ -632,7 +648,52 @@ describe('plan', () => {
       'error',
       { sizes: true },
     ]);
-    expect(config.settings).toEqual({ plumeria: { styleProp: 'sx' } });
+    expect(config.settings).toEqual({ plumeria: { styleProp: 'classStyle' } });
+  });
+
+  it('merges oxlint entries over non-object fields', () => {
+    project(
+      { devDependencies: { vite: '1', oxlint: '1' } },
+      {
+        'vite.config.ts': VITE_CONFIG,
+        '.oxlintrc.json': JSON.stringify({
+          jsPlugins: false,
+          rules: false,
+          settings: { project: true },
+        }),
+      },
+    );
+    const action = on(
+      plan(
+        detect(dir),
+        answers({ spelling: 'logical', sizes: false, styleProp: 'classStyle' }),
+      ),
+      '.oxlintrc.json',
+    );
+    const config = JSON.parse(contentsOf(action));
+    expect(config.jsPlugins).toEqual([
+      { name: '@plumeria', specifier: '@plumeria/eslint-plugin/oxlint-plugin' },
+    ]);
+    expect(config.rules['@plumeria/no-physical-properties']).toBe('error');
+    expect(config.settings).toEqual({
+      project: true,
+      plumeria: { styleProp: 'classStyle' },
+    });
+
+    add(
+      dir,
+      '.oxlintrc.json',
+      JSON.stringify({ jsPlugins: ['other'], rules: { existing: 'warn' } }),
+    );
+    const defaultConfig = JSON.parse(
+      contentsOf(on(plan(detect(dir), answers()), '.oxlintrc.json')),
+    );
+    expect(defaultConfig.jsPlugins).toEqual([
+      'other',
+      { name: '@plumeria', specifier: '@plumeria/eslint-plugin/oxlint-plugin' },
+    ]);
+    expect(defaultConfig.rules.existing).toBe('warn');
+    expect(defaultConfig.settings).toBeUndefined();
   });
 
   it('skips an oxlint config that already loads the plugin and hands over one with comments', () => {
