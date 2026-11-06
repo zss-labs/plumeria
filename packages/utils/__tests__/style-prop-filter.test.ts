@@ -1,102 +1,108 @@
 import { needsCompile, usesStyleProp } from '../src/stylePropFilter';
 
 const uses = (source: string, filePath = 'App.tsx') =>
-  usesStyleProp(source, 'sx', filePath);
+  usesStyleProp(source, 'classStyle', filePath);
 
 describe('usesStyleProp', () => {
   it('filters file extensions and sources without an attribute candidate', () => {
-    expect(uses('<div sx={a} />', 'App.ts')).toBe(false);
-    expect(uses('<div sx={a} />', 'App.mts')).toBe(false);
-    expect(usesStyleProp('<div sx={a} />', '', 'App.tsx')).toBe(false);
+    expect(uses('<div classStyle={a} />', 'App.ts')).toBe(false);
+    expect(uses('<div classStyle={a} />', 'App.mts')).toBe(false);
+    expect(usesStyleProp('<div classStyle={a} />', '', 'App.tsx')).toBe(false);
     expect(uses('<div />')).toBe(false);
     expect(uses('<div prefixsx={a} />')).toBe(false);
-    expect(uses('<div sx />')).toBe(false);
-    expect(uses('<div sx /* comment */ = // comment\n {a} />')).toBe(true);
-    expect(uses('<div sx /*')).toBe(false);
-    expect(uses('<div sx //')).toBe(false);
+    expect(uses('<div classStyle />')).toBe(false);
+    expect(uses('<div classStyle /* comment */ = // comment\n {a} />')).toBe(
+      true,
+    );
+    expect(uses('<div classStyle /*')).toBe(false);
+    expect(uses('<div classStyle //')).toBe(false);
   });
 
   it.each([
-    '<div sx={a} />',
-    '<div /* comment */ sx={a} />',
-    '<div // comment\n sx={a} />',
-    '<div title="escaped \\" quote" sx={a} />',
-    "<div title='escaped \\' quote' sx={a} />",
-    '<div>{value}<span sx={a} /></div>',
-    '<div>text<span sx={a} /></div>',
-    '<><div sx={a} /></>',
-    '<div><span /></div>; <p sx={a} />',
-    '<div>{<span sx={a} />}</div>',
-    '<div prop={{ nested: true }} sx={a} />',
+    '<div classStyle={a} />',
+    '<div /* comment */ classStyle={a} />',
+    '<div // comment\n classStyle={a} />',
+    '<div title="escaped \\" quote" classStyle={a} />',
+    "<div title='escaped \\' quote' classStyle={a} />",
+    '<div>{value}<span classStyle={a} /></div>',
+    '<div>text<span classStyle={a} /></div>',
+    '<><div classStyle={a} /></>',
+    '<div><span /></div>; <p classStyle={a} />',
+    '<div>{<span classStyle={a} />}</div>',
+    '<div prop={{ nested: true }} classStyle={a} />',
   ])('finds an attribute through JSX syntax in %s', (source) => {
     expect(uses(source)).toBe(true);
   });
 
   it.each([
-    '/* comment */ <div sx={a} />',
-    '// comment\n<div sx={a} />',
-    "'string'; <div sx={a} />",
-    '"string"; <div sx={a} />',
-    '`template`; <div sx={a} />',
-    '`escaped \\` template`; <div sx={a} />',
-    '`template ${value}`; <div sx={a} />',
-    '`template ${first} between ${second}`; <div sx={a} />',
-    '`template ${`nested ${value}`} tail`; <div sx={a} />',
-    '/regexp/.test(value); <div sx={a} />',
-    '/escaped\\//.test(value); <div sx={a} />',
-    '/[a/]/.test(value); <div sx={a} />',
-    'return /regexp/; <div sx={a} />',
-    'yield /regexp/; <div sx={a} />',
-    'default: /regexp/; <div sx={a} />',
-    'else /regexp/; <div sx={a} />',
-    'case /regexp/: <div sx={a} />',
-    'await /regexp/; <div sx={a} />',
-    'do /regexp/; <div sx={a} />',
-    'typeof /regexp/; <div sx={a} />',
-    'void /regexp/; <div sx={a} />',
-    'value in /regexp/; <div sx={a} />',
-    'value of /regexp/; <div sx={a} />',
-    'new /regexp/; <div sx={a} />',
-    'delete /regexp/; <div sx={a} />',
-    'throw /regexp/; <div sx={a} />',
-    'fn(.../regexp/); <div sx={a} />',
-    'value++ / divisor; <div sx={a} />',
-    'value-- / divisor; <div sx={a} />',
-    '{ value }; <div sx={a} />',
-    '<1; <div sx={a} />',
+    '/* comment */ <div classStyle={a} />',
+    '// comment\n<div classStyle={a} />',
+    "'string'; <div classStyle={a} />",
+    '"string"; <div classStyle={a} />',
+    '`template`; <div classStyle={a} />',
+    '`escaped \\` template`; <div classStyle={a} />',
+    '`template ${value}`; <div classStyle={a} />',
+    '`template ${first} between ${second}`; <div classStyle={a} />',
+    '`template ${`nested ${value}`} tail`; <div classStyle={a} />',
+    '/regexp/.test(value); <div classStyle={a} />',
+    '/escaped\\//.test(value); <div classStyle={a} />',
+    '/[a/]/.test(value); <div classStyle={a} />',
+    'return /regexp/; <div classStyle={a} />',
+    'yield /regexp/; <div classStyle={a} />',
+    'default: /regexp/; <div classStyle={a} />',
+    'else /regexp/; <div classStyle={a} />',
+    'case /regexp/: <div classStyle={a} />',
+    'await /regexp/; <div classStyle={a} />',
+    'do /regexp/; <div classStyle={a} />',
+    'typeof /regexp/; <div classStyle={a} />',
+    'void /regexp/; <div classStyle={a} />',
+    'value in /regexp/; <div classStyle={a} />',
+    'value of /regexp/; <div classStyle={a} />',
+    'new /regexp/; <div classStyle={a} />',
+    'delete /regexp/; <div classStyle={a} />',
+    'throw /regexp/; <div classStyle={a} />',
+    'fn(.../regexp/); <div classStyle={a} />',
+    'value++ / divisor; <div classStyle={a} />',
+    'value-- / divisor; <div classStyle={a} />',
+    '{ value }; <div classStyle={a} />',
+    '<1; <div classStyle={a} />',
   ])('scans JavaScript preceding JSX in %s', (source) => {
     expect(uses(source)).toBe(true);
   });
 
   it('returns according to incomplete constructs before a later candidate', () => {
-    expect(uses('// no newline sx ={a}')).toBe(false);
-    expect(uses('/* unterminated sx ={a}')).toBe(true);
-    expect(uses("'unterminated\n sx ={a}")).toBe(true);
-    expect(uses("'unterminated sx ={a}")).toBe(true);
-    expect(uses('`unterminated sx ={a}')).toBe(true);
-    expect(uses('`interpolation ${value} unterminated sx ={a}')).toBe(true);
-    expect(uses('} sx ={a}')).toBe(true);
-    expect(uses('/unterminated\n sx ={a}')).toBe(true);
-    expect(uses('<div /* unterminated sx ={a}')).toBe(true);
-    expect(uses('<div // unterminated sx ={a}')).toBe(true);
-    expect(uses('<div title="unterminated sx ={a}')).toBe(true);
-    expect(uses('<div></div sx ={a}')).toBe(true);
+    expect(uses('// no newline classStyle ={a}')).toBe(false);
+    expect(uses('/* unterminated classStyle ={a}')).toBe(true);
+    expect(uses("'unterminated\n classStyle ={a}")).toBe(true);
+    expect(uses("'unterminated classStyle ={a}")).toBe(true);
+    expect(uses('`unterminated classStyle ={a}')).toBe(true);
+    expect(uses('`interpolation ${value} unterminated classStyle ={a}')).toBe(
+      true,
+    );
+    expect(uses('} classStyle ={a}')).toBe(true);
+    expect(uses('/unterminated\n classStyle ={a}')).toBe(true);
+    expect(uses('<div /* unterminated classStyle ={a}')).toBe(true);
+    expect(uses('<div // unterminated classStyle ={a}')).toBe(true);
+    expect(uses('<div title="unterminated classStyle ={a}')).toBe(true);
+    expect(uses('<div></div classStyle ={a}')).toBe(true);
   });
 
   it('ignores candidates skipped as non-code', () => {
-    expect(uses("'sx={a}'")).toBe(false);
-    expect(uses('"sx={a}"')).toBe(false);
-    expect(uses('`sx={a}`')).toBe(false);
-    expect(uses('// sx={a}')).toBe(false);
+    expect(uses("'classStyle={a}'")).toBe(false);
+    expect(uses('"classStyle={a}"')).toBe(false);
+    expect(uses('`classStyle={a}`')).toBe(false);
+    expect(uses('// classStyle={a}')).toBe(false);
   });
 });
 
 describe('needsCompile', () => {
   it('accepts either a core import or a style prop', () => {
-    expect(needsCompile("import '@plumeria/core';", 'sx', 'App.tsx')).toBe(
-      true,
-    );
-    expect(needsCompile('<div sx={a} />', 'sx', 'App.tsx')).toBe(true);
-    expect(needsCompile('<div />', 'sx', 'App.tsx')).toBe(false);
+    expect(
+      needsCompile("import '@plumeria/core';", 'classStyle', 'App.tsx'),
+    ).toBe(true);
+    expect(
+      needsCompile('<div classStyle={a} />', 'classStyle', 'App.tsx'),
+    ).toBe(true);
+    expect(needsCompile('<div />', 'classStyle', 'App.tsx')).toBe(false);
   });
 });
