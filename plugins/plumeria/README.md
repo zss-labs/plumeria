@@ -1,6 +1,6 @@
 # Plumeria
 
-Teaches Claude the rules of [Plumeria](https://plumeria.dev), a CSS-in-JS library that compiles styles to static CSS at build time. With the plugin installed, Claude writes, reviews, and fixes Plumeria styles the way the compiler expects: `css.create()` at module top level, styles bound through the `classStyle` prop, composition with arrays, and the selector rules the compiler enforces.
+Teaches Claude the rules of [Plumeria](https://plumeria.dev), a CSS-in-JS library that compiles styles to static CSS at build time. With the plugin installed, Claude writes, reviews, and fixes Plumeria styles the way the compiler expects: `css.create()` at module top level, styles bound through the `sx` prop, composition with arrays, and the selector rules the compiler enforces.
 
 ## What it contains
 
