@@ -101,6 +101,7 @@ describe('mutually exclusive states', () => {
     [':hover', ':not(:hover)'],
     [':not(:placeholder-shown)', ':placeholder-shown'],
     [':focus:hover', ':not(:hover)'],
+    ['[data-state="open" s]', '[data-state=closed]'],
   ])('sees %s and %s as exclusive', (first, second) => {
     expect(areExclusive(first as string, second as string)).toBe(true);
   });
@@ -111,6 +112,10 @@ describe('mutually exclusive states', () => {
     [':checked', ':indeterminate'],
     [':focus', ':focus-visible'],
     [':hover', ':not(:focus)'],
+    ['[data-state="open"]', '[data-state=open]'],
+    ['[data-state="OPEN" i]', '[data-state=open]'],
+    ['[data-state', '[data-state=open]'],
+    [':not([data-state])', '['],
   ])('sees %s and %s as able to hold at once', (first, second) => {
     expect(areExclusive(first as string, second as string)).toBe(false);
   });
