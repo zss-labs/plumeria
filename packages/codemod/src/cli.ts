@@ -4,17 +4,20 @@ import { ESLint } from 'eslint';
 import * as tsParser from '@typescript-eslint/parser';
 import { renameProp } from './transforms/rename-prop';
 import { renameApi } from './transforms/rename-api';
-import { adoptStyles } from './transforms/adopt-styles';
-import { releaseStyles } from './transforms/release-styles';
-import { plan, write, formatReports } from './migrate';
-import { formatReleaseReports, planRelease, writeRelease } from './release';
-import type { ModuleMap } from './transforms/adopt-styles';
-import type { ReleaseModule } from './transforms/release-styles';
+import {
+  migrateToTypedCSS,
+  toTypedCSS,
+} from './transforms/migrate-to-typedcss';
+import { installCommand, migrateManifests } from './package-json';
 import type { Linter } from 'eslint';
 
 const { version } = require('../package.json') as { version: string };
 
-const TRANSFORMS = ['rename-prop', 'rename-api', 'migrate'] as const;
+const TRANSFORMS = [
+  'rename-prop',
+  'rename-api',
+  'migrate-to-typedcss',
+] as const;
 
 const APIS = [
   'create',
@@ -28,8 +31,6 @@ const APIS = [
   'extended',
   'use',
 ];
-
-const SOURCES = ['css-modules', 'plumeria'] as const;
 
 const SOURCE_FILES = '**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}';
 
@@ -51,13 +52,11 @@ const USAGE = `plumeria-codemod — codemods for migrating Plumeria APIs
 Usage
   npx @plumeria/codemod rename-prop <from> <to> [paths...]
   npx @plumeria/codemod rename-api <from> <to> [paths...]
-  npx @plumeria/codemod migrate --from css-modules [paths...]
-  npx @plumeria/codemod migrate --from plumeria [paths...]
+  npx @plumeria/codemod migrate-to-typedcss [paths...]
 
 Options
   -d, --dry-run    report what would change without writing
       --no-types   leave TypeScript declarations untouched (rename-prop)
-      --from       what to migrate from (migrate)
   -h, --help       show this message
   -v, --version    show the version
 
@@ -65,8 +64,7 @@ Examples
   npx @plumeria/codemod rename-prop classStyle sx
   npx @plumeria/codemod rename-prop classStyle sx src app --dry-run
   npx @plumeria/codemod rename-api viewTransition viewTransitionClass
-  npx @plumeria/codemod migrate --from css-modules
-  npx @plumeria/codemod migrate --from plumeria --dry-run
+  npx @plumeria/codemod migrate-to-typedcss src --dry-run
 
 Paths default to the current directory. After the rewrite, point the toolchain
 at the new name with \`styleProp\` on your bundler plugin, and with
@@ -75,7 +73,7 @@ at the new name with \`styleProp\` on your bundler plugin, and with
 class UsageError extends Error {}
 
 interface RenameOptions {
-  transform: 'rename-prop' | 'rename-api';
+  transform: (typeof TRANSFORMS)[number];
   from: string;
   to: string;
   targets: string[];
@@ -83,16 +81,7 @@ interface RenameOptions {
   includeTypes: boolean;
 }
 
-interface MigrateOptions {
-  transform: 'migrate';
-  source: (typeof SOURCES)[number];
-  targets: string[];
-  dryRun: boolean;
-}
-
-type Options = RenameOptions | MigrateOptions;
-
-function parseArgs(argv: string[]): Options | null {
+function parseArgs(argv: string[]): RenameOptions | null {
   if (argv.length === 0 || argv.includes('-h') || argv.includes('--help')) {
     console.log(USAGE);
     return null;
@@ -105,7 +94,6 @@ function parseArgs(argv: string[]): Options | null {
   const positional: string[] = [];
   let dryRun = false;
   let includeTypes = true;
-  let source: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -117,21 +105,14 @@ function parseArgs(argv: string[]): Options | null {
       case '--no-types':
         includeTypes = false;
         break;
-      case '--from':
-        source = argv[++i];
-        break;
       default:
-        if (arg.startsWith('--from=')) {
-          source = arg.slice('--from='.length);
-          break;
-        }
         if (arg.startsWith('-'))
           throw new UsageError(`unknown option "${arg}"`);
         positional.push(arg);
     }
   }
 
-  const [transform, from, to, ...targets] = positional;
+  const [transform, ...rest] = positional;
 
   if (!TRANSFORMS.includes(transform as (typeof TRANSFORMS)[number])) {
     throw new UsageError(
@@ -139,24 +120,19 @@ function parseArgs(argv: string[]): Options | null {
     );
   }
 
-  if (transform === 'migrate') {
-    if (!source) {
-      throw new UsageError(
-        `migrate needs --from. Available: ${SOURCES.join(', ')}`,
-      );
-    }
-    if (!SOURCES.includes(source as (typeof SOURCES)[number])) {
-      throw new UsageError(
-        `unknown source "${source}". Available: ${SOURCES.join(', ')}`,
-      );
-    }
+  if (transform === 'migrate-to-typedcss') {
     return {
-      transform: 'migrate',
-      source: source as (typeof SOURCES)[number],
-      targets: positional.slice(1).length > 0 ? positional.slice(1) : ['.'],
+      transform: 'migrate-to-typedcss',
+      from: 'Plumeria',
+      to: 'typedcss',
+      targets: rest.length > 0 ? rest : ['.'],
       dryRun,
+      includeTypes,
     };
   }
+
+  const [from, to, ...targets] = rest;
+
   if (!from || !to) {
     throw new UsageError(`${transform} needs both <from> and <to>`);
   }
@@ -198,17 +174,24 @@ function parseArgs(argv: string[]): Options | null {
 function buildConfig(options: RenameOptions): Linter.Config[] {
   const { transform, from, to, includeTypes } = options;
   const rule =
-    transform === 'rename-api'
+    transform === 'migrate-to-typedcss'
       ? {
-          plugins: { codemod: { rules: { 'rename-api': renameApi } } },
-          rules: { 'codemod/rename-api': ['error', { from, to }] },
-        }
-      : {
-          plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
-          rules: {
-            'codemod/rename-prop': ['error', { from, to, includeTypes }],
+          plugins: {
+            codemod: { rules: { 'migrate-to-typedcss': migrateToTypedCSS } },
           },
-        };
+          rules: { 'codemod/migrate-to-typedcss': 'error' },
+        }
+      : transform === 'rename-api'
+        ? {
+            plugins: { codemod: { rules: { 'rename-api': renameApi } } },
+            rules: { 'codemod/rename-api': ['error', { from, to }] },
+          }
+        : {
+            plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
+            rules: {
+              'codemod/rename-prop': ['error', { from, to, includeTypes }],
+            },
+          };
 
   return [
     { ignores: IGNORES },
@@ -243,7 +226,7 @@ function warnIfDirty(): void {
 }
 
 export async function main(argv: string[]): Promise<number> {
-  let options: Options | null;
+  let options: RenameOptions | null;
 
   try {
     options = parseArgs(argv);
@@ -256,12 +239,33 @@ export async function main(argv: string[]): Promise<number> {
 
   if (!options) return 0;
 
-  if (options.transform === 'migrate') {
-    return options.source === 'plumeria'
-      ? migrateFromPlumeria(options)
-      : migrateFromCssModules(options);
-  }
+  const code = await rewriteSource(options);
+  if (options.transform !== 'migrate-to-typedcss') return code;
+  migratePackages(options);
+  return code;
+}
 
+function migratePackages({ targets, dryRun }: RenameOptions): void {
+  const cwd = process.cwd();
+  const changes = migrateManifests(targets, toTypedCSS, dryRun);
+  if (changes.length === 0) return;
+
+  console.log('');
+  for (const { file, moved } of changes) {
+    console.log(`  ${path.relative(cwd, file)}`);
+    for (const entry of moved) console.log(`    ${entry}`);
+  }
+  if (dryRun) {
+    console.log(`\n${changes.length} package.json file(s) would be updated.`);
+    return;
+  }
+  console.log(`\n✔ updated ${changes.length} package.json file(s).`);
+  console.log(
+    `\nNext: run \`${installCommand(cwd)}\` to install the @typedcss/* packages.`,
+  );
+}
+
+async function rewriteSource(options: RenameOptions): Promise<number> {
   const { from, to, targets, dryRun } = options;
   const baseConfig = {
     overrideConfigFile: true as const,
@@ -322,7 +326,9 @@ export async function main(argv: string[]): Promise<number> {
       );
       await ESLint.outputFixes(applied);
       console.log(
-        `\n✔ renamed ${total} occurrence(s) of "${from}" to "${to}" in ${changes.length} file(s).`,
+        options.transform === 'migrate-to-typedcss'
+          ? `\n✔ rewrote ${total} Plumeria import(s) and plugin(s) to typedcss in ${changes.length} file(s).`
+          : `\n✔ renamed ${total} occurrence(s) of "${from}" to "${to}" in ${changes.length} file(s).`,
       );
     }
   }
@@ -340,214 +346,5 @@ export async function main(argv: string[]): Promise<number> {
 function report(unparsed: string[]): number {
   console.error(`\n✖ ${unparsed.length} file(s) could not be parsed:`);
   for (const failure of unparsed) console.error(`  ${failure}`);
-  return 1;
-}
-
-function migrateConfig(modules: Record<string, ModuleMap>): Linter.Config[] {
-  return [
-    { ignores: IGNORES },
-    {
-      files: [SOURCE_FILES],
-      languageOptions: {
-        parser: tsParser as unknown as Linter.Parser,
-        parserOptions: {
-          sourceType: 'module',
-          ecmaFeatures: { jsx: true },
-        },
-      },
-      plugins: { codemod: { rules: { 'adopt-styles': adoptStyles } } },
-      rules: { 'codemod/adopt-styles': ['error', { modules }] },
-    },
-  ];
-}
-
-async function migrateFromCssModules(options: MigrateOptions): Promise<number> {
-  const { targets, dryRun } = options;
-  const cwd = process.cwd();
-  const relative = (filePath: string) => path.relative(cwd, filePath) || '.';
-
-  const { stylesheets, modules } = plan(targets);
-
-  if (stylesheets.length === 0) {
-    console.log('No *.module.css found.');
-    return 0;
-  }
-
-  // A consumer reading a class the conversion refused a rule for cannot be
-  // rewritten faithfully, so the stylesheet it came from is held back whole
-  // rather than half-applied. Nothing is written for it, which is what lets a
-  // later run pick it up once the rule it named is dealt with.
-  const held = new Map<string, Set<string>>();
-  const detected = await new ESLint({
-    overrideConfigFile: true as const,
-    overrideConfig: migrateConfig(modules),
-    errorOnUnmatchedPattern: false,
-  }).lintFiles(targets);
-  for (const result of detected)
-    for (const message of result.messages) {
-      if (message.messageId !== 'missing' && message.messageId !== 'cascade')
-        continue;
-      const [sheet, rest] = message.message.split(' :: ');
-      if (!modules[sheet]) continue;
-      const named = held.get(sheet) ?? new Set<string>();
-      named.add(rest);
-      held.set(sheet, named);
-    }
-
-  for (const [sheet, named] of held) {
-    delete modules[sheet];
-    const listed = [...named].map((name) => `\`${name}\``).join(', ');
-    stylesheets
-      .find((s) => s.source === sheet)
-      ?.reports.push({
-        line: 0,
-        column: 0,
-        kind: 'held-for-consumer',
-        source: '',
-        hint: `${listed} ${named.size === 1 ? 'is' : 'are'} read by a consumer the migration cannot answer for, so nothing was written and no consumer was moved. Settle the rules above and run again.`,
-      });
-  }
-
-  for (const sheet of stylesheets) {
-    if (!modules[sheet.source]) continue;
-    console.log(`  ${relative(sheet.source)}  ->  ${relative(sheet.target)}`);
-  }
-
-  const converting = Object.keys(modules).length;
-  const config = {
-    overrideConfigFile: true as const,
-    overrideConfig: migrateConfig(modules),
-    errorOnUnmatchedPattern: false,
-  };
-
-  if (dryRun) {
-    const results = await new ESLint(config).lintFiles(targets);
-    const touched = results.filter((r) => r.messages.length > 0);
-    console.log(
-      `\n${converting} stylesheet(s) would be converted, ${touched.length} consumer(s) rewritten.`,
-    );
-    console.log('Run without --dry-run to apply.');
-  } else {
-    warnIfDirty();
-    write(targets, new Set(held.keys()));
-    const applied = await new ESLint({ ...config, fix: true }).lintFiles(
-      targets,
-    );
-    await ESLint.outputFixes(applied);
-    const touched = applied.filter((r) => r.output !== undefined);
-    console.log(
-      `\n✔ converted ${converting} stylesheet(s) and rewrote ${touched.length} consumer(s).`,
-    );
-  }
-
-  const lines = formatReports(stylesheets, cwd);
-  if (lines.length === 0) return 0;
-
-  console.log('\nLeft in place — these rules were not converted:\n');
-  for (const line of lines) console.log(line);
-  return 1;
-}
-
-function releaseConfig(
-  modules: Record<string, ReleaseModule>,
-  themes: Record<string, string[]>,
-  animations: Record<string, string[]>,
-  statics: Record<string, string[]>,
-  values: Record<string, Record<string, unknown>>,
-  complete: boolean,
-  constants: Record<string, Record<string, string>>,
-): Linter.Config[] {
-  return [
-    { ignores: IGNORES },
-    {
-      files: [SOURCE_FILES],
-      languageOptions: {
-        parser: tsParser as unknown as Linter.Parser,
-        parserOptions: {
-          sourceType: 'module',
-          ecmaFeatures: { jsx: true },
-        },
-      },
-      plugins: { codemod: { rules: { 'release-styles': releaseStyles } } },
-      rules: {
-        'codemod/release-styles': [
-          'error',
-          {
-            modules,
-            themes,
-            animations,
-            statics,
-            values,
-            complete,
-            constants,
-          },
-        ],
-      },
-    },
-  ];
-}
-
-async function migrateFromPlumeria(options: MigrateOptions): Promise<number> {
-  const { targets, dryRun } = options;
-  const cwd = process.cwd();
-  const relative = (filePath: string) => path.relative(cwd, filePath) || '.';
-  const planned = planRelease(targets);
-
-  if (
-    planned.stylesheets.length === 0 &&
-    Object.keys(planned.themes).length === 0 &&
-    Object.keys(planned.animations).length === 0
-  ) {
-    console.log('No Plumeria styles found.');
-    return 0;
-  }
-
-  for (const sheet of planned.stylesheets) {
-    if (sheet.reports.length > 0) continue;
-    console.log(`  ${relative(sheet.source)}  ->  ${relative(sheet.target)}`);
-  }
-  if (planned.global) {
-    console.log(`  global styles  ->  ${relative(planned.global.target)}`);
-  }
-
-  const config = {
-    overrideConfigFile: true as const,
-    overrideConfig: releaseConfig(
-      planned.modules,
-      planned.themes,
-      planned.animations,
-      planned.statics,
-      planned.values,
-      planned.complete,
-      planned.constants,
-    ),
-    errorOnUnmatchedPattern: false,
-  };
-  const preview = await new ESLint(config).lintFiles(targets);
-  const touched = preview.filter((result) =>
-    result.messages.some((message) => message.fix),
-  );
-
-  if (dryRun) {
-    console.log(
-      `\n${Object.keys(planned.modules).length} style module(s) would be exported, ${touched.length} source file(s) rewritten.`,
-    );
-    console.log('Run without --dry-run to apply.');
-  } else {
-    warnIfDirty();
-    writeRelease(planned);
-    const applied = await new ESLint({ ...config, fix: true }).lintFiles(
-      targets,
-    );
-    await ESLint.outputFixes(applied);
-    console.log(
-      `\n✔ exported ${Object.keys(planned.modules).length} style module(s) and rewrote ${touched.length} source file(s).`,
-    );
-  }
-
-  const lines = formatReleaseReports(planned.stylesheets, cwd);
-  if (lines.length === 0) return 0;
-  console.log('\nLeft in Plumeria — these styles were not exported:\n');
-  for (const line of lines) console.log(line);
   return 1;
 }
