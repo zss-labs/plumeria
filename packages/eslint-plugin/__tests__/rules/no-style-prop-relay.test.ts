@@ -31,13 +31,13 @@ const write = (name: string, source: string) => {
 };
 
 const components: Record<string, string> = {
-  Applied: `export const Applied = ({ headerStyle }) => <header classStyle={[styles.base, headerStyle]} />;`,
-  Renamed: `export const Renamed = ({ headerStyle: s }) => <header classStyle={s} />;`,
-  Member: `export const Member = (props) => <header classStyle={props.headerStyle} />;`,
+  Applied: `export const Applied = ({ headerStyle }) => <header sx={[styles.base, headerStyle]} />;`,
+  Renamed: `export const Renamed = ({ headerStyle: s }) => <header sx={s} />;`,
+  Member: `export const Member = (props) => <header sx={props.headerStyle} />;`,
   Used: `export const Used = ({ headerStyle }) => <header className={css.use(headerStyle)} />;`,
-  Both: `export const Both = ({ headerStyle }) => <header classStyle={headerStyle}><Title titleStyle={headerStyle} /></header>;`,
-  Custom: `export const Custom = ({ headerStyle }) => <header sx={headerStyle} />;`,
-  Module: `export const Module = ({ headerStyle }) => <header classStyle={headerStyle}><Header headerStyle={styles.base} /></header>;`,
+  Both: `export const Both = ({ headerStyle }) => <header sx={headerStyle}><Title titleStyle={headerStyle} /></header>;`,
+  Custom: `export const Custom = ({ headerStyle }) => <header classStyle={headerStyle} />;`,
+  Module: `export const Module = ({ headerStyle }) => <header sx={headerStyle}><Header headerStyle={styles.base} /></header>;`,
   Forward: `export const Forward = ({ headerStyle }) => <Header headerStyle={headerStyle} />;`,
   Rename: `export const Rename = ({ headerStyle }) => <Header rootStyle={headerStyle} />;`,
   Merge: `export const Merge = ({ headerStyle }) => <Header headerStyle={[styles.base, headerStyle]} />;`,
@@ -45,24 +45,24 @@ const components: Record<string, string> = {
   Local: `export const Local = ({ headerStyle }) => { const s = headerStyle; return <Header headerStyle={s} />; };`,
   Props: `export const Props = (props) => <Header headerStyle={props.headerStyle} />;`,
   Default: `export default function ({ headerStyle }) { return <Header headerStyle={headerStyle} />; }`,
-  Pass: `import { Receiver } from './receiver';\nexport const Pass = ({ headerStyle }) => <Receiver classStyle={headerStyle} />;`,
-  PassBoth: `import { Receiver } from './receiver';\nexport const PassBoth = ({ headerStyle }) => <header classStyle={headerStyle}><Receiver classStyle={headerStyle} /></header>;`,
-  PassLocal: `const Inner = ({ classStyle } = {}) => <i classStyle={classStyle} />;\nexport const PassLocal = ({ headerStyle }) => <Inner classStyle={headerStyle} />;`,
-  PassPlain: `import { Plain } from './receiver';\nexport const PassPlain = ({ headerStyle }) => <Plain classStyle={headerStyle} />;`,
-  PassPackage: `import { Menu } from '@headlessui/react';\nexport const PassPackage = ({ headerStyle }) => <Menu classStyle={headerStyle} />;`,
-  PassDefault: `import Receiver from './default-receiver';\nexport const PassDefault = ({ headerStyle }) => <Receiver classStyle={headerStyle} />;`,
-  PassMember: `import * as ui from './receiver';\nexport const PassMember = ({ headerStyle }) => <ui.Receiver classStyle={headerStyle} />;`,
-  PassStatic: `import { Receiver } from './receiver';\nexport const PassStatic = ({ headerStyle }) => <header classStyle={headerStyle}><Receiver classStyle={styles.base} /><Receiver classStyle={styles.base} /></header>;`,
+  Pass: `import { Receiver } from './receiver';\nexport const Pass = ({ headerStyle }) => <Receiver sx={headerStyle} />;`,
+  PassBoth: `import { Receiver } from './receiver';\nexport const PassBoth = ({ headerStyle }) => <header sx={headerStyle}><Receiver sx={headerStyle} /></header>;`,
+  PassLocal: `const Inner = ({ sx } = {}) => <i sx={sx} />;\nexport const PassLocal = ({ headerStyle }) => <Inner sx={headerStyle} />;`,
+  PassPlain: `import { Plain } from './receiver';\nexport const PassPlain = ({ headerStyle }) => <Plain sx={headerStyle} />;`,
+  PassPackage: `import { Menu } from '@headlessui/react';\nexport const PassPackage = ({ headerStyle }) => <Menu sx={headerStyle} />;`,
+  PassDefault: `import Receiver from './default-receiver';\nexport const PassDefault = ({ headerStyle }) => <Receiver sx={headerStyle} />;`,
+  PassMember: `import * as ui from './receiver';\nexport const PassMember = ({ headerStyle }) => <ui.Receiver sx={headerStyle} />;`,
+  PassStatic: `import { Receiver } from './receiver';\nexport const PassStatic = ({ headerStyle }) => <header sx={headerStyle}><Receiver sx={styles.base} /><Receiver sx={styles.base} /></header>;`,
 };
 
 write(
   'receiver.jsx',
-  `export function Receiver({ classStyle }) { return <div classStyle={classStyle} />; }
-export const Plain = (props) => <div classStyle={props.classStyle} />;`,
+  `export function Receiver({ sx }) { return <div sx={sx} />; }
+export const Plain = (props) => <div sx={props.sx} />;`,
 );
 write(
   'default-receiver.jsx',
-  `function Receiver({ classStyle }) { return <div classStyle={classStyle} />; }
+  `function Receiver({ sx }) { return <div sx={sx} />; }
 export default Receiver;`,
 );
 
@@ -107,7 +107,7 @@ const invalid = (name: string) => ({
   errors: [
     {
       messageId: 'relay',
-      data: { prop: 'headerStyle', styleProp: 'classStyle' },
+      data: { prop: 'headerStyle', styleProp: 'sx' },
     },
   ],
 });
@@ -118,7 +118,7 @@ const passed = (name: string) => ({
   errors: [
     {
       messageId: 'receiver',
-      data: { prop: 'headerStyle', styleProp: 'classStyle' },
+      data: { prop: 'headerStyle', styleProp: 'sx' },
     },
   ],
 });
@@ -222,38 +222,38 @@ test.each([
   expect(reports).toHaveLength(1);
   expect(reports[0].data).toEqual({
     prop: 'headerStyle',
-    styleProp: 'classStyle',
+    styleProp: 'sx',
   });
 });
 
 test.each([
   [
     'array spread',
-    'const Forward = ({ headerStyle }) => <div classStyle={[...headerStyle]} />;',
+    'const Forward = ({ headerStyle }) => <div sx={[...headerStyle]} />;',
   ],
   [
     'conditional',
-    'const Forward = ({ headerStyle }) => <div classStyle={ready ? headerStyle : fallback} />;',
+    'const Forward = ({ headerStyle }) => <div sx={ready ? headerStyle : fallback} />;',
   ],
   [
     'logical expression',
-    'const Forward = ({ headerStyle }) => <div classStyle={fallback || headerStyle} />;',
+    'const Forward = ({ headerStyle }) => <div sx={fallback || headerStyle} />;',
   ],
   [
     'type assertion',
-    'const Forward = ({ headerStyle }) => <div classStyle={headerStyle as unknown} />;',
+    'const Forward = ({ headerStyle }) => <div sx={headerStyle as unknown} />;',
   ],
   [
     'non-null assertion',
-    'const Forward = ({ headerStyle }) => <div classStyle={headerStyle!} />;',
+    'const Forward = ({ headerStyle }) => <div sx={headerStyle!} />;',
   ],
   [
     'satisfies expression',
-    'const Forward = ({ headerStyle }) => <div classStyle={headerStyle satisfies unknown} />;',
+    'const Forward = ({ headerStyle }) => <div sx={headerStyle satisfies unknown} />;',
   ],
   [
     'optional member',
-    'const Forward = (props) => <div classStyle={props?.headerStyle} />;',
+    'const Forward = (props) => <div sx={props?.headerStyle} />;',
   ],
   [
     'direct use',
@@ -261,11 +261,11 @@ test.each([
   ],
   [
     'lowercase local function',
-    'const inner = ({ classStyle }) => <i classStyle={classStyle} />; const Forward = ({ headerStyle }) => <inner classStyle={headerStyle} />;',
+    'const inner = ({ sx }) => <i sx={sx} />; const Forward = ({ headerStyle }) => <inner sx={headerStyle} />;',
   ],
   [
     'identifier without destructuring',
-    'const Forward = (props) => { const headerStyle = props.headerStyle; return <div classStyle={headerStyle} />; };',
+    'const Forward = (props) => { const headerStyle = props.headerStyle; return <div sx={headerStyle} />; };',
   ],
 ])('accepts an applied style prop in %s', (_name, source) => {
   expect(reportsFor(source)).toHaveLength(0);
@@ -274,7 +274,7 @@ test.each([
 test.each([
   [
     'array hole',
-    'const Forward = ({ headerStyle }) => <div classStyle={[ , fallback]} />;',
+    'const Forward = ({ headerStyle }) => <div sx={[ , fallback]} />;',
   ],
   [
     'computed use',
@@ -353,6 +353,25 @@ test('leaves a call with more than one argument that could be the component', ()
   ).toHaveLength(0);
 });
 
+test('handles nested component wrappers', () => {
+  expect(
+    reportsFor(
+      'const Forward = memo(observer(({ headerStyle }) => use(headerStyle)));',
+    ),
+  ).toHaveLength(0);
+  expect(
+    reportsFor(
+      'const Inner = ({ headerStyle }) => <Header headerStyle={headerStyle} />; const Forward = memo(observer(Inner));',
+    ),
+  ).toHaveLength(0);
+  expect(
+    reportsFor(
+      'const Forward = memo(observer(({ headerStyle }) => <Header headerStyle={headerStyle} />, (error) => <div>{error}</div>));',
+    ),
+  ).toHaveLength(0);
+  expect(reportsFor('const Forward = memo(observer(config));')).toHaveLength(0);
+});
+
 test('finds a component in a top-level call', () => {
   const program = parse(
     'memo(({ headerStyle }) => <Header headerStyle={headerStyle} />);',
@@ -373,7 +392,7 @@ test('ignores a top-level call without a component', () => {
 
 test('ignores expressions that cannot contain an applied style prop', () => {
   const program = parse(
-    'const Forward = ({ headerStyle }) => <div classStyle={headerStyle} />;',
+    'const Forward = ({ headerStyle }) => <div sx={headerStyle} />;',
     {
       ecmaFeatures: { jsx: true },
       sourceType: 'module',
