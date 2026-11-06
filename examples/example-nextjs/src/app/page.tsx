@@ -22,7 +22,7 @@ export default function Home() {
           height={38}
           priority
         />
-        <div classStyle={styles.color}>Next.js + Plumeria</div>
+        <div sx={styles.color}>Next.js + Plumeria</div>
         <ol>
           <li>
             Get started by editing <code>src/app/page.tsx</code>.
