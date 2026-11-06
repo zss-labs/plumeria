@@ -146,7 +146,7 @@ plumeria.vite({
   include: ['**/*.{ts,tsx}'],
   exclude: ['**/node_modules/**'],
   devEmitToDisk: false,
-  styleProp: 'sx',
+  styleProp: 'classStyle',
 });
 ```
 
@@ -155,7 +155,7 @@ plumeria.vite({
 | `include` | `ts/tsx/js/jsx` | Files to transform. |
 | `exclude` | — | Files to skip. |
 | `devEmitToDisk` | `false` | Write CSS to disk in development so the bundler's watcher drives HMR. |
-| `styleProp` | `'classStyle'` | The JSX prop that carries styles. |
+| `styleProp` | `'sx'` | The JSX prop that carries styles. |
 | `withoutLogicalProperties` | `false` | Reject the logical name of a property that also has a physical name. Takes `true` or `{ sizes?: boolean }`. |
 | `withoutPhysicalProperties` | `false` | Reject the physical name of a property that also has a logical name. Takes `true` or `{ sizes?: boolean }`. |
 | `lint` | `true` | Lint with `@plumeria/eslint-plugin` during a production build, integrated into the build so it needs no setup. Every bundler except esbuild and Bun. `false` builds without it. |
@@ -167,7 +167,7 @@ The two spelling options contradict each other, so enabling both is a configurat
 Renaming the prop takes two steps, and they have to agree. Tell the plugin:
 
 ```js
-plumeria.vite({ styleProp: 'sx' });
+plumeria.vite({ styleProp: 'classStyle' });
 ```
 
 and declare the same name for TypeScript. `@plumeria/core` ships no prop declaration of its own, so add one file to your project:
@@ -179,10 +179,10 @@ import type { Style } from '@plumeria/core';
 declare global {
   namespace React {
     interface HTMLAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
     interface SVGAttributes<T> {
-      sx?: Style
+      classStyle?: Style
     }
   }
 }
@@ -192,7 +192,7 @@ For the default name, reference the declaration that ships with the package inst
 
 ```ts
 // plumeria.d.ts
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
 If the two disagree, the prop type-checks but is never compiled away. [`@plumeria/eslint-plugin`](https://www.npmjs.com/package/@plumeria/eslint-plugin) reads the same name from `settings.plumeria.styleProp`.
