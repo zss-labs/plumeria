@@ -112,11 +112,11 @@ The parameters must be linked (match) in both cases.
 
     const MarkerExtended = () => {
       return (
-        <div classStyle={styles.grand}>
-          <span classStyle={styles.description}>Grand Container (Hover me)</span>
-          <div classStyle={styles.parent}>
-            <span classStyle={styles.description}>Parent Container (Hover me too)</span>
-            <div classStyle={styles.child}>Child Element</div>
+        <div sx={styles.grand}>
+          <span sx={styles.description}>Grand Container (Hover me)</span>
+          <div sx={styles.parent}>
+            <span sx={styles.description}>Parent Container (Hover me too)</span>
+            <div sx={styles.child}>Child Element</div>
           </div>
         </div>
       );
