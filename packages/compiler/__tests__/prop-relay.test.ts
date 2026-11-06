@@ -61,14 +61,14 @@ export const styles = css.create(${JSON.stringify({
     [LEAF]: `
 import * as css from '@plumeria/core';
 export const Leaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
     [MERGED]: `
 import * as css from '@plumeria/core';
 import { styles } from './styles';
 export const Merged = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={[styles.base, styleArray]} />
+  <div sx={[styles.base, styleArray]} />
 );
 `,
     [RELAY]: `
@@ -89,7 +89,7 @@ export const Renamed = ({ styleArray }: { styleArray?: css.Style }) => (
 import * as css from '@plumeria/core';
 import { Leaf } from './Leaf';
 export const Applies = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 export const Forwards = ({ styleArray }: { styleArray?: css.Style }) => (
   <Leaf styleArray={styleArray} />
@@ -100,7 +100,7 @@ import * as css from '@plumeria/core';
 import { Leaf } from './Leaf';
 const wrap = (component: unknown) => component;
 export const WrappedApplies = wrap(({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 ));
 export const MaskedForwards = ({ styleArray }: { styleArray?: css.Style }) => (
   <Leaf styleArray={styleArray} />
@@ -110,7 +110,7 @@ export const MaskedForwards = ({ styleArray }: { styleArray?: css.Style }) => (
 import * as css from '@plumeria/core';
 export const ViaLocal = ({ styleArray }: { styleArray?: css.Style }) => {
   const applied = styleArray;
-  return <div classStyle={applied} />;
+  return <div sx={applied} />;
 };
 `,
     [RENAMED_BINDING]: `
@@ -130,29 +130,29 @@ export const Passthrough = ({ label, onPress }: { label: string; onPress: () => 
     [TWINS]: `
 import * as css from '@plumeria/core';
 export const TwinA = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 export const TwinB = ({ styleArray }: { styleArray?: css.Style }) => (
-  <span classStyle={styleArray} />
+  <span sx={styleArray} />
 );
 `,
     [DEFAULT_TWINS]: `
 import * as css from '@plumeria/core';
 export default function TwinDefault({ styleArray }: { styleArray?: css.Style }) {
-  return <div classStyle={styleArray} />;
+  return <div sx={styleArray} />;
 }
 export const TwinNamed = ({ styleArray }: { styleArray?: css.Style }) => (
-  <section classStyle={styleArray} />
+  <section sx={styleArray} />
 );
 `,
     [WRAPPED]: `
 import * as css from '@plumeria/core';
 const wrap = (component: unknown) => component;
 export const Sibling = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 export const Wrapped = wrap(({ styleArray }: { styleArray?: css.Style }) => (
-  <span classStyle={styleArray} />
+  <span sx={styleArray} />
 ));
 `,
     [WRAPPED_RELAY]: `
