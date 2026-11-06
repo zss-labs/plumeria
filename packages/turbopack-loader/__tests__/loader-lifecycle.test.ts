@@ -21,7 +21,7 @@ const pre = `import * as css from '@plumeria/core';`;
 it('retains other declarators', async () => {
   const out = await run(
     pre +
-      `const styles = css.create({box:{color:'red'}}), keep = 42; export const el = <div classStyle={styles.box}>{keep}</div>;`,
+      `const styles = css.create({box:{color:'red'}}), keep = 42; export const el = <div sx={styles.box}>{keep}</div>;`,
   );
   expect(out).toContain('keep = 42');
 });
@@ -41,7 +41,7 @@ it('does not replace shadowed bindings', async () => {
 it('compiles a style array that contains a hole', async () => {
   const out = await run(
     pre +
-      `const styles = css.create({box:{color:'red'}}); export const el = <div classStyle={[, styles.box]} />;`,
+      `const styles = css.create({box:{color:'red'}}); export const el = <div sx={[, styles.box]} />;`,
   );
   expect(out).toContain('className=');
 });
