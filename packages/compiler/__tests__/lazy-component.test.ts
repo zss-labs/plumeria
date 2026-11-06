@@ -18,8 +18,8 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   const receiver = (name: string, exported: string) =>
     `import * as css from '@plumeria/core';
 const styles = css.create({ base: { fontSize: '14px' } });
-${exported} ${name}({ classStyle }: { classStyle?: css.Style }) {
-  return <div classStyle={[styles.base, classStyle]} />;
+${exported} ${name}({ sx }: { sx?: css.Style }) {
+  return <div sx={[styles.base, sx]} />;
 }`;
 
   const app = (imports: string, loader: string) =>
@@ -27,7 +27,7 @@ ${exported} ${name}({ classStyle }: { classStyle?: css.Style }) {
 ${imports}
 const Card = ${loader};
 const styles = css.create({ big: { fontSize: '24px' } });
-export const App = () => <Card classStyle={styles.big} />;`;
+export const App = () => <Card sx={styles.big} />;`;
 
   const sources: Record<string, string> = {
     'Card.tsx': receiver('Card', 'export default function'),
@@ -110,7 +110,7 @@ export const App = () => <Card classStyle={styles.big} />;`;
   // The key the call site hands over, or undefined when it resolved the
   // style to a className instead.
   const keyOf = async (name: string) =>
-    (await compile(name)).match(/<Card classStyle=\{"(\w+)"\}/)?.[1];
+    (await compile(name)).match(/<Card sx=\{"(\w+)"\}/)?.[1];
 
   beforeAll(() => {
     for (const [name, source] of Object.entries(sources))
