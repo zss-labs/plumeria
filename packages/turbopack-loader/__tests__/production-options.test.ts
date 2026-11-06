@@ -55,10 +55,10 @@ describe('turbopack-loader: options handed to compileCSS', () => {
   });
 
   it('forwards include and styleProp', async () => {
-    await runLoader({ include: ['src/**'], styleProp: 'sx' });
+    await runLoader({ include: ['src/**'], styleProp: 'classStyle' });
 
     expect(mockCompileCSS).toHaveBeenCalledWith(
-      expect.objectContaining({ include: ['src/**'], styleProp: 'sx' }),
+      expect.objectContaining({ include: ['src/**'], styleProp: 'classStyle' }),
     );
   });
 
@@ -75,6 +75,20 @@ describe('turbopack-loader: options handed to compileCSS', () => {
 
     expect(mockCompileCSS).toHaveBeenCalledWith(
       expect.objectContaining({ cwd: FIXTURE_DIR }),
+    );
+  });
+
+  it('reads options from a loader query', async () => {
+    await new Promise<void>((resolve, reject) => {
+      cssLoader.call({
+        query: { styleProp: 'classStyle' },
+        async: () => (error: Error | null) =>
+          error ? reject(error) : resolve(),
+        addDependency: () => {},
+      });
+    });
+    expect(mockCompileCSS).toHaveBeenCalledWith(
+      expect.objectContaining({ styleProp: 'classStyle' }),
     );
   });
 });
