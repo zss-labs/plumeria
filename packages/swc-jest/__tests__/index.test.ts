@@ -21,7 +21,7 @@ const jestOptions = {
 
 const source = `import * as css from '@plumeria/core';
 const styles = css.create({ box: { padding: 16, color: 'red' } });
-export const A = ({ n }: { n: number }) => <div classStyle={styles.box}>{n}</div>;
+export const A = ({ n }: { n: number }) => <div sx={styles.box}>{n}</div>;
 `;
 
 const run = (src: string, options = {}) => {
@@ -37,7 +37,7 @@ it('compiles the styling prop away and emits CommonJS', () => {
   const { code } = run(source);
 
   expect(code).toMatch(/className: "\S+ \S+"/);
-  expect(code).not.toMatch(/classStyle/);
+  expect(code).not.toMatch(/sx/);
   expect(code).not.toMatch(/^import /m);
 });
 
@@ -49,8 +49,8 @@ it('passes a file without Plumeria to swc unchanged in meaning', () => {
 });
 
 it('honours a custom styleProp', () => {
-  const { code } = run(source.replace('classStyle', 'sx'), {
-    styleProp: 'sx',
+  const { code } = run(source.replace('sx', 'classStyle'), {
+    styleProp: 'classStyle',
   });
 
   expect(code).toMatch(/className: "\S+ \S+"/);
@@ -85,7 +85,7 @@ it('compiles asynchronously with and without a cached output', async () => {
   );
 
   expect(expected.code).toMatch(/className: "\S+ \S+"/);
-  expect(expected.code).not.toMatch(/classStyle/);
+  expect(expected.code).not.toMatch(/sx/);
   expect(expected.code).not.toMatch(/: number/);
 
   transformer.getCacheKey!(source, filename, jestOptions);
@@ -114,7 +114,7 @@ it('leaves Plumeria styling in node_modules for swc to process', () => {
     jestOptions,
   );
 
-  expect(code).toMatch(/classStyle: styles.box/);
+  expect(code).toMatch(/sx: styles.box/);
   expect(code).not.toMatch(/className:/);
   expect(code).not.toMatch(/^import /m);
 });
