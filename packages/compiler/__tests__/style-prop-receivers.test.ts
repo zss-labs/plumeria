@@ -37,14 +37,14 @@ export const styles = css.create({
 });`,
     [RECEIVERS]: `import * as css from '@plumeria/core';
 import { styles } from './styles';
-export const Alone = ({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={classStyle} />
+export const Alone = ({ sx }: { sx?: css.Style }) => (
+  <div sx={sx} />
 );
-export const Merged = ({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={[styles.base, classStyle]} />
+export const Merged = ({ sx }: { sx?: css.Style }) => (
+  <div sx={[styles.base, sx]} />
 );
 export const Renamed = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={[styles.base, styleArray]} />
+  <div sx={[styles.base, styleArray]} />
 );
 `,
     [APP]: `import '@plumeria/core';
@@ -58,95 +58,95 @@ import WrappedDefault, { Memo, Forwarded } from './Wrapped';
 import { MemoCompared, MemoInner, WithOptions } from './Compared';
 import { PassesClassName } from './Plain';
 import { Both } from './Ambiguous';
-export const OnElement = () => <div classStyle={styles.a} />;
-export const OnForwarder = () => <Link href="/x" classStyle={styles.a} />;
-export const OnAlone = () => <Alone classStyle={styles.a} />;
-export const OnMerged = () => <Merged classStyle={styles.a} />;
+export const OnElement = () => <div sx={styles.a} />;
+export const OnForwarder = () => <Link href="/x" sx={styles.a} />;
+export const OnAlone = () => <Alone sx={styles.a} />;
+export const OnMerged = () => <Merged sx={styles.a} />;
 export const OnRenamed = () => <Renamed styleArray={styles.a} />;
-export const OnUseAlone = () => <UseAlone classStyle={styles.a} />;
-export const OnUseWithBase = () => <UseWithBase classStyle={styles.a} />;
-export const OnUseListed = () => <UseListed classStyle={styles.a} />;
+export const OnUseAlone = () => <UseAlone sx={styles.a} />;
+export const OnUseWithBase = () => <UseWithBase sx={styles.a} />;
+export const OnUseListed = () => <UseListed sx={styles.a} />;
 export const Conditional = ({ on }: { on: boolean }) => (
-  <Merged classStyle={on && styles.a} />
+  <Merged sx={on && styles.a} />
 );
 export const Dynamic = ({ w }: { w: number }) => (
-  <Merged classStyle={styles.box(w)} />
+  <Merged sx={styles.box(w)} />
 );
 export const DynamicListed = ({ w }: { w: number }) => (
-  <Merged classStyle={[styles.a, styles.box(w)]} />
+  <Merged sx={[styles.a, styles.box(w)]} />
 );
 export const DynamicOnElement = ({ w }: { w: number }) => (
-  <div classStyle={styles.box(w)} />
+  <div sx={styles.box(w)} />
 );
-export const OnDefaultFn = () => <DefaultFn classStyle={styles.a} />;
-export const OnDefaultArrow = () => <DefaultArrow classStyle={styles.a} />;
-export const OnMemo = () => <Memo classStyle={styles.a} />;
-export const OnForwarded = () => <Forwarded classStyle={styles.a} />;
-export const OnWrappedDefault = () => <WrappedDefault classStyle={styles.a} />;
-export const OnMemoCompared = () => <MemoCompared classStyle={styles.a} />;
-export const OnMemoInner = () => <MemoInner classStyle={styles.a} />;
-export const OnWithOptions = () => <WithOptions classStyle={styles.a} />;
-export const OnPassesClassName = () => <PassesClassName classStyle={styles.a} />;
-export const OnBoth = () => <Both classStyle={styles.a} />;`,
+export const OnDefaultFn = () => <DefaultFn sx={styles.a} />;
+export const OnDefaultArrow = () => <DefaultArrow sx={styles.a} />;
+export const OnMemo = () => <Memo sx={styles.a} />;
+export const OnForwarded = () => <Forwarded sx={styles.a} />;
+export const OnWrappedDefault = () => <WrappedDefault sx={styles.a} />;
+export const OnMemoCompared = () => <MemoCompared sx={styles.a} />;
+export const OnMemoInner = () => <MemoInner sx={styles.a} />;
+export const OnWithOptions = () => <WithOptions sx={styles.a} />;
+export const OnPassesClassName = () => <PassesClassName sx={styles.a} />;
+export const OnBoth = () => <Both sx={styles.a} />;`,
     [VIA_USE]: `import * as css from '@plumeria/core';
 import { styles } from './styles';
-export const UseAlone = ({ classStyle }: { classStyle?: css.StaticStyles }) => (
-  <span className={css.use(classStyle)} />
+export const UseAlone = ({ sx }: { sx?: css.StaticStyles }) => (
+  <span className={css.use(sx)} />
 );
 export const UseWithBase = ({
-  classStyle,
+  sx,
 }: {
-  classStyle?: css.StaticStyles;
-}) => <span className={css.use(styles.base, classStyle)} />;
-export const UseListed = ({ classStyle }: { classStyle?: css.StaticStyles }) => (
-  <span className={css.use([styles.base, classStyle])} />
+  sx?: css.StaticStyles;
+}) => <span className={css.use(styles.base, sx)} />;
+export const UseListed = ({ sx }: { sx?: css.StaticStyles }) => (
+  <span className={css.use([styles.base, sx])} />
 );`,
     [DEFAULT_FN]: `import * as css from '@plumeria/core';
 import { styles } from './styles';
-export default function DefaultFn({ classStyle }: { classStyle?: css.Style }) {
-  return <div classStyle={[styles.base, classStyle]} />;
+export default function DefaultFn({ sx }: { sx?: css.Style }) {
+  return <div sx={[styles.base, sx]} />;
 }`,
     [DEFAULT_ARROW]: `import * as css from '@plumeria/core';
 import { styles } from './styles';
-export default ({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={[styles.base, classStyle]} />
+export default ({ sx }: { sx?: css.Style }) => (
+  <div sx={[styles.base, sx]} />
 );`,
     [WRAPPED]: `import * as css from '@plumeria/core';
 import { forwardRef, memo } from 'react';
 import { styles } from './styles';
-export const Memo = memo(({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={[styles.base, classStyle]} />
+export const Memo = memo(({ sx }: { sx?: css.Style }) => (
+  <div sx={[styles.base, sx]} />
 ));
 export const Forwarded = forwardRef(
-  ({ classStyle }: { classStyle?: css.Style }, ref: any) => (
-    <div ref={ref} classStyle={[styles.base, classStyle]} />
+  ({ sx }: { sx?: css.Style }, ref: any) => (
+    <div ref={ref} sx={[styles.base, sx]} />
   ),
 );
-export default memo(function Card({ classStyle }: { classStyle?: css.Style }) {
-  return <div classStyle={[styles.base, classStyle]} />;
+export default memo(function Card({ sx }: { sx?: css.Style }) {
+  return <div sx={[styles.base, sx]} />;
 });`,
     [COMPARED]: `import * as css from '@plumeria/core';
 import { memo } from 'react';
 import { styles } from './styles';
 const withOptions = (options: unknown, component: any) => component;
 const options = { displayName: 'WithOptions' };
-function Inner({ classStyle }: { classStyle?: css.Style }) {
-  return <div classStyle={[styles.base, classStyle]} />;
+function Inner({ sx }: { sx?: css.Style }) {
+  return <div sx={[styles.base, sx]} />;
 }
 export const MemoCompared = memo(
-  ({ classStyle }: { classStyle?: css.Style }) => (
-    <div classStyle={[styles.base, classStyle]} />
+  ({ sx }: { sx?: css.Style }) => (
+    <div sx={[styles.base, sx]} />
   ),
-  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+  ({ sx: a }: any, { sx: b }: any) => a === b,
 );
 export const MemoInner = memo(
   Inner,
-  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+  ({ sx: a }: any, { sx: b }: any) => a === b,
 );
 export const WithOptions = withOptions(
   options,
-  ({ classStyle }: { classStyle?: css.Style }) => (
-    <div classStyle={[styles.base, classStyle]} />
+  ({ sx }: { sx?: css.Style }) => (
+    <div sx={[styles.base, sx]} />
   ),
 );
 `,
@@ -157,18 +157,18 @@ function Plain({ className }: { className?: string }) {
 }
 export const PassesClassName = memo(
   Plain,
-  ({ classStyle: a }: any, { classStyle: b }: any) => a === b,
+  ({ sx: a }: any, { sx: b }: any) => a === b,
 );`,
     [AMBIGUOUS]: `import * as css from '@plumeria/core';
 const withFallback = (component: any, fallback: any) => component;
 export const Both = withFallback(
-  ({ classStyle }: { classStyle?: css.Style }) => <div classStyle={classStyle} />,
+  ({ sx }: { sx?: css.Style }) => <div sx={sx} />,
   (error: unknown) => <p>{String(error)}</p>,
 );`,
     [UNSEEN]: `import '@plumeria/core';
 import { styles } from './styles';
 import { Alone } from './Receivers';
-export const Unseen = () => <Alone classStyle={styles.b} />;`,
+export const Unseen = () => <Alone sx={styles.b} />;`,
   };
 
   const compile = async (filePath: string) => {
@@ -208,7 +208,7 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
 
       // one entry per style reaching it, whatever the prop is called
       expect(declarationOf(code, 'Alone')).toMatch(
-        /className=\{\(\{("\w+":"[\w ]+",?)+\}\[classStyle\] \|\| ""\)\}/,
+        /className=\{\(\{("\w+":"[\w ]+",?)+\}\[sx\] \|\| ""\)\}/,
       );
       expect(declarationOf(code, 'Renamed')).toMatch(/\[styleArray\] \|\| ""/);
     });
@@ -229,7 +229,7 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       const start = code.indexOf(marker);
       const next = code.indexOf('\nexport ', start + 1);
       expect(code.slice(start, next === -1 ? undefined : next)).toMatch(
-        /\[classStyle\] \|\| ""\)/,
+        /\[sx\] \|\| ""\)/,
       );
     });
   });
@@ -253,8 +253,8 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
     // takes, so it is handed the key its table is built to look up.
     it('hands the key to a component that applies the prop', async () => {
       const code = await compile(APP);
-      expect(declarationOf(code, 'OnAlone')).toMatch(/classStyle=\{"\w+"\}/);
-      expect(declarationOf(code, 'OnMerged')).toMatch(/classStyle=\{"\w+"\}/);
+      expect(declarationOf(code, 'OnAlone')).toMatch(/sx=\{"\w+"\}/);
+      expect(declarationOf(code, 'OnMerged')).toMatch(/sx=\{"\w+"\}/);
     });
 
     // A default export and a component a call such as `memo` or `forwardRef`
@@ -267,9 +267,7 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       'OnForwarded',
       'OnWrappedDefault',
     ])('hands the key to the component %s renders', async (name) => {
-      expect(declarationOf(await compile(APP), name)).toMatch(
-        /classStyle=\{"\w+"\}/,
-      );
+      expect(declarationOf(await compile(APP), name)).toMatch(/sx=\{"\w+"\}/);
     });
 
     // The component is the argument that renders, wherever it sits, and a
@@ -278,15 +276,13 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
     it.each(['OnMemoCompared', 'OnMemoInner', 'OnWithOptions'])(
       'hands the key to the component %s renders through a call',
       async (name) => {
-        expect(declarationOf(await compile(APP), name)).toMatch(
-          /classStyle=\{"\w+"\}/,
-        );
+        expect(declarationOf(await compile(APP), name)).toMatch(/sx=\{"\w+"\}/);
       },
     );
 
     it('builds a table where the wrapped component applies the prop', async () => {
       const code = await compile(COMPARED);
-      expect(code.match(/\[classStyle\] \|\| ""\)/g)).toHaveLength(3);
+      expect(code.match(/\[sx\] \|\| ""\)/g)).toHaveLength(3);
     });
 
     // memo(Plain) is Plain, so a style passed to it is read as one passed to
@@ -296,7 +292,7 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
         'className={"',
       );
       await expect(compile(PLAIN)).rejects.toThrow(
-        /"classStyle" is a style received through a prop but is never applied/,
+        /"sx" is a style received through a prop but is never applied/,
       );
     });
 
@@ -316,7 +312,7 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
 
     it('keeps a conditional a conditional', async () => {
       expect(declarationOf(await compile(APP), 'Conditional')).toMatch(
-        /classStyle=\{on && "\w+"\}/,
+        /sx=\{on && "\w+"\}/,
       );
     });
 
@@ -327,10 +323,10 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       'hands the key to %s, which applies it through css.use()',
       async (name) => {
         expect(declarationOf(await compile(APP), `On${name}`)).toMatch(
-          /classStyle=\{"\w+"\}/,
+          /sx=\{"\w+"\}/,
         );
         expect(declarationOf(await compile(VIA_USE), name)).toMatch(
-          /\[classStyle\] \|\| ""/,
+          /\[sx\] \|\| ""/,
         );
       },
     );
@@ -356,18 +352,18 @@ export const Unseen = () => <Alone classStyle={styles.b} />;`,
       const code = await compile(APP);
 
       expect(declarationOf(code, 'Dynamic')).toMatch(
-        /classStyle=\{\{ key: "\w+", vars: \{ "--[\w-]+": /,
+        /sx=\{\{ key: "\w+", vars: \{ "--[\w-]+": /,
       );
       expect(declarationOf(code, 'DynamicListed')).toMatch(
-        /classStyle=\{\{ key: "\w+", vars: \{/,
+        /sx=\{\{ key: "\w+", vars: \{/,
       );
 
       const receivers = await compile(RECEIVERS);
       expect(declarationOf(receivers, 'Merged')).toContain(
-        '[((classStyle && classStyle.key) || classStyle)]',
+        '[((sx && sx.key) || sx)]',
       );
       expect(declarationOf(receivers, 'Merged')).toContain(
-        'style={{ ...(classStyle && classStyle.vars) }}',
+        'style={{ ...(sx && sx.vars) }}',
       );
     });
 
