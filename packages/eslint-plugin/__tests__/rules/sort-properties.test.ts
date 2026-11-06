@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { RuleTester } from 'eslint';
+import { RuleTester, type Rule } from 'eslint';
 import { sortProperties } from '../../src/rules/sort-properties';
 
 const DIR = fs.mkdtempSync(path.join(__dirname, 'fixture-'));
@@ -75,6 +75,25 @@ const styles = css.create({
 });`,
   ],
   [
+    // a line comment moved before a property on the same line breaks the line
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    borderColor: 'red', color: 'blue', // text
+    borderWidth: '1px',
+  },
+});`,
+    1,
+    `import * as css from '@plumeria/core';
+const styles = css.create({
+  box: {
+    color: 'blue', // text
+    borderColor: 'red',
+    borderWidth: '1px',
+  },
+});`,
+  ],
+  [
     // a line comment moved mid-line in a one-line object
     `import * as css from '@plumeria/core';
 const styles = css.create({
@@ -95,6 +114,14 @@ const ruleTester = new RuleTester();
 
 ruleTester.run('sort-properties', sortProperties, {
   valid: [
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ main: 1 });`,
+      settings: { ecmaVersion: 'latest' },
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ main: { color: 'red', [true]: 'value' } });`,
+      settings: { ecmaVersion: 'latest' },
+    },
     {
       // a createStatic key sorts with the at-rules and keeps its written order
       code: `import * as css from '@plumeria/core';
@@ -376,4 +403,58 @@ const styles = css.create({ grid: { display: 'grid', gap: 8, [media.desktop]: { 
       output,
     })),
   ],
+});
+
+test('places an unsupported property key in the fallback group', () => {
+  const listeners = sortProperties.create({
+    filename: 'test.ts',
+    sourceCode: {
+      getScope: () => ({ set: new Map(), upper: null }),
+    },
+    report: jest.fn(),
+  } as unknown as Rule.RuleContext);
+  listeners.ImportDeclaration?.({
+    type: 'ImportDeclaration',
+    source: { type: 'Literal', value: '@plumeria/core' },
+    specifiers: [
+      {
+        type: 'ImportNamespaceSpecifier',
+        local: { type: 'Identifier', name: 'css' },
+      },
+    ],
+  } as never);
+  listeners.CallExpression?.({
+    type: 'CallExpression',
+    callee: {
+      type: 'MemberExpression',
+      computed: false,
+      object: { type: 'Identifier', name: 'css' },
+      property: { type: 'Identifier', name: 'positionTry' },
+    },
+    arguments: [
+      {
+        type: 'ObjectExpression',
+        properties: [
+          {
+            type: 'Property',
+            computed: false,
+            key: { type: 'Identifier', name: 'color' },
+            value: { type: 'Literal', value: 'red' },
+          },
+          {
+            type: 'Property',
+            computed: true,
+            key: { type: 'Identifier', name: 'unknown' },
+            value: { type: 'Literal', value: 'value' },
+          },
+          {
+            type: 'Property',
+            computed: false,
+            key: { type: 'PrivateIdentifier', name: 'fallback' },
+            value: { type: 'Literal', value: 'value' },
+          },
+        ],
+      },
+    ],
+  } as never);
 });
