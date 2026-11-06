@@ -40,7 +40,7 @@ const CORE_PACKAGE = JSON.stringify({
   types: './lib/css.d.ts',
   exports: {
     '.': { types: './lib/css.d.ts' },
-    './class-style': { types: './lib/class-style.d.ts' },
+    './sx': { types: './lib/sx.d.ts' },
   },
   imports: { '#types': './lib/types.d.ts' },
 });
@@ -74,7 +74,7 @@ export async function createSession(files: Record<string, string>, libs: Record<
 
   const env = createVirtualTypeScriptEnvironment(
     createSystem(fsMap),
-    [...Object.keys(files), `${CORE_DIR}/lib/class-style.d.ts`],
+    [...Object.keys(files), `${CORE_DIR}/lib/sx.d.ts`],
     ts,
     compilerOptions,
   );
