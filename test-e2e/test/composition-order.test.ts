@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * `classStyle={[a, b]}` gives `b` the last word whatever order the rules reach
+ * `sx={[a, b]}` gives `b` the last word whatever order the rules reach
  * the stylesheet in. These pairs are each composed in both directions, so they
  * only pass while the array decides the winner rather than the declaration
  * order — the property `@plumeria/codemod` has to carry into a CSS Module.
