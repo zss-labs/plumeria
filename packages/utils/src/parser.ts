@@ -116,6 +116,45 @@ const getMarkerVar = (id: string, pseudo: string): string => {
   return `--${hash}-${toIdent(id)}-${toIdent(pseudo.split('(')[0])}`;
 };
 
+const isMarkerEntry = (name: string, value: unknown, pseudo: string) => {
+  if (value !== 1) return false;
+  const rest = /^--[^-]+-(.+)$/.exec(name)?.[1];
+  const head = toIdent(pseudo.split('(')[0]);
+  if (!rest?.endsWith(`-${head}`)) return false;
+  return getMarkerVar(rest.slice(0, -head.length - 1), pseudo) === name;
+};
+
+const isStyleObject = (value: unknown): value is CSSObject =>
+  typeof value === 'object' && value !== null;
+
+const keepMarkers = (previous: CSSObject, obj: CSSObject) => {
+  for (const key of Object.keys(previous)) {
+    const existing = previous[key];
+    const incoming = obj[key];
+    if (
+      !key.startsWith(':') ||
+      existing === incoming ||
+      !isStyleObject(existing) ||
+      !isStyleObject(incoming)
+    )
+      continue;
+    const entries = Object.entries(incoming);
+    const onlyMarkers =
+      entries.length > 0 &&
+      entries.every(([name, value]) => isMarkerEntry(name, value, key));
+    const merged: CSSObject = Object.create(null);
+    for (const [name, value] of Object.entries(existing)) {
+      if (
+        !(name in incoming) &&
+        (onlyMarkers || isMarkerEntry(name, value, key))
+      )
+        merged[name] = value;
+    }
+    if (Object.keys(merged).length > 0)
+      obj[key] = Object.assign(merged, incoming);
+  }
+};
+
 export const getRootIdentifier = (node: Expression): string | null => {
   node = unwrapExpression(node);
   if (t.isIdentifier(node)) {
@@ -382,7 +421,7 @@ export function objectExpressionToObject(
 ): CSSObject {
   const obj: CSSObject = Object.create(null);
 
-  node.properties.forEach((prop) => {
+  const applyProperty = (prop: (typeof node.properties)[number]) => {
     if (prop.type === 'SpreadElement') {
       const arg = prop.arguments;
       const spreadVal = evaluateExpression(
@@ -624,6 +663,12 @@ export function objectExpressionToObject(
         obj[key] = staticTable[val.value];
       }
     }
+  };
+
+  node.properties.forEach((prop) => {
+    const previous = { ...obj };
+    applyProperty(prop);
+    keepMarkers(previous, obj);
   });
 
   return obj;
