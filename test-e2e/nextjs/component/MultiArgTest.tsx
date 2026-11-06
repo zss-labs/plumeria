@@ -29,10 +29,7 @@ export function MultiArgTest() {
       style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}
     >
       <h3>Multi-Arg Dynamic Style Test</h3>
-      <div
-        data-testid="multi-arg-box"
-        classStyle={styles.box(width, height, color)}
-      >
+      <div data-testid="multi-arg-box" sx={styles.box(width, height, color)}>
         {width}x{height}
       </div>
       <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
