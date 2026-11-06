@@ -45,7 +45,7 @@ export const styles = css.create({
 });
 
 export const Comp${i} = () => (
-  <div classStyle={[styles.root, leaf${i % HUB_FANIN}.box]} />
+  <div sx={[styles.root, leaf${i % HUB_FANIN}.box]} />
 );
 `;
 
@@ -180,10 +180,7 @@ async function main() {
 
     // Check real compilation outside the measurement window.
     const output = await prepareTransform(root, componentName(0))();
-    if (
-      output.code.includes('classStyle=') ||
-      !output.code.includes('className=')
-    ) {
+    if (output.code.includes('sx=') || !output.code.includes('className=')) {
       throw new Error('Fixture component was not compiled');
     }
 
