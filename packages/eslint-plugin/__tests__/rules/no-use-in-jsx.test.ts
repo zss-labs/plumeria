@@ -27,7 +27,7 @@ ruleTester.run('no-use-in-jsx', noUseInJsx, {
       filename: path.join(__dirname, 'Page.astro'),
     },
     {
-      code: prefix + 'const el = <div classStyle={[a, active && b]} />;',
+      code: prefix + 'const el = <div sx={[a, active && b]} />;',
       filename: TSX,
     },
     // Not imported from @plumeria/core.
@@ -61,13 +61,13 @@ ruleTester.run('no-use-in-jsx', noUseInJsx, {
     {
       code: prefix + 'const el = <div className={css.use(a)} />;',
       filename: TSX,
-      errors: [{ messageId: 'jsx', data: { styleProp: 'classStyle' } }],
+      errors: [{ messageId: 'jsx', data: { styleProp: 'sx' } }],
     },
     {
       code: prefix + 'const el = <div className={css.use(a)} />;',
       filename: JSX,
-      options: [{ styleProp: 'sx' }],
-      errors: [{ messageId: 'jsx', data: { styleProp: 'sx' } }],
+      options: [{ styleProp: 'classStyle' }],
+      errors: [{ messageId: 'jsx', data: { styleProp: 'classStyle' } }],
     },
     // Anywhere in the file, whether or not the result reaches JSX.
     {
