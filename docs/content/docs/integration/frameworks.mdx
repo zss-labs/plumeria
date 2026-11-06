@@ -19,10 +19,10 @@ That file is the whole integration. [`examples/example-vite-vue-ts`](https://git
 
 ## The styling prop
 
-`@plumeria/core/class-style` declares `classStyle` on React's `HTMLAttributes` and `SVGAttributes`, so anything rendering through the React namespace needs one line, in `src/` when the project has one or at the application root otherwise:
+`@plumeria/core/sx` declares `sx` on React's `HTMLAttributes` and `SVGAttributes`, so anything rendering through the React namespace needs one line, in `src/` when the project has one or at the application root otherwise:
 
 ```ts title="plumeria.d.ts"
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
 A framework that keeps its JSX types in its own module cannot be reached that way. Module augmentation resolves the package from the file that writes it, and `@plumeria/core` does not depend on your framework, so the declaration has to live in your project:
@@ -34,10 +34,10 @@ import type { Style } from '@plumeria/core';
 declare module 'preact' {
   namespace JSX {
     interface HTMLAttributes {
-      classStyle?: Style;
+      sx?: Style;
     }
     interface SVGAttributes {
-      classStyle?: Style;
+      sx?: Style;
     }
   }
 }
@@ -49,17 +49,17 @@ import type { Style } from '@plumeria/core';
 
 declare module '@builder.io/qwik' {
   interface HTMLAttributes extends JSX.HTMLAttributes {
-    classStyle?: Style;
+    sx?: Style;
   }
   interface SVGAttributes extends JSX.SVGAttributes {
-    classStyle?: Style;
+    sx?: Style;
   }
 }
 ```
 
-Declare `SVGAttributes` even where the framework has it extend `HTMLAttributes` and one interface would do — Qwik's extends `AriaAttributes` instead, and an `<svg classStyle={...}>` under a declaration that covers only HTML is rejected outright.
+Declare `SVGAttributes` even where the framework has it extend `HTMLAttributes` and one interface would do — Qwik's extends `AriaAttributes` instead, and an `<svg sx={...}>` under a declaration that covers only HTML is rejected outright.
 
-The type is `Style`. A name the package does not export is not reported here, so a stale one leaves `classStyle` accepting anything at all rather than failing.
+The type is `Style`. A name the package does not export is not reported here, so a stale one leaves `sx` accepting anything at all rather than failing.
 
 ## Single-file components
 
