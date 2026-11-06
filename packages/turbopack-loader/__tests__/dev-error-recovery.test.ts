@@ -15,7 +15,7 @@ export const repro = css.create({ article: { width: ${width} } });
 `;
 const PAGE_SOURCE = `import * as css from '@plumeria/core';
 import { repro } from './repro.styles';
-export const Page = () => <div classStyle={repro.article} />;
+export const Page = () => <div sx={repro.article} />;
 `;
 
 type Result = {
