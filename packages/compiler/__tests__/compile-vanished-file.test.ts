@@ -5,7 +5,7 @@ import { implementations } from '../compiler-implementations';
 
 const moduleUsing = (color: string) => `import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: '${color}' } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
 // A link to nothing is listed by the glob but cannot be read, the same state as
