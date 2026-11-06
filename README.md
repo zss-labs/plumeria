@@ -10,7 +10,7 @@
 
 ## Example
 
-Styles can be passed to the `classStyle` prop. That prop accepts static and dynamic styles as an array. At build time, the compiler resolves `classStyle` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
+Styles can be passed to the `sx` prop. That prop accepts static and dynamic styles as an array. At build time, the compiler resolves `sx` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
 
 ```tsx
 import * as css from '@plumeria/core';
@@ -31,7 +31,7 @@ export default function App({ cond }) {
   const scale = useScale(); // from your own hook
   return (
     <div
-      classStyle={[
+      sx={[
         styles.text,
         cond && styles.cond,
         styles.scale(scale)
@@ -99,9 +99,9 @@ Plumeria publishes frequently. To make that legible, every public API is rated f
 | `css.varType`             | ★★★★☆     | Stable |
 | `css.marker`              | ★★★★☆     | Stable |
 | `css.extended`            | ★★★★☆     | Stable |
-| `css.use`/`classStyle`    | ★★★★★     | Frozen |
+| `css.use`/`sx`    | ★★★★★     | Frozen |
 
-> The **`classStyle`** can be renamed via configuration
+> The **`sx`** can be renamed via configuration
 
 ### Bundler Integrations
 
