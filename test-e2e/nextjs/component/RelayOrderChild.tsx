@@ -16,7 +16,7 @@ export function RelayOrderChild({
   children: ReactNode;
 }) {
   return (
-    <div data-testid="relay-order" classStyle={[styles.own, override]}>
+    <div data-testid="relay-order" sx={[styles.own, override]}>
       {children}
     </div>
   );
