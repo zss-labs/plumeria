@@ -140,6 +140,13 @@ describe('detect', () => {
     expect(defaultConfigName('next', false)).toBe('next.config.mjs');
     expect(defaultConfigName('vite', true)).toBe('vite.config.ts');
     expect(defaultConfigName('vite', false)).toBe('vite.config.mjs');
+
+    const names = configNames('bun') as string[];
+    const original = [...names];
+    names.splice(0, names.length, 'bun.config.cjs');
+    expect(defaultConfigName('bun', true)).toBe('bun.config.cjs');
+    expect(defaultConfigName('bun', false)).toBe('bun.config.cjs');
+    names.splice(0, names.length, ...original);
   });
 
   it('exposes the manifest and config-name helpers', () => {
