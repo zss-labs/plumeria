@@ -27,7 +27,7 @@ export const theme = css.createTheme(${selector}, {
   fg: { default: 'black', theme: 'white' },
 });
 export const s = css.create({ a: { color: theme.fg } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `;
 
   describe('compiler: the createTheme selector', () => {
@@ -61,8 +61,8 @@ const TWO = '.two';
 export const t1 = css.createTheme(ONE, { fg: { default: 'black', theme: 'white' } });
 export const t2 = css.createTheme(TWO, { fg: { default: 'black', theme: 'white' } });
 export const s = css.create({ a: { color: t1.fg }, b: { color: t2.fg } });
-export const A = () => <div classStyle={s.a} />;
-export const B = () => <div classStyle={s.b} />;
+export const A = () => <div sx={s.a} />;
+export const B = () => <div sx={s.b} />;
 `);
       expect(css).toContain('.one {');
       expect(css).toContain('.two {');
@@ -76,7 +76,7 @@ export const theme = css.createTheme(readSelector(), {
   fg: { default: 'black', theme: 'white' },
 });
 export const s = css.create({ a: { color: theme.fg } });
-export const A = () => <div classStyle={s.a} />;
+export const A = () => <div sx={s.a} />;
 `),
       ).toThrow(/needs a selector it can read at build time/);
     });
