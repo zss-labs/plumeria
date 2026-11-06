@@ -41,13 +41,13 @@ export const styles = css.create(${JSON.stringify({ red: RED, blue: BLUE })});
     [RENAMED_APPLY]: `
 import * as css from '@plumeria/core';
 export const RenamedApply = ({ styleArray: s }: { styleArray?: css.Style }) => (
-  <div classStyle={s} />
+  <div sx={s} />
 );
 `,
     [DIRECT_APPLY]: `
 import * as css from '@plumeria/core';
 export const DirectApply = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
     [PARENT]: `
