@@ -30,17 +30,17 @@ const styles = css.create({
 });
 
 type ChipProps = {
-  classStyle?: css.StaticStyles;
+  sx?: css.StaticStyles;
 };
 
-export function Chip({ classStyle }: ChipProps) {
-  return <span className={css.use(styles.base, classStyle)} />;
+export function Chip({ sx }: ChipProps) {
+  return <span className={css.use(styles.base, sx)} />;
 }
 ```
 
 ```tsx
-<Chip classStyle={styles.tinted} />      // ok
-<Chip classStyle={styles.sized(120)} />  // Type error
+<Chip sx={styles.tinted} />      // ok
+<Chip sx={styles.sized(120)} />  // Type error
 ```
 
 ## With a type argument
@@ -49,10 +49,10 @@ A type argument narrows the properties as well, so `StaticStyles<'color'>` is [S
 
 ```tsx
 type BadgeProps = {
-  classStyle?: css.StaticStyles<'color' | 'backgroundColor'>;
+  sx?: css.StaticStyles<'color' | 'backgroundColor'>;
 };
 ```
 
 <Callout title="Good to know">
-A component that applies its styles through the `classStyle` prop can carry a dynamic style. Use [StyleProps](/docs/api/types/StyleProps) or [WithoutProperties](/docs/api/types/WithoutProperties) there instead.
+A component that applies its styles through the `sx` prop can carry a dynamic style. Use [StyleProps](/docs/api/types/StyleProps) or [WithoutProperties](/docs/api/types/WithoutProperties) there instead.
 </Callout>
