@@ -49,7 +49,7 @@ describe.each(implementations)(
 
     const style = (declaration: string) =>
       `export const s = css.create({ a: { ${declaration} } });\n` +
-      `export const A = () => <div classStyle={s.a} />;`;
+      `export const A = () => <div sx={s.a} />;`;
 
     describe('resolvePropertyPolicy', () => {
       it.each([
@@ -150,7 +150,7 @@ describe.each(implementations)(
           run(
             `export const k = css.keyframes({ from: { marginBlockStart: 0 } });\n` +
               `export const s = css.create({ a: { animationName: k } });\n` +
-              `export const A = () => <div classStyle={s.a} />;`,
+              `export const A = () => <div sx={s.a} />;`,
             { withoutLogicalProperties: true },
           ),
         ).rejects.toThrow(
@@ -162,7 +162,7 @@ describe.each(implementations)(
         await expect(
           run(
             `export const s = css.create({ a: (v: number) => ({ marginBlockStart: v }) });\n` +
-              `export const A = () => <div classStyle={s.a(0)} />;`,
+              `export const A = () => <div sx={s.a(0)} />;`,
             { withoutLogicalProperties: true },
           ),
         ).rejects.toThrow(
