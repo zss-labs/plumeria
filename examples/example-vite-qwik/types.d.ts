@@ -3,9 +3,9 @@ import type { Style } from '@plumeria/core';
 
 declare module '@builder.io/qwik' {
   interface HTMLAttributes extends JSX.HTMLAttributes {
-    classStyle?: Style;
+    sx?: Style;
   }
   interface SVGAttributes extends JSX.SVGAttributes {
-    classStyle?: Style;
+    sx?: Style;
   }
 }
