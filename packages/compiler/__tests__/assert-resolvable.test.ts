@@ -37,16 +37,16 @@ ${body}
   describe('compiler: assertResolvable', () => {
     it.each([
       [
-        'a function call in classStyle',
-        'export const A = () => <div classStyle={[styles.box, Test()]} />;',
+        'a function call in sx',
+        'export const A = () => <div sx={[styles.box, Test()]} />;',
       ],
       [
         'a function call nested in a ternary',
-        'export const A = () => <div classStyle={cond ? Test() : styles.box} />;',
+        'export const A = () => <div sx={cond ? Test() : styles.box} />;',
       ],
       [
-        'an arrow function in classStyle',
-        'export const A = () => <div classStyle={[styles.box, () => styles.box]} />;',
+        'an arrow function in sx',
+        'export const A = () => <div sx={[styles.box, () => styles.box]} />;',
       ],
       [
         'a function call in css.use()',
@@ -60,7 +60,7 @@ ${body}
     it('accepts undefined as a conditional branch', () => {
       expect(() =>
         compile(
-          'export const A = () => <div classStyle={cond ? styles.box : undefined} />;',
+          'export const A = () => <div sx={cond ? styles.box : undefined} />;',
         ),
       ).not.toThrow();
     });
