@@ -16,7 +16,7 @@ const s = css.create({
   fn: (size: number) => ({ width: size }),
   named: ({ tone }: { tone: string }) => ({ color: tone }),
 });
-const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;
+const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;
 `;
 
   const transform = async (files: Record<string, string>) => {
@@ -145,7 +145,7 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={card
           `export const A = ({ rest }: any) => <Card cardStyle={s.named({ ...rest })} />;`,
         ),
       ).rejects.toThrow(
-        '[plumeria] s.named({ ...rest }) is only supported in the classStyle prop.',
+        '[plumeria] s.named({ ...rest }) is only supported in the sx prop.',
       );
     });
   });
@@ -155,7 +155,7 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={card
       const { code } = await transform({
         'app.tsx': `import * as css from '@plumeria/core';
 const s = css.create({ a: { color: 'red' } });
-const Card = ({ cardStyle, cardStyle: again }: { cardStyle?: css.Style } = {}) => <div classStyle={cardStyle} />;
+const Card = ({ cardStyle, cardStyle: again }: { cardStyle?: css.Style } = {}) => <div sx={cardStyle} />;
 export const A = () => <Card cardStyle={s.a} />;`,
       });
       expect(code).toContain(`({"${RED_KEY}":"${RED}"}[cardStyle] || "")`);
@@ -167,7 +167,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
         'widget.tsx': `import '@plumeria/core';
 export default class { render() { return null; } }`,
         'box.tsx': `import * as css from '@plumeria/core';
-export default function ({ boxStyle }: { boxStyle?: css.Style }) { return <div classStyle={boxStyle} />; }`,
+export default function ({ boxStyle }: { boxStyle?: css.Style }) { return <div sx={boxStyle} />; }`,
         'app.tsx': `import * as css from '@plumeria/core';
 import Widget from './widget';
 import Box from './box';
@@ -189,7 +189,7 @@ export { nope } from 'unknown-package';`,
         'app.tsx': `import * as css from '@plumeria/core';
 import * as barrel from './barrel';
 const s = css.create({ a: { color: 'red' } });
-export const A = () => <div classStyle={s.a} data-b={barrel} />;`,
+export const A = () => <div sx={s.a} data-b={barrel} />;`,
       });
       expect(code).toContain(`import * as barrel from './barrel';`);
       expect(code).toContain(`<div className={"${RED}"} data-b={barrel} />`);
@@ -201,7 +201,7 @@ export const A = () => <div classStyle={s.a} data-b={barrel} />;`,
         'app.tsx': `import * as css from '@plumeria/core';
 import * as ns from './styles';
 const s = css.create({ a: { color: 'red' } });
-export const A = () => <div classStyle={s.a} data-n={ns} />;`,
+export const A = () => <div sx={s.a} data-n={ns} />;`,
       });
       expect(code).toContain(`import * as ns from './styles';`);
       expect(code).toContain(`<div className={"${RED}"} data-n={ns} />`);
