@@ -16,30 +16,30 @@ import { theme } from './theme';
 import { breakpoints } from './tokens';
 
 const External = () => (
-  <svg classStyle={styles.icon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+  <svg sx={styles.icon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
     <path d="M7 17 17 7" />
     <path d="M8 7h9v9" />
   </svg>
 );
 
 export const Card = () => (
-  <main classStyle={styles.canvas}>
-    <article classStyle={styles.card}>
-      <div classStyle={styles.heading}>
-        <img classStyle={styles.logo} src="/logo.svg" alt="" width={20} height={20} />
-        <p classStyle={styles.eyebrow}>Plumeria</p>
+  <main sx={styles.canvas}>
+    <article sx={styles.card}>
+      <div sx={styles.heading}>
+        <img sx={styles.logo} src="/logo.svg" alt="" width={20} height={20} />
+        <p sx={styles.eyebrow}>Plumeria</p>
       </div>
-      <h1 classStyle={styles.title}>Rust-based CSS compiler</h1>
-      <p classStyle={styles.description}>
+      <h1 sx={styles.title}>Rust-based CSS compiler</h1>
+      <p sx={styles.description}>
         Atomic CSS at build time, nothing at runtime.
         <br />
         Edit any style and watch it land live.
       </p>
-      <div classStyle={styles.actions}>
-        <a classStyle={[styles.button, styles.primary]} href="/docs" target="_blank" rel="noreferrer">
+      <div sx={styles.actions}>
+        <a sx={[styles.button, styles.primary]} href="/docs" target="_blank" rel="noreferrer">
           Docs <External />
         </a>
-        <a classStyle={styles.button} href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer">
+        <a sx={styles.button} href="https://github.com/zss-labs/plumeria" target="_blank" rel="noreferrer">
           GitHub <External />
         </a>
       </div>
@@ -196,61 +196,61 @@ import { breakpoints } from './tokens';
 // Swap the entries of any array and the preview follows.
 
 export const Page = () => (
-  <main classStyle={styles.canvas}>
-    <article classStyle={styles.card}>
-      <h1 classStyle={styles.title}>The last style written wins</h1>
-      <p classStyle={styles.lead}>Swap any array in Page.tsx and the result follows.</p>
+  <main sx={styles.canvas}>
+    <article sx={styles.card}>
+      <h1 sx={styles.title}>The last style written wins</h1>
+      <p sx={styles.lead}>Swap any array in Page.tsx and the result follows.</p>
 
       {/* muted comes from another module, accent from this one */}
-      <section classStyle={styles.section}>
-        <h2 classStyle={styles.label}>Across modules</h2>
-        <div classStyle={styles.pair}>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>muted → accent</span>
-            <span classStyle={[styles.specimen, shared.muted, styles.accent]}>Aa</span>
+      <section sx={styles.section}>
+        <h2 sx={styles.label}>Across modules</h2>
+        <div sx={styles.pair}>
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>muted → accent</span>
+            <span sx={[styles.specimen, shared.muted, styles.accent]}>Aa</span>
           </div>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>accent → muted</span>
-            <span classStyle={[styles.specimen, styles.accent, shared.muted]}>Aa</span>
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>accent → muted</span>
+            <span sx={[styles.specimen, styles.accent, shared.muted]}>Aa</span>
           </div>
         </div>
       </section>
 
       {/* Badge applies its own muted color first, then the style it receives */}
-      <section classStyle={styles.section}>
-        <h2 classStyle={styles.label}>Through a prop</h2>
-        <div classStyle={styles.pair}>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>Badge</span>
+      <section sx={styles.section}>
+        <h2 sx={styles.label}>Through a prop</h2>
+        <div sx={styles.pair}>
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>Badge</span>
             <Badge>Badge</Badge>
           </div>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>Badge → accent</span>
-            <Badge classStyle={styles.accent}>Badge</Badge>
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>Badge → accent</span>
+            <Badge sx={styles.accent}>Badge</Badge>
           </div>
         </div>
       </section>
 
       {/* The accent band is the padding: the longhand outranks its shorthand in either order */}
-      <section classStyle={styles.section}>
-        <h2 classStyle={styles.label}>Longhand over shorthand</h2>
-        <div classStyle={styles.trio}>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>box</span>
-            <div classStyle={styles.box}>
-              <div classStyle={styles.fill} />
+      <section sx={styles.section}>
+        <h2 sx={styles.label}>Longhand over shorthand</h2>
+        <div sx={styles.trio}>
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>box</span>
+            <div sx={styles.box}>
+              <div sx={styles.fill} />
             </div>
           </div>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>box → top</span>
-            <div classStyle={[styles.box, styles.boxTop]}>
-              <div classStyle={styles.fill} />
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>box → top</span>
+            <div sx={[styles.box, styles.boxTop]}>
+              <div sx={styles.fill} />
             </div>
           </div>
-          <div classStyle={styles.tile}>
-            <span classStyle={styles.caption}>top → box</span>
-            <div classStyle={[styles.boxTop, styles.box]}>
-              <div classStyle={styles.fill} />
+          <div sx={styles.tile}>
+            <span sx={styles.caption}>top → box</span>
+            <div sx={[styles.boxTop, styles.box]}>
+              <div sx={styles.fill} />
             </div>
           </div>
         </div>
@@ -379,12 +379,12 @@ const styles = css.create({
 import { theme } from './theme';
 
 type BadgeProps = {
-  classStyle?: css.StyleProps<'color'>;
+  sx?: css.StyleProps<'color'>;
   children: string;
 };
 
-export const Badge = ({ classStyle, children }: BadgeProps) => (
-  <span classStyle={[styles.badge, classStyle]}>{children}</span>
+export const Badge = ({ sx, children }: BadgeProps) => (
+  <span sx={[styles.badge, sx]}>{children}</span>
 );
 
 const styles = css.create({
