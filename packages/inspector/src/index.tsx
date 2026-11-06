@@ -392,12 +392,10 @@ const DevInspector = ({ initial }: { initial: boolean }) => {
       {/* Dynamic toggle badge */}
       <div
         data-plumeria-inspector-ignore="true"
-        classStyle={[styles.toggleBadge, isActive && styles.toggleBadgeActive]}
+        sx={[styles.toggleBadge, isActive && styles.toggleBadgeActive]}
         onClick={() => setIsActive((prev) => !prev)}
       >
-        <span
-          classStyle={[styles.statusDot, isActive && styles.statusDotActive]}
-        />
+        <span sx={[styles.statusDot, isActive && styles.statusDotActive]} />
         <span>
           Inspector: {isActive ? 'ON' : 'OFF'}{' '}
           <span style={{ opacity: 0.6 }}>(⌘ + I)</span>
@@ -408,7 +406,7 @@ const DevInspector = ({ initial }: { initial: boolean }) => {
       {isActive && hoveredElement && (
         <div
           data-plumeria-inspector-ignore="true"
-          classStyle={styles.overlay(
+          sx={styles.overlay(
             (overlayStyle.top as string) || '0px',
             (overlayStyle.left as string) || '0px',
             (overlayStyle.width as string) || '0px',
@@ -422,7 +420,7 @@ const DevInspector = ({ initial }: { initial: boolean }) => {
         <div
           ref={tooltipRef}
           data-plumeria-inspector-ignore="true"
-          classStyle={styles.tooltip(
+          sx={styles.tooltip(
             isFrozen ? 'auto' : 'none',
             (tooltipStyle.top as string) || '0px',
             (tooltipStyle.left as string) || '0px',
@@ -430,12 +428,12 @@ const DevInspector = ({ initial }: { initial: boolean }) => {
             (tooltipStyle.transform as string) || 'none',
           )}
         >
-          <div classStyle={styles.title}>
-            <span classStyle={styles.tag}>
+          <div sx={styles.title}>
+            <span sx={styles.tag}>
               &lt;{hoveredElement.tagName.toLowerCase()}&gt;
             </span>
             {getClassName(hoveredElement) && (
-              <span classStyle={styles.classNameText}>
+              <span sx={styles.classNameText}>
                 .
                 {getClassName(hoveredElement)
                   .split(' ')
@@ -444,36 +442,32 @@ const DevInspector = ({ initial }: { initial: boolean }) => {
               </span>
             )}
           </div>
-          <div classStyle={styles.rulesContainer}>
+          <div sx={styles.rulesContainer}>
             {rules.length === 0 ? (
-              <div classStyle={styles.emptyText}>No matching CSS rules</div>
+              <div sx={styles.emptyText}>No matching CSS rules</div>
             ) : (
               rules.map((rule, idx) => {
                 const parsedProps = parseCssText(rule.cssText);
                 return (
-                  <div key={idx} classStyle={styles.ruleBlock}>
-                    <span classStyle={styles.selector}>
+                  <div key={idx} sx={styles.ruleBlock}>
+                    <span sx={styles.selector}>
                       {rule.selector} {'{'}
                     </span>
                     {parsedProps.map((prop, pIdx) => (
-                      <span key={pIdx} classStyle={styles.propertyLine}>
-                        <span classStyle={styles.propertyName}>
-                          {prop.name}
-                        </span>
+                      <span key={pIdx} sx={styles.propertyLine}>
+                        <span sx={styles.propertyName}>{prop.name}</span>
                         {': '}
-                        <span classStyle={styles.propertyValue}>
-                          {prop.value}
-                        </span>
+                        <span sx={styles.propertyValue}>{prop.value}</span>
                         {';'}
                       </span>
                     ))}
-                    <span classStyle={styles.selector}>{'}'}</span>
+                    <span sx={styles.selector}>{'}'}</span>
                   </div>
                 );
               })
             )}
           </div>
-          <div classStyle={styles.hintText}>
+          <div sx={styles.hintText}>
             {isFrozen
               ? '❄️ Targeting Locked (Press Shift to unlock)'
               : '⚡ Press Shift to lock targeting & scroll rules'}
