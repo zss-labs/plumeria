@@ -12,7 +12,7 @@ export const create: create;
 `create` defines css styles using plain JavaScript style objects.  
 Type-safe, autocompleted and lintable.
 
-Only the styles you use in `classStyle` will be on-demand compiled.
+Only the styles you use in `sx` will be on-demand compiled.
 
 ## Example
 
@@ -33,7 +33,7 @@ const styles = css.create({
 export default function App() {
   return (
     <div
-      classStyle={[
+      sx={[
         styles.container,
         styles.text
       ]}
@@ -82,7 +82,7 @@ const styles = css.create({
 
 export const Color = ({ color }) => {
   return (
-    <span classStyle={styles.palette(color)}>Dynamic Color</span>
+    <span sx={styles.palette(color)}>Dynamic Color</span>
   )
 }
 ```
@@ -123,7 +123,7 @@ type Size = 'small' | 'large';
 
 export const Button = ({ size }: { size: Size }) => {
   return (
-    <button classStyle={[styles.base, sizeStyles[size]]}>Button</button>
+    <button sx={[styles.base, sizeStyles[size]]}>Button</button>
   );
 };
 ```
@@ -150,10 +150,10 @@ const toneStyles = css.create({
 });
 
 // muted wins — it is written last
-<button classStyle={[styles.base, toneStyles[tone], isMuted && styles.muted]} />
+<button sx={[styles.base, toneStyles[tone], isMuted && styles.muted]} />
 
 // toneStyles wins — now it is
-<button classStyle={[styles.base, isMuted && styles.muted, toneStyles[tone]]} />
+<button sx={[styles.base, isMuted && styles.muted, toneStyles[tone]]} />
 ```
 
 All three set `color` here. Entries that touch different properties never compete, so their order does not matter — `[styles.base, sizeStyles[size]]` above reads the same either way.
@@ -169,9 +169,9 @@ One pair the list does not settle is a shorthand and a longhand of the same prop
 The condition can sit inside the brackets or around them. Both compile to a single lookup:
 
 ```tsx
-<button classStyle={sizeStyles[isLarge ? keyA : keyB]} />
-<button classStyle={isLarge ? sizeStyles[keyA] : sizeStyles[keyB]} />
-<button classStyle={isActive && sizeStyles[key]} />
+<button sx={sizeStyles[isLarge ? keyA : keyB]} />
+<button sx={isLarge ? sizeStyles[keyA] : sizeStyles[keyB]} />
+<button sx={isActive && sizeStyles[key]} />
 ```
 
 **Compiled:**
@@ -195,8 +195,8 @@ Reaching into two different objects is fine; the table simply carries both key s
 When both keys are literals, read the property directly. A condition between two styles the compiler already knows needs no table at all:
 
 ```diff
-- <button classStyle={sizeStyles[isLarge ? 'large' : 'small']} />
-+ <button classStyle={isLarge ? sizeStyles.large : sizeStyles.small} />
+- <button sx={sizeStyles[isLarge ? 'large' : 'small']} />
++ <button sx={isLarge ? sizeStyles.large : sizeStyles.small} />
 ```
 
 **Compiled:**
