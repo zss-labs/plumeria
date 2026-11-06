@@ -59,7 +59,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
 
   const CASES: Array<[string, string]> = [
     [
-      'a conditional entry in a classStyle array',
+      'a conditional entry in a sx array',
       `
     import * as css from '@plumeria/core';
     const s = css.create({
@@ -67,7 +67,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       on: { color: 'purple', fontSize: '20px' },
     });
     export const A = ({ on }: { on: boolean }) => (
-      <div classStyle={[s.base, on && s.on]} />
+      <div sx={[s.base, on && s.on]} />
     );
     `,
     ],
@@ -84,7 +84,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       loud: { color: 'crimson' },
     });
     export const A = ({ s, t }: { s: 'small' | 'large'; t: 'calm' | 'loud' }) => (
-      <div classStyle={[size[s], tone[t]]} />
+      <div sx={[size[s], tone[t]]} />
     );
     `,
     ],
@@ -101,7 +101,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       some: { color: 'teal' },
     });
     export const A = ({ x, y }: { x: 'one' | 'two'; y: 'none' | 'some' }) => (
-      <div classStyle={[a[x], b[y]]} />
+      <div sx={[a[x], b[y]]} />
     );
     `,
     ],
@@ -118,7 +118,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       thick: { borderWidth: '4px' },
     });
     export const A = ({ x, y }: { x: 'one' | 'two'; y: 'thin' | 'thick' }) => (
-      <div classStyle={[a[x], b[y]]} />
+      <div sx={[a[x], b[y]]} />
     );
     `,
     ],
@@ -131,7 +131,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       on: { color: 'teal', ':hover': { color: 'crimson' } },
     });
     export const A = ({ on }: { on: boolean }) => (
-      <div classStyle={[s.base, on && s.on]} />
+      <div sx={[s.base, on && s.on]} />
     );
     `,
     ],
@@ -144,7 +144,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       on: { color: 'teal', '@media (width >= 600px)': { color: 'crimson' } },
     });
     export const A = ({ on }: { on: boolean }) => (
-      <div classStyle={[s.base, on && s.on]} />
+      <div sx={[s.base, on && s.on]} />
     );
     `,
     ],
@@ -155,7 +155,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
     const s = css.create({
       box: (w: number) => ({ width: w, color: 'green' }),
     });
-    export const A = ({ w }: { w: number }) => <div classStyle={s.box(w)} />;
+    export const A = ({ w }: { w: number }) => <div sx={s.box(w)} />;
     `,
     ],
     [
@@ -177,10 +177,10 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
       base: { color: 'green' },
       loud: { color: 'crimson', fontWeight: 700 },
     });
-    const Card = ({ classStyle }: { classStyle?: css.Style }) => (
-      <div classStyle={[s.base, classStyle]} />
+    const Card = ({ sx }: { sx?: css.Style }) => (
+      <div sx={[s.base, sx]} />
     );
-    export const A = ({ on }: { on: boolean }) => <Card classStyle={on && s.loud} />;
+    export const A = ({ on }: { on: boolean }) => <Card sx={on && s.loud} />;
     `,
     ],
     [
@@ -191,7 +191,7 @@ describe.each(implementations)('$name', ({ compileCSS, transformSource }) => {
     const b = css.create({ p: { color: 'teal', margin: '2px' }, q: { margin: '4px' } });
     const c = css.create({ p: { margin: '6px' }, q: { margin: '8px' } });
     export const A = ({ x, y, z }: { x: 'p' | 'q'; y: 'p' | 'q'; z: 'p' | 'q' }) => (
-      <div classStyle={[a[x], b[y], c[z]]} />
+      <div sx={[a[x], b[y], c[z]]} />
     );
     `,
     ],
