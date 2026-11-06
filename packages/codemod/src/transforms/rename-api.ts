@@ -59,7 +59,7 @@ export const renameApi: Rule.RuleModule = {
           rename(specifier.imported);
           if (specifier.local.name !== from) continue;
           const [variable] = context.sourceCode.getDeclaredVariables(specifier);
-          for (const reference of variable?.references ?? []) {
+          for (const reference of variable.references) {
             rename(reference.identifier);
           }
         }
