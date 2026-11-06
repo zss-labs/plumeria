@@ -21,7 +21,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   const SOURCE = `
 import * as css from '@plumeria/core';
 export const styles = css.create({ box: { color: 'teal' } });
-export const A = () => <div classStyle={styles.box} />;
+export const A = () => <div sx={styles.box} />;
 `;
 
   const run = (overrides: { isDev?: boolean }) =>
