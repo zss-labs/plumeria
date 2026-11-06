@@ -23,17 +23,17 @@ const styles = css.create({
 });
 
 type PanelProps = {
-  classStyle?: css.WithoutProperties<'position' | 'top' | 'left'>;
+  sx?: css.WithoutProperties<'position' | 'top' | 'left'>;
 };
 
-export function Panel({ classStyle }: PanelProps) {
-  return <div classStyle={[styles.base, classStyle]} />;
+export function Panel({ sx }: PanelProps) {
+  return <div sx={[styles.base, sx]} />;
 }
 ```
 
 ```tsx
-<Panel classStyle={styles.tinted} />  // ok when tinted only sets color
-<Panel classStyle={styles.pinned} />  // Type error when pinned sets position
+<Panel sx={styles.tinted} />  // ok when tinted only sets color
+<Panel sx={styles.pinned} />  // Type error when pinned sets position
 ```
 
 ## Nested blocks are covered
