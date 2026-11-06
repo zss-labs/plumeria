@@ -42,7 +42,7 @@ export const styles = css.create({
 });
 
 export const Comp${i} = () => (
-  <div classStyle={[styles.root, leaf${i % HUB_FANIN}.box]} />
+  <div sx={[styles.root, leaf${i % HUB_FANIN}.box]} />
 );
 `;
 
