@@ -36,23 +36,21 @@ const s = css.create({
 
   describe('compiler: a style array', () => {
     it('skips a hole', () => {
-      const css = app(
-        `export const A = () => <div classStyle={[s.a, , s.b]} />;`,
-      );
+      const css = app(`export const A = () => <div sx={[s.a, , s.b]} />;`);
       expect(css).toContain(RED);
       expect(css).toContain(PADDING);
     });
 
     it('keeps the entries it can read beside one it cannot', () => {
       const css = app(
-        `export const A = ({ other }: any) => <div classStyle={[s.a, other]} />;`,
+        `export const A = ({ other }: any) => <div sx={[s.a, other]} />;`,
       );
       expect(css).toContain(RED);
     });
 
     it('reads a branch that is undefined as no style', () => {
       const css = app(
-        `export const A = ({ on }: any) => <div classStyle={[on ? undefined : s.a, on && s.b]} />;`,
+        `export const A = ({ on }: any) => <div sx={[on ? undefined : s.a, on && s.b]} />;`,
       );
       expect(css).toContain(RED);
       expect(css).toContain(PADDING);
@@ -61,18 +59,15 @@ const s = css.create({
 
   describe('compiler: a key the style object does not hold', () => {
     it.each([
-      ['a static key', `export const A = () => <div classStyle={s.zzz} />;`],
-      [
-        'a function key',
-        `export const A = () => <div classStyle={s.nope(1)} />;`,
-      ],
+      ['a static key', `export const A = () => <div sx={s.zzz} />;`],
+      ['a function key', `export const A = () => <div sx={s.nope(1)} />;`],
       [
         'a function key called with a spread',
-        `export const A = ({ args }: any) => <div classStyle={s.fn(...args)} />;`,
+        `export const A = ({ args }: any) => <div sx={s.fn(...args)} />;`,
       ],
       [
         'a positional function key called with an unrelated object',
-        `export const A = () => <div classStyle={s.fn({ other: 3 })} />;`,
+        `export const A = () => <div sx={s.fn({ other: 3 })} />;`,
       ],
     ])('emits nothing for %s', (_name, body) => {
       expect(app(body).trim()).toBe('');
@@ -81,7 +76,7 @@ const s = css.create({
     it('rejects a computed key on something that is not a style object', () => {
       expect(() =>
         app(
-          `const data: any = {}; export const A = ({ k }: any) => <div classStyle={data[k]} />;`,
+          `const data: any = {}; export const A = ({ k }: any) => <div sx={data[k]} />;`,
         ),
       ).toThrow(
         '[plumeria] Dynamic or unresolvable style object "data[k]" is not supported. (app.tsx)',
@@ -93,16 +88,14 @@ const s = css.create({
     it('reads a shorthand property as the named parameter', () => {
       expect(
         app(
-          `export const A = ({ tone }: any) => <div classStyle={s.named({ tone })} />;`,
+          `export const A = ({ tone }: any) => <div sx={s.named({ tone })} />;`,
         ),
       ).toMatch(/\{ color: var\(--[a-z0-9]+-tone\); \}/);
     });
 
     it('reads a quoted property as the named parameter', () => {
       expect(
-        app(
-          `export const A = () => <div classStyle={s.named({ 'tone': 'red' })} />;`,
-        ),
+        app(`export const A = () => <div sx={s.named({ 'tone': 'red' })} />;`),
       ).toContain(RED);
     });
 
@@ -112,9 +105,7 @@ const s = css.create({
       ['a computed key', `s.named({ [k]: 'red' })`],
     ])('rejects a named parameter left unset by %s', (_name, call) => {
       expect(() =>
-        app(
-          `export const A = ({ rest, k }: any) => <div classStyle={${call}} />;`,
-        ),
+        app(`export const A = ({ rest, k }: any) => <div sx={${call}} />;`),
       ).toThrow(
         `[plumeria] ${call} leaves "tone" unset, and a dynamic style function has no value to fall back on. (app.tsx)`,
       );
@@ -122,15 +113,13 @@ const s = css.create({
 
     it('reads an object handed to a positional parameter by its name', () => {
       expect(
-        app(`export const A = () => <div classStyle={s.fn({ size: 3 })} />;`),
+        app(`export const A = () => <div sx={s.fn({ size: 3 })} />;`),
       ).toContain('{ width: 3px; }');
     });
 
     it('ignores an argument past the last parameter', () => {
       expect(
-        app(
-          `export const A = ({ n }: any) => <div classStyle={s.fn(n, 2)} />;`,
-        ),
+        app(`export const A = ({ n }: any) => <div sx={s.fn(n, 2)} />;`),
       ).toMatch(/\{ width: var\(--[a-z0-9]+-size\); \}/);
     });
   });
@@ -141,7 +130,7 @@ const s = css.create({
         compile({
           'app.tsx': `import { create } from '@plumeria/core';
 const s = create({ a: { color: 'red' } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
         }),
       ).toContain(RED);
     });
@@ -153,7 +142,7 @@ const styles = css.create({ a: { color: 'teal' } });
 export default styles;`,
         'app.tsx': `import '@plumeria/core';
 import styles, { missing } from './styles';
-export const A = () => <div classStyle={[styles.a, styles.zzz]} />;`,
+export const A = () => <div sx={[styles.a, styles.zzz]} />;`,
       });
       expect(css).toContain('{ color: teal; }');
     });
@@ -189,17 +178,15 @@ export const A = () => <div classStyle={[styles.a, styles.zzz]} />;`,
   describe('compiler: names that stand for a style', () => {
     it('follows a constant that names a style', () => {
       expect(
-        app(
-          `const local = s.a; export const A = () => <div classStyle={local} />;`,
-        ),
+        app(`const local = s.a; export const A = () => <div sx={local} />;`),
       ).toContain(RED);
     });
 
     it('does not follow it into a scope that shadows the name', () => {
       const css = app(
         `const local = s.a;
-export const A = ({ local }: any) => <div classStyle={local} />;
-export const B = () => <div classStyle={local} />;`,
+export const A = ({ local }: any) => <div sx={local} />;
+export const B = () => <div sx={local} />;`,
       );
       expect(css).toContain(RED);
     });
@@ -208,20 +195,20 @@ export const B = () => <div classStyle={local} />;`,
       expect(
         app(
           `const data = { v: 1 }; const n = data.v;
-export const A = () => <div classStyle={s.a} data-n={n} />;`,
+export const A = () => <div sx={s.a} data-n={n} />;`,
         ),
       ).toContain(RED);
     });
 
     it('reads an anonymous default component', () => {
       expect(
-        app(`export default function () { return <div classStyle={s.b} />; }`),
+        app(`export default function () { return <div sx={s.b} />; }`),
       ).toContain(PADDING);
     });
   });
 
   describe('compiler: a style handed to a component', () => {
-    const CARD = `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;\n`;
+    const CARD = `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;\n`;
 
     it('emits a style passed twice once', () => {
       const css = app(
@@ -234,7 +221,7 @@ export const A = () => <div classStyle={s.a} data-n={n} />;`,
     it('reads a defaulted prop beside patterns it does not name', () => {
       const css = app(
         `const k = 'x';
-const Card = ({ a: { b }, [k]: v, c: d = s.a }: any) => <div classStyle={d} />;
+const Card = ({ a: { b }, [k]: v, c: d = s.a }: any) => <div sx={d} />;
 export const A = () => <Card c={s.b} />;`,
       );
       expect(css).toContain(RED);
@@ -244,11 +231,11 @@ export const A = () => <Card c={s.b} />;`,
     it('keeps the components of each file apart', () => {
       const css = compile({
         'card.tsx': `import * as css from '@plumeria/core';
-export const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;`,
+export const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;`,
         'app.tsx':
           HEAD +
           `import { Card } from './card';
-const Local = ({ boxStyle }: { boxStyle?: css.Style }) => <div classStyle={boxStyle} />;
+const Local = ({ boxStyle }: { boxStyle?: css.Style }) => <div sx={boxStyle} />;
 export const A = () => <><Card cardStyle={s.a} /><Local boxStyle={s.b} /></>;`,
       });
       expect(css).toContain(RED);
@@ -297,7 +284,7 @@ export const A = (p: any) => <Card cardStyle={${value}} />;`,
     it('reads a prop destructured under its own name', () => {
       expect(
         app(
-          `const Box = ({ boxStyle: boxStyle }: any) => <div classStyle={boxStyle} />;
+          `const Box = ({ boxStyle: boxStyle }: any) => <div sx={boxStyle} />;
 export const A = () => <Box boxStyle={s.b} />;`,
         ),
       ).toContain(PADDING);
@@ -306,7 +293,7 @@ export const A = () => <Box boxStyle={s.b} />;`,
     it('reads a component inside two wrapper calls', () => {
       expect(
         app(
-          `const Wrapped = memo(forwardRef(({ wrapStyle }: any, ref: any) => <div ref={ref} classStyle={wrapStyle} />));
+          `const Wrapped = memo(forwardRef(({ wrapStyle }: any, ref: any) => <div ref={ref} sx={wrapStyle} />));
 const Bare = memo();
 export const A = () => <Wrapped wrapStyle={s.b} />;`,
         ),
@@ -319,7 +306,7 @@ export const A = () => <Wrapped wrapStyle={s.b} />;`,
 export const styles = css.create({ a: { color: 'teal' }, b: { margin: 2 } });`,
         'app.tsx': `import '@plumeria/core';
 import { styles } from './styles';
-const Card = ({ cardStyle }: any) => <div classStyle={cardStyle} />;
+const Card = ({ cardStyle }: any) => <div sx={cardStyle} />;
 export const A = ({ k }: any) => <><Card cardStyle={styles} /><Card cardStyle={styles[k]} /><Card cardStyle={styles['a']} /><Card cardStyle={styles['zzz']} /><Card cardStyle={styles.zzz} /></>;`,
       });
       expect(css).toContain('{ color: teal; }');
@@ -334,7 +321,7 @@ export const A = ({ k }: any) => <><Card cardStyle={styles} /><Card cardStyle={s
     ])('reads a named argument written as %s', (_name, tone, expected) => {
       expect(
         app(
-          `export const A = (p: any) => <div classStyle={s.named({ tone: ${tone} })} />;`,
+          `export const A = (p: any) => <div sx={s.named({ tone: ${tone} })} />;`,
         ),
       ).toContain(expected);
     });
@@ -344,7 +331,7 @@ export const A = ({ k }: any) => <><Card cardStyle={styles} /><Card cardStyle={s
       ['an arrow function', '() => s.a'],
     ])('rejects %s', (_name, value) => {
       expect(() =>
-        app(`export const A = () => <div classStyle={${value}} />;`),
+        app(`export const A = () => <div sx={${value}} />;`),
       ).toThrow(
         `[plumeria] Dynamic or unresolvable style object "${value}" is not supported. (app.tsx)`,
       );
@@ -354,7 +341,7 @@ export const A = ({ k }: any) => <><Card cardStyle={styles} /><Card cardStyle={s
       expect(() =>
         app(
           `const data: any = {};
-export const A = ({ on, k }: any) => <div classStyle={[on && data[k]]} />;`,
+export const A = ({ on, k }: any) => <div sx={[on && data[k]]} />;`,
         ),
       ).toThrow(
         '[plumeria] Dynamic or unresolvable style object "data[k]" is not supported. (app.tsx)',
@@ -363,7 +350,7 @@ export const A = ({ on, k }: any) => <div classStyle={[on && data[k]]} />;`,
 
     it('keeps the branch it can read beside an array it cannot', () => {
       const css = app(
-        `export const A = ({ on, other }: any) => <div classStyle={on ? [s.a, other] : s.b} />;`,
+        `export const A = ({ on, other }: any) => <div sx={on ? [s.a, other] : s.b} />;`,
       );
       expect(css).toContain(RED);
       expect(css).toContain(PADDING);
@@ -372,7 +359,7 @@ export const A = ({ on, k }: any) => <div classStyle={[on && data[k]]} />;`,
     it('emits nothing for an empty style under a condition', () => {
       const css = app(
         `const e = css.create({ empty: {} });
-export const A = ({ on }: any) => <div classStyle={[on ? e.empty : s.a, on && e.empty]} />;`,
+export const A = ({ on }: any) => <div sx={[on ? e.empty : s.a, on && e.empty]} />;`,
       );
       expect(css.trim()).toBe(RED);
     });
