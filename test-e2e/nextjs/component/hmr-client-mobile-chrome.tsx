@@ -16,16 +16,16 @@ const styles = css.create({
 export function HmrClientBox({ children }: { children: React.ReactNode }) {
   return (
     <section>
-      <div data-testid="hmr-client-box" classStyle={styles.box}>
+      <div data-testid="hmr-client-box" sx={styles.box}>
         the client module and the stylesheet update separately
       </div>
       <div
         data-testid="hmr-client-ordered"
-        classStyle={[styles.text, hmrClientWide.text]}
+        sx={[styles.text, hmrClientWide.text]}
       >
         a media rule from another file stays on top
       </div>
-      <div data-testid="hmr-client-module" classStyle={hmrClientModule.box}>
+      <div data-testid="hmr-client-module" sx={hmrClientModule.box}>
         the class names of a style module are baked into this component
       </div>
       {children}
