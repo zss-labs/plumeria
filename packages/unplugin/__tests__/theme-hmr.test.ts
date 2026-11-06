@@ -62,7 +62,7 @@ const theme = css.createTheme('${selector}', {
   ${key}: { default: '${def}', theme: '${theme}' },
 });
 const styles = css.create({ box: { color: theme.${key} } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 };
 
@@ -223,7 +223,7 @@ describe('createTheme edits in dev', () => {
     const second = await compile(
       `import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: 'red' } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `,
     );
 
@@ -247,7 +247,7 @@ const styles = css.create({
   a: { color: dark.textColor },
   b: { backgroundColor: sepia.textColor },
 });
-export const Box = () => <div classStyle={[styles.a, styles.b]} />;
+export const Box = () => <div sx={[styles.a, styles.b]} />;
 `,
     );
 
@@ -270,7 +270,7 @@ const theme = css.createTheme('${selector}', {
 const styles = css.create({
   box: { '--gap': '4px', color: theme.textColor, margin: 'var(--gap)' },
 });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
     await compile(source('.dark'));
