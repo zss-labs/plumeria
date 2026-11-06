@@ -102,7 +102,7 @@ export function withPlumeria(
     },
   ];
 
-  const styleProp = options.styleProp ?? 'classStyle';
+  const styleProp = options.styleProp ?? 'sx';
   const escapedStyleProp = styleProp.replaceAll('$', '\\$');
   const start = /^\w/.test(styleProp) ? '(?:^|[^\\w.])' : '';
   const end = /\w$/.test(styleProp) ? '\\b' : '';
