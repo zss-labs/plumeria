@@ -37,7 +37,7 @@ const bridge = css.create({
   const classExpr = async (styleExpr: string) => {
     const result = await transformSource(
       env(
-        `${HEAD}export const A = ({ ka, kb, kc, kd, ke }: any) => <div classStyle={${styleExpr}} />;`,
+        `${HEAD}export const A = ({ ka, kb, kc, kd, ke }: any) => <div sx={${styleExpr}} />;`,
         `${DIR}/fixture.tsx`,
       ),
     );
