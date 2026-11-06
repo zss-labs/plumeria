@@ -6,18 +6,18 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 
 <Steps>
 <Step>
-## classStyle snippet
-In VS Code, add a snippet that expands `class` into `classStyle={}`.  
+## sx snippet
+In VS Code, add a snippet that expands `class` into `sx={}`.
 `shift + command + p >`  
 `select >` Snippets: Configure Snippets  
 `select >` typescriptreact.json (TypeScript JSX) or javascriptreact.json (JavaScript JSX)  
 
 ```json title="typescriptreact.json"
 {
-  "classStyle": {
+  "sx": {
     "prefix": "class",
-    "body": "classStyle={$1}",
-    "description": "Plumeria classStyle",
+    "body": "sx={$1}",
+    "description": "Plumeria sx",
   }
 }
 ```
@@ -34,7 +34,7 @@ This setting makes the snippet appear at the top of the suggestions.
 
 ### Usage
 ```jsx
-<div class /> -> Enter -> <div classStyle={|} />
+<div class /> -> Enter -> <div sx={|} />
 ```
 </Step>
 <Step>
