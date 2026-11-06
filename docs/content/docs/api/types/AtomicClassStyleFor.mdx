@@ -10,7 +10,7 @@ export type { AtomicClassStyleFor };
 
 `AtomicClassStyleFor` is the type of one entry of a dynamic style, which is what calling a [function key](/docs/api/javascript/create#dynamic-values) gives. It reads the same as [AtomicClassNameFor](/docs/api/types/AtomicClassNameFor) — a `string` that carries the property it was generated for — and adds where the value has to go.
 
-A static atomic class name is a class name and nothing more, so it can be handed to `className`. A dynamic style reaches the element through `classStyle`, because the values the caller computed ride along as custom properties, and a class name has no room for them. The two types say which is which.
+A static atomic class name is a class name and nothing more, so it can be handed to `className`. A dynamic style reaches the element through `sx`, because the values the caller computed ride along as custom properties, and a class name has no room for them. The two types say which is which.
 
 ## Example
 
