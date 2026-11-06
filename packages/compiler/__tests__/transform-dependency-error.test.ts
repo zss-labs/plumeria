@@ -47,7 +47,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       `import * as css from '@plumeria/core';\n` +
       `import { styles } from './${from}';\n` +
       `function Test() { return 'x'; }\n` +
-      `export const App = () => <div classStyle={${usage}} />;\n`;
+      `export const App = () => <div sx={${usage}} />;\n`;
 
     fs.writeFileSync(
       stylesPath,
