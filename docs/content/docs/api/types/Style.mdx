@@ -8,7 +8,7 @@ type Style = StyleList<StyleNamespace>;
 export type { Style };
 ```
 
-`Style` is the type of the `classStyle` prop and of every argument to [css.use()](/docs/api/javascript/use). It accepts a style created by [css.create](/docs/api/javascript/create), the falsy values `false`, `null` and `undefined`, and arrays nesting any of those.
+`Style` is the type of the `sx` prop and of every argument to [css.use()](/docs/api/javascript/use). It accepts a style created by [css.create](/docs/api/javascript/create), the falsy values `false`, `null` and `undefined`, and arrays nesting any of those.
 
 ## Example
 
@@ -25,7 +25,7 @@ const styles = css.create({
 });
 
 export function Component({ active }: { active: boolean }) {
-  return <div classStyle={[styles.base, active && styles.active]} />;
+  return <div sx={[styles.base, active && styles.active]} />;
 }
 ```
 
@@ -34,22 +34,22 @@ export function Component({ active }: { active: boolean }) {
 A style has to come out of `css.create` for the compiler to resolve it. An inline object is a type error:
 
 ```tsx
-<div classStyle={styles.base} />       // ok
-<div classStyle={{ color: 'red' }} />  // Type error
+<div sx={styles.base} />       // ok
+<div sx={{ color: 'red' }} />  // Type error
 ```
 
 The object `css.create` returns holds the styles rather than being one of them, so passing it whole is a type error as well:
 
 ```tsx
-<div classStyle={styles} />  // Type error
+<div sx={styles} />  // Type error
 ```
 
 ## Declaring the styling prop
 
-`@plumeria/core` ships no prop declaration of its own. `classStyle` comes from the declaration bundled with the package, which you reference from `plumeria.d.ts`:
+`@plumeria/core` ships no prop declaration of its own. `sx` comes from the declaration bundled with the package, which you reference from `plumeria.d.ts`:
 
 ```ts title="plumeria.d.ts"
-/// <reference types="@plumeria/core/class-style" />
+/// <reference types="@plumeria/core/sx" />
 ```
 
 Exporting `Style` is what lets you name that prop yourself instead. Set `styleProp` in the build configuration, then declare the same name against React:
@@ -60,19 +60,19 @@ import type { Style } from '@plumeria/core';
 declare global {
   namespace React {
     interface HTMLAttributes<T> {
-      sx?: Style;
+      classStyle?: Style;
     }
     interface SVGAttributes<T> {
-      sx?: Style;
+      classStyle?: Style;
     }
   }
 }
 ```
 
-The prop then behaves exactly like `classStyle`, arrays and falsy values included:
+The prop then behaves exactly like `sx`, arrays and falsy values included:
 
 ```tsx
-<div sx={[styles.text, cond && styles.cond]} />
+<div classStyle={[styles.text, cond && styles.cond]} />
 ```
 
 The `styleProp` in the build configuration and the property name in `plumeria.d.ts` must match. If they disagree, the prop type-checks but is never compiled away. See [Next.js](/docs/integration/next) or [Vite](/docs/integration/vite) for the configuration.
@@ -89,7 +89,7 @@ type CardProps = {
 };
 
 function Card({ boxStyle }: CardProps) {
-  return <div classStyle={[styles.base, boxStyle]} />;
+  return <div sx={[styles.base, boxStyle]} />;
 }
 
 export function Example() {
