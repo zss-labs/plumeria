@@ -113,12 +113,12 @@ const ExternalIcon = () => (
 
 export function SiteFooter({ home = false }: { home?: boolean }) {
   return (
-    <footer classStyle={[styles.footer, home && styles.homeFooter]}>
-      <nav aria-label="Resources" classStyle={styles.groups}>
+    <footer sx={[styles.footer, home && styles.homeFooter]}>
+      <nav aria-label="Resources" sx={styles.groups}>
         {footerGroups.map(({ heading, links }) => (
-          <div key={heading} classStyle={styles.group}>
-            <h2 classStyle={styles.heading}>{heading}</h2>
-            <ul classStyle={styles.list}>
+          <div key={heading} sx={styles.group}>
+            <h2 sx={styles.heading}>{heading}</h2>
+            <ul sx={styles.list}>
               {links.map(({ label, href, external }) => (
                 <li key={label}>
                   {external ? (
@@ -126,13 +126,13 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
                       href={href}
                       target="_blank"
                       rel="noreferrer noopener"
-                      classStyle={[styles.link, styles.external, home && styles.homeMuted]}
+                      sx={[styles.link, styles.external, home && styles.homeMuted]}
                     >
                       {label}
                       <ExternalIcon />
                     </a>
                   ) : (
-                    <Link to={href} unstable_prefetchOnView={{}} classStyle={[styles.link, home && styles.homeMuted]}>
+                    <Link to={href} unstable_prefetchOnView={{}} sx={[styles.link, home && styles.homeMuted]}>
                       {label}
                     </Link>
                   )}
@@ -142,9 +142,9 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
           </div>
         ))}
       </nav>
-      <div classStyle={[styles.legal, home && styles.homeLegal]}>
+      <div sx={[styles.legal, home && styles.homeLegal]}>
         <span>{copyright}</span>
-        <div classStyle={styles.social}>
+        <div sx={styles.social}>
           {footerSocialLinks.map(({ label, href, path }) => (
             <a
               key={label}
@@ -152,7 +152,7 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
               target="_blank"
               rel="noreferrer noopener"
               aria-label={label}
-              classStyle={[styles.socialLink, home && styles.homeMuted]}
+              sx={[styles.socialLink, home && styles.homeMuted]}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d={path} />
