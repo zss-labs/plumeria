@@ -29,6 +29,15 @@ ruleTester.run('no-order-dependent-overlap', noOrderDependentOverlap, {
       import * as css from '@plumeria/core';
       css.create({
         main: {
+          '@media (min-width: 600px)': { color: 'red' },
+          '@media (min-width: 500px) and (min-height: 600px)': { padding: 0 },
+        },
+      });
+    `,
+    `
+      import * as css from '@plumeria/core';
+      css.create({
+        main: {
           '@media (max-width: 600px)': { color: 'red' },
           '@media (min-width: 600px)': { color: 'blue' },
         },
@@ -364,6 +373,18 @@ ruleTester.run('no-order-dependent-overlap', noOrderDependentOverlap, {
     },
   ],
   invalid: [
+    {
+      code: `
+        import * as css from '@plumeria/core';
+        css.create({
+          main: {
+            '@media (min-width: 600px)': { color: 'red' },
+            '@media (min-width: 500px) and (min-height: 600px)': { color: 'blue' },
+          },
+        });
+      `,
+      errors: 1,
+    },
     {
       code: `
         import * as css from '@plumeria/core';
