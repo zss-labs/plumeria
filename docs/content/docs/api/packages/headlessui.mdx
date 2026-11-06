@@ -15,10 +15,10 @@ Please refer to the [Installation](/docs/installation) section for details.
 pnpm i @plumeria/headlessui
 ```
 
-## How classStyle works
+## How sx works
 
-`@plumeria/headlessui` is a dependency the build never scans, so a `classStyle` written on one of its components is **compiled to `className` and `style` at the call site — before the component ever runs**.
-Therefore, each `@plumeria/headlessui` component does not need to know about `classStyle` at all; it simply spreads `...props` onto the underlying Radix primitive.
+`@plumeria/headlessui` is a dependency the build never scans, so a `sx` written on one of its components is **compiled to `className` and `style` at the call site — before the component ever runs**.
+Therefore, each `@plumeria/headlessui` component does not need to know about `sx` at all; it simply spreads `...props` onto the underlying Radix primitive.
 
 ```tsx
 import * as css from '@plumeria/core';
@@ -32,15 +32,15 @@ const styles = css.create({
   },
 });
 
-// classStyle is compiled to className="xxxxxxxx" at this call site
-<Dialog.Trigger classStyle={styles.primary}>Open</Dialog.Trigger>;
+// sx is compiled to className="xxxxxxxx" at this call site
+<Dialog.Trigger sx={styles.primary}>Open</Dialog.Trigger>;
 ```
 
 A component of your own can compose a style it receives onto a part:
 
 ```tsx
-export const OpenButton = ({ classStyle }: { classStyle?: css.Style }) => (
-  <Dialog.Trigger classStyle={[styles.primary, classStyle]}>Open</Dialog.Trigger>
+export const OpenButton = ({ sx }: { sx?: css.Style }) => (
+  <Dialog.Trigger sx={[styles.primary, sx]}>Open</Dialog.Trigger>
 );
 ```
 
