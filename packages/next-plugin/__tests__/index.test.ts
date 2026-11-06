@@ -1,7 +1,10 @@
 jest.mock('../src/lint', () => ({ startNextLintGuard: jest.fn() }));
 
 import webpack from 'webpack';
+import * as fs from 'fs';
+import * as path from 'path';
 import { withPlumeria } from '../src';
+import { devGenerationsPath } from '@plumeria/turbopack-loader';
 import type {
   NextConfig,
   WebpackConfigContext,
@@ -13,6 +16,24 @@ import type {
 const { version } = require('../../turbopack-loader/package.json');
 
 describe('withPlumeria', () => {
+  it('resets development stylesheet generations once', () => {
+    const previous = process.env.NODE_ENV;
+    (process.env as Record<string, string | undefined>).NODE_ENV =
+      'development';
+    delete (global as typeof global & { __PLUMERIA_DEV_CSS_RESET__?: boolean })
+      .__PLUMERIA_DEV_CSS_RESET__;
+    const generations = devGenerationsPath(process.cwd());
+    fs.mkdirSync(path.dirname(generations), { recursive: true });
+    fs.writeFileSync(generations, '[]');
+    withPlumeria({}, { lint: false });
+    expect(fs.existsSync(generations)).toBe(false);
+    fs.writeFileSync(generations, '[]');
+    withPlumeria({}, { lint: false });
+    expect(fs.existsSync(generations)).toBe(true);
+    fs.rmSync(generations, { force: true });
+    (process.env as Record<string, string | undefined>).NODE_ENV = previous;
+  });
+
   it('starts the lint guard unless lint is false', () => {
     const { startNextLintGuard } = jest.requireMock<{
       startNextLintGuard: jest.Mock;
@@ -42,9 +63,9 @@ describe('withPlumeria', () => {
       startNextLintGuard: jest.Mock;
     }>('../src/lint');
     startNextLintGuard.mockClear();
-    withPlumeria({}, { styleProp: 'sx' });
+    withPlumeria({}, { styleProp: 'classStyle' });
     expect(startNextLintGuard).toHaveBeenCalledWith({
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
     });
   });
 
@@ -240,7 +261,7 @@ describe('withPlumeria', () => {
     };
 
     it('reaches the turbopack loader', () => {
-      const options = { styleProp: 'sx', include: ['./src/**/*.tsx'] };
+      const options = { styleProp: 'classStyle', include: ['./src/**/*.tsx'] };
       expect(loaderItem(withPlumeria({}, options)).options).toEqual({
         ...options,
         version,
@@ -248,7 +269,7 @@ describe('withPlumeria', () => {
     });
 
     it('reaches the webpack loader too, so both bundlers agree', () => {
-      const options = { styleProp: 'sx' };
+      const options = { styleProp: 'classStyle' };
       const config: any = { module: { rules: [] } };
       withPlumeria({}, options).webpack!(config, {
         dev: false,
@@ -264,7 +285,10 @@ describe('withPlumeria', () => {
     });
 
     it('reaches the CSS loader of the virtual stylesheet', () => {
-      const options = { styleProp: 'sx', withoutLogicalProperties: true };
+      const options = {
+        styleProp: 'classStyle',
+        withoutLogicalProperties: true,
+      };
       expect(
         withPlumeria({}, options).turbopack?.rules?.['zero-virtual.css'],
       ).toEqual({
@@ -291,23 +315,27 @@ describe('withPlumeria', () => {
       expect(ruleFor(withPlumeria()).condition).toEqual({
         all: [
           { not: 'foreign' },
-          { content: /@plumeria\/core|(?:^|[^\w.])classStyle\b/ },
+          { content: /@plumeria\/core|(?:^|[^\w.])sx\b/ },
         ],
       });
     });
 
     it.each([
-      ['an attribute', '<Box sx={a} />', true],
-      ['an attribute at the start of the file', 'sx={a}', true],
-      ['whitespace before the equals sign', '<Box sx = {a} />', true],
-      ['a comment before the equals sign', '<Box sx /* c */={a} />', true],
+      ['an attribute', '<Box classStyle={a} />', true],
+      ['an attribute at the start of the file', 'classStyle={a}', true],
+      ['whitespace before the equals sign', '<Box classStyle = {a} />', true],
+      [
+        'a comment before the equals sign',
+        '<Box classStyle /* c */={a} />',
+        true,
+      ],
       ['the core import', "import '@plumeria/core';", true],
       ['the name inside a longer word', "import App from './App.tsx';", false],
-      ['a member of the same name', 'box.sx = {};', false],
+      ['a member of the same name', 'box.classStyle = {};', false],
       ['a longer name', '<Box sxs={a} />', false],
     ])('matches %s: %s', (_, source, expected) => {
       const { content } = (
-        ruleFor(withPlumeria({}, { styleProp: 'sx' })).condition as {
+        ruleFor(withPlumeria({}, { styleProp: 'classStyle' })).condition as {
           all: [unknown, { content: RegExp }];
         }
       ).all[1];
@@ -332,7 +360,7 @@ describe('withPlumeria', () => {
       ).all[1];
       expect(content.test('<div $sx={styles.a} />')).toBe(true);
       expect(content.test("import '@plumeria/core';")).toBe(true);
-      expect(content.test('<div sx={styles.a} />')).toBe(false);
+      expect(content.test('<div classStyle={styles.a} />')).toBe(false);
     });
   });
 });
