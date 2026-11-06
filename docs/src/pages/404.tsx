@@ -14,7 +14,7 @@ const styles = css.create({
 
 const NotFound = (): JSX.Element => {
   return (
-    <div classStyle={styles.container}>
+    <div sx={styles.container}>
       <h1>ClientSide Error status code 404 Request page is not found:</h1>
       <Link to="/" unstable_prefetchOnView={{}}>
         <u>Return to Top page</u>
