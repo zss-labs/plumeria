@@ -15,7 +15,7 @@ const GAP = 4;
 const FLAG = true;
 const T = { gap: 8 };
 const st = css.create({ fn: ${params}: any => (${body}) });
-export const A = (p: any) => <div classStyle={${call}} />;`;
+export const A = (p: any) => <div sx={${call}} />;`;
 
   const project = (code: string) => {
     const cwd = path.join(DIR, String(count++));
@@ -115,7 +115,7 @@ export const A = (p: any) => <div classStyle={${call}} />;`;
       await expect(
         transformCode(`import * as css from '@plumeria/core';
 const st = css.create({ fn: (n = DEFAULT): any => ({ width: n }) });
-const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;
+const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;
 export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`),
       ).rejects.toThrow(unresolved('n', 'DEFAULT'));
     });
