@@ -31,7 +31,7 @@ type BlendMode =
   | 'saturation'
   | 'color'
   | 'luminosity';
-type Color = ColorBase | 'currentColor' | SystemColor | DeprecatedSystemColor;
+type Color = ColorBase | 'currentColor';
 type ColorBase = NamedColor | 'transparent';
 type CompositingOperator = 'add' | 'subtract' | 'intersect' | 'exclude';
 type ContentDistribution =
@@ -53,30 +53,6 @@ type CubicBezierEasingFunction =
   | 'ease-in'
   | 'ease-out'
   | 'ease-in-out';
-type DeprecatedSystemColor =
-  | 'ActiveBorder'
-  | 'ActiveCaption'
-  | 'AppWorkspace'
-  | 'Background'
-  | 'ButtonHighlight'
-  | 'ButtonShadow'
-  | 'CaptionText'
-  | 'InactiveBorder'
-  | 'InactiveCaption'
-  | 'InactiveCaptionText'
-  | 'InfoBackground'
-  | 'InfoText'
-  | 'Menu'
-  | 'MenuText'
-  | 'Scrollbar'
-  | 'ThreeDDarkShadow'
-  | 'ThreeDFace'
-  | 'ThreeDHighlight'
-  | 'ThreeDLightShadow'
-  | 'ThreeDShadow'
-  | 'Window'
-  | 'WindowFrame'
-  | 'WindowText';
 type EasingFunction =
   | 'linear'
   | CubicBezierEasingFunction
@@ -352,26 +328,6 @@ type SingleAnimationDirection =
   | 'alternate'
   | 'alternate-reverse';
 type SingleAnimationFillMode = 'none' | 'forwards' | 'backwards' | 'both';
-type SystemColor =
-  | 'AccentColor'
-  | 'AccentColorText'
-  | 'ActiveText'
-  | 'ButtonBorder'
-  | 'ButtonFace'
-  | 'ButtonText'
-  | 'Canvas'
-  | 'CanvasText'
-  | 'Field'
-  | 'FieldText'
-  | 'GrayText'
-  | 'Highlight'
-  | 'HighlightText'
-  | 'LinkText'
-  | 'Mark'
-  | 'MarkText'
-  | 'SelectedItem'
-  | 'SelectedItemText'
-  | 'VisitedText';
 type TextEdge =
   | 'text'
   | 'cap'
