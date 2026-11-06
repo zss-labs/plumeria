@@ -12,9 +12,11 @@ describe('resolveStyleProp', () => {
   it('prefers the name given as a rule option', () => {
     expect(
       resolveStyleProp(
-        contextOf([{ styleProp: 'sx' }], { plumeria: { styleProp: 'cx' } }),
+        contextOf([{ styleProp: 'classStyle' }], {
+          plumeria: { styleProp: 'cx' },
+        }),
       ),
-    ).toBe('sx');
+    ).toBe('classStyle');
   });
 
   it('falls back to the shared setting', () => {
