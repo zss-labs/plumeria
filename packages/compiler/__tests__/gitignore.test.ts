@@ -21,7 +21,7 @@ const styles = css.create({
   box: { color: '${color}' },
 });
 
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
 const write = (file: string, contents: string) => {
