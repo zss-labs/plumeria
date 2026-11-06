@@ -97,8 +97,8 @@ export const DocsSubnav = () => {
   const crumbs = useCrumbs();
 
   return (
-    <div classStyle={styles.subnav}>
-      <SidebarTrigger aria-label="Open Sidebar" classStyle={styles.trigger}>
+    <div sx={styles.subnav}>
+      <SidebarTrigger aria-label="Open Sidebar" sx={styles.trigger}>
         <svg
           width="18"
           height="18"
@@ -112,7 +112,7 @@ export const DocsSubnav = () => {
           <path d="M4 9h16M4 15h16" />
         </svg>
       </SidebarTrigger>
-      <nav aria-label="Breadcrumb" classStyle={styles.trail}>
+      <nav aria-label="Breadcrumb" sx={styles.trail}>
         {crumbs.map((crumb, index) => (
           <Fragment key={index}>
             {index > 0 && (
@@ -126,12 +126,12 @@ export const DocsSubnav = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
-                classStyle={styles.chevron}
+                sx={styles.chevron}
               >
                 <path d="m9 18 6-6-6-6" />
               </svg>
             )}
-            <span classStyle={[index === crumbs.length - 1 ? styles.current : styles.parent]}>{crumb}</span>
+            <span sx={[index === crumbs.length - 1 ? styles.current : styles.parent]}>{crumb}</span>
           </Fragment>
         ))}
       </nav>
