@@ -14,7 +14,7 @@ writes. Nothing is installed or patched before you say so.
 ✔ detected  next  pnpm  typescript
 
   ➡︎ install  @plumeria/core @plumeria/next-plugin @plumeria/eslint-plugin rimraf
-  + write    plumeria.d.ts     classStyle
+  + write    plumeria.d.ts     sx
   ~ patch    next.config.ts    withPlumeria(...)
   ~ patch    eslint.config.ts  plumeria.configs.recommended
   ~ patch    package.json      predev: rimraf .next, prebuild: rimraf .next
@@ -42,13 +42,13 @@ so the counterpart cannot compile, and ESLint gets
 is reported while you type. Answering "none" sets neither. `--sizes` extends
 the answer to the size axis, where `width` and `inlineSize` are the pair.
 
-**Which JSX prop carries styles?** — `classStyle` by default. A renamed prop is
+**Which JSX prop carries styles?** — `sx` by default. A renamed prop is
 written into the plugin as `styleProp` and declared in `plumeria.d.ts`, so the
 two cannot disagree. It has to be an identifier TypeScript can declare, and a
 name React leaves free; `className`, `style`, `key`, `ref` and `children` are
 refused, from the prompt and from `--style-prop` alike.
 
-**Apply styles in .jsx/.tsx only through `classStyle`?** — yes by default, which
+**Apply styles in .jsx/.tsx only through `sx`?** — yes by default, which
 adds `@plumeria/no-use-in-jsx` to the lint config, so `css.use()` is reported in
 `.jsx` and `.tsx` files and the styling prop is the one way to apply styles
 there. Answer no, or pass `--allow-use`, when the project styles a third-party
@@ -95,7 +95,7 @@ nothing is touched and the snippet is printed instead.
 npx @plumeria/init --dry-run            # show the plan, write nothing
 npx @plumeria/init --yes                # take every default, ask nothing
 npx @plumeria/init --physical --sizes   # answer the spelling question up front
-npx @plumeria/init --style-prop sx
+npx @plumeria/init --style-prop classStyle
 npx @plumeria/init --allow-use          # keep css.use() in .jsx/.tsx files
 npx @plumeria/init --bundler rollup
 npx @plumeria/init --no-eslint          # leave ESLint out
