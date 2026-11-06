@@ -97,7 +97,7 @@ export async function loadCompiler(threads: number) {
           filePath: file,
           root: ROOT,
           cwd: ROOT,
-          styleProp: 'classStyle',
+          styleProp: 'sx',
           isDev: false,
         }).code;
       } catch (error) {
@@ -107,9 +107,7 @@ export async function loadCompiler(threads: number) {
 
     let css: string;
     try {
-      css = compiler.optimizer(
-        compiler.compileCSS({ include: [], exclude: [], files, cwd: ROOT, styleProp: 'classStyle' }),
-      );
+      css = compiler.optimizer(compiler.compileCSS({ include: [], exclude: [], files, cwd: ROOT, styleProp: 'sx' }));
     } catch (error) {
       css = failure(error);
     }
