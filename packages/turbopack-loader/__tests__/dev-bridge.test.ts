@@ -133,7 +133,7 @@ describe('the stylesheet an edited module carries in development', () => {
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#1a2b3c', padding: 8 } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -147,13 +147,13 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#1a2b3c' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
       'Page.tsx': `${pre}
 import { Client } from './Client';
 const page = css.create({ main: { backgroundColor: '#5a5a5a' } });
 export default function Page() {
-  return <main classStyle={page.main}><Client /></main>;
+  return <main sx={page.main}><Client /></main>;
 }
 `,
     });
@@ -169,14 +169,14 @@ export default function Page() {
 ${pre}
 const styles = css.create({ shell: { borderColor: '#2c3d4e' } });
 export const Shell = ({ children }: { children: React.ReactNode }) => (
-  <section classStyle={styles.shell}>{children}</section>
+  <section sx={styles.shell}>{children}</section>
 );
 `,
       'Page.tsx': `${pre}
 import { Shell } from './Shell';
 const page = css.create({ text: { color: '#6b6b6b' } });
 export default function Page() {
-  return <Shell><p classStyle={page.text}>server</p></Shell>;
+  return <Shell><p sx={page.text}>server</p></Shell>;
 }
 `,
     });
@@ -192,7 +192,7 @@ export default function Page() {
 ${pre}
 import { wide } from './wide.styles';
 const styles = css.create({ box: { color: '#3e4f5a' } });
-export const Client = () => <div classStyle={[styles.box, wide.box]} />;
+export const Client = () => <div sx={[styles.box, wide.box]} />;
 `,
       'wide.styles.ts': `${pre}
 export const wide = css.create({
@@ -213,7 +213,7 @@ ${pre}
 import { medium } from './medium.styles';
 import { large } from './large.styles';
 const styles = css.create({ box: { '@media (min-width: 900px)': { padding: 24 } } });
-export const Client = () => <div classStyle={[large.box, styles.box, medium.box]} />;
+export const Client = () => <div sx={[large.box, styles.box, medium.box]} />;
 `,
       'medium.styles.ts': `${pre}
 export const medium = css.create({
@@ -238,7 +238,7 @@ export const shared = css.create({ box: { color: '#4f5a6b', ':hover': { color: '
       'Client.tsx': `'use client';
 ${pre}
 import { shared } from './shared.styles';
-export const Client = () => <div classStyle={shared.box} />;
+export const Client = () => <div sx={shared.box} />;
 `,
     });
 
@@ -264,7 +264,7 @@ import { fadeIn } from './motion';
 const styles = css.create({
   box: { color: theme.accent, animationName: fadeIn, animationDuration: '1s' },
 });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -293,7 +293,7 @@ export const card = css.create({ box: { animationName: fadeIn, animationDuration
       'Page.tsx': `${pre}
 import { card } from './card.styles';
 export default function Page() {
-  return <div classStyle={card.box} />;
+  return <div sx={card.box} />;
 }
 `,
     });
@@ -312,7 +312,7 @@ ${pre}
 const first = css.create({ box: { color: '#6b7c8d', margin: 4 } });
 const second = css.create({ box: { color: '#9e9e9e', marginTop: 8 } });
 export const Client = ({ on }: { on: boolean }) => (
-  <div classStyle={[first.box, on && second.box]} />
+  <div sx={[first.box, on && second.box]} />
 );
 `,
     });
@@ -325,11 +325,11 @@ export const Client = ({ on }: { on: boolean }) => (
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { marginLeft: 12, paddingTop: 4 } });
-export const Client = () => <div sx={styles.box} />;
+export const Client = () => <div classStyle={styles.box} />;
 `,
     });
     const options: LoaderOptions = {
-      styleProp: 'sx',
+      styleProp: 'classStyle',
       withoutLogicalProperties: true,
     };
 
@@ -341,7 +341,7 @@ export const Client = () => <div sx={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#7d8e9f' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -358,7 +358,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#8e9faa' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
     const before = (Date.now() - DEV_BRIDGE_WINDOW_MS - 1000) / 1000;
@@ -375,7 +375,7 @@ export const styles = css.create({ box: { backgroundColor: '${color}' } });
       'tst.ts': styleModule('#8e9dac'),
       'Client.tsx': `'use client';
 import { styles } from './tst';
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
     const before = (Date.now() - DEV_BRIDGE_WINDOW_MS - 1000) / 1000;
@@ -397,7 +397,7 @@ export const styles = css.create({ box: { backgroundColor: '#afbacb' } });
 `,
       'Client.tsx': `'use client';
 import { styles } from './tst';
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
     const before = (Date.now() - DEV_BRIDGE_WINDOW_MS - 1000) / 1000;
@@ -412,7 +412,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#9daebf' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -424,7 +424,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#adbecf' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -438,7 +438,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#bdcedf' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
 
@@ -454,7 +454,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#9faabb' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
     });
     setNodeEnv('production');
@@ -470,7 +470,7 @@ export const Client = () => <div classStyle={styles.box} />;
       'Client.tsx': `'use client';
 ${pre}
 const styles = css.create({ box: { color: '#aabbcc' } });
-export const Client = () => <div classStyle={styles.box} />;
+export const Client = () => <div sx={styles.box} />;
 `,
       'broken.ts': `${pre}
 export const theme = css.createTheme('@nonsense', { color: { default: 'red', theme: 'blue' } });
