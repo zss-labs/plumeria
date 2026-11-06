@@ -117,7 +117,7 @@ export const A = () => <React.ViewTransition share={slide}><div /></React.ViewTr
     const { css, names } = await compile(`import * as css from '@plumeria/core';
 import { slide } from './definitions';
 const s = css.create({ card: { viewTransitionClass: slide } });
-export const A = () => <div classStyle={s.card} />;
+export const A = () => <div sx={s.card} />;
 `);
     expect(css).toContain(`::view-transition-old(*.${names[0]})`);
   });
