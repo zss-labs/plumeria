@@ -70,7 +70,7 @@ const styles = css.create({
     animation: \`\${spin} \${animate.spin}\`,
   },
 });
-export const App = () => <div classStyle={styles.box} />;
+export const App = () => <div sx={styles.box} />;
 `);
     const code = await transform(cwd);
     expect(code).not.toContain('@plumeria/wind');
