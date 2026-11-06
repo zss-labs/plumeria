@@ -49,17 +49,17 @@ ruleTester.run('custom-props-require-import', customPropsRequireImport, {
     {
       code: `
           import { styles } from './styles';
-          const el = <div classStyle={styles.a} />;
+          const el = <div sx={styles.a} />;
         `,
       filename: APP,
     },
     {
       code: `
           import { styles } from './styles';
-          const el = <Box sx={styles.a} />;
+          const el = <Box classStyle={styles.a} />;
         `,
       filename: APP,
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
     },
     {
       code: `
@@ -281,13 +281,13 @@ ruleTester.run('custom-props-require-import', customPropsRequireImport, {
     {
       code: `
           import { styles } from './styles';
-          const el = <div classStyle={styles.a} />;
+          const el = <div sx={styles.a} />;
         `,
       filename: APP,
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
       output: `import "@plumeria/core";\n
           import { styles } from './styles';
-          const el = <div classStyle={styles.a} />;
+          const el = <div sx={styles.a} />;
         `,
       errors: [{ messageId: 'requiresImport' }],
     },
