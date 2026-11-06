@@ -60,7 +60,7 @@ export type Action =
     }
   | { kind: 'skip'; label: string; note: string; file: string };
 
-export const DEFAULT_STYLE_PROP = 'classStyle';
+export const DEFAULT_STYLE_PROP = 'sx';
 
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
@@ -155,7 +155,7 @@ export const pluginCall = (
 
 export const declarationSource = (answers: Answers): string => {
   if (answers.styleProp === DEFAULT_STYLE_PROP) {
-    return `/// <reference types="@plumeria/core/class-style" />\n`;
+    return `/// <reference types="@plumeria/core/sx" />\n`;
   }
   return `import type { Style } from '@plumeria/core';
 
