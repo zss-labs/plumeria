@@ -14,12 +14,12 @@ const ruleTester = new RuleTester({
 ruleTester.run('no-mixed-styling-props', noMixedStylingProps, {
   valid: [
     {
-      code: '<div classStyle={styles.text} />',
+      code: '<div sx={styles.text} />',
     },
     {
       // once the prop is renamed, the old name is just an ordinary attribute
-      code: '<div classStyle={styles.text} className="text" />',
-      settings: { plumeria: { styleProp: 'sx' } },
+      code: '<div sx={styles.text} className="text" />',
+      settings: { plumeria: { styleProp: 'classStyle' } },
     },
     {
       // renaming the prop to `style` must not make the rule flag it against itself
@@ -41,15 +41,15 @@ ruleTester.run('no-mixed-styling-props', noMixedStylingProps, {
   ],
   invalid: [
     {
-      code: '<div classStyle={styles.text} className="text" />',
+      code: '<div sx={styles.text} className="text" />',
       errors: [{ messageId: 'noMixedStylingProps' }],
     },
     {
-      code: '<div classStyle={styles.text} style={{ color: "red" }} />',
+      code: '<div sx={styles.text} style={{ color: "red" }} />',
       errors: [{ messageId: 'noMixedStylingProps' }],
     },
     {
-      code: '<div classStyle={styles.text} className="text" style={{ color: "red" }} />',
+      code: '<div sx={styles.text} className="text" style={{ color: "red" }} />',
       errors: [
         { messageId: 'noMixedStylingProps' },
         { messageId: 'noMixedStylingProps' },
@@ -57,15 +57,15 @@ ruleTester.run('no-mixed-styling-props', noMixedStylingProps, {
     },
     {
       // settings retarget every rule at once, without per-rule options
-      code: '<div sx={styles.text} className="text" />',
-      settings: { plumeria: { styleProp: 'sx' } },
+      code: '<div classStyle={styles.text} className="text" />',
+      settings: { plumeria: { styleProp: 'classStyle' } },
       errors: [{ messageId: 'noMixedStylingProps' }],
     },
     {
       // a per-rule option wins over the shared setting
-      code: '<div sx={styles.text} style={{ color: "red" }} />',
-      settings: { plumeria: { styleProp: 'classStyle' } },
-      options: [{ styleProp: 'sx' }],
+      code: '<div classStyle={styles.text} style={{ color: "red" }} />',
+      settings: { plumeria: { styleProp: 'sx' } },
+      options: [{ styleProp: 'classStyle' }],
       errors: [{ messageId: 'noMixedStylingProps' }],
     },
   ],
