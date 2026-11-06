@@ -174,7 +174,12 @@ const aliased = new Set<string>();
 const aliases = new Map<string, Values>();
 let owner = '';
 
+const excludedTypes = new Set(['system-color', 'deprecated-system-color']);
+
 const expandType = (name: string, visiting: Set<string>): Values => {
+  if (excludedTypes.has(name)) {
+    return { values: new Set(), open: false, numeric: false, optional: false };
+  }
   if (numericTypes.has(name)) return open(true);
   const definition = syntaxes[name] ?? webrefTypes.get(name);
   if (!definition || visiting.has(name)) return open();
