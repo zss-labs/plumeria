@@ -38,7 +38,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
       [
         'a destructured call',
         `const { a } = css.create({ a: { color: 'purple' } });\n` +
-          `export const A = () => <div classStyle={a} />;`,
+          `export const A = () => <div sx={a} />;`,
       ],
       [
         'a call that is only a statement',
@@ -53,7 +53,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         compile(
           `const ok = css.create({ b: { color: 'olive' } });\n` +
             `export default css.create({ a: { color: 'teal' } });\n` +
-            `export const A = () => <div classStyle={ok.b} />;`,
+            `export const A = () => <div sx={ok.b} />;`,
         ),
       ).toThrow(UNNAMED);
     });
@@ -94,9 +94,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
     // The element carries the custom property, so the same key is sound there.
     it('keeps compiling a called function key on an element', () => {
       expect(
-        compile(
-          `${STYLES}export const A = () => <div classStyle={s.box(4)} />;`,
-        ),
+        compile(`${STYLES}export const A = () => <div sx={s.box(4)} />;`),
       ).toContain('width: var(');
     });
   });
