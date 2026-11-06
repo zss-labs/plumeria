@@ -86,13 +86,13 @@ export const MyComponent = ({ isActive }) => {
 
 Never generate these patterns. They break static analysis or cause runtime errors.
 
-❌ **Passing an object directly to `sx`:**
+**Passing an object directly to `sx`:**
 
 ```tsx
 <span sx={{ fontSize: '12px' }}>Small Text</span>
 ```
 
-❌ **Creating styles inside a component body:**
+**Creating styles inside a component body:**
 
 ```tsx
 export const BadComponent = ({ dynamicColor }) => {
@@ -103,13 +103,13 @@ export const BadComponent = ({ dynamicColor }) => {
 };
 ```
 
-❌ **Mixing `className` and `sx` on the same element:**
+**Mixing `className` and `sx` on the same element:**
 
 ```tsx
 <span className="global-class" sx={styles.base}>Text</span>
 ```
 
-❌ **Joining `css.use()` output with other class names:**
+**Joining `css.use()` output with other class names:**
 
 ```tsx
 // Box.tsx
@@ -123,7 +123,7 @@ export const Box = ({ className }: { className?: string }) => (
 
 Strings from separate calls are not merged, so which rule wins depends on stylesheet order. Receive a `css.Style` prop and pass it to the same call instead, e.g. `css.use(styles.base, style)`. (→ Styling Custom Components)
 
-❌ **Reading a definition from a namespace import by anything but its name:**
+**Reading a definition from a namespace import by anything but its name:**
 
 ```tsx
 import * as tokens from './tokens';
@@ -135,7 +135,7 @@ const { styles } = tokens;
 
 Every use of a definition is written in place at build time, so the compiler has to see which one is read. `tokens.styles.card` compiles as `import { styles } from './tokens'` does. A string key, destructuring, a rest element or passing `tokens` as a whole stops the build.
 
-❌ **Complex JS expressions in style values.** Only simple ternary operators are allowed, and only when necessary. Never put complex logic or function calls inside style values.
+**Complex JS expressions in style values.** Only simple ternary operators are allowed, and only when necessary. Never put complex logic or function calls inside style values.
 
 ## Selector Rules
 
@@ -156,14 +156,14 @@ const styles = css.create({
     backgroundColor: 'white',
     padding: '16px',
 
-    // ✅ Pseudo-classes and elements (starts with :)
+    // VALID: Pseudo-classes and elements (starts with :)
     ':hover': {
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
     },
     ':active': {
       boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
     },
-    // ✅ :hover and :active can match together; the intersection gets its own value
+    // VALID: :hover and :active can match together; the intersection gets its own value
     ':hover:active': {
       boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
     },
@@ -172,12 +172,12 @@ const styles = css.create({
       display: 'block',
     },
 
-    // ✅ Attribute selectors (starts with [)
+    // VALID: Attribute selectors (starts with [)
     '[data-active="true"]': {
       border: '2px solid blue',
     },
 
-    // ✅ Pseudo-selector nested inside a media query (allowed once)
+    // VALID: Pseudo-selector nested inside a media query (allowed once)
     '@media (max-width: 768px)': {
       padding: '8px',
       ':hover': {
@@ -187,7 +187,7 @@ const styles = css.create({
   },
 });
 
-// ❌ INVALID: media query nested inside a pseudo-selector
+// INVALID: media query nested inside a pseudo-selector
 const badStyles = css.create({
   button: {
     ':hover': {
@@ -251,7 +251,7 @@ export const Button = ({ size, children }: ButtonProps) => {
 
 Best practices:
 
-- ⚠️ **Keep variant `css.create()` calls minimal.** Every key in a `css.create()` used with bracket notation is compiled into the generated lookup table (e.g. `{"small":"...","medium":"..."}[size]`). Separate variants into dedicated calls; don't mix them with unrelated static styles.
+- **Keep variant `css.create()` calls minimal.** Every key in a `css.create()` used with bracket notation is compiled into the generated lookup table (e.g. `{"small":"...","medium":"..."}[size]`). Separate variants into dedicated calls; don't mix them with unrelated static styles.
 - **Local variable assignment is supported.** `const currentStyle = sizeStyles[size]; <div sx={currentStyle} />` works — the compiler traces local style variables and inlines them during JSX extraction.
 
 ### `css.use()` returns a static string
@@ -542,10 +542,10 @@ const styles = css.create({
 NEVER resolve styles with `css.use()` to apply them to an element your component renders. `sx` does the same job, and it also carries function keys, which `css.use()` cannot. Pattern 1 or Pattern 2 covers every element you render:
 
 ```tsx
-// ❌ AVOID: sx applies these to an element you render
+// INVALID: sx applies these to an element you render
 <button className={css.use(styles.text, styleArray)}>{children}</button>
 
-// ✅ CORRECT
+// VALID
 <button sx={[styles.text, styleArray]}>{children}</button>
 ```
 
@@ -558,7 +558,7 @@ A component that receives a `Style` prop MUST apply it — to `sx` or through `c
 What decides this is **where the style ends up**, not how many style props a component takes. Passing styles in is always fine:
 
 ```tsx
-// ✅ VALID: every value is a style, so any number of style props is fine
+// VALID: every value is a style, so any number of style props is fine
 <Layout
   headerStyle={styles.header}
   bodyStyle={styles.body}
@@ -569,7 +569,7 @@ What decides this is **where the style ends up**, not how many style props a com
 Forwarding one onward instead of applying it is not:
 
 ```tsx
-// ❌ INVALID: headerStyle reaches no element of this component
+// INVALID: headerStyle reaches no element of this component
 export const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => {
   return <Header headerStyle={headerStyle} />;
 };
@@ -584,12 +584,12 @@ a style prop cannot be passed on to another component.
 Write one of these instead:
 
 ```tsx
-// ✅ Apply it on an element this component renders
+// VALID: Apply it on an element this component renders
 export const Layout = ({ headerStyle }: { headerStyle?: css.Style }) => {
   return <header sx={[styles.base, headerStyle]}>...</header>;
 };
 
-// ✅ Or drop the middle component and style the one that owns the element
+// VALID: Or drop the middle component and style the one that owns the element
 <Header headerStyle={[styles.base, styles.primary]} />;
 ```
 
@@ -598,7 +598,7 @@ Merging under a base style — `[styles.base, headerStyle]` — is the supported
 A received style also cannot go through `sx` to a component that declares `sx`, even from another file and even when the same style is applied to an element as well:
 
 ```tsx
-// ❌ INVALID: Header declares sx
+// INVALID: Header declares sx
 export const Layout = ({ sx }: { sx?: css.Style }) => {
   return <Header sx={[styles.base, sx]} />;
 };
@@ -612,7 +612,7 @@ to a component that declares sx. Apply it on an element this component renders.
 A component the build never scans declares nothing, so a received style composes onto it and resolves to class names at the call site:
 
 ```tsx
-// ✅ VALID: Dialog.Trigger comes from @plumeria/headlessui, a dependency
+// VALID: Dialog.Trigger comes from @plumeria/headlessui, a dependency
 export const OpenButton = ({ sx }: { sx?: css.Style }) => {
   return <Dialog.Trigger sx={[styles.base, sx]}>Open</Dialog.Trigger>;
 };
@@ -655,13 +655,13 @@ Tailwind's model and Plumeria's do not map one-to-one. A utility-by-utility rewr
 **Name keys after what the element is, not after the utilities it carried.** The class list is the input to the migration, not the output.
 
 ```tsx
-// ❌ Tailwind reimplemented — these names carry no more meaning than the class list did
+// INVALID: Tailwind reimplemented — these names carry no more meaning than the class list did
 const styles = css.create({
   hoverBgBlue500: { ':hover': { backgroundColor: '#3b82f6' } },
   px4: { paddingInline: '1rem' },
 });
 
-// ✅ One key per thing the component has
+// VALID: One key per thing the component has
 const styles = css.create({
   submitButton: {
     paddingInline: '1rem',
