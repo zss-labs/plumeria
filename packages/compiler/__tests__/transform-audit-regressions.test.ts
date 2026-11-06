@@ -39,7 +39,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       async (expression) => {
         const output = await run(
           prefix +
-            `const styles=css.create({box:{color:'purple'},other:{backgroundColor:'orange'}}); const box=styles.box; export const App=({on}:{on:boolean})=><div classStyle={${expression}}/>;`,
+            `const styles=css.create({box:{color:'purple'},other:{backgroundColor:'orange'}}); const box=styles.box; export const App=({on}:{on:boolean})=><div sx={${expression}}/>;`,
         );
         expect(output).toContain(classHash({ color: 'purple' }));
       },
@@ -48,7 +48,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('applies an array default when the style prop is omitted', async () => {
       const output = await run(
         prefix +
-          `const s=css.create({a:{color:'red'},b:{padding:4}}); export const Card=({cardStyle=[s.a,s.b]}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>; export const App=()=> <Card/>;`,
+          `const s=css.create({a:{color:'red'},b:{padding:4}}); export const Card=({cardStyle=[s.a,s.b]}:{cardStyle?:css.Style})=><div sx={cardStyle}/>; export const App=()=> <Card/>;`,
       );
       expect(output).toContain(classHash({ color: 'red' }));
       expect(output).toContain(classHash({ padding: 4 }));
@@ -57,7 +57,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('accepts an omitted optional style prop read off the props object', async () => {
       const output = await run(
         prefix +
-          `export const Card=(props:{cardStyle?:css.Style})=><div classStyle={props.cardStyle}/>; export const App=()=> <Card/>;`,
+          `export const Card=(props:{cardStyle?:css.Style})=><div sx={props.cardStyle}/>; export const App=()=> <Card/>;`,
       );
       expect(output).toContain('className');
     });
@@ -65,7 +65,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('keeps same-named local aliases separate', async () => {
       const output = await run(
         prefix +
-          `const styles=css.create({box:{color:'purple'},other:{backgroundColor:'orange'}}); export const First=()=>{const alias=styles.box;return <div classStyle={alias}/>;}; export const Second=()=>{const alias=styles.other;return <div classStyle={alias}/>;};`,
+          `const styles=css.create({box:{color:'purple'},other:{backgroundColor:'orange'}}); export const First=()=>{const alias=styles.box;return <div sx={alias}/>;}; export const Second=()=>{const alias=styles.other;return <div sx={alias}/>;};`,
       );
       expect(output).toContain(classHash({ color: 'purple' }));
       expect(output).toContain(classHash({ backgroundColor: 'orange' }));
@@ -74,13 +74,13 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     it('accepts an omitted optional Style prop', async () => {
       const output = await run(
         prefix +
-          `type CardProps={cardStyle?:css.Style}; const styles=css.create({base:{backgroundColor:'orange'}}); export const Card=({cardStyle}:CardProps)=><div classStyle={[styles.base,cardStyle]}/>; export const App=()=> <Card />;`,
+          `type CardProps={cardStyle?:css.Style}; const styles=css.create({base:{backgroundColor:'orange'}}); export const Card=({cardStyle}:CardProps)=><div sx={[styles.base,cardStyle]}/>; export const App=()=> <Card />;`,
       );
       expect(output).toContain(classHash({ backgroundColor: 'orange' }));
     });
 
     it('does not let an outer const shadow a dynamic default', async () => {
-      const common = `const styles=css.create({space:(n=4)=>({padding:n})}); export const App=()=> <div classStyle={styles.space()}/>;`;
+      const common = `const styles=css.create({space:(n=4)=>({padding:n})}); export const App=()=> <div sx={styles.space()}/>;`;
       const control = await run(prefix + common);
       const shadowed = await run(prefix + `const n=9;` + common);
       expect(shadowed.match(/className=\{"([^"]+)"/i)?.[1]).toBe(
@@ -92,14 +92,14 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('uses the outer binding after a local alias shadow', async () => {
     const output = await run(
       prefix +
-        `const s=css.create({a:{color:'red'},b:{color:'blue'}});const alias=s.a;export const First=()=>{const alias=s.b;return <div classStyle={alias}/>};export const Second=()=> <div classStyle={alias}/>;`,
+        `const s=css.create({a:{color:'red'},b:{color:'blue'}});const alias=s.a;export const First=()=>{const alias=s.b;return <div sx={alias}/>};export const Second=()=> <div sx={alias}/>;`,
     );
     expect(output).toContain(classHash({ color: 'red' }));
   });
   it('preserves defaults on interface Style props', async () => {
     const output = await run(
       prefix +
-        `interface Props {cardStyle?:css.Style};const s=css.create({a:{color:'red'}});export const Card=({cardStyle=s.a}:Props)=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+        `interface Props {cardStyle?:css.Style};const s=css.create({a:{color:'red'}});export const Card=({cardStyle=s.a}:Props)=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
     );
     expect(output).toContain(classHash({ color: 'red' }));
   });
@@ -107,7 +107,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('selects the default or supplied style at runtime', async () => {
     const source =
       prefix +
-      `const s=css.create({a:{color:'red'},b:{color:'blue'}});export const Card=({cardStyle=s.a}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <><Card/><Card cardStyle={s.b}/></>;`;
+      `const s=css.create({a:{color:'red'},b:{color:'blue'}});export const Card=({cardStyle=s.a}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <><Card/><Card cardStyle={s.b}/></>;`;
     const file = path.join(directory, 'fixture.tsx');
     fs.writeFileSync(file, source);
     try {
@@ -150,13 +150,10 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   const spreadPrefix = `import * as css from '@plumeria/core';const s=css.create({a:{color:'red'},b:{padding:4}});`;
   it.each([
-    [
-      'a style prop',
-      `export const App=()=> <div classStyle={[s.a, ...[s.b]]}/>;`,
-    ],
+    ['a style prop', `export const App=()=> <div sx={[s.a, ...[s.b]]}/>;`],
     [
       'a prop default',
-      `export const Card=({cardStyle=[s.a,...[s.b]]}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+      `export const Card=({cardStyle=[s.a,...[s.b]]}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
     ],
     [
       'css.use',
@@ -164,7 +161,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     ],
     [
       'a component prop',
-      `const Card=({boxStyle}:{boxStyle?:css.Style})=><div classStyle={boxStyle}/>;export const App=()=> <Card boxStyle={[s.a, ...[s.b]]}/>;`,
+      `const Card=({boxStyle}:{boxStyle?:css.Style})=><div sx={boxStyle}/>;export const App=()=> <Card boxStyle={[s.a, ...[s.b]]}/>;`,
     ],
   ])(
     'rejects a spread element in a style array passed to %s',
@@ -178,14 +175,14 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('keeps a spread in an array that carries no style', async () => {
     const output = await run(
       spreadPrefix +
-        `const rest=[2,3];export const App=()=> <div classStyle={s.a} data-x={[1, ...rest]}/>;`,
+        `const rest=[2,3];export const App=()=> <div sx={s.a} data-x={[1, ...rest]}/>;`,
     );
     expect(output).toContain(classHash({ color: 'red' }));
   });
 
   it('accepts an omitted optional style prop read off rest props', async () => {
     const output = await run(
-      `import * as css from '@plumeria/core';export const Card=({...rest}:{cardStyle?:css.Style})=><div classStyle={rest.cardStyle}/>;export const App=()=> <Card/>;`,
+      `import * as css from '@plumeria/core';export const Card=({...rest}:{cardStyle?:css.Style})=><div sx={rest.cardStyle}/>;export const App=()=> <Card/>;`,
     );
     expect(output).toContain('className');
   });
@@ -193,7 +190,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('rejects a member read off a destructured style prop', async () => {
     await expect(
       run(
-        `import * as css from '@plumeria/core';export const Card=({styles}:{styles:any})=><div classStyle={styles.a}/>;export const App=()=> <Card styles={{}}/>;`,
+        `import * as css from '@plumeria/core';export const Card=({styles}:{styles:any})=><div sx={styles.a}/>;export const App=()=> <Card styles={{}}/>;`,
       ),
     ).rejects.toThrow(/Dynamic or unresolvable style object/);
   });
@@ -201,7 +198,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('keeps a spread in a component prop array of plain data', async () => {
     const output = await run(
       spreadPrefix +
-        `const posts=[{text:'a',url:'/a'}];export const App=()=> <Nav items={[...posts, {text:'b',url:'/b'}]} classStyle={s.a}/>;`,
+        `const posts=[{text:'a',url:'/a'}];export const App=()=> <Nav items={[...posts, {text:'b',url:'/b'}]} sx={s.a}/>;`,
     );
     expect(output).toContain(classHash({ color: 'red' }));
   });
@@ -215,7 +212,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     await expect(
       run(
         defaultPrefix +
-          `export const Card=({on,cardStyle=${value}}:{on?:boolean;cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+          `export const Card=({on,cardStyle=${value}}:{on?:boolean;cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
       ),
     ).rejects.toThrow(/A style prop default must be a defined style/);
   });
@@ -225,7 +222,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     async (value) => {
       const output = await run(
         defaultPrefix +
-          `export const Card=({cardStyle=${value}}:{cardStyle?:css.Style})=><div classStyle={cardStyle}/>;export const App=()=> <Card/>;`,
+          `export const Card=({cardStyle=${value}}:{cardStyle?:css.Style})=><div sx={cardStyle}/>;export const App=()=> <Card/>;`,
       );
       expect(output).toContain('className');
     },
