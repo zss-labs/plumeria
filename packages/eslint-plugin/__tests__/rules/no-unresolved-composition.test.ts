@@ -33,7 +33,7 @@ ruleTester.run('no-unresolved-composition', noUnresolvedComposition, {
       'const o = { base: css.use(a) }; clsx(o.other)',
       'const list = [a]; list.slice().join(" ")',
       'let x = x; clsx(x)',
-      'const styles = css.create({ p: (c) => ({ color: c }) }); createElement("div", { classStyle: styles.p(c) })',
+      'const styles = css.create({ p: (c) => ({ color: c }) }); createElement("div", { sx: styles.p(c) })',
     ].map((code) => prefix + code),
     'css.use(a) + " b"',
     'import * as css from "other"; css.use(a) + " b"',
@@ -122,11 +122,11 @@ ruleTester.run('no-unresolved-composition', noUnresolvedComposition, {
       code:
         prefix +
         'const styles = css.create({ p: (c) => ({ color: c }) }); css.use(styles.p(c))',
-      options: [{ styleProp: 'sx' }],
+      options: [{ styleProp: 'classStyle' }],
       errors: [
         {
           messageId: 'dynamic',
-          data: { source: 'styles.p(c)', styleProp: 'sx' },
+          data: { source: 'styles.p(c)', styleProp: 'classStyle' },
         },
       ],
       output: null,
