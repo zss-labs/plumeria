@@ -22,7 +22,7 @@ const s = css.create({
   },
   rotate: (a: string) => ({ [angle]: a }),
 });
-export const P = (p: any) => <div classStyle={[s.ring, s.rotate(p.a)]} />;
+export const P = (p: any) => <div sx={[s.ring, s.rotate(p.a)]} />;
 export const names = [tint];
 `;
 
