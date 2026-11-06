@@ -37,7 +37,7 @@ module.exports = {
     '^.+\\.(t|j)sx?$': [
       '@plumeria/swc-jest',
       {
-        styleProp: 'sx',
+        styleProp: 'classStyle',
         jsc: { transform: { react: { runtime: 'automatic' } } },
       },
     ],
@@ -47,7 +47,7 @@ module.exports = {
 
 | Option | Default | Description |
 | :-- | :-- | :-- |
-| `styleProp` | `'classStyle'` | The JSX prop that carries styles. |
+| `styleProp` | `'sx'` | The JSX prop that carries styles. |
 | `withoutLogicalProperties` | `false` | Reject the logical name of a property that also has a physical name. Takes `true` or `{ sizes?: boolean }`. |
 | `withoutPhysicalProperties` | `false` | Reject the physical name of a property that also has a logical name. Takes `true` or `{ sizes?: boolean }`. |
 
