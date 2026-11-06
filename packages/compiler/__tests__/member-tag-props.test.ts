@@ -31,7 +31,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     [LEAF]: `
 import * as css from '@plumeria/core';
 export function PlumeriaLogo({ styleArray }: { styleArray?: css.Style }) {
-  return <svg classStyle={styleArray} />;
+  return <svg sx={styleArray} />;
 }
 `,
     [MID]: `
