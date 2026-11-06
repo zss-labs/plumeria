@@ -38,14 +38,14 @@ beforeAll(() => {
     path.join(PKG, 'src', 'Button.tsx'),
     `import * as css from '@plumeria/core';
 const styles = css.create({ base: { color: 'rgb(1, 2, 3)' } });
-export const Button = () => <button classStyle={styles.base} />;
+export const Button = () => <button sx={styles.base} />;
 `,
   );
   write(
     path.join(PKG, 'src', 'Button.test.tsx'),
     `import * as css from '@plumeria/core';
 const styles = css.create({ probe: { color: 'rgb(7, 7, 7)' } });
-export const Probe = () => <div classStyle={styles.probe} />;
+export const Probe = () => <div sx={styles.probe} />;
 `,
   );
 });
