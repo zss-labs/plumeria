@@ -12,7 +12,7 @@ const buildSkill = (markdown) => {
   return [
     '---',
     'name: plumeria',
-    'description: Write, review, and fix styles with Plumeria (@plumeria/core) — css.create, the classStyle prop, css.use, selector rules, and compiler setup for Next.js, Vite, and other bundlers. Use whenever a project depends on @plumeria/core or the task touches Plumeria styles.',
+    'description: Write, review, and fix styles with Plumeria (@plumeria/core) — css.create, the sx prop, css.use, selector rules, and compiler setup for Next.js, Vite, and other bundlers. Use whenever a project depends on @plumeria/core or the task touches Plumeria styles.',
     '---',
     '',
     '<!-- Generated from docs/content/docs/ai.md by scripts/build-skill.js. Do not edit. -->',
