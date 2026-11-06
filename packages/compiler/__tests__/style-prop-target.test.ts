@@ -17,16 +17,16 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   const files: Record<string, string> = {
     'Header.tsx': `
 import * as css from '@plumeria/core';
-export const Header = ({ classStyle }: { classStyle?: css.Style }) => (
-  <header classStyle={classStyle} />
+export const Header = ({ sx }: { sx?: css.Style }) => (
+  <header sx={sx} />
 );
 `,
     'Wrapped.tsx': `
 import * as css from '@plumeria/core';
 import { Overlay } from 'dialog-lib';
 const styles = css.create({ base: { position: 'fixed' } });
-export const Wrapped = ({ classStyle }: { classStyle?: css.Style }) => (
-  <Overlay classStyle={[styles.base, classStyle]} />
+export const Wrapped = ({ sx }: { sx?: css.Style }) => (
+  <Overlay sx={[styles.base, sx]} />
 );
 `,
     'Paired.tsx': `
@@ -34,33 +34,33 @@ import * as css from '@plumeria/core';
 import { Overlay } from 'dialog-lib';
 export const Paired = ({
   rootStyle,
-  classStyle,
+  sx,
 }: {
   rootStyle?: css.Style;
-  classStyle?: css.Style;
-}) => <Overlay classStyle={[rootStyle, classStyle]} />;
+  sx?: css.Style;
+}) => <Overlay sx={[rootStyle, sx]} />;
 `,
     'Relay.tsx': `
 import * as css from '@plumeria/core';
 import { Header } from './Header';
-export const Relay = ({ classStyle }: { classStyle?: css.Style }) => (
-  <Header classStyle={classStyle} />
+export const Relay = ({ sx }: { sx?: css.Style }) => (
+  <Header sx={sx} />
 );
 `,
     'RelayArray.tsx': `
 import * as css from '@plumeria/core';
 import { Header } from './Header';
 const styles = css.create({ base: { position: 'fixed' } });
-export const RelayArray = ({ classStyle }: { classStyle?: css.Style }) => (
-  <Header classStyle={[styles.base, classStyle]} />
+export const RelayArray = ({ sx }: { sx?: css.Style }) => (
+  <Header sx={[styles.base, sx]} />
 );
 `,
     'Also.tsx': `
 import * as css from '@plumeria/core';
 import { Header } from './Header';
-export const Also = ({ classStyle }: { classStyle?: css.Style }) => (
-  <div classStyle={classStyle}>
-    <Header classStyle={classStyle} />
+export const Also = ({ sx }: { sx?: css.Style }) => (
+  <div sx={sx}>
+    <Header sx={sx} />
   </div>
 );
 `,
@@ -74,11 +74,11 @@ import { Also } from './Also';
 const styles = css.create({ a: { color: 'teal' }, b: { color: 'navy' } });
 export const App = () => (
   <>
-    <Wrapped classStyle={styles.a} />
-    <Paired rootStyle={styles.a} classStyle={styles.b} />
-    <Relay classStyle={styles.a} />
-    <RelayArray classStyle={styles.a} />
-    <Also classStyle={styles.a} />
+    <Wrapped sx={styles.a} />
+    <Paired rootStyle={styles.a} sx={styles.b} />
+    <Relay sx={styles.a} />
+    <RelayArray sx={styles.a} />
+    <Also sx={styles.a} />
   </>
 );
 `,
@@ -109,13 +109,13 @@ export const App = () => (
   it('composes a received style onto a dependency component', async () => {
     const code = await run('Wrapped.tsx');
     expect(code).toMatch(/<Overlay className=/);
-    expect(code).not.toContain('classStyle=');
+    expect(code).not.toContain('sx=');
   });
 
   it('composes two received styles onto a dependency component', async () => {
     const code = await run('Paired.tsx');
     expect(code).toMatch(/<Overlay className=/);
-    expect(code).not.toContain('classStyle=');
+    expect(code).not.toContain('sx=');
   });
 
   it.each(['Relay.tsx', 'RelayArray.tsx', 'Also.tsx'])(
