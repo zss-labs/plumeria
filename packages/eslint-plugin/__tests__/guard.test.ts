@@ -13,7 +13,13 @@ jest.mock('os', () => ({
 
 import * as fs from 'fs';
 import * as os from 'os';
-import { lintOverrides, lowerPriority, startLintGuard } from '../src/guard';
+import {
+  lintConfig,
+  lintEnv,
+  lintOverrides,
+  lowerPriority,
+  startLintGuard,
+} from '../src/guard';
 
 describe('lintOverrides', () => {
   it('turns each spelling option into its rule', () => {
@@ -37,8 +43,8 @@ describe('lintOverrides', () => {
   });
 
   it('passes the styling prop to the rules as a setting', () => {
-    expect(lintOverrides({ styleProp: 'sx' })).toEqual({
-      settings: { plumeria: { styleProp: 'sx' } },
+    expect(lintOverrides({ styleProp: 'classStyle' })).toEqual({
+      settings: { plumeria: { styleProp: 'classStyle' } },
     });
   });
 });
@@ -64,6 +70,22 @@ describe('lowerPriority', () => {
       throw new Error('ESRCH');
     });
     expect(lowerPriority(42)).toBe(false);
+  });
+});
+
+describe('lint process configuration', () => {
+  it('uses the packaged config when there are no overrides', () => {
+    expect(lintConfig({})).toMatch(/eslint-plugin[\\/]oxlint\.json$/);
+  });
+
+  it('adds the compile cache without discarding the environment', () => {
+    expect(lintEnv()).toEqual(
+      expect.objectContaining({
+        NODE_COMPILE_CACHE: expect.stringMatching(
+          /node_modules[\\/]\.cache[\\/]plumeria-lint$/,
+        ),
+      }),
+    );
   });
 });
 
@@ -115,6 +137,21 @@ describe('startLintGuard', () => {
     expect(exit).toHaveBeenCalledWith(1);
   });
 
+  it('aborts the build when oxlint cannot start', () => {
+    startLintGuard();
+    child.emit('error', new Error('spawn failed'));
+    expect(console.error).toHaveBeenCalledWith(
+      '\n✖ [plumeria] Could not run oxlint: spawn failed',
+    );
+    expect(exit).toHaveBeenCalledWith(1);
+  });
+
+  it('treats a missing exit code as a failure', () => {
+    startLintGuard();
+    child.emit('close', null);
+    expect(exit).toHaveBeenCalledWith(1);
+  });
+
   it('holds the build exit until oxlint finishes', () => {
     startLintGuard();
     process.exit(0);
@@ -141,13 +178,13 @@ describe('startLintGuard', () => {
   it('extends the plumeria config with the overrides it is given', () => {
     startLintGuard({
       rules: { '@plumeria/no-physical-properties': 'error' },
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
     });
     const config = spawn.mock.calls[0][1][2];
     expect(JSON.parse(fs.readFileSync(config, 'utf8'))).toEqual({
       extends: [expect.stringMatching(/eslint-plugin[\\/]oxlint\.json$/)],
       rules: { '@plumeria/no-physical-properties': 'error' },
-      settings: { plumeria: { styleProp: 'sx' } },
+      settings: { plumeria: { styleProp: 'classStyle' } },
     });
     child.emit('close', 0);
     expect(fs.existsSync(config)).toBe(false);
