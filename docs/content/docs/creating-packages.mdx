@@ -9,7 +9,7 @@ A component library built with Plumeria ships one of two ways.
 | -------------------------------- | ------------------------------- | ----------------------- |
 | What you publish                 | `src`                           | `dist` and a stylesheet |
 | The app needs the bundler plugin | Yes                             | No                      |
-| The app overrides with `classStyle` | Yes, resolved at build time  | No                      |
+| The app overrides with `sx` | Yes, resolved at build time  | No                      |
 | Style work at runtime            | None                            | None                    |
 
 Ship the source when the people installing it build with Plumeria. Ship a dist when
@@ -54,11 +54,11 @@ const styles = css.create({
 
 export const Button = ({
   children,
-  classStyle,
+  sx,
 }: {
   children: React.ReactNode;
-  classStyle?: css.Style;
-}) => <button classStyle={[styles.base, classStyle]}>{children}</button>;
+  sx?: css.Style;
+}) => <button sx={[styles.base, sx]}>{children}</button>;
 ```
 
 The app lists the package in its dependencies and passes its own styles:
@@ -75,8 +75,8 @@ const styles = css.create({
 export const App = () => (
   <>
     <Button>Default</Button>
-    <Button classStyle={styles.primary}>Primary</Button>
-    <Button classStyle={styles.danger}>Danger</Button>
+    <Button sx={styles.primary}>Primary</Button>
+    <Button sx={styles.danger}>Danger</Button>
   </>
 );
 ```
@@ -84,11 +84,11 @@ export const App = () => (
 The app's build compiles `Button` with every style the app hands it:
 
 ```js title="dist/assets/index.js"
-var Button = ({ children, classStyle }) =>
+var Button = ({ children, sx }) =>
   jsx('button', {
     className:
       'xnuwkl3w xgxw0ba0 xf882boo x1b4ohri ' +
-      ({ x9ct19gt: 'xbpntsfg', x409xipj: 'x5iwg3of' }[classStyle] ||
+      ({ x9ct19gt: 'xbpntsfg', x409xipj: 'x5iwg3of' }[sx] ||
         'xc4k1q4z'),
     children,
   });
@@ -116,7 +116,7 @@ only what ships there, and tests and stories outside them.
 
 The library compiles itself. The class names sit in the JavaScript and the rules in
 a stylesheet, so the people installing it need no bundler plugin and no dependency
-on Plumeria. A `classStyle` from the app is not read.
+on Plumeria. A `sx` from the app is not read.
 
 ```js title="build.js"
 import esbuild from 'esbuild';
