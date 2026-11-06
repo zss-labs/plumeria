@@ -45,13 +45,13 @@ function withPlumeria(nextConfig: NextConfig, options?: PlumeriaOptions): NextCo
 export default withPlumeria(nextConfig, {
   include: ['./src/**/*.{ts,tsx}'],
   exclude: ['**/node_modules/**', '**/.next/**'],
-  styleProp: 'sx',
+  styleProp: 'classStyle',
 });
 ```
 
 - `include`: Globs the stylesheet is compiled from. The default is every `js/jsx/ts/tsx` file.
 - `exclude`: Globs excluded from that compilation. The default is `node_modules`, `dist` and `.next`.
-- `styleProp`: The JSX prop that carries styles. The default is `'classStyle'`.
+- `styleProp`: The JSX prop that carries styles. The default is `'sx'`.
 - `withoutLogicalProperties`: Rejects the logical name of a property that also has a physical name. The default is `false`.
 - `withoutPhysicalProperties`: Rejects the physical name of a property that also has a logical name. The default is `false`.
 - `lint`: Lints the project with [`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) during `next build`. The default is `true`.
@@ -72,7 +72,7 @@ interface PlumeriaOptions {
 Renaming the prop takes two steps, and they have to agree. Tell the plugin:
 
 ```ts title="next.config.ts"
-export default withPlumeria(nextConfig, { styleProp: 'sx' });
+export default withPlumeria(nextConfig, { styleProp: 'classStyle' });
 ```
 
 and declare the same name for TypeScript; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
