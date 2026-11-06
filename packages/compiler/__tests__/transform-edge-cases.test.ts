@@ -50,7 +50,7 @@ const s = css.create({
     it('leaves a type-only import in place', async () => {
       const { code, css } = await transform({
         'app.tsx': `import type { Style } from '@plumeria/core';
-export const A = ({ x }: { x?: Style }) => <div classStyle={x} />;`,
+export const A = ({ x }: { x?: Style }) => <div sx={x} />;`,
       });
       expect(code).toContain(`import type { Style } from '@plumeria/core';`);
       expect(code).toContain('<div className={""} />');
@@ -61,7 +61,7 @@ export const A = ({ x }: { x?: Style }) => <div classStyle={x} />;`,
       const { code } = await transform({
         'app.tsx': `import { type Style, type CSSProperties as P, create as make } from '@plumeria/core';
 const s = make({ a: { color: 'red' } });
-export const A = ({ x }: { x?: Style; p?: P }) => <div classStyle={s.a} />;`,
+export const A = ({ x }: { x?: Style; p?: P }) => <div sx={s.a} />;`,
       });
       expect(code).toContain(
         `import type { Style, CSSProperties as P } from '@plumeria/core'`,
@@ -76,7 +76,7 @@ export const A = ({ x }: { x?: Style; p?: P }) => <div classStyle={s.a} />;`,
 export const styles = css.create({ a: { color: 'teal' } });`,
         'app.tsx': `import '@plumeria/core';
 import { styles as st, missing } from './styles';
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
       });
       expect(code).toMatch(/<div className=\{"x[a-z0-9]+"\} \/>/);
       expect(css).toContain('color: teal');
@@ -86,7 +86,7 @@ export const A = () => <div classStyle={st.a} />;`,
       const { code } = await app(
         `const other: any = { create: (x: any) => x };
 const o = other.create({ a: { color: 'blue' } });
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
       );
       expect(code).toContain(`other.create({ a: { color: 'blue' } })`);
       expect(code).toContain(`<div className={"${RED}"} />`);
@@ -96,21 +96,21 @@ export const A = () => <div classStyle={s.a} />;`,
   describe('transform: a style that is not there', () => {
     it('reads undefined as no class', async () => {
       const { code } = await app(
-        `export const A = () => <div classStyle={undefined} />;`,
+        `export const A = () => <div sx={undefined} />;`,
       );
       expect(code).toContain('<div className={""} />');
     });
 
     it('reads undefined in an array as no entry', async () => {
       const { code } = await app(
-        `export const A = () => <div classStyle={[s.a, undefined]} />;`,
+        `export const A = () => <div sx={[s.a, undefined]} />;`,
       );
       expect(code).toContain(`<div className={"${RED}"} />`);
     });
 
     it('skips a hole in an array under a condition', async () => {
       const { code } = await app(
-        `export const A = ({ on }: any) => <div classStyle={[on && [s.a, , s.b]]} />;`,
+        `export const A = ({ on }: any) => <div sx={[on && [s.a, , s.b]]} />;`,
       );
       expect(code).toContain(
         `className={((on) ? "${RED}" : "") + " " + ((on) ? "${PADDING}" : "")}`,
@@ -135,22 +135,22 @@ export const A = () => <div classStyle={s.a} />;`,
       ],
       [
         'a function key the style object does not hold',
-        `export const A = () => <div classStyle={s.nope(1)} />;`,
+        `export const A = () => <div sx={s.nope(1)} />;`,
         '[plumeria] Dynamic or unresolvable style object "s.nope(1)" is not supported.',
       ],
       [
         'a function key called with a spread',
-        `export const A = ({ args }: any) => <div classStyle={s.fn(...args)} />;`,
+        `export const A = ({ args }: any) => <div sx={s.fn(...args)} />;`,
         '[plumeria] Dynamic or unresolvable style object "s.fn(...args)" is not supported.',
       ],
       [
         'a spread in an array under a condition',
-        `export const A = ({ on, list }: any) => <div classStyle={[on && [...list]]} />;`,
+        `export const A = ({ on, list }: any) => <div sx={[on && [...list]]} />;`,
         '[plumeria] Spread elements in a style array are not supported: "...list".',
       ],
       [
         'a constant that names another constant',
-        `const x = s.a; const y = x; export const A = () => <div classStyle={y} />;`,
+        `const x = s.a; const y = x; export const A = () => <div sx={y} />;`,
         '[plumeria] Dynamic or unresolvable style object "y" is not supported.',
       ],
     ])('rejects %s', async (_name, body, message) => {
@@ -161,7 +161,7 @@ export const A = () => <div classStyle={s.a} />;`,
   describe('transform: the arguments of a function key', () => {
     it('ignores an argument past the last parameter', async () => {
       const { code } = await app(
-        `export const A = ({ n }: any) => <div classStyle={s.fn(n, 2)} />;`,
+        `export const A = ({ n }: any) => <div sx={s.fn(n, 2)} />;`,
       );
       expect(code).toMatch(
         /style=\{\{ "--[a-z0-9]+-size": \(typeof \(n\) === 'number' \? \(n\) \+ 'px' : \(n\)\) \}\}/,
@@ -172,7 +172,7 @@ export const A = () => <div classStyle={s.a} />;`,
       'passes the string literal of %s through as written',
       async (call) => {
         const { code } = await app(
-          `export const A = () => <div classStyle={${call}} />;`,
+          `export const A = () => <div sx={${call}} />;`,
         );
         expect(code).toMatch(/style=\{\{ "--[a-z0-9]+-size": "3" \}\}/);
       },
@@ -182,7 +182,7 @@ export const A = () => <div classStyle={s.a} />;`,
       const { code } = await transform({
         'app.tsx': `import * as css from '@plumeria/core';
 const s = css.create({ fn: (size: number) => ({ width: \`\${size}px\`, height: size }) });
-export const A = ({ n }: any) => <><i classStyle={s.fn("3")} /><b classStyle={s.fn(n)} /><u classStyle={s.fn(4)} /></>;`,
+export const A = ({ n }: any) => <><i sx={s.fn("3")} /><b sx={s.fn(n)} /><u sx={s.fn(4)} /></>;`,
       });
       expect(code).toMatch(/<i [^>]*"--[a-z0-9]+-size": "3px"/);
       expect(code).toMatch(/<b [^>]*"--[a-z0-9]+-size": \(\(n\) \+ 'px'\)/);
@@ -190,14 +190,14 @@ export const A = ({ n }: any) => <><i classStyle={s.fn("3")} /><b classStyle={s.
 
     it('emits no class for an object handed to a positional parameter at runtime', async () => {
       const { code } = await app(
-        `export const A = ({ n }: any) => <div classStyle={s.fn({ size: n })} />;`,
+        `export const A = ({ n }: any) => <div sx={s.fn({ size: n })} />;`,
       );
       expect(code).toContain('<div className={""} />');
     });
 
     it('hands a function key to a component as a key and its variables', async () => {
       const { code } = await app(
-        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;
+        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;
 export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
       );
       expect(code).toContain('[((cardStyle && cardStyle.key) || cardStyle)]');
@@ -209,7 +209,7 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
   describe('transform: conditions', () => {
     it('keys a conditional nested in another by its path', async () => {
       const { code } = await app(
-        `export const A = ({ a, b }: any) => <div classStyle={a ? (b ? s.a : s.b) : s.b} />;`,
+        `export const A = ({ a, b }: any) => <div sx={a ? (b ? s.a : s.b) : s.b} />;`,
       );
       expect(code).toContain(
         `({"#0":"${RED}","#1":"${PADDING}","#2":"${PADDING}"}[((a) ? ((b) ? "#0" : "#1") : "#2")] || "")`,
@@ -218,7 +218,7 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
 
     it('reads through parentheses', async () => {
       const { code } = await app(
-        `export const A = ({ on }: any) => <div classStyle={[(on && s.a), (s.b)]} />;`,
+        `export const A = ({ on }: any) => <div sx={[(on && s.a), (s.b)]} />;`,
       );
       expect(code).toContain(
         `className={"${PADDING}" + " " + ((on) ? "${RED}" : "")}`,
@@ -230,8 +230,8 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
     it('does not follow a constant into a scope that shadows its name', async () => {
       const { code } = await app(
         `const local = s.a;
-export const A = ({ local }: any) => <div classStyle={local} />;
-export const B = () => <div classStyle={local} />;`,
+export const A = ({ local }: any) => <div sx={local} />;
+export const B = () => <div sx={local} />;`,
       );
       expect(code).toContain(
         'export const A = ({ local }: any) => <div className={""} />;',
@@ -243,7 +243,7 @@ export const B = () => <div classStyle={local} />;`,
 
     it('reads an anonymous default component that receives a style', async () => {
       const { code } = await app(
-        `export default function ({ boxStyle }: { boxStyle?: css.Style }) { return <div classStyle={boxStyle} />; }`,
+        `export default function ({ boxStyle }: { boxStyle?: css.Style }) { return <div sx={boxStyle} />; }`,
       );
       expect(code).toContain('return <div className={""} />;');
     });
@@ -251,7 +251,7 @@ export const B = () => <div classStyle={local} />;`,
     it('reads a defaulted prop beside patterns it does not name', async () => {
       const { code } = await app(
         `const k = 'x';
-const Card = ({ a: { b }, [k]: v, 'q': quoted, c: d = s.a }: any) => <div classStyle={d} />;
+const Card = ({ a: { b }, [k]: v, 'q': quoted, c: d = s.a }: any) => <div sx={d} />;
 export const A = () => <Card c={s.b} />;`,
       );
       expect(code).toMatch(
@@ -264,7 +264,7 @@ export const A = () => <Card c={s.b} />;`,
     it('passes over a wrapper call that holds no component', async () => {
       const { code } = await app(
         `const Card = memo(config);
-export const A = () => <div classStyle={s.a} />;`,
+export const A = () => <div sx={s.a} />;`,
       );
       expect(code).toContain('const Card = memo(config);');
       expect(code).toContain(`<div className={"${RED}"} />`);
@@ -272,7 +272,7 @@ export const A = () => <div classStyle={s.a} />;`,
 
     it('empties a style object exported through a specifier list', async () => {
       const { code } = await app(
-        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;
+        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;
 export { Card, s as styles };
 export const A = () => <Card cardStyle={s.a} />;`,
       );
@@ -288,32 +288,32 @@ export const A = () => <Card cardStyle={s.a} />;`,
     it.each([
       [
         'a namespaced attribute',
-        `<svg xlink:href="x" classStyle={s.a} />`,
+        `<svg xlink:href="x" sx={s.a} />`,
         `<svg xlink:href="x" className={"${RED}"} />`,
       ],
       [
         'a spread attribute',
-        `<div {...p} classStyle={s.a} />`,
+        `<div {...p} sx={s.a} />`,
         `<div {...p} className={"${RED}"} />`,
       ],
       [
         'a className without a value',
-        `<div className classStyle={s.a} />`,
+        `<div className sx={s.a} />`,
         `<div  className={"${RED}"} />`,
       ],
       [
         'a className string',
-        `<div className="x" classStyle={s.a} />`,
+        `<div className="x" sx={s.a} />`,
         `<div  className={"x" + " " + "${RED}"} />`,
       ],
       [
         'a className expression',
-        `<div className={p.c} classStyle={s.a} />`,
+        `<div className={p.c} sx={s.a} />`,
         `<div  className={(p.c) + " " + "${RED}"} />`,
       ],
       [
         'a className beside a style that is not there',
-        `<div className="x" classStyle={undefined} />`,
+        `<div className="x" sx={undefined} />`,
         `<div  className={"x"} />`,
       ],
     ])('keeps %s', async (_name, element, expected) => {
@@ -322,8 +322,8 @@ export const A = () => <Card cardStyle={s.a} />;`,
     });
 
     it.each([
-      ['a string', `classStyle="x"`],
-      ['no value', `classStyle`],
+      ['a string', `sx="x"`],
+      ['no value', `sx`],
     ])(
       'leaves a style prop written with %s alone',
       async (_name, attribute) => {
@@ -344,7 +344,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
       async (_name, attribute, kept) => {
         const { code } = await app(
           FN +
-            `export const A = ({ n, rest, st }: any) => <div ${attribute} classStyle={d.fn(n)} />;`,
+            `export const A = ({ n, rest, st }: any) => <div ${attribute} sx={d.fn(n)} />;`,
         );
         expect(code).toMatch(new RegExp(`style=\\{\\{ ${kept}${SIZE} \\}\\}`));
       },
@@ -393,9 +393,7 @@ export const all = [statics, statics.gap, statics.zzz, theme, theme.color, style
     });
 
     it('reads a whole style object in the style prop as no class', async () => {
-      const { code } = await app(
-        `export const A = () => <div classStyle={s} />;`,
-      );
+      const { code } = await app(`export const A = () => <div sx={s} />;`);
       expect(code).toContain('<div className={""} />');
     });
   });
@@ -423,7 +421,7 @@ export const cls = use(s.a);`,
 
     it('leaves a call whose callee is not a name alone', async () => {
       const { code } = await app(
-        `const v = (() => 1)(); export const A = () => <div classStyle={s.a} />;`,
+        `const v = (() => 1)(); export const A = () => <div sx={s.a} />;`,
       );
       expect(code).toContain('const v = (() => 1)();');
     });
@@ -435,7 +433,7 @@ export const cls = use(s.a);`,
     it('looks two conditions up together', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ x, y }: any) => <div classStyle={[x && s.a, y && t.c]} />;`,
+          `export const A = ({ x, y }: any) => <div sx={[x && s.a, y && t.c]} />;`,
       );
       expect(code).toMatch(
         new RegExp(
@@ -447,7 +445,7 @@ export const cls = use(s.a);`,
     it('looks two comparisons of one name up together', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ v }: any) => <div classStyle={[v === 'a' && s.a, v === 'c' && t.c]} />;`,
+          `export const A = ({ v }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c]} />;`,
       );
       expect(code).toContain(
         `[((v === 'a') ? "1" : "0") + "__" + ((v === 'c') ? "1" : "0")]`,
@@ -457,7 +455,7 @@ export const cls = use(s.a);`,
     it('keeps a base the conditions do not touch outside the lookup', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ v, on }: any) => <div classStyle={[s.b, v === 'a' && s.a, v === 'c' && t.c, on && s.b]} />;`,
+          `export const A = ({ v, on }: any) => <div sx={[s.b, v === 'a' && s.a, v === 'c' && t.c, on && s.b]} />;`,
       );
       expect(code).toContain(
         `({"0":"${PADDING}","1":"${PADDING}"}[((on) ? "1" : "0")] || "${PADDING}")`,
@@ -467,7 +465,7 @@ export const cls = use(s.a);`,
     it('widens the lookup for a third condition', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ v, y }: any) => <div classStyle={[v === 'a' && s.a, v === 'c' && t.c, y ? s.a : t.c]} />;`,
+          `export const A = ({ v, y }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c, y ? s.a : t.c]} />;`,
       );
       expect(code).toContain(`"1__1__1":"${RED}"`);
     });
@@ -478,7 +476,7 @@ export const cls = use(s.a);`,
       transform({
         'app.tsx': `import * as css from '@plumeria/core';
 const st = css.create(${declaration});
-export const A = (p: any) => <div classStyle={st.fn(p.n)} />;`,
+export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
       });
 
     it('names a second unit on one property after the unit', async () => {
@@ -517,7 +515,7 @@ ${lead}
 export const st = css.create(${declaration});`,
         'app.tsx': `import '@plumeria/core';
 import { st } from './styles';
-export const A = (p: any) => <div classStyle={${call}} />;`,
+export const A = (p: any) => <div sx={${call}} />;`,
       });
 
     it.each([
@@ -587,7 +585,7 @@ export const A = (p: any) => <div classStyle={${call}} />;`,
 const k = css.keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
 const vt = css.viewTransitionClass({ old: { opacity: 0 } });
 const st = css.create({ a: { animationName: k, viewTransitionName: vt } });
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
       });
       expect(css).toMatch(/@keyframes kf-x[a-z0-9]+ \{/);
       expect(css).toMatch(/::view-transition-old\(\*\.vt-x[a-z0-9]+\) \{/);
@@ -600,7 +598,7 @@ export const k = css.keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });`,
         'app.tsx': `import * as css from '@plumeria/core';
 import * as anim from './anim';
 const st = css.create({ a: { animationName: anim.k } });
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
       });
       expect(css).toMatch(/@keyframes kf-x[a-z0-9]+ \{/);
       expect(css).toMatch(/animation-name: kf-x[a-z0-9]+;/);
@@ -613,7 +611,7 @@ export const A = () => <div classStyle={st.a} />;`,
           'app.tsx': `import * as css from '@plumeria/core';
 const bp = css.createStatic({ n: { gap: 4 } });
 const st = css.create({ a: { margin: bp['n']['gap'] } });
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
         },
         `Cannot resolve the value of "margin" at build time (bp['n']['gap']).`,
       ],
@@ -627,7 +625,7 @@ export const A = () => <div classStyle={st.a} />;`,
 const base = { color: 'red' };
 const num = 4;
 const st = css.create({ a: { ...base, ...num, padding: 1 } });
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
       });
       expect(css).toContain('{ color: red; }');
       expect(css).toContain('{ padding: 1px; }');
@@ -641,7 +639,7 @@ export const A = () => <div classStyle={st.a} />;`,
       fs.writeFileSync(
         path.join(project, 'card.tsx'),
         `import * as css from '@plumeria/core';
-export const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={cardStyle} />;`,
+export const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} />;`,
       );
       const source = `import * as css from '@plumeria/core';
 import { Card } from './card';
@@ -673,7 +671,7 @@ export const A = () => <Card cardStyle={s.a} />;`;
         'app.tsx': `import * as css from '@plumeria/core';
 ${lead}
 const st = css.create(${declaration});
-export const A = () => <div classStyle={st.a} />;`,
+export const A = () => <div sx={st.a} />;`,
       });
 
     it.each([
@@ -732,22 +730,22 @@ export const A = () => <div classStyle={st.a} />;`,
     it.each([
       [
         'a function key behind two members',
-        `const lib: any = {}; export const A = () => <div classStyle={[s.a, lib.styles.fn(1)]} />;`,
+        `const lib: any = {}; export const A = () => <div sx={[s.a, lib.styles.fn(1)]} />;`,
         'lib.styles.fn(1)',
       ],
       [
         'a function key on the result of a call',
-        `const get = (): any => s; export const A = () => <div classStyle={[s.a, get().fn(1)]} />;`,
+        `const get = (): any => s; export const A = () => <div sx={[s.a, get().fn(1)]} />;`,
         'get().fn(1)',
       ],
       [
         'a function key on a parameter that shadows the style object',
-        `export const A = ({ s }: any) => <div classStyle={s.fn(1)} />;`,
+        `export const A = ({ s }: any) => <div sx={s.fn(1)} />;`,
         's.fn(1)',
       ],
       [
         'a static key on a parameter that shadows the style object',
-        `export const A = ({ s }: any) => <div classStyle={s.a} />;`,
+        `export const A = ({ s }: any) => <div sx={s.a} />;`,
         's.a',
       ],
     ])('rejects %s', async (_name, body, source) => {
@@ -763,17 +761,17 @@ export const A = () => <div classStyle={st.a} />;`,
     it.each([
       [
         'a member of the props object',
-        `(props: { cardStyle?: css.Style }) => <div classStyle={props.cardStyle} />`,
+        `(props: { cardStyle?: css.Style }) => <div sx={props.cardStyle} />`,
         `(${TABLE}[props.cardStyle] || "")`,
       ],
       [
         'a name destructured in the body',
-        `(props: { cardStyle?: css.Style }) => { const { cardStyle } = props; return <div classStyle={cardStyle} />; }`,
+        `(props: { cardStyle?: css.Style }) => { const { cardStyle } = props; return <div sx={cardStyle} />; }`,
         `(${TABLE}[cardStyle] || "")`,
       ],
       [
         'a function nested in the component',
-        `({ cardStyle }: { cardStyle?: css.Style }) => { const inner = () => <div classStyle={cardStyle} />; return inner(); }`,
+        `({ cardStyle }: { cardStyle?: css.Style }) => { const inner = () => <div sx={cardStyle} />; return inner(); }`,
         `(${TABLE}[cardStyle] || "")`,
       ],
     ])('looks the key up through %s', async (_name, component, lookup) => {
@@ -787,7 +785,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
 
     it('joins a base with a received array that holds a function key', async () => {
       const { code } = await app(
-        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div classStyle={[s.b, cardStyle]} />;
+        `const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={[s.b, cardStyle]} />;
 export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`,
       );
       expect(code).toMatch(
@@ -803,7 +801,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
 
     it('keeps the later of two styles that are always applied', async () => {
       const { code, css } = await app(
-        BLUE + `export const A = () => <div classStyle={[s.a, t.c]} />;`,
+        BLUE + `export const A = () => <div sx={[s.a, t.c]} />;`,
       );
       expect(code).toMatch(/<div className=\{"x[a-z0-9]+"\} \/>/);
       expect(code).not.toContain(RED);
@@ -813,7 +811,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
     it('writes a conditional between two of them as it stands', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ on }: any) => <div classStyle={[on ? s.a : t.c, s.b]} />;`,
+          `export const A = ({ on }: any) => <div sx={[on ? s.a : t.c, s.b]} />;`,
       );
       expect(code).toContain(
         `className={"${PADDING}" + " " + (on ? "${RED}" : "xgmn1kmt")}`,
@@ -823,7 +821,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
     it('looks a bracket and a condition up together', async () => {
       const { code } = await app(
         BLUE +
-          `export const A = ({ k, on }: any) => <div classStyle={[t[k], on && s.a]} />;`,
+          `export const A = ({ k, on }: any) => <div sx={[t[k], on && s.a]} />;`,
       );
       expect(code).toContain(
         `[({"c":"0","x":"1","y":"2"}[k] || "") + "__" + ((on) ? "1" : "0")]`,
