@@ -4,10 +4,10 @@ import type { Style } from '@plumeria/core';
 declare module 'preact' {
   namespace JSX {
     interface HTMLAttributes {
-      classStyle?: Style;
+      sx?: Style;
     }
     interface SVGAttributes {
-      classStyle?: Style;
+      sx?: Style;
     }
   }
 }
