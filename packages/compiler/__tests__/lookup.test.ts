@@ -166,7 +166,7 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
 
   const compile = async (styleExpr: string) => {
     const id = `${DIR}/fixture-${fixtureCount++}.tsx`;
-    const source = `${HEAD}export const A = ({ ${VARS.join(', ')} }: any) => <div classStyle={${styleExpr}} />;\n`;
+    const source = `${HEAD}export const A = ({ ${VARS.join(', ')} }: any) => <div sx={${styleExpr}} />;\n`;
     fs.writeFileSync(id, source);
     const result = await transformSource(env(source, id));
     const code = typeof result === 'string' ? result : (result?.code ?? '');
@@ -740,7 +740,7 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
     const compileKeys = async (decl: string): Promise<string> => {
       const source = `import * as css from '@plumeria/core';
 const escaped = css.create(${decl});
-export const B = ({ k }: any) => <div classStyle={escaped[k]} />;
+export const B = ({ k }: any) => <div sx={escaped[k]} />;
 `;
       const result = await transformSource(
         env(source, `${DIR}/fixture-escape-${fixtureCount++}.tsx`),
