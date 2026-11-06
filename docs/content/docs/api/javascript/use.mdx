@@ -1,20 +1,20 @@
 ---
-title: 'css.use / classStyle'
+title: 'css.use / sx'
 description: 'Attach styles as a prop in JSX, or as a class name string anywhere else.'
 ---
-To apply styles defined in Plumeria to a component, use the `classStyle` prop or the `css.use()` function.
+To apply styles defined in Plumeria to a component, use the `sx` prop or the `css.use()` function.
 
-## classStyle
+## sx
 ```ts
 type Style = StyleList<StyleNamespace>;
 
 declare global {
   namespace React {
     interface HTMLAttributes<T> {
-      classStyle?: Style;
+      sx?: Style;
     }
     interface SVGAttributes<T> {
-      classStyle?: Style;
+      sx?: Style;
     }
   }
 }
@@ -22,7 +22,7 @@ declare global {
 export type { Style };
 ```
 
-`classStyle` is a special prop for applying styles to components such as React. It is converted to `className` by the plugin at build time.
+`sx` is a special prop for applying styles to components such as React. It is converted to `className` by the plugin at build time.
 
 ### Features
 - Accepts a single style, or an array of styles. Arrays can be nested.
@@ -41,7 +41,7 @@ const styles = css.create({
 
 function Component({ active }) {
   return (
-    <div classStyle={[styles.base, active && styles.active]}>
+    <div sx={[styles.base, active && styles.active]}>
       Hello
     </div>
   );
@@ -53,11 +53,11 @@ function Component({ active }) {
 export type use = (...rules: Style[]) => string;
 export const use: use;
 ```
-`css.use()` converts styles into a string of class names. Use it where the `classStyle` prop is not available, for example when passing a class name to an external component that only accepts `className`.
+`css.use()` converts styles into a string of class names. Use it where the `sx` prop is not available, for example when passing a class name to an external component that only accepts `className`.
 
 Pass every style to one `css.use()` call; a later argument takes precedence. Strings from separate calls are not merged when joined, so which rule wins depends on stylesheet order.
 
-A [function key](/docs/api/javascript/create#dynamic-values) cannot go through `css.use()`, and the build stops on it: its values reach the element as CSS variables on `style`, which a class name string cannot carry. Apply it with `classStyle`. A prop that ends up in `css.use()` can reject one at the call site with [StaticStyles](/docs/api/types/StaticStyles).
+A [function key](/docs/api/javascript/create#dynamic-values) cannot go through `css.use()`, and the build stops on it: its values reach the element as CSS variables on `style`, which a class name string cannot carry. Apply it with `sx`. A prop that ends up in `css.use()` can reject one at the call site with [StaticStyles](/docs/api/types/StaticStyles).
 
 ### Example
 
@@ -76,5 +76,5 @@ const className = css.use(styles.text);
 ```
 
 <Callout title="Build time compiles">
-`classStyle` and `css.use()` are both processed by the plugin at build time. There is zero runtime overhead, and the final bundle will only contain the class name as a string.
+`sx` and `css.use()` are both processed by the plugin at build time. There is zero runtime overhead, and the final bundle will only contain the class name as a string.
 </Callout>
