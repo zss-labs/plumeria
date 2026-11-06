@@ -10,7 +10,7 @@ export type { AtomicClassStyle };
 
 `AtomicClassStyle` is the type of one dynamic style, which is what calling a [function key](/docs/api/javascript/create#dynamic-values) gives. It reads the same as [AtomicStyle](/docs/api/types/AtomicStyle) — the type argument names the properties the style has to set, and a call names them with what it produced — and adds that a static style will not do.
 
-The name says where such a style has to go. The values the caller computed reach the element as custom properties, so the style is applied through `classStyle` rather than as a bare class name, and that is the whole reason a prop has to be able to tell the two apart.
+The name says where such a style has to go. The values the caller computed reach the element as custom properties, so the style is applied through `sx` rather than as a bare class name, and that is the whole reason a prop has to be able to tell the two apart.
 
 ## Example
 
