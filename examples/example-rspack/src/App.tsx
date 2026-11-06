@@ -23,8 +23,8 @@ function App() {
 
   return (
     <div style={{ textAlign: 'center', padding: '2em' }}>
-      <h1 classStyle={styles.title}>Plumeria + Rspack</h1>
-      <div classStyle={styles.card}>
+      <h1 sx={styles.title}>Plumeria + Rspack</h1>
+      <div sx={styles.card}>
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
