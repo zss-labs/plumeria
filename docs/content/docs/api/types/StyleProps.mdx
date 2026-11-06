@@ -22,17 +22,17 @@ const styles = css.create({
 });
 
 type TextProps = {
-  classStyle?: css.StyleProps<'color' | 'fontSize'>;
+  sx?: css.StyleProps<'color' | 'fontSize'>;
 };
 
-export function Text({ classStyle }: TextProps) {
-  return <span classStyle={[styles.base, classStyle]} />;
+export function Text({ sx }: TextProps) {
+  return <span sx={[styles.base, sx]} />;
 }
 ```
 
 ```tsx
-<Text classStyle={styles.tinted} />  // ok when tinted only sets color
-<Text classStyle={styles.pinned} />  // Type error when pinned sets position
+<Text sx={styles.tinted} />  // ok when tinted only sets color
+<Text sx={styles.pinned} />  // Type error when pinned sets position
 ```
 
 ## Nested blocks are covered
@@ -41,7 +41,7 @@ The enumeration reaches into pseudo classes and at-rules, so a property that is 
 
 ```tsx
 // Type error, position is not enumerated
-<Text classStyle={styles.hoverPinned} />
+<Text sx={styles.hoverPinned} />
 ```
 
 ```ts
@@ -63,7 +63,7 @@ const styles = css.create({
   badge: css.marker('badge', ':hover'),
 });
 
-<Text classStyle={styles.badge} />  // ok under any enumeration
+<Text sx={styles.badge} />  // ok under any enumeration
 ```
 
 The block `css.extended()` guards is checked as usual. The at-rule it returns is a nested block like any other, and the properties inside it are enumerated the same way.
