@@ -45,7 +45,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       '\uFEFF/* 日本語 */\n' +
         prefix +
         styles +
-        'export const el = <div classStyle={styles.a} />;',
+        'export const el = <div sx={styles.a} />;',
     );
     expect(result).toContain('/* 日本語 */');
     expect(result).toContain(`className={"${classHash({ color: 'red' })}"}`);
@@ -53,8 +53,8 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   });
 
   it.each([
-    `<div style={{ color: theme.primary }} className={staticValues.name} classStyle={styles.a} />`,
-    `<div classStyle={styles.a} style={{ color: theme.primary }} className={staticValues.name} />`,
+    `<div style={{ color: theme.primary }} className={staticValues.name} sx={styles.a} />`,
+    `<div sx={styles.a} style={{ color: theme.primary }} className={staticValues.name} />`,
   ])('rewrites constants inside preserved JSX attributes: %s', async (jsx) => {
     const result = await run(
       prefix +
@@ -72,7 +72,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     const result = await run(
       prefix +
         styles +
-        `export const el = <div classStyle={flag ? [styles.a, styles.b] : styles.c} />;`,
+        `export const el = <div sx={flag ? [styles.a, styles.b] : styles.c} />;`,
     );
     expect(result).toContain(classHash({ color: 'red' }));
     expect(result).toContain(classHash({ padding: 4 }));
@@ -87,7 +87,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
         run(
           prefix +
             styles +
-            `export const el = <div classStyle={[styles.a, ${entry}]} />;`,
+            `export const el = <div sx={[styles.a, ${entry}]} />;`,
         ),
       ).rejects.toThrow('unresolvable style object');
     },
@@ -98,7 +98,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       run(
         prefix +
           styles +
-          `export const el = <div classStyle={flag ? [styles.a, unknownStyle] : styles.c} />;`,
+          `export const el = <div sx={flag ? [styles.a, unknownStyle] : styles.c} />;`,
       ),
     ).rejects.toThrow('unresolvable style object');
   });
@@ -110,7 +110,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
         run(
           prefix +
             styles +
-            `export function Component(styles: any) { return <div classStyle={${expression}} />; }`,
+            `export function Component(styles: any) { return <div sx={${expression}} />; }`,
         ),
       ).rejects.toThrow('unresolvable style object');
     },
@@ -121,7 +121,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       run(
         prefix +
           styles +
-          `export function Component() { const styles = css.create({a:{color:'green'}}); return <div classStyle={styles.a} />; }`,
+          `export function Component() { const styles = css.create({a:{color:'green'}}); return <div sx={styles.a} />; }`,
       ),
     ).rejects.toThrow('top-level variable');
   });
@@ -131,7 +131,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     const parent = path.join(directory, 'Parent.tsx');
     const childSource =
       prefix +
-      `export const Child = ({ id, ...rest }: any) => <div id={id} classStyle={rest.styleArray} />;`;
+      `export const Child = ({ id, ...rest }: any) => <div id={id} sx={rest.styleArray} />;`;
     const parentSource =
       prefix +
       styles +
@@ -154,7 +154,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       );
       const childSource =
         prefix +
-        `export const Child = ({ styleArray }: any) => <div classStyle={styleArray} />;`;
+        `export const Child = ({ styleArray }: any) => <div sx={styleArray} />;`;
       const parentSource =
         prefix +
         styles +
@@ -178,7 +178,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   ])('accepts statically readable style arguments: %s', async (argument) => {
     const result = await run(
       prefix +
-        `const rules = { a: { color: 'red' } }; const styles = css.create(${argument}); export const el = <div classStyle={styles.a} />;`,
+        `const rules = { a: { color: 'red' } }; const styles = css.create(${argument}); export const el = <div sx={styles.a} />;`,
     );
     expect(result).toContain(classHash({ color: 'red' }));
     expect(() => checkSyntax(result)).not.toThrow();
@@ -207,9 +207,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     'resolves styles through a transparent expression wrapper: %s',
     async (expression) => {
       const result = await run(
-        prefix +
-          styles +
-          `export const el = <div classStyle={${expression}} />;`,
+        prefix + styles + `export const el = <div sx={${expression}} />;`,
       );
       expect(result).toContain(classHash({ color: 'red' }));
       expect(() => checkSyntax(result)).not.toThrow();
@@ -220,7 +218,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     const result = await run(
       prefix +
         `const box = css.create({ a: { color: 'red' } }), keep = 42;` +
-        `export const el = <div classStyle={box.a}>{keep}</div>;`,
+        `export const el = <div sx={box.a}>{keep}</div>;`,
     );
     expect(result).toContain('keep = 42');
     expect(() => checkSyntax(result)).not.toThrow();
@@ -244,7 +242,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   it('compiles a style array that contains a hole', async () => {
     const result = await run(
-      prefix + styles + `export const el = <div classStyle={[, styles.a]} />;`,
+      prefix + styles + `export const el = <div sx={[, styles.a]} />;`,
     );
     expect(result).toContain(classHash({ color: 'red' }));
     expect(() => checkSyntax(result)).not.toThrow();
@@ -262,7 +260,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
         prefix +
           styles +
           `const tone = css.create({ box: (color: string) => ({ background: color }) });` +
-          `export const el = <div style={${styleObject}} classStyle={tone.box('blue')} />;`,
+          `export const el = <div style={${styleObject}} sx={tone.box('blue')} />;`,
       );
       expect(result).toContain(preserved);
       expect(result).toContain('"blue"');
