@@ -16,7 +16,7 @@ fn unchanged_files_skip_reads_and_extraction() {
     let b = dir.join("b.tsx").to_string_lossy().into_owned();
     let source = |color: &str| {
         format!(
-            "import * as css from '@plumeria/core'; const s = css.create({{ box: {{ color: '{color}' }} }}); export const Box = () => <div classStyle={{s.box}} />;"
+            "import * as css from '@plumeria/core'; const s = css.create({{ box: {{ color: '{color}' }} }}); export const Box = () => <div sx={{s.box}} />;"
         )
     };
     std::fs::write(&a, source("red")).unwrap();
@@ -25,7 +25,7 @@ fn unchanged_files_skip_reads_and_extraction() {
         cwd: dir.to_string_lossy().into_owned(),
         include: vec!["**/*.tsx".into()],
         exclude: vec![],
-        style_prop: "classStyle".into(),
+        style_prop: "sx".into(),
         policy: None,
         sources: FxHashMap::default(),
         files: None,
@@ -69,7 +69,7 @@ fn overlays_are_restored_after_a_later_file_fails() {
     let b = dir.join("b.tsx").to_string_lossy().into_owned();
     let source = |color: &str| {
         format!(
-            "import * as css from '@plumeria/core'; const theme = css.createTheme(':root', {{ primary: '{color}' }}); const sizes = css.createStatic({{ gap: 4 }}); const styles = css.create({{ box: {{ color: theme.primary, padding: sizes.gap }} }}); export const Box = () => <div classStyle={{styles.box}} />;"
+            "import * as css from '@plumeria/core'; const theme = css.createTheme(':root', {{ primary: '{color}' }}); const sizes = css.createStatic({{ gap: 4 }}); const styles = css.create({{ box: {{ color: theme.primary, padding: sizes.gap }} }}); export const Box = () => <div sx={{styles.box}} />;"
         )
     };
     std::fs::write(&a, source("red")).unwrap();
@@ -78,7 +78,7 @@ fn overlays_are_restored_after_a_later_file_fails() {
         cwd: dir.to_string_lossy().into_owned(),
         include: vec!["**/*.tsx".into()],
         exclude: vec![],
-        style_prop: "classStyle".into(),
+        style_prop: "sx".into(),
         policy: None,
         sources: FxHashMap::default(),
         files: None,
