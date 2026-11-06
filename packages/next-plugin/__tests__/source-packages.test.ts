@@ -12,6 +12,7 @@ const ROOT = fs.realpathSync(
   fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-next-package-')),
 );
 const PKG = path.join(ROOT, 'node_modules', 'ui-kit');
+const LEGACY = path.join(ROOT, 'node_modules', 'legacy-kit');
 
 const write = (file: string, content: string) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -21,7 +22,9 @@ const write = (file: string, content: string) => {
 beforeAll(() => {
   write(
     path.join(ROOT, 'package.json'),
-    JSON.stringify({ dependencies: { 'ui-kit': '1.0.0' } }),
+    JSON.stringify({
+      dependencies: { 'ui-kit': '1.0.0', 'legacy-kit': '1.0.0' },
+    }),
   );
   write(
     path.join(PKG, 'package.json'),
@@ -30,7 +33,15 @@ beforeAll(() => {
       exports: {
         '.': { plumeria: './src/index.ts', default: './dist/index.js' },
         './*': { plumeria: './src/*.tsx', default: './dist/*.js' },
+        './plain': { default: './dist/plain.js' },
       },
+    }),
+  );
+  write(
+    path.join(LEGACY, 'package.json'),
+    JSON.stringify({
+      name: 'legacy-kit',
+      exports: { plumeria: './src/index.ts', default: './dist/index.js' },
     }),
   );
   jest.spyOn(process, 'cwd').mockReturnValue(ROOT);
@@ -50,10 +61,11 @@ it('transpiles the package and aliases its exports for Turbopack', () => {
     { lint: false },
   );
 
-  expect(config.transpilePackages).toEqual(['other', 'ui-kit']);
+  expect(config.transpilePackages).toEqual(['other', 'legacy-kit', 'ui-kit']);
   expect(config.turbopack?.resolveAlias).toEqual({
     'ui-kit': './custom.ts',
     'ui-kit/*': './node_modules/ui-kit/src/*.tsx',
+    'legacy-kit': './node_modules/legacy-kit/src/index.ts',
   });
 });
 
@@ -84,6 +96,9 @@ it('replaces package requests and loads package source under webpack', () => {
   const unknown = { request: 'ui-kit' };
   replace(unknown);
   expect(unknown.request).toBe(path.join(PKG, 'src', 'index.ts'));
+  const unresolved = { request: 'legacy-kit/missing' };
+  replace(unresolved);
+  expect(unresolved.request).toBe('legacy-kit/missing');
 
   const loaderRule = config.module.rules.find(
     (rule: { exclude?: unknown }) => typeof rule.exclude === 'function',
