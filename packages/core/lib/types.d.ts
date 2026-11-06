@@ -101,7 +101,7 @@ type FlatNamespace<K extends StyleKey, M = unknown> = {
 };
 
 type NestedNamespace<K extends StyleKey, M> = {
-  readonly [P: NestedKey]: AllowedNamespace<K, M> | undefined;
+  readonly [P in NestedKey]?: AllowedNamespace<K, M>;
 };
 
 type AllowedNamespace<K extends StyleKey, M = unknown> = FlatNamespace<K, M> &
