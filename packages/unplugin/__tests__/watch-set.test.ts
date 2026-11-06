@@ -47,13 +47,13 @@ export const styles = css.create({
   [LEAF]: `
 import * as css from '@plumeria/core';
 export const Leaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
   [CARD]: `
 import '@plumeria/core';
 import { styles } from './styles';
-export const Card = () => <div classStyle={styles.b} />;
+export const Card = () => <div sx={styles.b} />;
 `,
   [PARENT]: `
 import '@plumeria/core';
@@ -64,7 +64,7 @@ export const Parent = () => <Leaf styleArray={styles.a} />;
   [UNRELATED]: `
 import * as css from '@plumeria/core';
 const other = css.create({ z: { color: 'olive' } });
-export const Unrelated = () => <span classStyle={other.z} />;
+export const Unrelated = () => <span sx={other.z} />;
 `,
 };
 
