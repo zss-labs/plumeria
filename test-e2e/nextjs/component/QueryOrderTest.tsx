@@ -8,19 +8,16 @@ export function QueryOrderTest() {
       style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}
     >
       <h3>Query Order Test</h3>
-      <span
-        data-testid="query-pair"
-        classStyle={[queryMedium.box, queryWide.box]}
-      >
+      <span data-testid="query-pair" sx={[queryMedium.box, queryWide.box]}>
         narrower written second
       </span>
       <span
         data-testid="query-pair-reversed"
-        classStyle={[queryWide.box, queryMedium.box]}
+        sx={[queryWide.box, queryMedium.box]}
       >
         narrower written first
       </span>
-      <span data-testid="query-solo" classStyle={queryWide.box}>
+      <span data-testid="query-solo" sx={queryWide.box}>
         the wide one on its own, which pins its rule when this module is
         compiled first
       </span>
