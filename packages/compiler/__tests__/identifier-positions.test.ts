@@ -33,7 +33,7 @@ const styles = css.create({
   box: { color: 'red' },
 });
 
-export const A = () => <div classStyle={styles.box} />;
+export const A = () => <div sx={styles.box} />;
 
 ${body}
 `;
