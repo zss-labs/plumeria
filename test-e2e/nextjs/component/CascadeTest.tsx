@@ -10,25 +10,25 @@ export function CascadeTest() {
       <h3>Cascade Order Test</h3>
       <div
         data-testid="cascade-box"
-        classStyle={[cascadeBase.box, cascadeCondition.box]}
+        sx={[cascadeBase.box, cascadeCondition.box]}
       >
         base then condition
       </div>
       <div
         data-testid="cascade-box-reversed"
-        classStyle={[cascadeCondition.box, cascadeBase.box]}
+        sx={[cascadeCondition.box, cascadeBase.box]}
       >
         condition then base
       </div>
       <div
         data-testid="cascade-edge"
-        classStyle={[cascadeBase.edge, cascadeCondition.box]}
+        sx={[cascadeBase.edge, cascadeCondition.box]}
       >
         base longhand against a conditional shorthand
       </div>
       <span
         data-testid="cascade-text"
-        classStyle={[cascadeBase.text, cascadeCondition.text]}
+        sx={[cascadeBase.text, cascadeCondition.text]}
       >
         hover me
       </span>
