@@ -135,7 +135,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
   const inOneFile = async (form: Form, key: string, constant?: string) => {
     const cwd = project({
       'app.tsx': `${declarations(form, key, constant)}const card = css.create(${form.styles(key)});
-export const App = () => <div classStyle={${form.use ?? 'card.base'}} />;
+export const App = () => <div sx={${form.use ?? 'card.base'}} />;
 `,
     });
     return {
@@ -149,7 +149,7 @@ export const App = () => <div classStyle={${form.use ?? 'card.base'}} />;
       'card.ts': `${declarations(form, key, constant)}export const card = css.create(${form.styles(key)});
 `,
       'app.tsx': `import { card } from './card';
-export const App = () => <div classStyle={${form.use ?? 'card.base'}} />;
+export const App = () => <div sx={${form.use ?? 'card.base'}} />;
 `,
     });
     await transform(cwd, 'card.ts');
@@ -194,7 +194,7 @@ export const App = () => <div classStyle={${form.use ?? 'card.base'}} />;
     ]) {
       const cwd = project({
         'app.tsx': `${CORE}${declaration}const card = css.create({ base: { color: blue[999] } });
-export const App = () => <div classStyle={card.base} />;
+export const App = () => <div sx={card.base} />;
 `,
       });
       await expect(transform(cwd, 'app.tsx')).rejects.toThrow(
@@ -209,7 +209,7 @@ export const App = () => <div classStyle={card.base} />;
 export const card = css.create({ base: (k: string) => ({ color: blue[k], margin: k }) });
 `,
       'app.tsx': `import { card } from './card';
-export const App = () => <div classStyle={card.base('1px')} />;
+export const App = () => <div sx={card.base('1px')} />;
 `,
     });
     await transform(cwd, 'app.tsx');
