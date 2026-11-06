@@ -43,7 +43,7 @@ ${body}
   describe('transform: bracket access inside conditionals', () => {
     it('keeps both branches of a ternary', async () => {
       const out = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={on ? s['p1'] : s['p3']} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={on ? s['p1'] : s['p3']} />;`,
       );
       expect(out).toContain('x3git8yv');
       expect(out).toContain('xxcejlqg');
@@ -51,24 +51,24 @@ ${body}
 
     it('matches the dot-access output for the same ternary', async () => {
       const bracket = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={on ? s['p1'] : s['p3']} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={on ? s['p1'] : s['p3']} />;`,
       );
       const dot = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={on ? s.p1 : s.p3} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={on ? s.p1 : s.p3} />;`,
       );
       expect(bracket.replace(/s\['p1'\]/g, 's.p1')).toEqual(dot);
     });
 
     it('keeps the right-hand side of a logical &&', async () => {
       const out = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={on && s['p1']} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={on && s['p1']} />;`,
       );
       expect(out).toContain('x3git8yv');
     });
 
     it('keeps a bracket branch nested in an array', async () => {
       const out = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={[s.p3, on && s['p1']]} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={[s.p3, on && s['p1']]} />;`,
       );
       expect(out).toContain('x3git8yv');
       expect(out).toContain('xxcejlqg');
@@ -79,7 +79,7 @@ ${body}
     // slot no key claims carries whatever the other branch contributes.
     it('folds an outer ternary into the key of a non-literal bracket', async () => {
       const out = await run(
-        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div classStyle={on ? s[k] : s['p3']} />;`,
+        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div sx={on ? s[k] : s['p3']} />;`,
       );
       expect(out).toContain(
         `{"p1":"x3git8yv","p3":"xxcejlqg","#0":"xxcejlqg"}[((on) ? k : "#0")]`,
@@ -88,7 +88,7 @@ ${body}
 
     it('folds an outer && into the key of a non-literal bracket', async () => {
       const out = await run(
-        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div classStyle={on && s[k]} />;`,
+        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div sx={on && s[k]} />;`,
       );
       expect(out).toContain(
         `{"p1":"x3git8yv","p3":"xxcejlqg"}[((on) ? k : "")]`,
@@ -97,7 +97,7 @@ ${body}
 
     it('compiles the same intent with the condition inside the brackets', async () => {
       const out = await run(
-        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div classStyle={s[on ? k : 'p3']} />;`,
+        `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div sx={s[on ? k : 'p3']} />;`,
       );
       expect(out).toContain('x3git8yv');
       expect(out).toContain('xxcejlqg');
@@ -105,7 +105,7 @@ ${body}
 
     it('keeps a bracket branch mixed with dot access', async () => {
       const out = await run(
-        `export const A = ({ on }: { on: boolean }) => <div classStyle={on ? s['p1'] : s.p3} />;`,
+        `export const A = ({ on }: { on: boolean }) => <div sx={on ? s['p1'] : s.p3} />;`,
       );
       expect(out).toContain('x3git8yv');
       expect(out).toContain('xxcejlqg');
@@ -113,7 +113,7 @@ ${body}
 
     it('still compiles a non-literal key outside any condition', async () => {
       const out = await run(
-        `export const A = ({ k }: { k: 'p1' | 'p3' }) => <div classStyle={s[k]} />;`,
+        `export const A = ({ k }: { k: 'p1' | 'p3' }) => <div sx={s[k]} />;`,
       );
       expect(out).toContain('x3git8yv');
       expect(out).toContain('xxcejlqg');
