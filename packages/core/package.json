@@ -27,8 +27,8 @@
     ".": {
       "types": "./lib/css.d.ts"
     },
-    "./class-style": {
-      "types": "./lib/class-style.d.ts"
+    "./sx": {
+      "types": "./lib/sx.d.ts"
     }
   },
   "types": "./lib/css.d.ts",
