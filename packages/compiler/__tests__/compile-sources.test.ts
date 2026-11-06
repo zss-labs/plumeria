@@ -5,7 +5,7 @@ import { implementations } from '../compiler-implementations';
 
 const moduleUsing = (color: string) => `import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: '${color}' } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
 describe.each(implementations)('$name', ({ compileCSS }) => {
@@ -82,7 +82,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
 const theme = css.createTheme('.dark', { fg: { default: '${fg}', theme: '#fafafa' } });
 const fade = css.keyframes({ from: { opacity: 0 }, to: { opacity: ${opacity} } });
 const styles = css.create({ box: { color: theme.fg, animationName: fade } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
     const themedDir = path.join(DIR, 'themed');
     const themedFile = path.join(themedDir, 'box.tsx');
