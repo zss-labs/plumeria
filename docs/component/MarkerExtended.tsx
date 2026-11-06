@@ -78,11 +78,11 @@ const styles = css.create({
 
 const MarkerExtended = () => {
   return (
-    <div classStyle={styles.grand}>
-      <span classStyle={styles.discription}>Grand Container (Hover me)</span>
-      <div classStyle={styles.parent}>
-        <span classStyle={styles.discription}>Parent Container (Hover me too)</span>
-        <div classStyle={styles.child}>Child Element</div>
+    <div sx={styles.grand}>
+      <span sx={styles.discription}>Grand Container (Hover me)</span>
+      <div sx={styles.parent}>
+        <span sx={styles.discription}>Parent Container (Hover me too)</span>
+        <div sx={styles.child}>Child Element</div>
       </div>
     </div>
   );
