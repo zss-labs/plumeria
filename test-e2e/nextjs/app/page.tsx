@@ -21,7 +21,7 @@ export default function Home() {
   return (
     <main>
       <h1>@plumeria/core E2E Test</h1>
-      <h2 classStyle={styles.page}>server component</h2>
+      <h2 sx={styles.page}>server component</h2>
       <Link href="/server">Server Page</Link>
       <CascadeTest />
       <CompositionOrderTest />
