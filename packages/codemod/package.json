@@ -1,7 +1,7 @@
 {
   "name": "@plumeria/codemod",
   "version": "21.2.7",
-  "description": "Codemods for Plumeria: migrate a CSS Modules codebase in, export it back out, and rename the styling prop or an API",
+  "description": "Codemods for Plumeria: rename the styling prop or an API",
   "author": "Refirst 11",
   "license": "MIT",
   "homepage": "https://plumeria.dev",
@@ -17,7 +17,6 @@
     "plumeria",
     "codemod",
     "migration",
-    "css-modules",
     "eslint",
     "css-in-js"
   ],
@@ -37,11 +36,7 @@
   },
   "dependencies": {
     "@typescript-eslint/parser": "^8.60.0",
-    "eslint": "^10.4.1",
-    "get-tsconfig": "^4.14.2",
-    "postcss": "catalog:",
-    "postcss-selector-parser": "^7.1.1",
-    "zss-engine": "catalog:"
+    "eslint": "^10.4.1"
   },
   "publishConfig": {
     "access": "public",
