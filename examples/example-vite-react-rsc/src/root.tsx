@@ -48,7 +48,7 @@ function App(props: { url: URL }) {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1 classStyle={styles.title}>Vite + RSC</h1>
+      <h1 sx={styles.title}>Vite + RSC</h1>
       <div className="card">
         <ClientCounter />
       </div>
@@ -57,7 +57,7 @@ function App(props: { url: URL }) {
           <button>Server Counter: {getServerCounter()}</button>
         </form>
       </div>
-      <div classStyle={styles.server}>Request URL: {props.url?.href}</div>
+      <div sx={styles.server}>Request URL: {props.url?.href}</div>
       <ul className="read-the-docs">
         <li>
           Edit <code>src/client.tsx</code> to test client HMR.
