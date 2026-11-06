@@ -45,16 +45,16 @@ ${body}
   describe('transform: assertResolvable', () => {
     it.each([
       [
-        'a function call in classStyle',
-        'export const A = () => <div classStyle={[styles.box, Test()]} />;',
+        'a function call in sx',
+        'export const A = () => <div sx={[styles.box, Test()]} />;',
       ],
       [
         'a function call nested in a ternary',
-        'export const A = () => <div classStyle={cond ? Test() : styles.box} />;',
+        'export const A = () => <div sx={cond ? Test() : styles.box} />;',
       ],
       [
-        'an arrow function in classStyle',
-        'export const A = () => <div classStyle={[styles.box, () => styles.box]} />;',
+        'an arrow function in sx',
+        'export const A = () => <div sx={[styles.box, () => styles.box]} />;',
       ],
       [
         'a function call in css.use()',
@@ -66,7 +66,7 @@ ${body}
       ],
       [
         'a keyframes call with no argument applied as a style',
-        'const spin = css.keyframes();\nexport const A = () => <div classStyle={spin} />;',
+        'const spin = css.keyframes();\nexport const A = () => <div sx={spin} />;',
       ],
     ])('rejects %s', async (_label, body) => {
       await expect(run(body)).rejects.toThrow(UNSUPPORTED);
@@ -94,7 +94,7 @@ ${body}
     it('accepts undefined as a conditional branch', async () => {
       await expect(
         run(
-          'export const A = () => <div classStyle={cond ? styles.box : undefined} />;',
+          'export const A = () => <div sx={cond ? styles.box : undefined} />;',
         ),
       ).resolves.toBeTruthy();
     });
