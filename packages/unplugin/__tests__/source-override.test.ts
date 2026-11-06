@@ -5,7 +5,7 @@ import { unpluginFactory } from '../src/core';
 
 const moduleUsing = (color: string) => `import * as css from '@plumeria/core';
 const styles = css.create({ box: { color: '${color}' } });
-export const Box = () => <div classStyle={styles.box} />;
+export const Box = () => <div sx={styles.box} />;
 `;
 
 const DIR = fs.realpathSync(
