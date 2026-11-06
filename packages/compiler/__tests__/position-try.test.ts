@@ -20,8 +20,8 @@ const s = css.create({
   },
   single: { positionTryFallbacks: below },
 });
-export const P = () => <div classStyle={s.tooltip} />;
-export const Q = () => <div classStyle={s.single} />;
+export const P = () => <div sx={s.tooltip} />;
+export const Q = () => <div sx={s.single} />;
 export const names = [below];
 `;
 
