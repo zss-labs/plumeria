@@ -82,9 +82,9 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         import { imported } from './styles';
         const local = css.create({ a: { margin: 2 } });
         declare const key: 'a' | 'b';
-        export const Local = () => <div classStyle={local} />;
+        export const Local = () => <div sx={local} />;
         declare const active: boolean;
-        export const Imported = () => <div classStyle={[imported, imported[key], active && imported[key]]} />;
+        export const Imported = () => <div sx={[imported, imported[key], active && imported[key]]} />;
       `,
       });
 
@@ -98,7 +98,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: (color: string) => ({ color }) });
-        export const App = () => <div classStyle={styles['box']('red')} />;
+        export const App = () => <div sx={styles['box']('red')} />;
       `,
       });
 
@@ -116,7 +116,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         import * as css from '@plumeria/core';
         import { fade, swap } from './styles';
         const styles = css.create({ box: { animationName: fade, viewTransitionName: swap } });
-        export const App = () => <div classStyle={styles.box} />;
+        export const App = () => <div sx={styles.box} />;
       `,
       });
 
@@ -130,7 +130,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: { color: 'red' } });
-        export const Card = ({ cardStyle: incoming = styles.box }: { cardStyle?: css.Style }) => <div classStyle={incoming} />;
+        export const Card = ({ cardStyle: incoming = styles.box }: { cardStyle?: css.Style }) => <div sx={incoming} />;
         export const App = () => <Card />;
       `,
       });
@@ -157,7 +157,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: ({ color }: { color: string }) => ({ color }) });
-        export const App = () => <div classStyle={styles.box('red')} />;
+        export const App = () => <div sx={styles.box('red')} />;
       `,
       });
 
@@ -169,7 +169,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         'App.tsx': `
         import * as css from '@plumeria/core';
         const styles = css.create({ box: ({ color }: { color: string }) => ({ color }) });
-        export const App = () => <div classStyle={styles.box({})} />;
+        export const App = () => <div sx={styles.box({})} />;
       `,
       });
 
@@ -183,7 +183,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
         const color = 'red';
         const named = css.create({ box: ({ color }: { color: string }) => ({ color }) });
         const positional = css.create({ box: (color: string) => ({ color }) });
-        export const App = () => <div classStyle={[named.box({ color }), positional.box({ color: 'blue' })]} />;
+        export const App = () => <div sx={[named.box({ color }), positional.box({ color: 'blue' })]} />;
       `,
       });
 
