@@ -44,7 +44,7 @@ export const styles = css.create(${JSON.stringify({ base: BASE, other: OTHER })}
     [LEAF]: `
 import * as css from '@plumeria/core';
 export const Leaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
     [PARENT]: `
@@ -62,7 +62,7 @@ export const Parent = ({ on }: { on?: boolean }) => (
     [SHAPES_LEAF]: `
 import * as css from '@plumeria/core';
 export const ShapesLeaf = ({ styleArray }: { styleArray?: css.Style }) => (
-  <div classStyle={styleArray} />
+  <div sx={styleArray} />
 );
 `,
     [SHAPES_PARENT]: `
