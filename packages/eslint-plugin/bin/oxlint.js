@@ -42,7 +42,7 @@ async function startOxlint() {
       '--no-error-on-unmatched-pattern',
       ...(rest.some((arg) => arg.startsWith('--threads'))
         ? []
-        : ['--threads=2']),
+        : ['--threads=1']),
       ...rest,
     ],
     { stdio: 'inherit', env: lintEnv() },
