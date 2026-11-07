@@ -17,6 +17,7 @@
     "example-bun",
     "example-esbuild",
     "example-farm",
+    "example-init-trial",
     "example-nextjs",
     "example-react-router",
     "example-rolldown",
@@ -25,11 +26,13 @@
     "example-storybook",
     "example-vite-astro-ts",
     "example-vite-preact",
+    "example-vite-react-rsc",
     "example-vite-qwik",
     "example-vite-react",
     "example-vite-solid",
     "example-vite-svelte-ts",
     "example-vite-vue-ts",
+    "example-waku",
     "example-webpack"
     ]
 }
