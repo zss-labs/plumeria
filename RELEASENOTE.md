@@ -2,11 +2,15 @@
 
 ## 22.0.3 (Nov 7, 2026)
 
-Update next version
+Update: next version
+
+## 22.0.2 (Nov 7, 2026)
+
+Update: Bump version to 22.0.2
 
 ## 22.0.1 (Nov 7, 2026)
 
-perf: set plumeria-lint thread to 1
+Perf: set plumeria-lint thread to 1
 
 ## 22.0.0 (Nov 6, 2026)
 
