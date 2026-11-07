@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.4 (Nov 7, 2026)
+
+Update: readme
+
 ## 22.0.3 (Nov 7, 2026)
 
 Update: next version
