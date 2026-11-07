@@ -39,6 +39,13 @@ tester.run('migrate-to-typedcss', migrateToTypedCSS, {
     // withPlumeria from elsewhere is not the plugin
     `import { withPlumeria } from './local';
 withPlumeria();`,
+    `export {};`,
+    `export { value } from './local';
+export * from './local';
+const value = require(name);
+const other = factory('@plumeria/core');
+const third = object.require('@plumeria/core');
+const fourth = object.require;`,
   ],
   invalid: [
     {
@@ -89,5 +96,101 @@ export * from '@plumeria/core';`,
 export * from '@typedcss/css';`,
       errors: [source, source],
     },
+    {
+      code: `export { withPlumeria } from '@plumeria/next-plugin';`,
+      output: `export { withTypedCSS } from '@typedcss/next-plugin';`,
+      errors: [rename, source],
+    },
+    {
+      code: `type Core = import('@plumeria/core');`,
+      output: `type Core = import('@typedcss/css');`,
+      errors: [source],
+    },
+    {
+      code: `import plugin, { unrelated, 'withPlumeria' as withCSS } from '@plumeria/next-plugin';`,
+      output: `import plugin, { unrelated, 'withPlumeria' as withCSS } from '@typedcss/next-plugin';`,
+      errors: [source],
+    },
+    {
+      code: `const plugin = require('@plumeria/next-plugin');
+const { ...rest } = require('@plumeria/next-plugin');
+const { ['withPlumeria']: computed } = require('@plumeria/next-plugin');
+const { 'withPlumeria': quoted } = require('@plumeria/next-plugin');
+const { unrelated } = require('@plumeria/next-plugin');
+const { withPlumeria: { nested } } = require('@plumeria/next-plugin');`,
+      output: `const plugin = require('@typedcss/next-plugin');
+const { ...rest } = require('@typedcss/next-plugin');
+const { ['withPlumeria']: computed } = require('@typedcss/next-plugin');
+const { 'withPlumeria': quoted } = require('@typedcss/next-plugin');
+const { unrelated } = require('@typedcss/next-plugin');
+const { withTypedCSS: { nested } } = require('@typedcss/next-plugin');`,
+      errors: [source, source, source, source, source, rename, source],
+    },
   ],
+});
+
+describe('defensive visitor branches', () => {
+  const report = jest.fn();
+  const visitors = migrateToTypedCSS.create({
+    report,
+    sourceCode: { getDeclaredVariables: () => [] },
+  } as never) as Record<string, (node: any) => void>;
+
+  beforeEach(() => report.mockClear());
+
+  it('accepts declarations without specifiers and legacy TS import nodes', () => {
+    visitors.ImportDeclaration({
+      source: {
+        type: 'Literal',
+        value: '@plumeria/next-plugin',
+        raw: "'@plumeria/next-plugin'",
+      },
+      specifiers: undefined,
+    });
+    visitors.ExportNamedDeclaration({
+      source: { type: 'Literal', value: './local', raw: "'./local'" },
+      specifiers: null,
+    });
+    visitors.TSImportType({
+      argument: {
+        type: 'Literal',
+        value: '@plumeria/core',
+        raw: "'@plumeria/core'",
+      },
+    });
+    visitors.TSImportType({ argument: undefined });
+
+    expect(report).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles shorthand properties without identifiers or variables', () => {
+    visitors.VariableDeclarator({
+      init: {
+        type: 'CallExpression',
+        callee: { type: 'Identifier', name: 'require' },
+        arguments: [{ value: '@plumeria/next-plugin' }],
+      },
+      id: {
+        type: 'ObjectPattern',
+        properties: [
+          {
+            type: 'Property',
+            computed: false,
+            shorthand: true,
+            key: { type: 'Identifier', name: 'withPlumeria' },
+            value: { type: 'Identifier', name: 'withPlumeria' },
+          },
+          {
+            type: 'Property',
+            computed: false,
+            shorthand: true,
+            key: { type: 'Identifier', name: 'withPlumeria' },
+            value: { type: 'ObjectPattern', properties: [] },
+          },
+        ],
+      },
+    });
+
+    expect(report).toHaveBeenCalledTimes(1);
+  });
 });
