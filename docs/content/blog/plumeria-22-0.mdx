@@ -1,0 +1,129 @@
+---
+title: 'Plumeria 22.0'
+description: 'Update: the default styling prop is sx; Feat: TypedCSS, a second execution model'
+date: '2026-11-06'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+  <GitHubUser username="refirst11" subtext="Plumeria Core" />
+  <GitHubUser username="Anionix" subtext="Plumeria Core" />
+</div>
+
+Plumeria v22.0 makes `sx` the default styling prop, introduces TypedCSS as a second execution model that shares Plumeria's API, and removes the legacy CSS Modules migration. The default prop name change is why this is a major release, unifying the styling API across both compile-time and runtime models, and the codemod moves your code over in one command.
+
+## 1. sx is the default styling prop
+
+The prop that carries styles was `classStyle`. It is now `sx` everywhere: in the compiler, the bundler plugins, the ESLint rules, `@plumeria/init` and the codemod transforms.
+
+```diff
+- <div classStyle={[styles.base, active && styles.active]} />
++ <div sx={[styles.base, active && styles.active]} />
+```
+
+The type reference that declares the prop on React's `HTMLAttributes` and `SVGAttributes` moves with it. Update your global type declarations (such as `env.d.ts` or `global.d.ts`):
+
+```diff
+- /// <reference types="@plumeria/core/class-style" />
++ /// <reference types="@plumeria/core/sx" />
+```
+
+Existing projects can rename the prop across all files using the codemod:
+
+```bash title="Terminal"
+npx @plumeria/codemod rename-prop classStyle sx
+```
+
+To keep the old name during a phased migration, pass it to your bundler plugin configuration and declare that name instead; see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop):
+
+```ts title="vite.config.ts"
+plumeria({ styleProp: 'classStyle' });
+```
+
+## 2. TypedCSS
+
+Plumeria resolves every merge at build time, so the compiler has to see where a style ends up. A style handed through a prop to a component in another package, or stored and applied later, is a merge it cannot see — which is why building cross-package UI components required workarounds.
+
+TypedCSS moves that merge to runtime. You write the same `css.create`, the same `sx` prop and the same definitions, and the compiler still turns every style into atomic CSS. The difference is who picks the winning class: a small resolver on the element, instead of the compiler at the call site. A style can travel anywhere a value can, through props, context, other packages or a variable:
+
+```tsx title="Badge.tsx"
+import * as css from '@typedcss/css';
+
+const styles = css.create({
+  badge: { padding: 4, color: 'gray' },
+});
+
+export const Badge = ({ sx }: { sx?: css.Style }) => <span sx={[styles.badge, sx]} />;
+```
+
+The right side still wins, property by property. Where Plumeria's `css.use` returns a class string the compiler has already merged, TypedCSS has `css.props`, which merges at runtime and returns `{ className, style }` to spread onto elements or third-party components that do not receive `sx` directly:
+
+```tsx
+<Link href="/" {...css.props(styles.link, active && styles.active)} />
+```
+
+Every `@plumeria` package has a `@typedcss` counterpart that takes the same options, and both release under the same version number:
+
+```bash title="Terminal"
+npx @typedcss/init
+```
+
+An existing project moves over with the `migrate-to-typedcss` codemod, which rewrites package imports, the Next.js plugin binding and dependencies:
+
+```bash title="Terminal"
+npx @plumeria/codemod migrate-to-typedcss --dry-run
+npx @plumeria/codemod migrate-to-typedcss
+```
+
+The `css.use` calls are left to you, because a class string and a spread are not the same value. See [TypedCSS](/docs/typedcss) for the model and [codemod](/docs/api/migrate/codemod#migrating-to-typedcss) for what the transform covers.
+
+## 3. CSS Modules migration is removed
+
+The `migrate --from css-modules` and `migrate --from plumeria` commands and their round-trip checks are removed from `@plumeria/codemod`. Rule-based AST transformations struggled with CSS modules edge cases, whereas modern AI tools convert them more accurately in context.
+
+## Upgrading
+
+The `@plumeria` packages share one version number, so upgrade them together, rename the prop, and update the type declarations:
+
+```bash title="Terminal"
+# 1. Update packages
+pnpm up "@plumeria/*" --latest
+
+# 2. Rename the prop to sx
+npx @plumeria/codemod rename-prop classStyle sx
+```
+
+Update your type declaration reference in your `env.d.ts` or `global.d.ts`:
+
+```diff
+- /// <reference types="@plumeria/core/class-style" />
++ /// <reference types="@plumeria/core/sx" />
+```
+
+---
+
+## Release notes
+
+## 22.0.3 (Nov 7, 2026)
+
+Update: next version
+
+## 22.0.2 (Nov 7, 2026)
+
+Update: Bump version to 22.0.2
+
+## 22.0.1 (Nov 7, 2026)
+
+Perf: set plumeria-lint thread to 1
+
+## 22.0.0 (Nov 6, 2026)
+
+- Update: the default styling prop is `sx` instead of `classStyle`, in the compiler, the bundler plugins, the ESLint rules, `@plumeria/init` and the codemod transforms; run `npx @plumeria/codemod rename-prop classStyle sx` to move a codebase over, or keep the old name with `styleProp: 'classStyle'`
+- Update: replace `@plumeria/core/class-style` with `@plumeria/core/sx` to declare `sx` on React's `HTMLAttributes` and `SVGAttributes`
+- Update: remove bidirectional CSS Modules migration and its round-trip checks
+- Feat: add a codemod to migrate Plumeria imports and dependencies to TypedCSS
+- Fix: preserve marker declarations when merging pseudo selectors
+- Fix: use optional mapped keys for nested style namespaces
+- Update: exclude system colors from generated CSS color types
+
