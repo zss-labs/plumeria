@@ -92,7 +92,7 @@ export function startLintGuard(overrides: LintOverrides = {}): boolean {
       '--ignore-pattern=**/node_modules/**',
       '--deny-warnings',
       '--no-error-on-unmatched-pattern',
-      '--threads=2',
+      '--threads=1',
     ],
     { stdio: 'inherit', env: lintEnv() },
   );
