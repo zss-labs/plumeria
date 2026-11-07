@@ -1,64 +1,78 @@
 ---
-title: 'typedcss'
-description: 'The same authoring API, merged at runtime instead of at build time.'
+title: "TypedCSS"
+description: "The same authoring API, merged at runtime instead of at build time."
 ---
 
-typedcss is Plumeria with the merge moved to runtime. You write the same `css.create`, the same `sx` prop and the same definitions; the compiler still turns every style into atomic CSS. What changes is who picks the winning class: a few lines of [styleq](https://github.com/necolas/styleq) on the element, instead of the compiler at the call site.
-
+typedcss is Plumeria with the merge moved to runtime. You write the same `css.create`, the same `sx` prop and the same definitions; the compiler still turns every style into atomic CSS. What changes is who picks the winning class: a small resolver on the element, instead of the compiler at the call site.
 Both release under the same version number. A typedcss release and a Plumeria release with the same version accept the same source.
 
 ## What it costs, and what it buys
 
 Plumeria resolves every merge at build time, so it has to see where a style ends up. A style handed through a prop to a component in another package, or stored and applied later, is a merge the compiler cannot see — which is what [`no-style-prop-relay`](/docs/api/plugins/eslint-plugin) reports.
+  typedcss carries a class map to the element and merges there. A style can travel anywhere a value can: through props, context, other packages, or a variable. The price is a small runtime and the maps in the bundle.
 
-typedcss carries a class map to the element and merges there. A style can travel anywhere a value can: through props, context, other packages, or a variable. The price is a small runtime and the maps in the bundle.
+> The right side still wins, property by property. Only the place where that is decided moves.
+> If `Plumeria` represents a constrained category theory, then `TypedCSS` represents a free category theory.
 
-```tsx title="Badge.tsx"
-import * as css from '@typedcss/css';
 
-const styles = css.create({
-  badge: { padding: 4, color: 'gray' },
-});
+## The difference
 
-export const Badge = ({ sx }: { sx?: css.Style }) => <span sx={[styles.badge, sx]} />;
-```
+- resolver: `css.props` ⇄ `css.use`
+- prop: `sx` === `sx`
+- import: `@typedcss/*` ⇄ `@plumeria/*`
+- API: `css.*` === `css.*`
+- AST-compile: `SWC` ⇄ `OXC`
 
-The right side still wins, property by property. Only the place where that is decided moves.
-
-## `css.props`
 
 Plumeria's `css.use` returns a class string the compiler has already merged. typedcss has `css.props` instead, which merges at runtime and returns `{ className, style }`, ready to spread onto any element:
 
 ```tsx
-<Link href="/" {...css.props(styles.link, active && styles.active)} />
+<div {...css.props(styles.link, active && styles.active)} />
 ```
 
 The names differ because the results do.
 
 ## Packages
 
-| typedcss | Plumeria |
-| --- | --- |
-| `@typedcss/css` | `@plumeria/core` |
-| `@typedcss/oxide` | `@plumeria/compiler` |
-| `@typedcss/next-plugin` | `@plumeria/next-plugin` |
-| `@typedcss/unplugin` | `@plumeria/unplugin` |
+| typedcss                  | Plumeria                  |
+| ------------------------- | ------------------------- |
+| `@typedcss/codemod`       | `@plumeria/codemod`       |
+| `@typedcss/css`           | `@plumeria/core`          |
 | `@typedcss/eslint-plugin` | `@plumeria/eslint-plugin` |
-| `@typedcss/swc-jest` | `@plumeria/swc-jest` |
-| `@typedcss/init` | `@plumeria/init` |
-| `@typedcss/codemod` | `@plumeria/codemod` |
+| `@typedcss/init`          | `@plumeria/init`          |
+| `@typedcss/next-plugin`   | `@plumeria/next-plugin`   |
+| `@typedcss/oxide`         | `@plumeria/compiler`      |
+| `@typedcss/swc-jest`      | `@plumeria/swc-jest`      |
+| `@typedcss/unplugin`      | `@plumeria/unplugin`      |
+| `@typedcss/wind`          | `@plumeria/wind`          |
 
 Each takes the same options as its Plumeria counterpart, so the [integration guides](/docs/integration) and the [plugin reference](/docs/api/plugins) apply as written. The ESLint plugin drops the rules that only exist because merges happen at build time: `no-style-prop-relay`, `no-use-in-jsx` and `custom-props-require-import`.
 
-```sh title="Terminal"
-npx @typedcss/init
+## Moving between
+
+```sh
+npx @plumeria/codemod migrate-to-typedcss
 ```
 
-## Moving between them
+```sh
+npx @typedcss/codemod migrate-to-plumeria
+```
 
-Swap the dependencies and the imports. Code written with `sx` and the definitions moves as it is; only the merge calls are rewritten by hand, between a class string and a spread:
+```tsx
+import * as css from '@typedcss/css'; // [!code ++]
 
-```diff
-- <Link href="/" className={css.use(styles.link, active && styles.active)} />
-+ <Link href="/" {...css.props(styles.link, active && styles.active)} />
+const styles = css.create({
+    text: {
+      fontSize: 14,
+    },
+    color: {
+      color: 'aqua',
+    }
+});
+
+export function Component({isActive}: {isActive: boolean}) {
+  return (
+    <button sx={[styles.text, isActive && styles.aqua]}>text</button>
+  )
+}
 ```
