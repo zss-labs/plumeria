@@ -1,5 +1,14 @@
 # @plumeria/unplugin
 
+## 22.0.3
+
+### Patch Changes
+
+- c6588e0: Bump version to 22.0.3
+- Updated dependencies [c6588e0]
+  - @plumeria/compiler@22.0.3
+  - @plumeria/eslint-plugin@22.0.3
+
 ## 22.0.2
 
 ### Patch Changes
