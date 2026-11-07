@@ -135,9 +135,7 @@ Plumeria publishes frequently. To make that legible, every public API is rated f
 | `css.varType`             | ★★★★☆     | Stable |
 | `css.marker`              | ★★★★☆     | Stable |
 | `css.extended`            | ★★★★☆     | Stable |
-| `css.use`/`sx`    | ★★★★★     | Frozen |
-
-> The **`sx`** can be renamed via configuration
+| `css.use`                 | ★★★★★     | Frozen |
 
 ## License
 
