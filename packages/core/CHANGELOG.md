@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.4
+
+### Patch Changes
+
+- a0aebf5: Update: readme
+
 ## 22.0.3
 
 ### Patch Changes
