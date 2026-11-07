@@ -127,7 +127,7 @@ describe('startLintGuard', () => {
       '--ignore-pattern=**/node_modules/**',
       '--deny-warnings',
       '--no-error-on-unmatched-pattern',
-      '--threads=2',
+      '--threads=1',
     ]);
   });
 
