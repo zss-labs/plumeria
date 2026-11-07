@@ -3,6 +3,9 @@ title: "TypedCSS"
 description: "The same authoring API, merged at runtime instead of at build time."
 ---
 
+For new installations, Plumeria is recommended; for refactoring, TypedCSS offers greater flexibility.
+Both are compatible in every way except for the limit on the number of prop drilling cycles.
+
 typedcss is Plumeria with the merge moved to runtime. You write the same `css.create`, the same `sx` prop and the same definitions; the compiler still turns every style into atomic CSS. What changes is who picks the winning class: a small resolver on the element, instead of the compiler at the call site.
 Both release under the same version number. A typedcss release and a Plumeria release with the same version accept the same source.
 
@@ -72,7 +75,7 @@ const styles = css.create({
 
 export function Component({isActive}: {isActive: boolean}) {
   return (
-    <button sx={[styles.text, isActive && styles.aqua]}>text</button>
+    <button sx={[styles.text, isActive && styles.color]}>text</button>
   )
 }
 ```
