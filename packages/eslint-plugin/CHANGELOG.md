@@ -1,3 +1,11 @@
+## 22.0.1
+
+### Patch Changes
+
+- ba00e3a: perf: set plumeria-lint thread to 1
+- Updated dependencies [ba00e3a]
+  - @plumeria/compiler@22.0.1
+
 ## 22.0.0
 
 ### Major Changes

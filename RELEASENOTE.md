@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.1 (Nov 7, 2026)
+
+perf: set plumeria-lint thread to 1
+
 ## 22.0.0 (Nov 6, 2026)
 
 - Update: the default styling prop is `sx` instead of `classStyle`, in the compiler, the bundler plugins, the ESLint rules, `@plumeria/init` and the codemod transforms; run `npx @plumeria/codemod rename-prop classStyle sx` to move a codebase over, or keep the old name with `styleProp: 'classStyle'`
