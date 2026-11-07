@@ -240,9 +240,6 @@ export const SiteHeader = () => (
           <a href="/playground" sx={styles.menuLink}>
             Play
           </a>
-          <Link to="/docs/api/packages" unstable_prefetchOnView={{}} sx={styles.menuLink}>
-            Pkg
-          </Link>
           <Link to="/blog" unstable_prefetchOnView={{}} sx={styles.menuLink}>
             Blog
           </Link>
