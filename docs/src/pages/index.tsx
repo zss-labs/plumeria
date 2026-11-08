@@ -124,7 +124,7 @@ export default function Page() {
               </svg>
             </Link>
             <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
-              Why Plumeria
+              Why Plumeria?
             </Link>
           </div>
         </div>
