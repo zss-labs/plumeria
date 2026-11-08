@@ -33,11 +33,16 @@ https://plumeria.dev/docs/ai.md
 https://plumeria.dev/docs.md
 ```
 
-## Claude plugin
+## Claude Code plugin
 
-Plumeria has a Claude plugin, reviewed and approved by Anthropic and listed in [Anthropic's plugin directory](https://claude.ai/directory?q=Plumeria). Add it there instead of pasting the prompt to use it on claude.ai, in Cowork, and in Claude Code. Its skill is generated from [AI.md](/docs/ai), so it stays in sync with these rules, and Claude loads it whenever a task touches Plumeria styles.
+Install the Plumeria plugin in Claude Code directly from its GitHub repository:
 
-Without a claude.ai account, install it in Claude Code from this repository: `/plugin install plumeria --marketplace zss-labs/plumeria`.
+```text title="Claude Code"
+/plugin marketplace add zss-labs/plumeria
+/plugin install plumeria@plumeria
+```
+
+Its skill is generated from [AI.md](/docs/ai), so it stays in sync with these rules, and Claude loads it whenever a task touches Plumeria styles.
 
 ## Add context for the task
 
