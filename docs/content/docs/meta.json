@@ -17,6 +17,7 @@
     "selector-rules",
     "testing",
     "integration",
+    "troubleshooting",
     "---API---",
     "api/index",
     "api/plugins",
