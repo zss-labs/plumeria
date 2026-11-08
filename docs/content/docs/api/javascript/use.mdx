@@ -1,6 +1,7 @@
 ---
 title: 'css.use / sx'
 description: 'Attach styles as a prop in JSX, or as a class name string anywhere else.'
+stability: Frozen
 ---
 To apply styles defined in Plumeria to a component, use the `sx` prop or the `css.use()` function.
 
@@ -56,6 +57,48 @@ export const use: use;
 `css.use()` converts styles into a string of class names. Use it where the `sx` prop is not available, for example when passing a class name to an external component that only accepts `className`.
 
 Pass every style to one `css.use()` call; a later argument takes precedence. Strings from separate calls are not merged when joined, so which rule wins depends on stylesheet order.
+
+### Joining strings cannot be folded into one merge
+
+Each `css.use()` call is compiled on its own. The compiler never sees the
+results of two calls together, so it cannot fold them into one merge: when
+two joined styles set the same property, both classes reach the element and
+the winner is whichever rule comes later in the stylesheet — exactly the
+order dependence Plumeria removes everywhere else.
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: { padding: 24, color: 'green' },
+  active: { padding: 8, color: 'teal' }
+});
+
+// Neither of these merges. Both `padding` classes and both `color`
+// classes are emitted, and stylesheet order decides which ones apply:
+<ExternalComponent className={css.use(styles.base) + ' ' + css.use(styles.active)} />
+<ExternalComponent className={`${css.use(styles.base)} ${css.use(styles.active)}`} />
+<ExternalComponent className={[css.use(styles.base), css.use(styles.active)].join(' ')} />
+```
+
+Joining a result with a class name from outside Plumeria has the same
+problem, and passing a result to a helper does not restore the merge:
+
+```tsx
+// The outside class name is ordered by the cascade, not by Plumeria:
+<ExternalComponent className={css.use(styles.base) + ' ' + className} />
+<ExternalComponent className={clsx(css.use(styles.base), className)} />
+```
+
+Pass every style to one call instead. Conditions and arrays work inside the
+call, so nothing has to be joined afterwards:
+
+```tsx
+// One call: `active` wins over `base` wherever they set the same property.
+<ExternalComponent className={css.use(styles.base, active && styles.active)} />
+```
+
+The recommended lint config guards this: [`@plumeria/no-unresolved-composition`](/docs/api/plugins/eslint-plugin) (a warning in `recommended`) reports a `css.use()` result combined with another `css.use()` result, an outside class name, or a function call such as `clsx`, in `+`, template literals, `+=` and `.join(' ')` alike. It is a warning rather than a build error because the joined string is still valid output — it is the precedence that is no longer guaranteed.
 
 A [function key](/docs/api/javascript/create#dynamic-values) cannot go through `css.use()`, and the build stops on it: its values reach the element as CSS variables on `style`, which a class name string cannot carry. Apply it with `sx`. A prop that ends up in `css.use()` can reject one at the call site with [StaticStyles](/docs/api/types/StaticStyles).
 
