@@ -19,4 +19,6 @@ export const {
   useReducer,
   useRef,
   useState,
+  startTransition,
+  ViewTransition,
 } = React;
