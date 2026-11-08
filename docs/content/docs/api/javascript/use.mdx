@@ -1,6 +1,7 @@
 ---
 title: 'css.use / sx'
 description: 'Attach styles as a prop in JSX, or as a class name string anywhere else.'
+stability: Frozen
 ---
 To apply styles defined in Plumeria to a component, use the `sx` prop or the `css.use()` function.
 
@@ -56,6 +57,29 @@ export const use: use;
 `css.use()` converts styles into a string of class names. Use it where the `sx` prop is not available, for example when passing a class name to an external component that only accepts `className`.
 
 Pass every style to one `css.use()` call; a later argument takes precedence. Strings from separate calls are not merged when joined, so which rule wins depends on stylesheet order.
+
+Each `css.use()` call is compiled separately. If results are joined and their
+styles set the same property, both classes reach the element and stylesheet
+order decides the winner:
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: { padding: 24, color: 'green' },
+  active: { padding: 8, color: 'teal' }
+});
+
+<ExternalComponent className={css.use(styles.base) + ' ' + css.use(styles.active)} />
+```
+
+Pass every Plumeria style to one call so the later argument wins:
+
+```tsx
+<ExternalComponent className={css.use(styles.base, active && styles.active)} />
+```
+
+An external class name can still be joined, but overlapping properties follow the CSS cascade. The recommended [`@plumeria/no-unresolved-composition`](/docs/api/plugins/eslint-plugin) rule warns when a `css.use()` result is combined with another class name or passed to a helper such as `clsx`.
 
 A [function key](/docs/api/javascript/create#dynamic-values) cannot go through `css.use()`, and the build stops on it: its values reach the element as CSS variables on `style`, which a class name string cannot carry. Apply it with `sx`. A prop that ends up in `css.use()` can reject one at the call site with [StaticStyles](/docs/api/types/StaticStyles).
 
