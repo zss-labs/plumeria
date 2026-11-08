@@ -24,6 +24,34 @@ const styles = css.create({
 });
 ```
 
+StyleX puts the pseudo-class key inside each property's value map. Plumeria puts the declarations under the pseudo-selector key:
+
+```ts title="StyleX"
+import * as stylex from '@stylexjs/stylex';
+
+const styles = stylex.create({
+  button: {
+    backgroundColor: {
+      default: 'lightblue',
+      ':hover': 'blue',
+    },
+  },
+});
+```
+
+```ts title="Plumeria"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    backgroundColor: 'lightblue',
+    ':hover': {
+      backgroundColor: 'blue',
+    },
+  },
+});
+```
+
 Not allowed:
 
 ```ts title="TypeScript"
