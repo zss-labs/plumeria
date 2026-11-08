@@ -3,21 +3,39 @@ title: "TypedCSS"
 description: "The same authoring API, merged at runtime instead of at build time."
 ---
 
-
 TypedCSS is Plumeria with the merge moved to runtime. You write the same `css.create`, the same `sx` prop and the same definitions; the compiler still turns every style into atomic CSS. What changes is who picks the winning class: a small resolver on the element, instead of the compiler at the call site.
+
 Both release under the same version number. A TypedCSS release and a Plumeria release with the same version accept the same source.
 
-For new installations, Plumeria is recommended; for refactoring, TypedCSS offers greater flexibility.
-Both are compatible in every way except for the limit on the number of prop drilling cycles.
+For new installations, Plumeria is recommended; for refactoring, TypedCSS offers greater flexibility. The rest of this page is about where the two stop being interchangeable, so the choice can be made per project — or per part of a project, since the same source runs on either.
 
 ## What it costs, and what it buys
 
 Plumeria resolves every merge at build time, so it has to see where a style ends up. A style handed through a prop to a component in another package, or stored and applied later, is a merge the compiler cannot see — which is what [`no-style-prop-relay`](/docs/api/plugins/eslint-plugin) reports.
-  TypedCSS carries a class map to the element and merges there. A style can travel anywhere a value can: through props, context, other packages, or a variable. The price is a small runtime and the maps in the bundle.
+
+TypedCSS carries a class map to the element and merges there. A style can travel anywhere a value can: through props, context, other packages, or a variable. The price is a small runtime and the maps in the bundle: every merge is decided when the element renders, instead of once at build time, and no property is ever dropped from the element before that.
 
 > The right side still wins, property by property. Only the place where that is decided moves.
+>
 > If `Plumeria` represents a constrained category theory, then `TypedCSS` represents a free category theory.
 
+## The one limit that differs: prop drilling
+
+The two are compatible in every way except for one limit, and it is on the Plumeria side.
+
+Under Plumeria, a style that crosses a component boundary as a prop has to be applied by the component that receives it, on an element that component renders. It cannot be handed on to a second component, because the compiler would have to trace it through an arbitrary chain of wrappers to resolve the merge. See [Make the boundary a prop](/docs/thinking-in-plumeria#make-the-boundary-a-prop).
+
+TypedCSS has no equivalent limit. A style can be relayed, stored, or pulled from context and applied wherever it lands, any number of hops later, because the merge waits until the element.
+
+## Which one, when
+
+| Your situation | Choose |
+| :-- | :-- |
+| A new project, or a design system whose components apply the styles they receive | **Plumeria** — merges are settled at build time, nothing ships to merge them later, and a style that loses never reaches the element. |
+| Styles are relayed through wrapper components you cannot flatten | **TypedCSS** — relaying is the case the Plumeria compiler refuses. |
+| Styles arrive from context, a store, or another package at runtime | **TypedCSS** — the compiler cannot see those merges, the resolver can. |
+| You are migrating gradually and cannot yet say where every style ends up | **TypedCSS** first, for the flexibility; the same source can move to Plumeria later with the codemod below. |
+| Bundle size and runtime cost matter more than placement freedom | **Plumeria** — TypedCSS ships a resolver and a class map per call site. |
 
 ## The difference
 
@@ -27,30 +45,78 @@ Plumeria resolves every merge at build time, so it has to see where a style ends
 - API: `css.*` === `css.*`
 - AST-compile: `SWC` ⇄ `OXC`
 
+Read `⇄` as "the counterpart of" and `===` as "identical". Only the resolver and the toolchain behind the compiler differ in kind; everything else is the same API under the other package scope.
 
-Plumeria's `css.use` returns a class string the compiler has already merged. typedcss has `css.props` instead, which merges at runtime and returns `{ className, style }`, ready to spread onto any element:
+Plumeria's `css.use` returns a class string the compiler has already merged. TypedCSS has `css.props` instead, which merges at runtime and returns `{ className, style }`, ready to spread onto any element:
 
 ```tsx
 <div {...css.props(styles.link, active && styles.active)} />
 ```
 
-The names differ because the results do.
+The names differ because the results do. The `sx` prop needs no counterpart: it works the same on both, because what it hands over is styles, not a merged string.
+
+## A complete example
+
+```tsx
+import * as css from '@typedcss/css';
+
+const styles = css.create({
+  text: {
+    fontSize: 14,
+  },
+  color: {
+    color: 'aqua',
+  },
+});
+
+export function Component({ isActive }: { isActive: boolean }) {
+  return (
+    <button {...css.props(styles.text, isActive && styles.color)}>
+      text
+    </button>
+  );
+}
+```
+
+The same component under Plumeria differs only in the import and in how the styles are applied:
+
+```tsx
+import * as css from '@plumeria/core';
+
+// ...
+
+export function Component({ isActive }: { isActive: boolean }) {
+  return (
+    <button sx={[styles.text, isActive && styles.color]}>text</button>
+  );
+}
+```
+
+## Getting started
+
+A new TypedCSS project installs the same way a Plumeria one does, under the other scope:
+
+```sh
+npx @typedcss/init
+```
+
+Each `@typedcss/*` package takes the same options as its Plumeria counterpart, so the [integration guides](/docs/integration) and the [plugin reference](/docs/api/plugins) apply as written, with the package names below substituted.
 
 ## Packages
 
-| TypedCSS                  | Plumeria                  |
+| TypedCSS | Plumeria |
 | ------------------------- | ------------------------- |
-| `@typedcss/codemod`       | `@plumeria/codemod`       |
-| `@typedcss/css`           | `@plumeria/core`          |
+| `@typedcss/codemod` | `@plumeria/codemod` |
+| `@typedcss/css` | `@plumeria/core` |
 | `@typedcss/eslint-plugin` | `@plumeria/eslint-plugin` |
-| `@typedcss/init`          | `@plumeria/init`          |
-| `@typedcss/next-plugin`   | `@plumeria/next-plugin`   |
-| `@typedcss/oxide`         | `@plumeria/compiler`      |
-| `@typedcss/swc-jest`      | `@plumeria/swc-jest`      |
-| `@typedcss/unplugin`      | `@plumeria/unplugin`      |
-| `@typedcss/wind`          | `@plumeria/wind`          |
+| `@typedcss/init` | `@plumeria/init` |
+| `@typedcss/next-plugin` | `@plumeria/next-plugin` |
+| `@typedcss/oxide` | `@plumeria/compiler` |
+| `@typedcss/swc-jest` | `@plumeria/swc-jest` |
+| `@typedcss/unplugin` | `@plumeria/unplugin` |
+| `@typedcss/wind` | `@plumeria/wind` |
 
-Each takes the same options as its Plumeria counterpart, so the [integration guides](/docs/integration) and the [plugin reference](/docs/api/plugins) apply as written. The ESLint plugin drops the rules that only exist because merges happen at build time: `no-style-prop-relay`, `no-use-in-jsx` and `custom-props-require-import`.
+The ESLint plugin drops the rules that only exist because merges happen at build time: `no-style-prop-relay`, `no-use-in-jsx` and `custom-props-require-import`. The other rules, including the ones that check properties and values against MDN data, apply unchanged.
 
 ## Moving between
 
@@ -80,3 +146,11 @@ export function Component({isActive}: {isActive: boolean}) {
   )
 }
 ```
+
+Moving to Plumeria can surface merges the compiler cannot see — a relayed style is the usual one. Those are reported at build time, at the call site that has to change; nothing fails silently in the other direction either, because a TypedCSS merge accepts everything a Plumeria merge produced.
+
+<Cards>
+  <Card title="Why Plumeria" href="/docs/why-plumeria" />
+  <Card title="Thinking in Plumeria" href="/docs/thinking-in-plumeria" />
+  <Card title="@plumeria/codemod" href="/docs/api/migrate/codemod" />
+</Cards>
