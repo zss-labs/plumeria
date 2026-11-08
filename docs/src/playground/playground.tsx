@@ -19,6 +19,7 @@ const POLICIES: { value: SpellingPolicy; label: string }[] = [
 const EXAMPLE_LINKS: { value: ExampleName; label: string }[] = [
   { value: 'card', label: 'Card' },
   { value: 'merge', label: 'Last style wins' },
+  { value: 'view-transition', label: 'View Transitions' },
 ];
 
 type OutputTab = OutputKind | 'preview';
