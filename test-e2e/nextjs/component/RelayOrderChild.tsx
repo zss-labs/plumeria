@@ -1,4 +1,5 @@
 import * as css from '@plumeria/core';
+import type { Style } from '@plumeria/core';
 import type { ReactNode } from 'react';
 
 const styles = css.create({
@@ -11,8 +12,7 @@ export function RelayOrderChild({
   override,
   children,
 }: {
-  // A class string once `migrate --from plumeria` has exported the caller.
-  override?: any;
+  override?: Style;
   children: ReactNode;
 }) {
   return (
