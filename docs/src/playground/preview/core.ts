@@ -108,5 +108,26 @@ function unsupported(name: string): never {
   throw new Error(`${name} is not available in the playground preview`);
 }
 
-export const viewTransitionClass = () => unsupported('css.viewTransitionClass');
+const VIEW_TRANSITION_PSEUDOS = {
+  group: 'group',
+  imagePair: 'image-pair',
+  old: 'old',
+  new: 'new',
+} as const;
+
+export function viewTransitionClass(rule: StyleRule): string {
+  const hash = genBase36Hash(rule, 1, 8);
+  const styles: Record<string, unknown> = {};
+
+  for (const [key, pseudo] of Object.entries(VIEW_TRANSITION_PSEUDOS)) {
+    const style = rule[key];
+    if (style && typeof style === 'object') {
+      styles[`::view-transition-${pseudo}(*.vt-${hash})`] = style;
+    }
+  }
+
+  const { styleSheet } = transpile(styles, undefined, '--global');
+  insert(styleSheet);
+  return `vt-${hash}`;
+}
 export const global = () => unsupported('css.global');
