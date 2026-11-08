@@ -73,10 +73,10 @@ const styles = css.create({
     marginTop: -2,
   },
   version: {
-    padding: '2px 10px',
-    fontSize: 13,
+    padding: '1px 8px',
+    fontSize: 12,
     fontWeight: 500,
-    lineHeight: '20px',
+    lineHeight: '18px',
     background: homeTheme.accent,
     borderRadius: 9999,
     transitionDuration: '0.2s',
