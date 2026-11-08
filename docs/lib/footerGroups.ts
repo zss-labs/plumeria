@@ -25,7 +25,7 @@ export const footerGroups = [
   {
     heading: 'AI',
     links: [
-      { label: 'Claude Plugin', href: 'https://claude.ai/directory?q=Plumeria', external: true },
+      { label: 'AI.md', href: '/docs/ai' },
       { label: 'AI Agent Resources', href: '/docs/ai-agent-resources' },
     ],
   },
