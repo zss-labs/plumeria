@@ -57,6 +57,30 @@ for (const [name, dir] of Object.entries(typePackages)) {
   }
 }
 
+const reactIndexPath = '/node_modules/@types/react/index.d.ts';
+const reactIndex = files[reactIndexPath];
+if (!reactIndex.includes('export const ViewTransition:')) {
+  const startTransition = '    export function startTransition(scope: TransitionFunction): void;';
+  const augmentation = `${startTransition}
+
+    export type PlaygroundViewTransitionClass = string | Record<string, string>;
+    export interface PlaygroundViewTransitionProps {
+        children?: ReactNode;
+        name?: string;
+        default?: PlaygroundViewTransitionClass;
+        enter?: PlaygroundViewTransitionClass;
+        exit?: PlaygroundViewTransitionClass;
+        update?: PlaygroundViewTransitionClass;
+        share?: PlaygroundViewTransitionClass;
+    }
+    export const ViewTransition: ExoticComponent<PlaygroundViewTransitionProps>;`;
+  const updatedReactIndex = reactIndex.replace(startTransition, augmentation);
+  if (updatedReactIndex === reactIndex) {
+    throw new Error('[playground] Could not add React ViewTransition types.');
+  }
+  files[reactIndexPath] = updatedReactIndex;
+}
+
 await writeFile(join(outDir, 'libs.json'), JSON.stringify(files));
 
 console.log(
