@@ -8,6 +8,12 @@ import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import type { Node } from 'fumadocs-core/page-tree';
 
+const stability = {
+  Frozen: ['★★★★★', 'Bug fixes ship continuously. The signature will not change.'],
+  Stable: ['★★★★☆', 'Additive only. Existing signatures will not move.'],
+  Candidate: ['★★★☆☆', 'Shape is settled. Details may still change.'],
+} as const;
+
 const getSection = (nodes: Node[], url: string, section = ''): string | undefined => {
   let current = section;
   for (const node of nodes) {
@@ -27,6 +33,7 @@ export default async function Page({ slug }: { slug?: string[] }) {
 
   const { body: MDX, toc } = await page.data.load();
   const section = getSection(source.pageTree.children, page.url);
+  const stabilityEntry = page.data.stability ? stability[page.data.stability] : undefined;
 
   return (
     <DocsPage
@@ -43,7 +50,14 @@ export default async function Page({ slug }: { slug?: string[] }) {
       <header className="docs-article-header">
         {section && <p className="docs-article-section">{section}</p>}
         <div className="docs-article-title-row">
-          <DocsTitle>{page.data.title}</DocsTitle>
+          <div className="docs-article-title">
+            <DocsTitle>{page.data.title}</DocsTitle>
+            {stabilityEntry && (
+              <span className="docs-stability" title={stabilityEntry[1]}>
+                <span className="docs-stability-stars">{stabilityEntry[0]}</span> {page.data.stability}
+              </span>
+            )}
+          </div>
           <MarkdownActions markdownUrl={`${page.url}.md`} />
         </div>
         {page.data.description && (
