@@ -9,6 +9,9 @@ export const { docs, meta } = defineDocs({
   dir: 'content/docs',
   docs: {
     async: true,
+    schema: pageSchema.extend({
+      stability: z.enum(['Frozen', 'Stable', 'Candidate']).optional(),
+    }),
     postprocess: { includeProcessedMarkdown: true },
   },
 });
