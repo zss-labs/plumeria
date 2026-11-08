@@ -1,0 +1,101 @@
+---
+title: 'Troubleshooting'
+description: 'Read a Plumeria build error, find why a style did not compile, and fix the usual causes.'
+---
+
+Plumeria does its work at build time, so most problems arrive as a build error
+or as a style that never reaches the page. This page collects the messages the
+compiler prints and the checks to run before changing code.
+
+## Reading a build error
+
+A compiler error names the expression it could not resolve and the file it was
+in:
+
+```text
+[plumeria] Cannot resolve static value: theme.spacing.md. It must be a const holding a string or number, declared in this file or imported from a module plumeria can read. (Component.tsx)
+```
+
+The message is the starting point, not the whole diagnosis:
+
+- The quoted expression is what the compiler stopped on. Look there first, not
+  at the element that used the style.
+- The fix the message suggests — a `const`, a `css.createStatic` value, the
+  function form — is the supported shape. Rewriting the value into that shape
+  is usually the whole fix.
+- Search this page for the first words of the message. The same wording is
+  used under every bundler, because every integration runs the same compiler.
+
+## Build errors
+
+| Message starts with | Why it happens | Fix |
+| :-- | :-- | :-- |
+| `Dynamic or unresolvable style object` | A style object, or a value inside it, is computed in a way the compiler cannot read at build time. | Write the value as a literal or a `const`, import it from a module Plumeria can read, or pass a runtime value through the function form: `css.create({ name: (value) => ({ ... }) })`. |
+| `Cannot resolve static value` | A value is not a `const` holding a string or number, in this file or an import Plumeria can read. | Declare it with `const`, or move it into the file or a readable module. A `let`, a function parameter and a call result do not resolve. |
+| `Cannot resolve static member expression` | A member such as `tokens.color.brand` is read from something that is not a `const` object, `css.createStatic` or `css.createTheme`. | Hold the object in a `const`, or declare it with `css.createStatic` / `css.createTheme`. |
+| `Cannot inline the computed key` | A computed key such as `[breakpoints.md]` cannot be inlined at build time. | Declare the keys with `css.createStatic`, for example `const breakpoints = css.createStatic({ sm: '...' })`, and read them as `[breakpoints.sm]`. A definition in a package needs a `plumeria` export condition. |
+| `Cannot spread ... at build time` | A spread argument is not a `const` object. | Spread a `const` object, or pass a runtime value through the function form. |
+| `Unknown style member` | A style read such as `styles.contianer` names a key `css.create` did not define. | Fix the key name. This is most often a typo, or a key that was renamed in one file and not the other. |
+| `Unsupported expression type` / `Unsupported binary operator` / `Unsupported unary operand` | A style value uses an expression the compiler cannot evaluate. Values must be literals, `const`s, or arithmetic and template expressions of them. | Split the computation into a `const` the compiler can read, or use the function form for a value that only exists at runtime. |
+| `Template value cannot be resolved to a primitive` | A `${}` inside a template value does not resolve to a string or number at build time. | Give the interpolated value as a literal or a `const` string or number. |
+| `Spread elements in a style array are not supported` | A style prop array spreads another array. | List each style explicitly: `sx={[styles.base, styles.active]}`. |
+| `Style prop fallbacks using \|\| or ?? cannot be resolved` | The styling prop received `a \|\| b` or `a ?? b`. | Use a conditional expression with defined styles: `sx={[cond ? styles.a : styles.b]}`. |
+| `A style prop array contains an unsupported style expression` | An array on the styling prop holds something other than defined styles, `null`, `false`, `undefined` or conditional branches of defined styles. | Pass defined styles and conditions only. A class name string is not a style; see [`css.use`](#a-style-applies-but-the-wrong-one-wins). |
+| `Selector nests deeper than ...` / `Unexpected quote in selector` / `Unsupported at-rule` | A selector key is deeper, quoted or uses an at-rule the compiler cannot place. Only `@media`, `@container`, `@supports` and `@starting-style` are supported. | Follow [Selector rules](/docs/selector-rules), and use [`css.marker` / `css.extended`](/docs/api/javascript/marker) instead of a combinator for parent-state styling. |
+
+The lint rules report many of these shapes before the build does. The
+[rule list](/docs/api/plugins/eslint-plugin) says what each rule reports.
+
+## A style is not applied at all
+
+Work through these in order:
+
+1. **The styling prop name disagrees.** The name given to the bundler plugin
+   (`styleProp` on `withPlumeria` or the unplugin options) and the name
+   declared in `plumeria.d.ts` have to be the same. If they disagree, the prop
+   type-checks but is never compiled away, so the `sx` prop reaches the DOM
+   and no class is emitted. See
+   [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
+2. **The file is outside the compile set.** A narrowed `include` glob, or an
+   `exclude` glob that matches the file, takes it out of the compilation. The
+   defaults are every `js/jsx/ts/tsx` file, excluding `node_modules`, `dist`
+   and `.next`.
+3. **A style passed through another prop has no import to follow.** A file
+   that passes styles to a component through a prop other than the styling
+   prop has to import `@plumeria/core`, which is how the compiler finds it.
+   The `custom-props-require-import` lint rule reports this.
+4. **A `.vue`, `.svelte` or `.astro` file holds the `css.create` call.** The
+   transform parses TypeScript and TSX only, so the call goes in a `.ts`
+   module the component imports from. See
+   [Frameworks](/docs/integration/frameworks#single-file-components).
+
+## A style applies, but the wrong one wins
+
+Styles merge per property and the one on the right wins — but only inside one
+composition the compiler can see whole. Joining the results of separate
+`css.use()` calls, or joining a result with an outside class name, leaves the
+winner to stylesheet order instead. Pass every style to one call:
+`css.use(styles.base, active && styles.active)`. The
+`@plumeria/no-unresolved-composition` rule (a warning in the recommended
+config) reports the joined patterns, and
+[`css.use` / `sx`](/docs/api/javascript/use) shows the forms to avoid.
+
+A shorthand against a longhand is the other exception: the longhand wins
+wherever the two meet, in either order. [Specificity](/docs/specificity)
+ranks every pair.
+
+## Still stuck
+
+Include these in a report — they are what the diagnosis needs:
+
+- The full error text, including the file name in parentheses.
+- The Plumeria packages and versions installed, and the bundler (and whether
+  it is Turbopack or Webpack, for Next.js).
+- The smallest file that still reproduces it, with the `css.create` call and
+  the element that uses it.
+
+<Cards>
+  <Card title="Installation" href="/docs/installation" />
+  <Card title="ESLint plugin rules" href="/docs/api/plugins/eslint-plugin" />
+  <Card title="Selector rules" href="/docs/selector-rules" />
+</Cards>
