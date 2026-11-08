@@ -7,7 +7,7 @@ import { ogpImagePath } from 'lib/generateSEOData';
 const card = `data:image/png;base64,${readFileSync(join(process.cwd(), 'public/OGP_CARD.png')).toString('base64')}`;
 
 const cards = new Map<string, { title: string; date?: string }>([
-  [ogpImagePath('/'), { title: 'Plumeria - Zero-cost abstraction layer' }],
+  [ogpImagePath('/'), { title: 'Plumeria - React styling library' }],
   [ogpImagePath('/playground'), { title: 'Playground' }],
   ...source.getPages().map((page) => [ogpImagePath(page.url), { title: page.data.title }] as const),
   ...blog.getPages().map((page) => [ogpImagePath(page.url), { title: page.data.title, date: page.data.date }] as const),
