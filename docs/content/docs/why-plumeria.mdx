@@ -328,11 +328,32 @@ export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
 });
 ```
 
+## Plumeria or StyleX
+
+StyleX is the closest relative, and the shared ground is real: both compile styles to atomic CSS at build time, both are type-safe, in both the last style applied wins, and Plumeria's API deliberately inherits StyleX's design philosophy. If those were the only criteria, there would be nothing to choose. The differences are in where the merge happens, what the call site looks like, and what checks run by default.
+
+|  | StyleX | Plumeria |
+| :-- | :-- | :-- |
+| Merging | `stylex.props()` merges class names, with what its docs call a "tiny and fast runtime for merging class names" | No runtime at all. Every entry point of `@plumeria/core` is a `.d.ts` file; merges — including styles passed through props — are resolved at build time and written as lookups, and a property that loses never reaches the element |
+| Call site | `{...stylex.props(styles.base, active && styles.active)}` — a function call spread onto the element | `<div sx={[styles.base, active && styles.active]} />` — the prop is the call site; [`css.use`](/docs/api/javascript/use) returns a plain class string where no prop is available |
+| Themes | Variables are declared with `defineVars`, which has to live in a `.stylex.*` file, and a theme is a `createTheme` override applied to a subtree with `props()` | No variables file and nothing to apply: [`createTheme`](/docs/api/javascript/createTheme) takes the selector or query that switches the theme and declares each variable's default and themed values in one call, in any module |
+| Compiler | A Babel plugin at the center, with wrappers for each bundler | A compiler written in Rust on the oxc parser. There is no Babel step to keep in the pipeline, which is also what lets the same loader serve Turbopack and Webpack |
+| Checks | An ESLint plugin you set up and run | The bundler plugins run the Plumeria rules during the build by default and stop it on an error or a warning; the property list and values checked are generated from MDN data |
+| When a merge cannot be seen at build time | The runtime merge covers it | The build stops — or the same source switches to [TypedCSS](/docs/typedcss), the dual model that merges the same API at runtime |
+
+Two of these deserve a sentence each, because they are the ones that decide real projects.
+
+**Nothing to merge with at runtime** is a constraint before it is a feature. Because no merger ships, the compiler has to settle every composition it can see — across files and across a prop boundary — and refuse the ones it cannot, such as a style relayed through a chain of wrappers. StyleX makes the opposite trade: the small runtime merger means a style can be passed around and applied wherever it lands. Which trade is right depends on whether your components apply the styles they receive, or mostly forward them. If they forward them, TypedCSS is the same authoring API with StyleX's side of this trade, and [the dual model page](/docs/typedcss) is the comparison that matters.
+
+**Themes are a selector, not an application step.** In StyleX a theme exists once it is applied to an element with `props()`, and it covers that subtree. In Plumeria the switch is written into the theme itself — `css.createTheme('@media (prefers-color-scheme: dark)', { ... })` or `css.createTheme('.dark', { ... })` — so the generated CSS carries both values, components contain no theme branch, and there is no element that has to receive the theme for it to take effect.
+
+When StyleX is the better choice: you already run it, your codebase depends on its recipes and theming patterns, or you want the runtime merge rather than a build that refuses what it cannot see. Plumeria asks for the stricter model, and in return the result of every composition is fixed before anything ships — that, and not the API shape the two share, is the reason to switch.
+
 ## Coming from another styling system
 
 If you use CSS Modules, pseudo-classes, attribute selectors and at-rules use familiar CSS spelling; [Selector rules](/docs/selector-rules) explains which forms Plumeria supports.
 
-From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `sx` prop. Themes are the exception: there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
+From Tailwind, the [Claude plugin](/docs/ai-agent-resources#claude-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `sx` prop. Themes are the exception, as [above](#plumeria-or-stylex): there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
 
 ## Next steps
 
