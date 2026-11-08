@@ -416,11 +416,513 @@ export const shared = css.create({
   SAMPLE_FILES[2],
 ];
 
-export type ExampleName = 'card' | 'merge';
+const VIEW_TRANSITION_FILES: SampleFile[] = [
+  {
+    path: ENTRY,
+    label: 'ViewTransition.tsx',
+    source: `import * as css from '@plumeria/core';
+import { startTransition, useState, ViewTransition } from 'react';
+
+const pieces = [
+  { id: 'dune', number: '01', title: 'Dune Study', category: 'LANDSCAPE', description: 'Soft layers of sand meet a late afternoon sun. A study in warmth, stillness, and the shapes left by wind.', palette: 'sand', form: 'dunes' },
+  { id: 'tide', number: '02', title: 'Blue Current', category: 'WATERLINE', description: 'Cool blue-green tones drift across the page like a tide moving around smooth stone.', palette: 'tide', form: 'waves' },
+  { id: 'bloom', number: '03', title: 'Quiet Bloom', category: 'BOTANICAL', description: 'A single flower, reduced to a few simple shapes and a gentle contrast of color.', palette: 'bloom', form: 'flower' },
+  { id: 'grove', number: '04', title: 'Moss Form', category: 'STILL LIFE', description: 'An imagined vessel rests in a shaded garden. Rounded edges give the composition a quiet balance.', palette: 'grove', form: 'vessel' },
+] as const;
+
+type Piece = (typeof pieces)[number];
+
+const scaleOut = css.keyframes({
+  from: {
+    transform: 'scale(1)',
+    opacity: 1
+  },
+  to: {
+    transform: 'scale(0.84)',
+    opacity: 0
+  },
+});
+const scaleIn = css.keyframes({
+  from: {
+    transform: 'scale(0.84)',
+    opacity: 0
+  },
+  to: {
+    transform: 'scale(1)',
+    opacity: 1
+  },
+});
+const sharedMotion = css.viewTransitionClass({
+  group: {
+    animationDuration: '0.5s',
+    animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+  },
+  imagePair: {
+    mixBlendMode: 'normal'
+  },
+  old: {
+    animationName: scaleOut,
+    animationDuration: '0.25s',
+    animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+  },
+  new: {
+    animationName: scaleIn,
+    animationDuration: '0.25s',
+    animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+  },
+});
+
+export const ViewTransitionDemo = () => {
+  const [selected, setSelected] = useState<Piece | null>(null);
+  const sharedClass = sharedMotion;
+  const openPiece = (piece: Piece) => startTransition(() => setSelected(piece));
+  const closePiece = () => startTransition(() => setSelected(null));
+
+  return (
+    <main sx={styles.canvas}>
+      <article sx={styles.page}>
+        <header sx={styles.header}>
+          <span sx={styles.brand}>FORM / FIELD NOTES</span>
+          <span sx={styles.edition}>A STUDY IN COLOR &amp; FORM</span>
+        </header>
+        {selected ? (
+            <section sx={styles.detail}>
+              <div sx={styles.detailTopline}>
+                <button type="button" sx={styles.backButton} onClick={closePiece}>
+                  <span aria-hidden="true">←</span> All studies
+                </button>
+                <span sx={styles.edition}>{selected.number} / 04</span>
+              </div>
+              <div sx={styles.hero}>
+                <ViewTransition name={'art-' + selected.id} share={sharedClass}>
+                  <Artwork piece={selected} hero />
+                </ViewTransition>
+                <span sx={styles.heroShade} />
+                <ViewTransition name={'title-' + selected.id} share={sharedClass}>
+                  <h1 sx={styles.heroTitle}>{selected.title}</h1>
+                </ViewTransition>
+                <span sx={styles.heroCategory}>{selected.category} · {selected.number}</span>
+              </div>
+              <div sx={styles.detailCopy}>
+                <p sx={styles.eyebrow}>A CLOSER LOOK</p>
+                <p sx={styles.detailDescription}>{selected.description}</p>
+              </div>
+            </section>
+          ) : (
+            <section sx={styles.collection}>
+              <div sx={styles.intro}>
+                <p sx={styles.eyebrow}>SMALL OBJECTS / SLOW DAYS</p>
+                <h1 sx={styles.introTitle}>Forms from a quieter world.</h1>
+                <p sx={styles.introText}>Choose a study to see it move from the collection into focus.</p>
+              </div>
+              <div sx={styles.grid}>
+                {pieces.map((piece) => (
+                  <button key={piece.id} type="button" sx={styles.tile} onClick={() => openPiece(piece)} aria-label={'Open ' + piece.title}>
+                    <ViewTransition name={'art-' + piece.id} share={sharedClass}>
+                      <Artwork piece={piece} />
+                    </ViewTransition>
+                    <span sx={styles.tileMeta}>
+                      <span sx={styles.tileNumber}>{piece.number}</span>
+                      <ViewTransition name={'title-' + piece.id} share={sharedClass}>
+                        <span sx={styles.tileTitle}>{piece.title}</span>
+                      </ViewTransition>
+                      <span sx={styles.tileArrow} aria-hidden="true">↗</span>
+                    </span>
+                    <span sx={styles.tileCategory}>{piece.category}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        <footer sx={styles.footer}>
+          <span>COLOR · SHAPE · STILLNESS</span>
+          <span>COLLECTION 01</span>
+        </footer>
+      </article>
+    </main>
+  );
+};
+
+function Artwork({ piece, hero = false }: { piece: Piece; hero?: boolean }) {
+  return (
+    <span
+      sx={[
+        styles.artwork,
+        piece.palette === 'sand' && styles.sand,
+        piece.palette === 'tide' && styles.tide,
+        piece.palette === 'bloom' && styles.bloom,
+        piece.palette === 'grove' && styles.grove,
+        hero && styles.heroArtwork,
+      ]}
+      aria-hidden="true"
+    >
+      {piece.form === 'flower' && <><span sx={styles.stem} /><span sx={styles.leaf} /><span sx={styles.flower} /><span sx={styles.flowerCenter} /></>}
+      {piece.form === 'vessel' && <><span sx={styles.vesselShadow} /><span sx={styles.vessel} /><span sx={styles.vesselRim} /></>}
+      <span sx={styles.artIndex}>{piece.number} / FORM STUDY</span>
+    </span>
+  );
+}
+
+const styles = css.create({
+  canvas: {
+    boxSizing: 'border-box',
+    minHeight: '100vh',
+    padding: '24px 20px',
+    background: '#efede6',
+    '@media (max-width: 520px)': {
+      padding: '14px 10px'
+    },
+  },
+  page: {
+    boxSizing: 'border-box',
+    width: '100%',
+    maxWidth: 960,
+    padding: '24px 30px 18px',
+    margin: 'auto',
+    color: '#242a24',
+    background: '#faf9f5',
+    borderRadius: 16,
+    boxShadow: '0 18px 60px rgb(42 43 35 / 0.08)',
+    '@media (max-width: 520px)': {
+      padding: '18px 15px 14px'
+    },
+  },
+  header: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    marginBottom: 26,
+    fontSize: 9,
+    fontWeight: 600,
+    letterSpacing: '0.13em',
+    borderBottomColor: '#e8e5dc',
+    borderBottomStyle: 'solid',
+    borderBottomWidth: '1px',
+    '@media (max-width: 520px)': {
+      marginBottom: 20,
+      fontSize: 8
+    },
+  },
+  brand: {
+    fontWeight: 700
+  },
+  edition: {
+    color: '#8a8a7e',
+    textAlign: 'right'
+  },
+  collection: {
+    minHeight: 520
+  },
+  intro: {
+    maxWidth: 470,
+    marginBottom: 25
+  },
+  eyebrow: {
+    margin: '0 0 9px',
+    fontSize: 9,
+    fontWeight: 600,
+    color: '#858778',
+    letterSpacing: '0.15em'
+  },
+  introTitle: {
+    maxWidth: 440,
+    margin: 0,
+    fontFamily: 'Georgia, serif',
+    fontSize: 36,
+    fontWeight: 400,
+    lineHeight: 1.05,
+    letterSpacing: '-0.045em',
+    '@media (max-width: 520px)': {
+      fontSize: 30
+    },
+  },
+  introText: {
+    margin: '10px 0 0',
+    fontSize: 12,
+    lineHeight: 1.55,
+    color: '#77796e'
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '20px 16px',
+    '@media (min-width: 760px)': {
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gap: 16
+    },
+  },
+  tile: {
+    display: 'block',
+    minWidth: 0,
+    padding: 0,
+    color: 'inherit',
+    textAlign: 'left',
+    cursor: 'pointer',
+    background: 'transparent',
+    borderColor: 'currentColor',
+    borderStyle: 'none',
+    borderWidth: '0',
+    ':hover': {
+      color: '#78836f'
+    },
+    ':focus-visible': {
+      outline: '2px solid #78836f',
+      outlineOffset: 5,
+      borderRadius: 8
+    },
+  },
+  tileMeta: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'baseline',
+    marginTop: 9
+  },
+  tileNumber: {
+    flex: '0 0 auto',
+    fontSize: 9,
+    fontVariantNumeric: 'tabular-nums',
+    color: '#929286'
+  },
+  tileTitle: {
+    display: 'block',
+    fontFamily: 'Georgia, serif',
+    fontSize: 16,
+    lineHeight: 1.2,
+    letterSpacing: '-0.025em',
+    '@media (max-width: 520px)': {
+      fontSize: 14
+    },
+  },
+  tileArrow: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    color: '#8a8a7e'
+  },
+  tileCategory: {
+    display: 'block',
+    marginTop: 5,
+    marginLeft: 25,
+    fontSize: 8,
+    color: '#949488',
+    letterSpacing: '0.12em'
+  },
+  detail: {
+    minHeight: 520
+  },
+  detailTopline: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12
+  },
+  backButton: {
+    display: 'inline-flex',
+    gap: 7,
+    alignItems: 'center',
+    padding: 0,
+    fontSize: 11,
+    color: '#676b60',
+    cursor: 'pointer',
+    background: 'transparent',
+    borderColor: 'currentColor',
+    borderStyle: 'none',
+    borderWidth: '0',
+    ':hover': {
+      color: '#242a24'
+    },
+    ':focus-visible': {
+      outline: '2px solid #78836f',
+      outlineOffset: 4,
+      borderRadius: 3
+    },
+  },
+  hero: {
+    position: 'relative',
+    isolation: 'isolate'
+  },
+  artwork: {
+    position: 'relative',
+    display: 'block',
+    width: '100%',
+    aspectRatio: '0.92',
+    overflow: 'hidden',
+    borderRadius: 9,
+    contain: 'paint'
+  },
+  heroArtwork: {
+    aspectRatio: '1.85',
+    borderRadius: 12,
+    '@media (max-width: 520px)': {
+      aspectRatio: '1.2'
+    }
+  },
+  sand: {
+    background: 'radial-gradient(circle at 78% 22%, #f5e8ce 0 11%, transparent 11.5%), radial-gradient(ellipse at 10% 110%, #936950 0 35%, transparent 35.5%), radial-gradient(ellipse at 94% 112%, #c49371 0 48%, transparent 48.5%), linear-gradient(145deg, #f0dfc2, #d9b99b)',
+  },
+  tide: {
+    background: 'radial-gradient(circle at 76% 22%, #e7d6ac 0 10%, transparent 10.5%), radial-gradient(ellipse at 90% 110%, #335d62 0 45%, transparent 45.5%), radial-gradient(ellipse at 10% 100%, #789b96 0 46%, transparent 46.5%), linear-gradient(145deg, #a9c2bd, #547b7c)',
+  },
+  bloom: {
+    background: 'radial-gradient(circle at 78% 22%, #f5e8ce 0 11%, transparent 11.5%), linear-gradient(145deg, #f0cfc1, #dc9e91)'
+  },
+  grove: {
+    background: 'radial-gradient(circle at 76% 20%, #e8dfc6 0 12%, transparent 12.5%), radial-gradient(ellipse at 50% 120%, #506a55 0 58%, transparent 58.5%), linear-gradient(145deg, #c0c8ae, #788b77)',
+  },
+  stem: {
+    position: 'absolute',
+    bottom: '10%',
+    left: '49%',
+    width: '3%',
+    height: '38%',
+    background: '#65795a',
+    borderRadius: 99,
+    rotate: '5deg'
+  },
+  leaf: {
+    position: 'absolute',
+    bottom: '23%',
+    left: '36%',
+    width: '21%',
+    height: '10%',
+    background: '#7e9168',
+    borderRadius: '100% 0 100% 0',
+    rotate: '-25deg'
+  },
+  flower: {
+    position: 'absolute',
+    top: '27%',
+    left: '34%',
+    width: '34%',
+    aspectRatio: '1',
+    background: 'repeating-conic-gradient(#f4d7a8 0deg 18deg, #d78f7d 19deg 36deg)',
+    borderRadius: '50%',
+  },
+  flowerCenter: {
+    position: 'absolute',
+    top: '39%',
+    left: '46%',
+    width: '10%',
+    aspectRatio: '1',
+    background: '#9b6652',
+    borderRadius: '50%'
+  },
+  vesselShadow: {
+    position: 'absolute',
+    bottom: '17%',
+    left: '28%',
+    width: '46%',
+    height: '8%',
+    background: 'rgb(40 54 41 / 0.2)',
+    borderRadius: '50%',
+    filter: 'blur(5px)'
+  },
+  vessel: {
+    position: 'absolute',
+    bottom: '20%',
+    left: '37%',
+    width: '28%',
+    height: '47%',
+    background: 'linear-gradient(105deg, #e6d8bc, #bcae8f 72%, #9a967d)',
+    filter: 'drop-shadow(8px 12px 10px rgb(39 51 39 / 0.18))',
+    clipPath: 'polygon(27% 0, 73% 0, 78% 25%, 100% 43%, 88% 100%, 12% 100%, 0 43%, 22% 25%)',
+  },
+  vesselRim: {
+    position: 'absolute',
+    top: '32%',
+    left: '44%',
+    width: '14%',
+    height: '4%',
+    background: '#8f8e78',
+    borderRadius: '50%'
+  },
+  artIndex: {
+    position: 'absolute',
+    bottom: 9,
+    left: 11,
+    zIndex: 1,
+    fontSize: 7,
+    fontWeight: 600,
+    color: 'rgb(255 252 241 / 0.8)',
+    letterSpacing: '0.13em'
+  },
+  heroShade: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1,
+    height: '48%',
+    pointerEvents: 'none',
+    background: 'linear-gradient(transparent, rgb(24 31 26 / 0.55))',
+    borderRadius: '0 0 12px 12px'
+  },
+  heroTitle: {
+    position: 'absolute',
+    right: 20,
+    bottom: 27,
+    left: 22,
+    zIndex: 2,
+    margin: 0,
+    fontFamily: 'Georgia, serif',
+    fontSize: 42,
+    fontWeight: 400,
+    lineHeight: 1.05,
+    color: '#fffdf6',
+    letterSpacing: '-0.045em',
+    textShadow: '0 2px 16px rgb(0 0 0 / 0.14)',
+    '@media (max-width: 520px)': {
+      right: 14,
+      bottom: 20,
+      left: 15,
+      fontSize: 32
+    },
+  },
+  heroCategory: {
+    position: 'absolute',
+    right: 20,
+    bottom: 14,
+    zIndex: 2,
+    fontSize: 8,
+    fontWeight: 600,
+    color: 'rgb(255 252 241 / 0.8)',
+    letterSpacing: '0.14em'
+  },
+  detailCopy: {
+    maxWidth: 520,
+    padding: '17px 2px 8px'
+  },
+  detailDescription: {
+    margin: 0,
+    fontFamily: 'Georgia, serif',
+    fontSize: 17,
+    lineHeight: 1.5,
+    color: '#62665c'
+  },
+  footer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    paddingTop: 13,
+    marginTop: 24,
+    fontSize: 8,
+    fontWeight: 600,
+    color: '#929286',
+    letterSpacing: '0.12em',
+    borderTopColor: '#e6e3da',
+    borderTopStyle: 'solid',
+    borderTopWidth: '1px',
+  },
+});
+`,
+  },
+];
+export type ExampleName = 'card' | 'merge' | 'view-transition';
 
 export const EXAMPLES: Record<ExampleName, SampleFile[]> = {
   card: SAMPLE_FILES,
   merge: MERGE_FILES,
+  'view-transition': VIEW_TRANSITION_FILES,
 };
 
 export function exampleFromSearch(search: string): ExampleName {
