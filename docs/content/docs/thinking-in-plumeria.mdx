@@ -71,7 +71,7 @@ export const Notice = ({ title }: { title: string }) => (
 
 Callers still import `components/Notice`. A page takes the same shape, with `page.tsx` and a `styles.ts` beside it.
 
-`css.create` stays at the top level of the module; inside a function, the build stops. In one file, a key nothing reads stops it too, so deleting an element cannot leave its styles behind. That check reads a single file, so a key left unused in `styles.ts` is not reported.
+`css.create` stays at the top level of the module; inside a function, the build stops. In one file, a key nothing reads stops it too, so deleting an element cannot leave its styles behind. That check reads a single file, so a key left unused in `styles.ts` is not reported. When a build stops and the message is not one you know, [Troubleshooting](/docs/troubleshooting) collects what each message means and what fixes it.
 
 ## Compose in the order you mean
 
@@ -229,6 +229,8 @@ Apply a style prop on an element the component renders. Passing it on to another
 ```tsx
 <Header headerStyle={[styles.base, styles.primary]} />
 ```
+
+One hop is the whole allowance: a style may cross one component boundary, from the caller to the component that applies it. If forwarding is the design and the wrapper cannot go — a style that arrives from context, or a chain owned by another package — that is the one case this model refuses on purpose. The same source runs on [TypedCSS](/docs/typedcss), the dual model that merges at runtime and lets a style travel any number of hops; [which one, when](/docs/typedcss#which-one-when) lists the situations on each side.
 
 So far:
 
@@ -542,4 +544,6 @@ The import compiles away, so a package that exports only definitions can ship it
   <Card title="Specificity" href="/docs/specificity" />
   <Card title="Selector rules" href="/docs/selector-rules" />
   <Card title="API reference" href="/docs/api" />
+  <Card title="Troubleshooting" href="/docs/troubleshooting" />
+  <Card title="TypedCSS, the dual model" href="/docs/typedcss" />
 </Cards>
