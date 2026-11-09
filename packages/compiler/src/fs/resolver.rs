@@ -161,7 +161,35 @@ fn strip_trailing_commas(text: &str) -> String {
     out
 }
 
-fn read_config(path: &Path) -> Option<serde_json::Map<String, Json>> {
+type ConfigMap = std::sync::Arc<serde_json::Map<String, Json>>;
+
+// Resolution reads the same package.json and tsconfig.json for every import. Reparse a file
+// only when its stamp changes.
+fn read_config(path: &Path) -> Option<ConfigMap> {
+    use super::source::{SourceStamp, stamp};
+    use std::sync::{Mutex, OnceLock};
+    type Cache = FxHashMap<PathBuf, (SourceStamp, Option<ConfigMap>)>;
+    static CONFIGS: OnceLock<Mutex<Cache>> = OnceLock::new();
+    let cache = CONFIGS.get_or_init(|| Mutex::new(Cache::default()));
+    let Ok(current) = stamp(path) else {
+        cache.lock().unwrap().remove(path);
+        return None;
+    };
+    if let Some((previous, config)) = cache.lock().unwrap().get(path)
+        && *previous == current
+    {
+        return config.clone();
+    }
+    let config = parse_config(path).map(std::sync::Arc::new);
+    let mut cache = cache.lock().unwrap();
+    if cache.len() >= 4096 {
+        cache.clear();
+    }
+    cache.insert(path.to_path_buf(), (current, config.clone()));
+    config
+}
+
+fn parse_config(path: &Path) -> Option<serde_json::Map<String, Json>> {
     let text = std::fs::read_to_string(path).ok()?;
     let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
     let parsed: Json = serde_json::from_str(&strip_trailing_commas(&strip_comments(text))).ok()?;
