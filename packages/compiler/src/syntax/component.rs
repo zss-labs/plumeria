@@ -75,7 +75,7 @@ fn returned<'b, 'a>(function: &'b Expression<'a>) -> Option<&'b Expression<'a>> 
 fn import_source<'b>(expr: &'b Expression) -> Option<&'b str> {
     match expr.without_parentheses() {
         Expression::ImportExpression(import) => match &import.source {
-            Expression::StringLiteral(value) => Some(value.value.as_str()),
+            Expression::StringLiteral(value) => value.value.as_str(),
             _ => None,
         },
         _ => None,
