@@ -5,6 +5,9 @@ import { z } from 'zod';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
+const noTranslate = (n: any) =>
+  /^(pre|code)$/.test(n.tagName) ? (n.properties.translate = 'no') : n.children?.forEach(noTranslate);
+
 export const { docs, meta } = defineDocs({
   dir: 'content/docs',
   docs: {
@@ -30,7 +33,7 @@ export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
     remarkPlugins: [remarkMath],
-    rehypePlugins: (v) => [rehypeKatex, ...v],
+    rehypePlugins: (v) => [rehypeKatex, ...v, () => noTranslate],
     rehypeCodeOptions: {
       inline: 'tailing-curly-colon',
       themes: {
