@@ -71,7 +71,7 @@ impl<'b, 'a> Consts<'b, 'a> {
         let live = Live(&self.values);
         let env = Env::statics_only(&live);
         let result = match init.kind() {
-            K::Str(value) => Some(Value::str(value.value.as_str())),
+            K::Str(value) => value.value.as_str().map(Value::str),
             K::Num(value) => Some(Value::Num(value.value)),
             K::Bool(value) => Some(Value::Bool(value)),
             K::Ident(ident) => self.resolve(ident.name.as_str()),
