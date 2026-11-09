@@ -12,8 +12,6 @@ package-lock.json
 coverage
 test-results
 playwright-report
-AGENTS.md
-CLAUDE.md
 .mdx-previewrc.json
 docs/out
 packages/compiler/target/
