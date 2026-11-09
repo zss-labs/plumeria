@@ -1,3 +1,11 @@
+## 22.0.6
+
+### Patch Changes
+
+- 69c3408: Fix: scrollBehavior spelling in propertyGroups.ts
+- Updated dependencies [69c3408]
+  - @plumeria/compiler@22.0.6
+
 ## 22.0.5
 
 ### Patch Changes

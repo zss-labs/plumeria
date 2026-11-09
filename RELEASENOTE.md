@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.6 (Nov 9, 2026)
+
+Fix: scrollBehavior spelling in propertyGroups.ts
+
 ## 22.0.5 (Nov 9, 2026)
 
 Perf: optimize and update OXC
