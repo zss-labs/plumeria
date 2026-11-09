@@ -372,8 +372,8 @@ pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<Tr
     let mut dependencies: Vec<String> = Vec::new();
     for statement in &program.body {
         if let Statement::ImportDeclaration(decl) = statement
-            && let Some(actual) =
-                project.resolve_import_path(decl.source.value.as_str(), &env.module_id)
+            && let Some(source) = decl.source.value.as_str()
+            && let Some(actual) = project.resolve_import_path(source, &env.module_id)
         {
             dependencies.push(actual.clone());
             dependencies.extend(project.get_file_dependencies(&actual));
@@ -484,7 +484,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     } else {
                         match &prop.key {
                             PropertyKey::StaticIdentifier(ident) => Some(ident.name.to_string()),
-                            PropertyKey::StringLiteral(value) => Some(value.value.to_string()),
+                            PropertyKey::StringLiteral(value) => {
+                                value.value.as_str().map(str::to_string)
+                            }
                             _ => None,
                         }
                     };
@@ -543,7 +545,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let Statement::ImportDeclaration(decl) = statement else {
                 continue;
             };
-            let source_path = decl.source.value.as_str();
+            let Some(source_path) = decl.source.value.as_str() else {
+                continue;
+            };
             if source_path == CORE {
                 add_core_aliases(decl, &mut self.aliases);
             }
