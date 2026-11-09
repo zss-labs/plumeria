@@ -397,7 +397,9 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
             let Statement::ImportDeclaration(decl) = statement else {
                 continue;
             };
-            let source_path = decl.source.value.as_str();
+            let Some(source_path) = decl.source.value.as_str() else {
+                continue;
+            };
             if source_path == CORE {
                 add_core_aliases(decl, &mut self.aliases);
             }
@@ -595,7 +597,9 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
                     } else {
                         match &prop.key {
                             PropertyKey::StaticIdentifier(ident) => Some(ident.name.to_string()),
-                            PropertyKey::StringLiteral(value) => Some(value.value.to_string()),
+                            PropertyKey::StringLiteral(value) => {
+                                value.value.as_str().map(str::to_string)
+                            }
                             _ => None,
                         }
                     };
@@ -793,8 +797,9 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
                         };
                         if let Some(style_obj) = style_obj {
                             if let K::Str(value) = key.kind() {
-                                if let Some(found) =
-                                    style_obj.get(value.value.as_str()).filter(|v| v.truthy())
+                                if let Some(found) = style_obj
+                                    .get(value.value.as_str().unwrap_or_default())
+                                    .filter(|v| v.truthy())
                                 {
                                     results.push(found.clone());
                                 }
@@ -886,7 +891,10 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
                 let prop_name = match expr.prop() {
                     Some(Prop::Name(name)) => name.to_string(),
                     Some(Prop::Computed(key)) => match key.kind() {
-                        K::Str(value) => value.value.to_string(),
+                        K::Str(value) => match value.value.as_str() {
+                            Some(value) => value.to_string(),
+                            None => return Ok(None),
+                        },
                         _ => return Ok(None),
                     },
                     _ => return Ok(None),
@@ -1061,7 +1069,10 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
                     }
                     let key = match &p.key {
                         PropertyKey::StaticIdentifier(ident) => ident.name.to_string(),
-                        PropertyKey::StringLiteral(value) => value.value.to_string(),
+                        PropertyKey::StringLiteral(value) => match value.value.as_str() {
+                            Some(value) => value.to_string(),
+                            None => continue,
+                        },
                         _ => continue,
                     };
                     given.insert(key, E::new(&p.value));
@@ -1539,17 +1550,13 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
             let name = id.name.to_string();
             match p_name.as_str() {
                 "create" => {
-                    let local_objects: FxHashMap<String, Object> = self
-                        .local_styles
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.obj.clone()))
-                        .collect();
-                    let theme_hashes = self.merged_theme.clone();
-                    let atomic_writes = self.writes.atomic_map.clone();
+                    let local_styles = &self.local_styles;
+                    let theme_hashes = &self.merged_theme;
+                    let atomic_writes = &self.writes.atomic_map;
                     let atomic_base = &self.tables.atomic_map;
                     let resolve_variable = |key: &str| -> Option<Value> {
-                        if let Some(object) = local_objects.get(key) {
-                            return Some(Value::obj(object.clone()));
+                        if let Some(style) = local_styles.get(key) {
+                            return Some(Value::obj(style.obj.clone()));
                         }
                         let hash = theme_hashes.get(key).filter(|h| !h.is_empty())?;
                         atomic_writes
