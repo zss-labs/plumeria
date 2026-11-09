@@ -31,7 +31,9 @@ fn key_value(prop: &ObjectProperty) -> Option<KeyVal> {
     }
     match &prop.key {
         PropertyKey::StaticIdentifier(ident) => Some(KeyVal::Str(ident.name.to_string())),
-        PropertyKey::StringLiteral(value) => Some(KeyVal::Str(value.value.to_string())),
+        PropertyKey::StringLiteral(value) => {
+            value.value.as_str().map(|key| KeyVal::Str(key.to_string()))
+        }
         PropertyKey::NumericLiteral(value) => Some(KeyVal::Num(value.value)),
         _ => None,
     }
