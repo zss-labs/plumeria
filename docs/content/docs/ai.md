@@ -864,3 +864,19 @@ borderColor: 'currentColor',
 borderStyle: 'none',
 borderWidth: 'medium',
 ```
+
+The per-side forms expand into their own three longhands, and the axis forms (`borderBlock`, `borderInline`) expand the same way into `borderBlockColor`, `borderBlockStyle`, `borderBlockWidth` and their `borderInline` counterparts. For example, `borderTop: '1px solid #d1d5db'` becomes:
+
+```ts
+borderTopColor: '#d1d5db',
+borderTopStyle: 'solid',
+borderTopWidth: '1px',
+```
+
+A component the value does not name takes its initial value — width `medium`, style `none`, color `currentColor` — and is still written out, so `borderInlineStart: '2px dashed'` becomes:
+
+```ts
+borderInlineStartColor: 'currentColor',
+borderInlineStartStyle: 'dashed',
+borderInlineStartWidth: '2px',
+```
