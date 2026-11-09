@@ -11,7 +11,7 @@ pub struct SourceStamp {
     changed: (i64, i64),
 }
 
-pub fn stamp(file: &str) -> std::io::Result<SourceStamp> {
+pub fn stamp(file: impl AsRef<std::path::Path>) -> std::io::Result<SourceStamp> {
     let metadata = std::fs::metadata(file)?;
     Ok(SourceStamp {
         modified: metadata.modified().ok(),
