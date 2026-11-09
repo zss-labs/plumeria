@@ -24,7 +24,7 @@ pub fn module_export_name<'b>(name: &'b ModuleExportName) -> &'b str {
     match name {
         ModuleExportName::IdentifierName(ident) => ident.name.as_str(),
         ModuleExportName::IdentifierReference(ident) => ident.name.as_str(),
-        ModuleExportName::StringLiteral(value) => value.value.as_str(),
+        ModuleExportName::StringLiteral(value) => value.value.as_str().unwrap_or_default(),
     }
 }
 
