@@ -101,7 +101,9 @@ pub fn scan_file_pass<'b, 'a>(
     for statement in &program.body {
         match statement {
             Statement::ImportDeclaration(decl) => {
-                let source_value = decl.source.value.as_str();
+                let Some(source_value) = decl.source.value.as_str() else {
+                    continue;
+                };
                 if source_value == CORE {
                     add_core_aliases(decl, &mut aliases);
                     continue;
@@ -215,15 +217,15 @@ pub fn scan_file_pass<'b, 'a>(
                 }
             }
             Statement::ExportFromDeclaration(export) => {
-                if let Some(actual) =
-                    project.resolve_import_path(export.source.value.as_str(), file)
+                if let Some(source) = export.source.value.as_str()
+                    && let Some(actual) = project.resolve_import_path(source, file)
                 {
                     dependencies.insert(actual);
                 }
             }
             Statement::ExportAllDeclaration(export) => {
-                if let Some(actual) =
-                    project.resolve_import_path(export.source.value.as_str(), file)
+                if let Some(source) = export.source.value.as_str()
+                    && let Some(actual) = project.resolve_import_path(source, file)
                 {
                     dependencies.insert(actual);
                 }
@@ -683,7 +685,9 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                             given.insert(ident.name.to_string(), E::new(&p.value));
                         }
                         PropertyKey::StringLiteral(value) => {
-                            given.insert(value.value.to_string(), E::new(&p.value));
+                            if let Some(key) = value.value.as_str() {
+                                given.insert(key.to_string(), E::new(&p.value));
+                            }
                         }
                         _ => {}
                     }
