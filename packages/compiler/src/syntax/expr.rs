@@ -297,7 +297,7 @@ pub fn expression_label(e: E) -> String {
     let e = unwrap(e);
     match e.kind() {
         K::Ident(ident) => ident.name.to_string(),
-        K::Str(value) => format!("'{}'", value.value),
+        K::Str(value) => format!("'{}'", value.value.display()),
         K::Num(value) => crate::js::number::number_to_string(value.value),
         K::Member(member) => {
             let object = expression_label(e.member_object(member));
