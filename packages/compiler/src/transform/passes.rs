@@ -64,7 +64,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
     }
 
     fn import_declaration(&mut self, decl: &'b ImportDeclaration<'a>) {
-        if decl.source.value.as_str() != CORE {
+        if decl.source.value.as_str() != Some(CORE) {
             return;
         }
         if decl.import_kind.is_type() {
@@ -1062,14 +1062,14 @@ impl<'x, 't, 'p, 'b, 'a> Visit<'a> for FirstPass<'x, 't, 'p, 'b, 'a> {
 
 fn static_key<'b, 'a>(key: E<'b, 'a>) -> Option<&'b str> {
     match key.kind() {
-        K::Str(value) => Some(value.value.as_str()),
+        K::Str(value) => value.value.as_str(),
         K::Template(value) if value.expressions.is_empty() => value
             .quasis
             .first()?
             .value
             .cooked
             .as_ref()
-            .map(|cooked| cooked.as_str()),
+            .and_then(|cooked| cooked.as_str()),
         _ => None,
     }
 }
