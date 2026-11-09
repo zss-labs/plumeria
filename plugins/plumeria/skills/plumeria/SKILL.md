@@ -831,7 +831,7 @@ Follow the plugin's rules as documented in its `README.md`.
 8. order
 9. inlineSize, minInlineSize, maxInlineSize, width, minWidth, maxWidth, blockSize, minBlockSize, maxBlockSize, height, minHeight, maxHeight, aspectRatio
 10. padding, paddingBlock, paddingBlockStart, paddingBlockEnd, paddingInline, paddingInlineStart, paddingInlineEnd, paddingTop, paddingRight, paddingBottom, paddingLeft, margin, marginBlock, marginBlockStart, marginBlockEnd, marginInline, marginInlineStart, marginInlineEnd, marginTop, marginRight, marginBottom, marginLeft
-11. overflow, overflowInline, overflowBlock, overflowX, overflowY, scrollbarGutter, WebkitOverflowScrolling, msOverflowX, msOverflowY, msOverflowStyle, textOverflow, WebkitLineClamp, lineClamp, scrollBehaviour
+11. overflow, overflowInline, overflowBlock, overflowX, overflowY, scrollbarGutter, WebkitOverflowScrolling, msOverflowX, msOverflowY, msOverflowStyle, textOverflow, WebkitLineClamp, lineClamp, scrollBehavior
 12. overscrollBehavior, overscrollBehaviorInline, overscrollBehaviorBlock, overscrollBehaviorX, overscrollBehaviorY
 13. font, fontFamily, fontSize, fontSizeAdjust, fontVariationSettings, fontStyle, fontWeight, fontOpticalSizing, fontStretch, fontFeatureSettings, fontKerning, fontVariant, fontVariantLigatures, fontVariantCaps, fontVariantAlternates, fontVariantNumeric, fontVariantEastAsian, fontVariantPosition, WebkitFontSmoothing, MozOsxFontSmoothing, fontSmooth
 14. lineHeight, verticalAlign, alignmentBaseline, baselineShift, dominantBaseline
