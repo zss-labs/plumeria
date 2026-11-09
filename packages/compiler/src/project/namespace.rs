@@ -27,7 +27,8 @@ impl Project {
             }
             for specifier in decl.specifiers.iter().flatten() {
                 if let ImportDeclarationSpecifier::ImportNamespaceSpecifier(spec) = specifier
-                    && let Some(actual) = self.resolve_import_path(decl.source.value.as_str(), file)
+                    && let Some(source) = decl.source.value.as_str()
+                    && let Some(actual) = self.resolve_import_path(source, file)
                 {
                     paths.insert(spec.local.name.to_string(), actual);
                 }
