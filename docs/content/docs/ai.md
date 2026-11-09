@@ -811,6 +811,7 @@ module.exports = {
 
 - **CSS property value validation** — invalid values are caught at lint time.
 - **Property sort order** — one canonical order is enforced; the full order is specified under **Property order** below.
+- **Property formatting** — one property per line, with no empty lines between properties; see **Property formatting** below.
 - **Unused style detection** — unused styles are flagged automatically.
 
 Follow the plugin's rules as documented in its `README.md`.
@@ -879,4 +880,19 @@ A component the value does not name takes its initial value — width `medium`, 
 borderInlineStartColor: 'currentColor',
 borderInlineStartStyle: 'dashed',
 borderInlineStartWidth: '2px',
+```
+
+**Property formatting.** In a style object, every property sits on its own line, and there are no empty lines between properties. `format-properties` rejects both a shared line and a blank line, and a warning stops the build, so expand compact objects when you write them. A variant map entry such as:
+
+```ts
+design: { color: '#1d4ed8', backgroundColor: '#dbeafe' },
+```
+
+is written:
+
+```ts
+design: {
+  color: '#1d4ed8',
+  backgroundColor: '#dbeafe',
+},
 ```
