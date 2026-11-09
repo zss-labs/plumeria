@@ -421,7 +421,7 @@ const VIEW_TRANSITION_FILES: SampleFile[] = [
     path: ENTRY,
     label: 'ViewTransition.tsx',
     source: `import * as css from '@plumeria/core';
-import { startTransition, useState, ViewTransition } from 'react';
+import { startTransition, useLayoutEffect, useRef, useState, ViewTransition } from 'react';
 
 const pieces = [
   { id: 'dune', number: '01', title: 'Dune Study', category: 'LANDSCAPE', description: 'Soft layers of sand meet a late afternoon sun. A study in warmth, stillness, and the shapes left by wind.', palette: 'sand', form: 'dunes' },
@@ -477,6 +477,16 @@ export const ViewTransitionDemo = () => {
   const sharedClass = sharedMotion;
   const openPiece = (piece: Piece) => startTransition(() => setSelected(piece));
   const closePiece = () => startTransition(() => setSelected(null));
+  const lastId = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (selected) {
+      lastId.current = selected.id;
+      window.scrollTo(0, 0);
+      return;
+    }
+    document.getElementById('tile-' + lastId.current)?.scrollIntoView({ block: 'nearest' });
+  }, [selected]);
 
   return (
     <main sx={styles.canvas}>
@@ -517,7 +527,7 @@ export const ViewTransitionDemo = () => {
               </div>
               <div sx={styles.grid}>
                 {pieces.map((piece) => (
-                  <button key={piece.id} type="button" sx={styles.tile} onClick={() => openPiece(piece)} aria-label={'Open ' + piece.title}>
+                  <button key={piece.id} id={'tile-' + piece.id} type="button" sx={styles.tile} onClick={() => openPiece(piece)} aria-label={'Open ' + piece.title}>
                     <ViewTransition name={'art-' + piece.id} share={sharedClass}>
                       <Artwork piece={piece} />
                     </ViewTransition>
@@ -755,7 +765,7 @@ const styles = css.create({
     aspectRatio: '1.85',
     borderRadius: 12,
     '@media (max-width: 520px)': {
-      aspectRatio: '1.2'
+      aspectRatio: '2'
     }
   },
   sand: {
