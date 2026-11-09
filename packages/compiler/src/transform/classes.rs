@@ -164,7 +164,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 let prop_name = match expr.prop() {
                     Some(Prop::Name(name)) => name.to_string(),
                     Some(Prop::Computed(key)) => match key.kind() {
-                        K::Str(value) => value.value.to_string(),
+                        K::Str(value) => match value.value.as_str() {
+                            Some(value) => value.to_string(),
+                            None => return Ok(None),
+                        },
                         _ => return Ok(None),
                     },
                     _ => return Ok(None),
@@ -367,7 +370,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     }
                     let key = match &p.key {
                         PropertyKey::StaticIdentifier(ident) => ident.name.to_string(),
-                        PropertyKey::StringLiteral(value) => value.value.to_string(),
+                        PropertyKey::StringLiteral(value) => match value.value.as_str() {
+                            Some(value) => value.to_string(),
+                            None => continue,
+                        },
                         _ => continue,
                     };
                     given.insert(key, E::new(&p.value));
@@ -1755,7 +1761,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             });
             match &class_attr.value {
                 Some(JSXAttributeValue::StringLiteral(value)) => {
-                    existing_class = quote(value.value.as_str())
+                    existing_class = quote(value.value.as_str().unwrap_or_default())
                 }
                 Some(JSXAttributeValue::ExpressionContainer(container)) => {
                     let span = container.expression.span();
@@ -1950,7 +1956,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             } else {
                 format!("(({condition}) ? {value} : {content})")
             };
-            self.process_style_records(&entry.style, None);
         }
         let span = sub.span();
         self.replacements.push(Replacement {
