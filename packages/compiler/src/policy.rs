@@ -73,7 +73,7 @@ fn key_name<'b>(prop: &'b ObjectProperty) -> &'b str {
     }
     match &prop.key {
         PropertyKey::StaticIdentifier(ident) => ident.name.as_str(),
-        PropertyKey::StringLiteral(value) => value.value.as_str(),
+        PropertyKey::StringLiteral(value) => value.value.as_str().unwrap_or_default(),
         _ => "",
     }
 }
@@ -129,7 +129,7 @@ impl Check<'_> {
 
 impl<'a> Visit<'a> for Check<'_> {
     fn visit_import_declaration(&mut self, it: &ImportDeclaration<'a>) {
-        if it.source.value.as_str() == CORE {
+        if it.source.value.as_str() == Some(CORE) {
             add_core_aliases(it, &mut self.aliases);
         }
         walk::walk_import_declaration(self, it);
