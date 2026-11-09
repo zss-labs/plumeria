@@ -767,8 +767,10 @@ impl Project {
         let mut imports: Ordered<ImportRecord> = Ordered::default();
 
         for statement in &program.body {
-            if let Statement::ImportDeclaration(decl) = statement {
-                let source = decl.source.value.to_string();
+            if let Statement::ImportDeclaration(decl) = statement
+                && let Some(source) = decl.source.value.as_str()
+            {
+                let source = source.to_string();
                 for spec in import_specs(decl) {
                     imports.insert(
                         spec.local.to_string(),
@@ -800,12 +802,9 @@ impl Project {
         for statement in &program.body {
             match statement {
                 Statement::ImportDeclaration(decl) => {
-                    track(
-                        self,
-                        decl.source.value.as_str(),
-                        &mut dependencies,
-                        &mut unresolved,
-                    );
+                    if let Some(source) = decl.source.value.as_str() {
+                        track(self, source, &mut dependencies, &mut unresolved);
+                    }
                 }
                 Statement::ExportDeclaration(export) => match &export.declaration {
                     Declaration::VariableDeclaration(decl) => {
@@ -850,7 +849,10 @@ impl Project {
                     }
                 }
                 Statement::ExportFromDeclaration(export) => {
-                    let source = export.source.value.to_string();
+                    let Some(source) = export.source.value.as_str() else {
+                        continue;
+                    };
+                    let source = source.to_string();
                     track(self, &source, &mut dependencies, &mut unresolved);
                     for spec in &export.specifiers {
                         let orig = module_export_name(&spec.local).to_string();
@@ -865,7 +867,10 @@ impl Project {
                     }
                 }
                 Statement::ExportAllDeclaration(export) => {
-                    let source = export.source.value.to_string();
+                    let Some(source) = export.source.value.as_str() else {
+                        continue;
+                    };
+                    let source = source.to_string();
                     if export.exported.is_none() {
                         star_exports.push(source.clone());
                     }
