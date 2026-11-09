@@ -30,7 +30,10 @@ fn read_const_file(path: &str) -> Option<ConstFile> {
         let Statement::ImportDeclaration(decl) = statement else {
             continue;
         };
-        let source = decl.source.value.to_string();
+        let Some(source) = decl.source.value.as_str() else {
+            continue;
+        };
+        let source = source.to_string();
         for spec in import_specs(decl) {
             let imported_name = match spec.kind {
                 SpecKind::Named => spec.imported.clone(),
@@ -94,7 +97,10 @@ fn read_const_file(path: &str) -> Option<ConstFile> {
         };
         let expression = unwrap(E::new(expression));
         match expression.kind() {
-            K::Str(value) => values.insert("default", Value::str(value.value.as_str())),
+            K::Str(value) => values.insert(
+                "default",
+                Value::str(value.value.as_str().unwrap_or_default()),
+            ),
             K::Num(value) => values.insert("default", Value::Num(value.value)),
             K::Ident(ident) => {
                 if let Some(value) = values.get(ident.name.as_str()).cloned() {
