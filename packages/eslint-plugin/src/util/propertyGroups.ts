@@ -161,7 +161,7 @@ export const propertyGroups: Group[] = [
       'textOverflow',
       'WebkitLineClamp',
       'lineClamp',
-      'scrollBehaviour',
+      'scrollBehavior',
     ],
   },
   // Overscroll behavior.
