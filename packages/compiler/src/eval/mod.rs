@@ -22,6 +22,12 @@ use crate::syntax::expr::{
 
 pub type EvalResult<T> = Result<T, String>;
 
+fn lone_surrogate(text: impl std::fmt::Display) -> String {
+    format!(
+        "[plumeria] The string \"{text}\" contains a lone surrogate, which CSS cannot represent. Write the complete character instead."
+    )
+}
+
 pub type ResolveVariable<'r> = &'r dyn Fn(&str) -> Option<Value>;
 
 pub type Replacements = rustc_hash::FxHashMap<(u32, u32), Value>;
@@ -206,7 +212,10 @@ impl<'e, 'r> Evaluator<'e, 'r> {
                 if !property_is_plain(prop) {
                     return Err(format!(
                         "[plumeria] Cannot read the method or accessor \"{}\" at build time. Write it as a plain property.",
-                        prop.key.static_name().unwrap_or_default()
+                        prop.key
+                            .static_name()
+                            .map(|name| name.display().to_string())
+                            .unwrap_or_default()
                     ));
                 }
                 let key = self.property_key(&prop.key, prop.computed)?;
@@ -297,7 +306,7 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         }
 
         match val.kind() {
-            K::Str(value) => Ok(Some(Value::str(value.value.as_str()))),
+            K::Str(value) => Ok(value.value.as_str().map(Value::str)),
             K::Num(value) => Ok(Some(Value::Num(value.value))),
             K::Bool(value) => Ok(Some(Value::Bool(value))),
             K::Unary(_) => self.plain().expression(val).map(Some),
@@ -320,7 +329,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         if !computed {
             return match key {
                 PropertyKey::StaticIdentifier(ident) => Ok(Value::str(ident.name.as_str())),
-                PropertyKey::StringLiteral(value) => Ok(Value::str(value.value.as_str())),
+                PropertyKey::StringLiteral(value) => value
+                    .value
+                    .as_str()
+                    .map(Value::str)
+                    .ok_or_else(|| lone_surrogate(value.value.display())),
                 PropertyKey::NumericLiteral(value) => {
                     let text = number_to_string(value.value);
                     Err(format!(
@@ -338,7 +351,13 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         };
         let expr = E::new(expr);
         match expr.kind() {
-            K::Str(value) => return Ok(Value::str(value.value.as_str())),
+            K::Str(value) => {
+                return value
+                    .value
+                    .as_str()
+                    .map(Value::str)
+                    .ok_or_else(|| lone_surrogate(value.value.display()));
+            }
             K::Ident(ident) => {
                 if let Some(Value::Str(text)) = self.env.statics.lookup(ident.name.as_str())
                     && !text.is_empty()
@@ -381,7 +400,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         let mut result = String::new();
         for (index, quasi) in node.quasis.iter().enumerate() {
             match &quasi.value.cooked {
-                Some(cooked) if !cooked.is_empty() => result.push_str(cooked.as_str()),
+                Some(cooked) if !cooked.is_empty() => result.push_str(
+                    cooked
+                        .as_str()
+                        .ok_or_else(|| lone_surrogate(cooked.display()))?,
+                ),
                 _ => result.push_str(quasi.value.raw.as_str()),
             }
             if let Some(expr) = node.expressions.get(index) {
@@ -534,7 +557,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         }
         match node.kind() {
             K::Call(call) => self.call(call),
-            K::Str(value) => Ok(Value::str(value.value.as_str())),
+            K::Str(value) => value
+                .value
+                .as_str()
+                .map(Value::str)
+                .ok_or_else(|| lone_surrogate(value.value.display())),
             K::Num(value) => Ok(Value::Num(value.value)),
             K::Bool(value) => Ok(Value::Bool(value)),
             K::Null => Ok(Value::Null),
@@ -670,7 +697,7 @@ fn member_key<'b>(member: Member<'b, '_>, statics: &dyn Lookup<Value>) -> Option
     match member_prop(member) {
         Prop::Name(name) => Some(Cow::Borrowed(name)),
         Prop::Computed(expr) => match unwrap(expr).kind() {
-            K::Str(value) => Some(Cow::Borrowed(value.value.as_str())),
+            K::Str(value) => value.value.as_str().map(Cow::Borrowed),
             K::Num(value) => Some(Cow::Owned(number_to_string(value.value))),
             K::Ident(ident) => match statics.lookup(ident.name.as_str()) {
                 Some(Value::Str(text)) => Some(Cow::Owned(text)),
