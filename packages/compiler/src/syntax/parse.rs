@@ -14,7 +14,7 @@ pub fn parse_program<'a>(allocator: &'a Allocator, source: &'a str) -> Result<Pr
     let ret = Parser::new(allocator, source, SourceType::tsx())
         .with_options(options())
         .parse();
-    if ret.panicked || !ret.diagnostics.is_empty() {
+    if ret.fatal_error || !ret.diagnostics.is_empty() {
         let message = ret
             .diagnostics
             .first()
