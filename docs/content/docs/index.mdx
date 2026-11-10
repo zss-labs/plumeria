@@ -121,6 +121,16 @@ Static styles resolve to class names entirely at compile time. The dynamic piece
 
 Of course, "zero-runtime" doesn't claim the cost vanishes — it claims the cost moves. All of the work happens at build time, and the browser only ever receives class names and CSS.
 
+## Ask an agent to write Plumeria
+
+Copy this prompt into your coding agent:
+
+```text
+Build this with Plumeria for all styling. First read https://plumeria.dev/docs/installation and https://plumeria.dev/docs/ai in full, and follow every rule in the ai doc exactly — including the property order and the border shorthand expansion. If the project is not set up yet, set it up the way the installation doc describes. Task: <describe what to build>. Build with `npm run build` and lint with `npm run lint`; both must pass.
+```
+
+Measured November 2026: with this prompt, a coding agent passed build + lint on the first try in 100 of 100 runs (20 tasks × 5 runs). Protocol and per-run results: [Agent benchmark](https://github.com/zss-labs/plumeria/blob/main/benchmarks/agent-bench.md).
+
 ## Next steps
 
 <Cards>
