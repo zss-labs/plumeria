@@ -151,7 +151,7 @@ Plumeria supports nesting for pseudo-classes, pseudo-elements, and attribute sel
 - **NO class-name keys.** Keys like `.title` are not supported. Apply Plumeria styles directly to child elements instead.
 - **NO pseudo inside pseudo.** Write a compound pseudo-selector as one key, e.g. `':hover::before'`.
 - **NO same-name functional pseudo-class nesting, except `:not()`.** `':is(:where(:is(.a)))'` stops the build; different names can nest, and `':not(:not(.a), .b)'` is allowed. A key cannot nest parentheses deeper than 16 levels or hold a stray quote.
-- **Declare overlapping states explicitly.** Pseudo-classes such as `:hover`, `:focus`, and `:active` can match simultaneously. When two states set the same property, declare their compound selector with the value the intersection should take. If they set different properties, no compound selector is needed.
+- **Declare overlapping states explicitly.** Pseudo-classes such as `:hover`, `:focus`, and `:active` can match simultaneously. When two states set the same property, declare their compound selector with the value the intersection should take. If they set different properties, no compound selector is needed. Functional pseudo-classes count too: `:nth-child(even)` and `:hover` setting the same property need the compound `':nth-child(even):hover'`.
 - **Media/container query nesting is one-directional.** A pseudo-selector may be nested inside a media/container query exactly once. The reverse — a media/container query inside a pseudo-selector — is forbidden and causes compiler/type errors.
 
 ```tsx
@@ -256,6 +256,7 @@ export const Button = ({ size, children }: ButtonProps) => {
 Best practices:
 
 - **Keep variant `css.create()` calls minimal.** Every key in a `css.create()` used with bracket notation is compiled into the generated lookup table (e.g. `{"small":"...","medium":"..."}[size]`). Separate variants into dedicated calls; don't mix them with unrelated static styles.
+- **Variant keys are selector-parsed: no spaces.** Every key in a `css.create()` — a variant key included — is read as a selector, so a key must not contain a space or combinator characters; a space is a descendant combinator and stops the build (`no-combinator`). When a display label contains a space, use a slug key and keep a label map for rendering: e.g. the status "On leave" becomes the key `onLeave`, with `const statusLabels = { active: 'Active', onLeave: 'On leave', offline: 'Offline' }`.
 - **Local variable assignment is supported.** `const currentStyle = sizeStyles[size]; <div sx={currentStyle} />` works — the compiler traces local style variables and inlines them during JSX extraction.
 
 ### `css.use()` returns a static string
