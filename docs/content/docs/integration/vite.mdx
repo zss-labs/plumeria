@@ -38,8 +38,8 @@ export default defineConfig({
 });
 ```
 
-- `include` — The path to the file to be converted.
-- `exclude` — The path to the file to be excluded from conversion.
+- `include` — Globs or regular expressions for the files to compile.
+- `exclude` — Globs or regular expressions for the files to leave out.
 - `styleProp` — The JSX prop that carries styles. The default is `'sx'`.
 
 These are the options a project usually sets. `devEmitToDisk` writes the stylesheet to disk in development, and `withoutLogicalProperties` / `withoutPhysicalProperties` reject one spelling of a property that carries both names, so the pair cannot be written; see [@plumeria/unplugin](/docs/api/plugins/unplugin) for every option and its type.
@@ -58,5 +58,5 @@ If you set a custom `styleProp` (such as `'classStyle'`), declare that name inst
 
 <Cards>
   <Card title="Shipping this as a package" href="/docs/creating-packages" />
-  <Card title="See more about Installation unplugin" href="/docs/installation" />
+  <Card title="Installation" href="/docs/installation" />
 </Cards>
