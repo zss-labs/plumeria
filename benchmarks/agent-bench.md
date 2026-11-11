@@ -53,6 +53,15 @@ changed, and surprises.
   doc clarified selector-parsed variant keys and the overlap
   rule (PR #695). The re-measured sets
   are the ones counted below.
+- Agent (data record only): every run was a fresh subagent
+  of a Muse Spark session (`meta/muse-spark`), on the same
+  model as its parent. The subagent launcher accepts only
+  the task text and attachments, so effort and thinking were
+  the model's runtime defaults. The parent prepared the
+  starters, sent the prompt, ran build, lint and the CSS
+  checks, and managed fix rounds; the subagent fetched the
+  docs, set up the project, wrote the code and reported
+  back. Subagents could not see each other's work.
 
 ## Results per task (5 runs each)
 
