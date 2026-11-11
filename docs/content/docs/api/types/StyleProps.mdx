@@ -1,6 +1,6 @@
 ---
 title: 'StyleProps'
-description: 'API reference for the StyleProps type'
+description: 'A style list limited to the properties it names.'
 ---
 
 ```ts
@@ -37,7 +37,7 @@ export function Text({ sx }: TextProps) {
 
 ## Nested blocks are covered
 
-The enumeration reaches into pseudo classes and at-rules, so a property that is only set inside a nested block is checked the same way:
+The enumeration reaches into pseudo-classes and at-rules, so a property that is only set inside a nested block is checked the same way:
 
 ```tsx
 // Type error, position is not enumerated
@@ -56,7 +56,7 @@ const styles = css.create({
 
 ## A marker sets no property
 
-[css.marker()](/docs/api/javascript/marker) writes a custom property behind a pseudo class rather than a CSS property, so a style built from one carries nothing for the enumeration to reject and passes through any of these types:
+[css.marker()](/docs/api/javascript/marker) writes a custom property behind a pseudo-class rather than a CSS property, so a style built from one carries nothing for the enumeration to reject and passes through any of these types:
 
 ```tsx
 const styles = css.create({
