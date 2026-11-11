@@ -3,13 +3,11 @@ import * as os from 'os';
 import * as path from 'path';
 import { detect } from '../src/detect';
 import {
-  CLEAN_SCRIPT,
   DEFAULT_ANSWERS,
   DEFAULT_STYLE_PROP,
   assertStyleProp,
   buildScript,
   bundlerSource,
-  cleanScripts,
   compilerOption,
   declarationSource,
   eslintEntries,
@@ -75,7 +73,6 @@ describe('source generators', () => {
 
   it('exposes setup defaults and helpers', () => {
     expect(DEFAULT_STYLE_PROP).toBe('sx');
-    expect(CLEAN_SCRIPT).toBe('rimraf .next');
     expect(rejectedSpelling('none')).toBeUndefined();
     expect(packages).toEqual(expect.any(Function));
   });
@@ -128,9 +125,6 @@ describe('source generators', () => {
     );
     expect(installCommand('yarn', ['a'])).toBe('yarn add -D a');
     expect(installCommand('bun', ['a'])).toBe('bun add -d a');
-    expect(cleanScripts({ dev: 'x', predev: 'y', build: 'z' })).toEqual({
-      prebuild: 'rimraf .next',
-    });
   });
 });
 
@@ -964,35 +958,17 @@ describe('the Next cache', () => {
       add(dir, name, content);
   };
 
-  it('clears .next before dev and before build', () => {
+  it('keeps .next and installs no rimraf', () => {
     next({ dev: 'next dev', build: 'next build' });
 
-    const patched = JSON.parse(
-      contentsOf(on(plan(detect(dir), answers()), 'package.json')),
-    ) as { scripts: Record<string, string> };
-
-    expect(patched.scripts).toMatchObject({
-      predev: 'rimraf .next',
-      prebuild: 'rimraf .next',
-      build: 'next build',
-    });
-  });
-
-  it('installs rimraf for it', () => {
-    next({ dev: 'next dev', build: 'next build' });
-
-    const install = plan(detect(dir), answers()).find(
-      (action) => action.kind === 'install',
+    const actions = plan(detect(dir), answers());
+    expect(() => on(actions, 'package.json')).toThrow(
+      'nothing planned for package.json',
     );
+    const install = actions.find((action) => action.kind === 'install');
     if (install?.kind !== 'install')
       throw new Error('expected an install action');
-    expect(install.packages).toContain('rimraf');
-  });
-
-  it('leaves a pre script the project already wrote', () => {
-    next({ predev: 'del .next', prebuild: 'del .next', build: 'next build' });
-
-    expect(on(plan(detect(dir), answers()), 'package.json').kind).toBe('skip');
+    expect(install.packages).not.toContain('rimraf');
   });
 
   it('leaves the scripts of another bundler alone', () => {
@@ -1086,63 +1062,5 @@ export default nextConfig;
     );
     expect(patched).toContain('export default withPlumeria(nextConfig);');
     expect(patched.match(/@plumeria\/next-plugin/g)).toHaveLength(1);
-  });
-});
-
-describe('the pre scripts', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = fs.realpathSync(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-pre-')),
-    );
-  });
-
-  afterEach(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  const next = (scripts: Record<string, string>) => {
-    add(
-      dir,
-      'package.json',
-      `${JSON.stringify({ name: 'app', scripts, dependencies: { next: '^16.3.1' } }, null, 2)}\n`,
-    );
-    add(dir, 'tsconfig.json', '{}');
-  };
-
-  it('adds nothing when there is no script to run before', () => {
-    next({});
-
-    const actions = plan(detect(dir), answers());
-    expect(on(actions, 'package.json').kind).toBe('skip');
-    const install = actions.find((action) => action.kind === 'install');
-    if (install?.kind !== 'install')
-      throw new Error('expected an install action');
-    expect(install.packages).not.toContain('rimraf');
-  });
-
-  it('adds only the one whose script exists', () => {
-    next({ build: 'next build' });
-
-    const patched = JSON.parse(
-      contentsOf(on(plan(detect(dir), answers()), 'package.json')),
-    ) as { scripts: Record<string, string> };
-
-    expect(patched.scripts.prebuild).toBe('rimraf .next');
-    expect(patched.scripts.predev).toBeUndefined();
-  });
-
-  it('clears the cache even when ESLint is left out', () => {
-    next({ dev: 'next dev', build: 'next build' });
-
-    const patched = JSON.parse(
-      contentsOf(
-        on(plan(detect(dir), answers({ eslint: false })), 'package.json'),
-      ),
-    ) as { scripts: Record<string, string> };
-
-    expect(patched.scripts.predev).toBe('rimraf .next');
-    expect(patched.scripts.build).toBe('next build');
   });
 });
