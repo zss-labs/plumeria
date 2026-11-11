@@ -29,9 +29,9 @@ export default {
 
 ### Options
 
-- `include`: The path to the file to be converted.
-- `exclude`: The path to the file to be excluded from conversion.
-- `devEmitToDisk`: Whether to write styles as actual files (`zero-virtual.css`) instead of virtual modules in development mode. The default is `false`.
+- `include`: Globs or regular expressions for the files to compile.
+- `exclude`: Globs or regular expressions for the files to leave out.
+- `devEmitToDisk`: Writes the styles to a file on disk (`zero-virtual.css`) in development, in place of a virtual module. The default is `false`.
 - `styleProp`: The JSX prop that carries styles. The default is `'sx'`.
 - `withoutLogicalProperties`: Rejects the logical name of a property that also has a physical name. The default is `false`.
 - `withoutPhysicalProperties`: Rejects the physical name of a property that also has a logical name. The default is `false`.
