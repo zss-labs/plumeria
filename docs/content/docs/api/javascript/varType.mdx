@@ -11,7 +11,7 @@ export type varType = <const T extends VarType>(rule: T) => CSSVariableKey;
 export const varType: varType;
 ```
 
-The `varType()` method registers a custom property with `@property` and returns its name (a unique hash that is inlined during build time). A registered property has a type, so the browser can interpolate it in transitions and animations, such as the angle of a gradient.
+`varType()` registers a custom property with `@property` and returns its name, a unique hash inlined at build time. A registered property has a type, so the browser can interpolate it in transitions and animations, such as the angle of a gradient.
 
 ## Example
 
