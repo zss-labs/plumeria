@@ -41,7 +41,7 @@ The message is the starting point, not the whole diagnosis:
 | `Spread elements in a style array are not supported` | A style prop array spreads another array. | List each style explicitly: `sx={[styles.base, styles.active]}`. |
 | `Style prop fallbacks using \|\| or ?? cannot be resolved` | The styling prop received `a \|\| b` or `a ?? b`. | Use a conditional expression with defined styles: `sx={[cond ? styles.a : styles.b]}`. |
 | `A style prop array contains an unsupported style expression` | An array on the styling prop holds something other than defined styles, `null`, `false`, `undefined` or conditional branches of defined styles. | Pass defined styles and conditions only. A class name string is not a style; see [`css.use`](#a-style-applies-but-the-wrong-one-wins). |
-| `Selector nests deeper than ...` / `Unexpected quote in selector` / `Unsupported at-rule` | A selector key is deeper, quoted or uses an at-rule the compiler cannot place. Only `@media`, `@container`, `@supports` and `@starting-style` are supported. | Follow [Selector rules](/docs/selector-rules), and use [`css.marker` / `css.extended`](/docs/api/javascript/marker) instead of a combinator for parent-state styling. |
+| `Selector nests deeper than ...` / `Unexpected quote in selector` / `Unsupported at-rule` | A selector key nests too deep, holds a stray quote, or uses an at-rule the compiler cannot place. Only `@media`, `@container`, `@supports` and `@starting-style` are supported. | Follow [Selector rules](/docs/selector-rules), and use [`css.marker` / `css.extended`](/docs/api/javascript/marker) instead of a combinator for parent-state styling. |
 
 The lint rules report many of these shapes before the build does. The
 [rule list](/docs/api/plugins/eslint-plugin) says what each rule reports.
@@ -86,7 +86,7 @@ ranks every pair.
 
 ## Still stuck
 
-Include these in a report — they are what the diagnosis needs:
+A report can be diagnosed when it includes:
 
 - The full error text, including the file name in parentheses.
 - The Plumeria packages and versions installed, and the bundler (and whether
