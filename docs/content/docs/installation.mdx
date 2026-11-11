@@ -26,7 +26,8 @@ every file it touches. The rest of this page shows the setup by hand.
 
 <Step>
 ## Installing core
-The core package is type definitions only. No bundle or runtime is included.  
+The core package holds type definitions only, so it adds no runtime to the bundle.
+
 ```sh title="Terminal"
 pnpm i -D @plumeria/core
 ```
@@ -52,10 +53,9 @@ Install the plugin:
 pnpm i -D @plumeria/eslint-plugin
 ```
 
-[`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) sorts and formats style properties and reports invalid values and selectors.
-The [plugin reference](/docs/api/plugins/eslint-plugin) lists every rule.
+[`@plumeria/eslint-plugin`](/docs/api/plugins/eslint-plugin) sorts and formats style properties and reports invalid values and selectors. Its reference page lists every rule.
 
-```ts
+```ts title="eslint.config.ts"
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import { defineConfig } from 'eslint/config';
@@ -119,8 +119,8 @@ export default defineConfig({
 
 ```
 <Cards>
-  <Card title="See more about @plumeria/unplugin package" href="/docs/integration/vite" />
-  <Card title="See more about @plumeria/next-plugin package" href="/docs/integration/next" />
+  <Card title="Next.js integration" href="/docs/integration/next" />
+  <Card title="Vite integration" href="/docs/integration/vite" />
 </Cards>
 
 </Step>
@@ -128,10 +128,10 @@ export default defineConfig({
 
 ## First steps
 
-Setup is done when these all hold. Then work through the model once:
+Setup is done when the first item holds. The rest walk through the model once:
 
 - [ ] The bundler config registers Plumeria and `plumeria.d.ts` is in place
 - [ ] Override a style from the right — [Why Plumeria](/docs/why-plumeria)
-- [ ] Pass a runtime value through a function key — [Thinking in Plumeria](/docs/thinking-in-plumeria#pass-a-runtime-value-through-a-function-key)
+- [ ] Pass a runtime value through a function key — [Thinking in Plumeria](/docs/thinking-in-plumeria#pass-a-runtime-value-through-a-function)
 - [ ] Switch a theme with `createTheme` — [Thinking in Plumeria](/docs/thinking-in-plumeria#keep-values-apart-from-styles)
 - [ ] When the build stops, find the message in [Troubleshooting](/docs/troubleshooting)
