@@ -78,7 +78,7 @@ export const MyComponent = ({ isActive }) => {
 
 **Definitions from a package.** A package whose `exports` point a `plumeria` condition at its TypeScript source, such as `@plumeria/wind`, is read like a local module by an app that lists it in its dependencies. A package without the condition is not read. A package that reads definitions from another Plumeria package needs both in the app's dependencies. If the app lists only the first, the build succeeds, but declarations that read the second are dropped.
 
-**Components from a package.** The app's build compiles the components in such a package along with its own files, so a `sx` the app passes to one is settled at build time, as for a local component, and the bundler plugin needs no configuration for it. Write the component with Pattern 1 or Pattern 2 below: apply the received style on an element it renders. Every file in the directories the exports point to is compiled, so keep tests and stories outside them. A package that also keeps a `default` condition pointing at a dist gives that dist to apps without Plumeria, where the app's `sx` is not applied.
+**Components from a package.** The app's build compiles the components in such a package along with its own files, so an `sx` the app passes to one is settled at build time, as for a local component, and the bundler plugin needs no configuration for it. Write the component with Pattern 1 or Pattern 2 below: apply the received style on an element it renders. Every file in the directories the exports point to is compiled, so keep tests and stories outside them. A package that also keeps a `default` condition pointing at a dist gives that dist to apps without Plumeria, where the app's `sx` is not applied.
 
 **Imports that compile away.** An import whose names are all compiled away is removed from the output, so a module imported only for its definitions is not loaded through it. If the module also has to run on import, add `import './tokens';` beside it. An import still read at runtime, rendered as a component or re-exported stays.
 
@@ -97,7 +97,9 @@ Never generate these patterns. They break static analysis or cause runtime error
 ```tsx
 export const BadComponent = ({ dynamicColor }) => {
   const dynamicStyles = css.create({
-    dynamic: { color: dynamicColor },
+    dynamic: {
+      color: dynamicColor,
+    },
   });
   // ...
 };
@@ -153,9 +155,8 @@ Plumeria supports nesting for pseudo-classes, pseudo-elements, and attribute sel
 ```tsx
 const styles = css.create({
   button: {
-    backgroundColor: 'white',
     padding: '16px',
-
+    backgroundColor: 'white',
     // VALID: Pseudo-classes and elements (starts with :)
     ':hover': {
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -168,15 +169,15 @@ const styles = css.create({
       boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
     },
     '::before': {
-      content: '""',
       display: 'block',
+      content: '""',
     },
-
     // VALID: Attribute selectors (starts with [)
     '[data-active="true"]': {
-      border: '2px solid blue',
+      borderColor: 'blue',
+      borderStyle: 'solid',
+      borderWidth: '2px',
     },
-
     // VALID: Pseudo-selector nested inside a media query (allowed once)
     '@media (max-width: 768px)': {
       padding: '8px',
@@ -230,9 +231,15 @@ import * as css from '@plumeria/core';
 
 // 1. Define variants in a dedicated, minimal css.create()
 const sizeStyles = css.create({
-  small: { fontSize: '12px' },
-  medium: { fontSize: '16px' },
-  large: { fontSize: '20px' },
+  small: {
+    fontSize: '12px',
+  },
+  medium: {
+    fontSize: '16px',
+  },
+  large: {
+    fontSize: '20px',
+  },
 });
 
 // 2. Type the variant (string literal union or keyof typeof)
@@ -276,7 +283,9 @@ const styles = css.create({
     // 1. Set a marker with the unique id 'card' for the ':hover' state
     ...css.marker('card', ':hover'),
     padding: '24px',
-    border: '1px solid #ccc',
+    borderColor: '#ccc',
+    borderStyle: 'solid',
+    borderWidth: '1px',
   },
   child: {
     transition: 'color 0.3s ease',
@@ -362,8 +371,12 @@ Generates a unique `@keyframes` animation name (a hash inlined at build time) fo
 import * as css from '@plumeria/core';
 
 const fadeIn = css.keyframes({
-  from: { opacity: 0 },
-  to: { opacity: 1 },
+  from: {
+    opacity: 0,
+  },
+  to: {
+    opacity: 1,
+  },
 });
 
 const styles = css.create({
@@ -385,13 +398,21 @@ Generates a unique `view-transition-class`, accepting animation definitions (`gr
 import * as css from '@plumeria/core';
 
 const fadeIn = css.keyframes({
-  from: { opacity: 0 },
-  to: { opacity: 1 },
+  from: {
+    opacity: 0,
+  },
+  to: {
+    opacity: 1,
+  },
 });
 
 const fadeOut = css.keyframes({
-  from: { opacity: 1 },
-  to: { opacity: 0 },
+  from: {
+    opacity: 1,
+  },
+  to: {
+    opacity: 0,
+  },
 });
 
 const longCrossFade = css.viewTransitionClass({
@@ -472,11 +493,13 @@ import * as css from '@plumeria/core';
 const styles = css.create({
   button: {
     padding: '10px',
-    backgroundColor: 'navy',
     color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
     cursor: 'pointer',
+    backgroundColor: 'navy',
+    borderColor: 'currentColor',
+    borderStyle: 'none',
+    borderWidth: 'medium',
+    borderRadius: '4px',
   },
 });
 
@@ -495,7 +518,7 @@ export const Button = ({ children }: { children: React.ReactNode }) => {
 
 ### Pattern 2: Passing a `Style` prop
 
-A component takes a style through a prop typed as `css.Style`, named either `sx` itself or anything else (e.g. `styleArray`). The compiler reads the component's own parameter list: a prop the component declares is handed the key its lookup table resolves, rather than the class names an element would receive, so the style is traced across the component boundary and applied by the internal element's `sx`. A component the build never scans — one from a dependency — declares nothing the compiler can read, so a `sx` written on it is still resolved to class names at the call site, which is what a component forwarding `className` to its own element needs. Composing as `[styles.text, styleArray]` lets call-site styles override the component's base styles (right-wins — see Core Usage): below, the call site's `fontSize: '24px'` overrides the internal `fontSize: '12px'`.
+A component takes a style through a prop typed as `css.Style`, named either `sx` itself or anything else (e.g. `styleArray`). The compiler reads the component's own parameter list: a prop the component declares is handed the key its lookup table resolves, rather than the class names an element would receive, so the style is traced across the component boundary and applied by the internal element's `sx`. A component the build never scans — one from a dependency — declares nothing the compiler can read, so an `sx` written on it is still resolved to class names at the call site, which is what a component forwarding `className` to its own element needs. Composing as `[styles.text, styleArray]` lets call-site styles override the component's base styles (right-wins — see Core Usage): below, the call site's `fontSize: '24px'` overrides the internal `fontSize: '12px'`.
 
 ```tsx
 // --- Button.tsx ---
@@ -526,8 +549,8 @@ import { Button } from './Button';
 const styles = css.create({
   primary: {
     padding: '10px',
-    backgroundColor: 'navy',
     color: '#fff',
+    backgroundColor: 'navy',
   },
   text: {
     fontSize: '24px',
@@ -658,8 +681,14 @@ Tailwind's model and Plumeria's do not map one-to-one. A utility-by-utility rewr
 ```tsx
 // INVALID: Tailwind reimplemented — these names carry no more meaning than the class list did
 const styles = css.create({
-  hoverBgBlue500: { ':hover': { backgroundColor: '#3b82f6' } },
-  px4: { paddingInline: '1rem' },
+  hoverBgBlue500: {
+    ':hover': {
+      backgroundColor: '#3b82f6',
+    },
+  },
+  px4: {
+    paddingInline: '1rem',
+  },
 });
 
 // VALID: One key per thing the component has
@@ -667,7 +696,9 @@ const styles = css.create({
   submitButton: {
     paddingInline: '1rem',
     backgroundColor: '#2563eb',
-    ':hover': { backgroundColor: '#3b82f6' },
+    ':hover': {
+      backgroundColor: '#3b82f6',
+    },
   },
 });
 ```
@@ -710,18 +741,38 @@ const button = tv({
 
 // --- After (values resolved from the project's compiled CSS, not recalled) ---
 const styles = css.create({
-  base: { display: 'inline-flex', borderRadius: '4px', fontWeight: 500 },
-  lgPrimary: { boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' },
+  base: {
+    display: 'inline-flex',
+    fontWeight: 500,
+    borderRadius: '4px',
+  },
+  lgPrimary: {
+    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+  },
 });
 
 const sizeStyles = css.create({
-  sm: { height: '32px', paddingInline: '12px', fontSize: '14px' },
-  lg: { height: '48px', paddingInline: '24px', fontSize: '18px' },
+  sm: {
+    height: '32px',
+    paddingInline: '12px',
+    fontSize: '14px',
+  },
+  lg: {
+    height: '48px',
+    paddingInline: '24px',
+    fontSize: '18px',
+  },
 });
 
 const toneStyles = css.create({
-  primary: { backgroundColor: '#3b82f6', color: '#fff' },
-  danger: { backgroundColor: '#ef4444', color: '#fff' },
+  primary: {
+    color: '#fff',
+    backgroundColor: '#3b82f6',
+  },
+  danger: {
+    color: '#fff',
+    backgroundColor: '#ef4444',
+  },
 });
 
 type ButtonProps = {
@@ -782,7 +833,7 @@ const toneStyles = css.create({
 
 **NEVER assert a generated class name in a component test.** `xvdv6o3r` is one property-value pair, hashed. Adding a property to the style breaks every test that spelled the old list out. Assert what the component renders, holds, or branches on.
 
-**To test component behaviour, put the transform in the runner's module pipeline.** This is the only layer that needs it. Vitest takes the plugin in its config:
+**To test component behavior, put the transform in the runner's module pipeline.** This is the only layer that needs it. Vitest takes the plugin in its config:
 
 ```ts
 export default defineConfig({
