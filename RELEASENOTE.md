@@ -1,5 +1,11 @@
 # Release Notes
 
+## 22.0.8 (Nov 11, 2026)
+
+- Update: stop adding `rimraf .next` before `dev` and `build` on Next.js in init, since a kept `.next` builds safely
+
+- Update: README of core, unplugin, eslint-plugin, inspector, headlessui, codemod and wind
+
 ## 22.0.6 (Nov 9, 2026)
 
 Fix: scrollBehavior spelling in propertyGroups.ts
