@@ -3,9 +3,17 @@
 ESLint plugin for Plumeria.  
 Below are the available rules and the recommended configuration.
 
+## Installation
+
+```bash
+npm install -D @plumeria/eslint-plugin
+# or
+pnpm add -D @plumeria/eslint-plugin
+```
+
 ## Recommended configuration
 
-The `plugin:@plumeria/recommended` config enables the following:
+`plumeria.configs.recommended` enables the following:
 
 - `@plumeria/custom-props-require-import`: **error**
 - `@plumeria/expand-border-shorthands`: **warn**
@@ -68,7 +76,7 @@ A single rule can override that if you need it to:
 }
 ```
 
-The name must match whatever the loader or unplugin was given. If they disagree,
+The name must match whatever `withPlumeria` or unplugin was given. If they disagree,
 the lint rules report against a prop the compiler never transforms.
 
 ## Recommended rules
@@ -113,27 +121,31 @@ Disallow combinators `>`, `+`, `~` and descendant combinator (space) unless insi
 
 ### no-destructure
 
-Disallow destructuring APIs.
+Disallow destructuring an API off the `@plumeria/core` namespace, as in `const { create } = css`. Write `css.create()` with dot notation instead.
 
 ### no-inline-object
 
-Disallow passing inline object to `sx` and `css.use()`. Only compiled styles from `css.create()` are allowed.
+Disallow passing an inline object to the styling prop and `css.use()`. Only compiled styles from `css.create()` are allowed.
 
 ### no-inner-call
 
-Disallow calling APIs inside functions.
+Disallow calling `css.create`, `css.createStatic`, `css.createTheme`, `css.keyframes`, `css.viewTransitionClass`, `css.positionTry` and `css.varType` inside a function. Styles are compiled at build time, so define them at the top level of a module.
 
 ### no-invalid-selector
 
-Disallow invalid selector inside `css.create()` and `css.keyframes()` and `css.viewTransitionClass()`.  
-`create()` example: (Pseudo -> Query, Query -> Query)  
+Disallow a selector or nesting order the compiler cannot place, inside `css.create()`, `css.keyframes()` and `css.viewTransitionClass()`. In `css.create()`, a query cannot nest inside a pseudo-selector or another query, and a pseudo-selector cannot nest inside another pseudo-selector.
+
 Also reports a functional pseudo-class nested inside one of the same name, such as `:where(:where(.a), .b)`, and flattens it with a fix when the nested call is a whole argument. `:not()` may nest inside `:not()`. Reports a key nested deeper than 16 levels or holding a stray quote.
 
 ### no-mixed-styling-props
 
-Disallow mixing the styling prop with `className` or `style`. `sx` can handle both `className` and `style`.
+Disallow mixing the styling prop with `className` or `style`. The styling prop compiles to both, so it replaces them.
 
 Accepts `{ styleProp }`; see [Configuring the styling prop](#configuring-the-styling-prop).
+
+### no-mutable-binding
+
+Warns when a style definition reads a binding declared with `let` or `var`. The build reads only the value the binding starts with, so a later assignment never reaches the stylesheet. Declare it with `const`.
 
 ### no-order-dependent-overlap
 
@@ -182,22 +194,19 @@ Automatically sorts CSS properties in the recommended order for consistency and 
 
 ### format-properties
 
-Automatically format for consistency and maintainability.
-
-- Formats a line into a multi-line.
-- Formats by filling in blank lines.
+Formats a style object so that each property sits on its own line, with no empty lines between properties. Fixable.
 
 ### validate-values
 
-Validates CSS property values for correctness. Only standard CSS properties are checked; properties with string literal keys (e.g., computed or dynamic property names) are not validated.
+Validates CSS property values. A property is checked when its key is a plain identifier naming a standard CSS property and its value is a literal; a computed or quoted key is skipped.
 
 ### validate-pseudos
 
-Validates CSS pseudo-classes and pseudo-elements inside `css.create()`. It checks for typos and structural correctness and supports validation of computed keys when TypeScript is available.
+Validates CSS pseudo-classes and pseudo-elements inside `css.create()`, checking for typos and malformed structure. A computed key is followed back to where it is declared and validated the same way.
 
 ### validate-at-rules
 
-Validates at-rules inside `css.create()`. It accepts `@media`, `@container`, and `@supports`, each with a prelude, whether or not a space separates it from the keyword, and `@starting-style` on its own, and supports validation of computed keys when TypeScript is available.
+Validates at-rules inside `css.create()`. It accepts `@media`, `@container`, and `@supports`, each with a prelude, whether or not a space separates it from the keyword, and `@starting-style` on its own. A computed key is followed back to where it is declared and validated the same way.
 
 ## Optional rules
 
@@ -263,14 +272,6 @@ to run Plumeria's custom ESLint rules.
 
 It runs `oxlint`, which this package depends on, for fast linting with code
 snippets in output, so oxlint needs no separate install.
-
-### Installation
-
-```bash
-npm install -D @plumeria/eslint-plugin
-# or
-pnpm add -D @plumeria/eslint-plugin
-```
 
 ### Usage
 
