@@ -7,10 +7,11 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 <Steps>
 <Step>
 ## sx snippet
-In VS Code, add a snippet that expands `class` into `sx={}`.
-`shift + command + p >`  
-`select >` Snippets: Configure Snippets  
-`select >` typescriptreact.json (TypeScript JSX) or javascriptreact.json (JavaScript JSX)  
+In VS Code, add a snippet that expands `class` into `sx={}`:
+
+1. Open the Command Palette with `Shift` + `Cmd` + `P` (macOS) or `Shift` + `Ctrl` + `P` (Windows, Linux).
+2. Run **Snippets: Configure Snippets**.
+3. Choose `typescriptreact.json` (TypeScript JSX) or `javascriptreact.json` (JavaScript JSX).
 
 ```json title="typescriptreact.json"
 {
@@ -22,7 +23,8 @@ In VS Code, add a snippet that expands `class` into `sx={}`.
 }
 ```
 
-This setting makes the snippet appear at the top of the suggestions.
+To list snippets first in the suggestions:
+
 ```json title="settings.json"
 {
   // ...other settings
