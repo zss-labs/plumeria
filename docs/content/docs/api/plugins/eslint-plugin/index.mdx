@@ -59,7 +59,7 @@ A key resolves when it is a `const` holding a string, a member of a `const` obje
 | `no-unused-keys` | warn | a key nothing in the same component file reads |
 | `no-unresolved-composition` | warn | a `css.use()` result combined with other class names |
 | `sort-properties` | warn | properties out of the recommended order; fixable |
-| `format-properties` | warn | a style written on one line or without blank lines; fixable |
+| `format-properties` | warn | a style written on one line, or with empty lines between its properties; fixable |
 | `validate-values` | warn | a value the property does not accept |
 | `validate-pseudos` | warn | a misspelled or malformed pseudo-class or pseudo-element |
 | `validate-at-rules` | warn | an at-rule other than `@media`, `@container`, `@supports` and `@starting-style` |
@@ -100,5 +100,5 @@ A single rule can override that if you need it to:
 The name must match whatever the loader or unplugin was given. If they disagree, the lint rules report against a prop the compiler never transforms.
 
 <Cards>
-  <Card title="See more about Editor integration" href="/docs/editor-integration" />
+  <Card title="Editor integration" href="/docs/editor-integration" />
 </Cards>
