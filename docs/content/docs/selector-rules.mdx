@@ -86,12 +86,12 @@ The compiler stops the build on such a key. `no-invalid-selector` flattens it wi
 
 A key can nest at most 16 levels of parentheses, and a quote must open and close a string inside brackets or parentheses. The compiler stops the build on a deeper key or a stray quote such as `':hover":is(.x)'`, and `no-invalid-selector` reports both.
 
-## Reason
+## Why one direction
 Every rule a style can produce has exactly one way to be written. A stylesheet places a selector inside a query — `@media (…) { .a:hover { … } }` — never the reverse, so the key order follows the CSS it compiles to.
 
 Allowing the reverse would give the same rule two spellings, and the style's type would have to recurse through every pseudo-selector and query to accept both. Keeping one level in one direction keeps the type flat, its autocomplete precise, and every style in a codebase nested the same way.
 
 
 <Cards>
-  <Card title="See more about API create" href="/docs/api/javascript/create" />
+  <Card title="css.create" href="/docs/api/javascript/create" />
 </Cards>
