@@ -134,14 +134,28 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       expect(result.code).toContain('className');
     });
 
-    it('accepts a literal style object and sparse style arrays', async () => {
+    it('accepts sparse style arrays', async () => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ a: { color: 'red' } });
-      export const A = ({ on }: any) =>
-        <><div sx={{ color: 'blue' }} /><div sx={[s.a, , on && s.a]} /></>;
+      export const A = ({ on }: any) => <div sx={[s.a, , on && s.a]} />;
     `);
       expect(result.code).toContain('className');
+    });
+
+    it.each([
+      'sx={{ color: c }}',
+      'sx={[s.a, on && { color: c }]}',
+      'className={css.use(s.a, { color: c })}',
+      'className={css.use(s.a, on ? { color: c } : s.a)}',
+    ])('rejects an inline style object: %s', async (attribute) => {
+      await expect(
+        run(`
+        import * as css from '@plumeria/core';
+        const s = css.create({ a: { color: 'red' } });
+        export const A = ({ on, c }: any) => <div ${attribute} />;
+      `),
+      ).rejects.toThrow('Inline style objects are not accepted.');
     });
 
     it('supports shorthand named arguments and reports a missing one', async () => {
