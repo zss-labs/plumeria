@@ -1,6 +1,6 @@
 ---
 title: 'WithoutProperties'
-description: 'API reference for the WithoutProperties type'
+description: 'A style list that accepts every property except the ones it names.'
 ---
 
 ```ts
@@ -38,7 +38,7 @@ export function Panel({ sx }: PanelProps) {
 
 ## Nested blocks are covered
 
-The exclusion reaches into pseudo classes and at-rules, so a layout property cannot slip in behind a selector:
+The exclusion reaches into pseudo-classes and at-rules, so a layout property cannot slip in behind a selector:
 
 ```ts
 // Both are rejected by WithoutProperties<'position'>
