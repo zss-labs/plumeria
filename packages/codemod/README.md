@@ -14,7 +14,7 @@ Commit before running, so the rewrite can be reverted with `git checkout`.
 ## `rename-prop`
 
 Renames the styling prop across your source. The names are arguments, so it
-works for any rename, not just default prop:
+works for any rename, not just the default prop:
 
 ```sh
 npx @plumeria/codemod rename-prop <from> <to> [paths...]
@@ -61,7 +61,7 @@ local binding and not just the prop, so those are listed for you to handle:
   src/components/Card.tsx:14:22
 ```
 
-## After the rename
+### After the rename
 
 The rewrite only touches your source. Point the rest of the toolchain at the new
 name too:
