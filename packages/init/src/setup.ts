@@ -311,12 +311,6 @@ export const packages = (detected: Detected, answers: Answers): string[] => {
       if (detected.typescript) wanted.push('typescript-eslint');
     }
   }
-  if (
-    detected.bundler === 'next' &&
-    Object.keys(cleanScripts(detected.manifest.scripts ?? {})).length > 0
-  ) {
-    wanted.push('rimraf');
-  }
 
   return wanted.filter((name) => !(name in present));
 };
@@ -369,10 +363,7 @@ export const plan = (detected: Detected, answers: Answers): Action[] => {
 
   actions.push(bundlerAction(detected, answers));
   if (answers.eslint) actions.push(eslintAction(detected, answers));
-  if (
-    (answers.eslint && guardsByScript(detected)) ||
-    detected.bundler === 'next'
-  )
+  if (answers.eslint && guardsByScript(detected))
     actions.push(scriptAction(detected, answers));
 
   return actions;
@@ -709,19 +700,6 @@ const eslintAction = (detected: Detected, answers: Answers): Action => {
       };
 };
 
-export const CLEAN_SCRIPT = 'rimraf .next';
-
-export const cleanScripts = (
-  scripts: Record<string, string>,
-): Record<string, string> => {
-  const added: Record<string, string> = {};
-  for (const name of ['dev', 'build'] as const) {
-    if (scripts[name] === undefined) continue;
-    if (scripts[`pre${name}`] === undefined) added[`pre${name}`] = CLEAN_SCRIPT;
-  }
-  return added;
-};
-
 const scriptAction = (detected: Detected, answers: Answers): Action => {
   const source = read(detected, 'package.json');
   const manifest = JSON.parse(source) as { scripts?: Record<string, string> };
@@ -736,14 +714,6 @@ const scriptAction = (detected: Detected, answers: Answers): Action => {
   } else if (guard && existing && !existing.includes('plumeria-lint')) {
     scripts.build = buildScript(existing, answers.styleProp);
     notes.push(`build: ${scripts.build}`);
-  }
-
-  if (detected.bundler === 'next') {
-    const added = cleanScripts(scripts);
-    for (const [name, script] of Object.entries(added)) {
-      scripts[name] = script;
-      notes.push(`${name}: ${script}`);
-    }
   }
 
   if (notes.length === 0) {
