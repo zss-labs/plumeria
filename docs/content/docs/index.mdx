@@ -96,7 +96,7 @@ A file that applies them with `sx` needs nothing else. A file that passes them t
 
 ## Types all the way down
 
-Styling shouldn't require a runtime. Plumeria treats styles as **type schemas** rather than runtime objects — in fact, every entry point of the package is a `.d.ts` file. There is no JavaScript to import:
+Plumeria treats a style as a **type schema**, not a runtime object. Every entry point of the package is a `.d.ts` file, so there is no JavaScript to import:
 
 ```json title="package.json"
 {
@@ -119,7 +119,7 @@ Static styles resolve to class names entirely at compile time. The dynamic piece
 - No runtime parsing
 - No runtime dependencies
 
-Of course, "zero-runtime" doesn't claim the cost vanishes — it claims the cost moves. All of the work happens at build time, and the browser only ever receives class names and CSS.
+Zero-runtime means the cost moves, not that it vanishes. All of the work happens at build time, and the browser receives class names and CSS.
 
 ## Ask an agent to write Plumeria
 
@@ -142,4 +142,4 @@ Measured November 2026: with this prompt, a coding agent passed build + lint on 
 
 ---
 
-This site is built with Plumeria. The documentation app lives in the same repository and depends on the workspace packages, so every release is exercised here — and every experiment is tried here — before it ships.
+This site is built with Plumeria. The documentation app lives in the same repository and depends on the workspace packages, so every release and every experiment runs here before it ships.
