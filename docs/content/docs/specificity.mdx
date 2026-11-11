@@ -6,7 +6,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 
 <img src="/specificity-steps.svg" width={1000} height={420} alt="Each step toward a longhand or a condition adds :not(#\#) to the class, and within one step the right side of the array wins" />
 
-In short: a longhand beats its shorthand, a condition or a nested selector beats its base, and in a `sx` array the right side wins. Four pairs have nothing to rank them by, and [What source order still decides](#what-source-order-still-decides) covers them.
+In short: a longhand beats its shorthand, a condition or a nested selector beats its base, and in an `sx` array the right side wins. Four pairs have nothing to rank them by, and [What source order still decides](#what-source-order-still-decides) covers them.
 
 <Steps>
 <Step>
@@ -18,8 +18,7 @@ class. To simplify the examples, `hash(xxxxxxxx)` is written as `xatom`.
 
 ### Override only that value
 
-This ensures that longhand properties **add to** shorthand properties,
-regardless of the merge order:
+A longhand **adds to** its shorthand, whichever order the two are merged in:
 ```js
 const styles = css.create({
   base: { margin: 10 },
@@ -33,8 +32,8 @@ sx={[styles.custom, styles.base]}
 // Result: margin 10px on all sides, except top is 20px
 ```
 
-Normally, a later shorthand can reset an earlier longhand. The specificity
-hierarchy prevents that reset, so both of the following produce the same result:
+In plain CSS, a later shorthand resets an earlier longhand. The added
+specificity prevents that reset, so this stylesheet:
 ```css
 xatom1 {
   padding: 20px;
@@ -44,7 +43,8 @@ xatom2:not(#\#):not(#\#) {
   padding-top: 10px;
 }
 ```
-And this too
+
+renders the same as this one:
 
 ```css
 xatom2:not(#\#):not(#\#) {
@@ -106,9 +106,9 @@ shorthands.
 </Step>
 
 <Step>
-## `sx` prop merge styles
+## Merging in `sx`
 
-Also, when `sx` prop has duplicate properties on its array, the style properties on the right always take precedence and duplicate properties on the left are filtered. In that case no filtered hash is generated.
+When two styles in an `sx` array set the same property, the one on the right wins and the one on the left is filtered out, so no class is generated for the value that lost.
 
 ```js
 const styles = css.create({
@@ -124,14 +124,18 @@ const styles = css.create({
 sx={[styles.base, styles.custom]} // 16px
 sx={[styles.custom, styles.base]} // 10px
 ```
-Generated as follows:
+
+The first array generates:
+
 ```css
 xatom {
   font-size: 16px;
 }
 ```
 
-Or:
+and the second:
+
+
 ```css
 xatom {
   font-size: 10px;
