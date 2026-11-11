@@ -341,7 +341,7 @@ StyleX is the closest relative, and the shared ground is real: both compile styl
 | Checks | An ESLint plugin you set up and run | The bundler plugins run the Plumeria rules during the build by default and stop it on an error or a warning; the property list and values checked are generated from MDN data |
 | When a merge cannot be seen at build time | The runtime merge covers it | The build stops — or the same source switches to [TypedCSS](/docs/typedcss), the dual model that merges the same API at runtime |
 
-Two of these deserve a sentence each, because they are the ones that decide real projects.
+Two of these rows decide most projects.
 
 **Nothing to merge with at runtime** is a constraint before it is a feature. Because no merger ships, the compiler has to settle every composition it can see — across files and across a prop boundary — and refuse the ones it cannot, such as a style relayed through a chain of wrappers. StyleX makes the opposite trade: the small runtime merger means a style can be passed around and applied wherever it lands. Which trade is right depends on whether your components apply the styles they receive, or mostly forward them. If they forward them, TypedCSS is the same authoring API with StyleX's side of this trade, and [the dual model page](/docs/typedcss) is the comparison that matters.
 
