@@ -10,10 +10,9 @@ export type create = <const T extends Record<string, CreateStyleValue>>(rule: T)
 export const create: create;
 ```
 
-`create` defines css styles using plain JavaScript style objects.  
-Type-safe, autocompleted and lintable.
+`create` defines styles as plain objects that are type-checked, autocompleted and linted.
 
-Only the styles you use in `sx` will be on-demand compiled.
+Only the styles an element uses are compiled.
 
 ## Example
 
@@ -67,7 +66,7 @@ The compiler replaces the call with its class names, and the import goes with it
 }
 ```
 
-Compiles each style CSS property into a unique, **atomic**, and **hashed** class name. This prevents style collisions and maximizes reusability.
+Each declaration compiles to one **atomic** class whose name is a hash of the property and the value. The same declaration written anywhere else reuses that class, and two different declarations never collide.
 
 
 ## Dynamic values
@@ -88,13 +87,13 @@ export const Color = ({ color }) => {
 }
 ```
 
-Pass a plain value. The argument is written into the element, so an expression that is not the same on every read — a call with a side effect, a getter — is not read once. A definition such as a `css.createStatic` value is not compiled there and has no value at runtime, so read it inside `css.create` instead.
+Pass a plain value. The argument is written into the element, so an expression that is not the same on every read, such as a call with a side effect or a getter, may be read more than once. A definition such as a `css.createStatic` value is not compiled there and has no value at runtime, so read it inside `css.create` instead.
 
 A number takes `px` the way it does in a static style, so `width` gets one and `opacity` does not. A number inside a color, filter or scale function, such as `hsl()`, `brightness()` or `scaleX()`, stays bare.
 
 ## Variants bracket notation
 
-You can resolve dynamic variant styles using standard bracket notation (e.g., `variantStyles[size]`). Plumeria's compiler automatically extracts these variants and creates static lookup tables at build time.
+A variant is read with bracket notation, as in `variantStyles[size]`. The compiler turns each such read into a static lookup table at build time.
 
 ```tsx
 import * as css from '@plumeria/core';
@@ -159,13 +158,13 @@ const toneStyles = css.create({
 
 All three set `color` here. Entries that touch different properties never compete, so their order does not matter — `[styles.base, sizeStyles[size]]` above reads the same either way.
 
-Merging goes property by property, and that includes nested blocks. Overriding a `:hover` colour leaves the rest of the `:hover` block in place.
+Merging goes property by property, and that includes nested blocks. Overriding a `:hover` color leaves the rest of the `:hover` block in place.
 
 This merging rule applies to the style list. Object spreads inside a style definition follow JavaScript semantics: a later property replaces the whole earlier value, including a nested object.
 
 One pair the list does not settle is a shorthand and a longhand of the same property — `margin` against `marginTop`. The longhand wins wherever the two meet, whichever is written last. See [Specificity](/docs/specificity).
 
-### Conditional Expressions with Bracket Notation
+### Conditions with bracket notation
 
 The condition can sit inside the brackets or around them. Both compile to a single lookup:
 
@@ -206,17 +205,17 @@ When both keys are literals, read the property directly. A condition between two
 ```
 
 
-### Optimization Tip: Keep Common Properties in Base Styles
+### Keep common properties in a base style
 
 Properties that do not vary belong in a base style — `styles.base` above — rather than repeated across every key of a variant object.
 
 Anything the variants do not compete for stays outside the decision table, so it is emitted once instead of being multiplied into every combination.
 
-## Zero-Runtime logic
+## Zero-runtime logic
 
 Variants, dynamic props and conditional expressions are all resolved at compile time. Nothing merges objects or concatenates class strings in the browser, as many CSS-in-JS libraries do at every render.
 
-### 1. Minimizing Combinations via Partial Cartesian Products
+### 1. Only conflicting axes are multiplied
 
 The compiler builds a **property conflict graph** across the styles an element can receive, then expands only the axes that actually collide.
 
@@ -230,11 +229,10 @@ It is also transitive, because overriding is: an object that sets both `color` a
 
 The output is therefore bound by the element's local axes of *conflict*, not by how many styles are in play. Stacking variants that never touch the same property stays additive however many you add.
 
-### 2. Constant $O(1)$ Runtime Cost
+### 2. Constant $O(1)$ runtime cost
 
 Whatever the table grows to is paid at build time. At runtime the browser reads a single entry from a flat, fully pre-computed object in $O(1)$ — no object allocation, no string building, and nothing for the garbage collector to reclaim.
 
 <Callout title="Atomic static API">
-  Unique atom classes are reused without duplication, keeping the total number of class names constant.  
-  And all imports are stripped away by the compiler.
+  An atomic class is emitted once and reused wherever the same declaration appears, so the stylesheet grows with the number of distinct declarations, not with the number of components. The compiler also removes the imports.
 </Callout>
