@@ -156,7 +156,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 }
                 Ok(Some(merged))
             }
-            K::Object(object) => self.evaluate_object(object).map(Some),
+            K::Object(object) => Err(self.fail(
+                "[plumeria] Inline style objects are not accepted.".to_string(),
+                Some(object.span),
+            )),
             K::Member(_) => {
                 let Some(var_name) = expr.object().and_then(|object| object.ident_name()) else {
                     return Ok(None);
