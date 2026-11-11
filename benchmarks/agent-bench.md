@@ -51,7 +51,7 @@ changed, and surprises.
   re-measured after the ai doc gained a Property formatting
   section (plumeria.dev, PR #694), and Task 6 after the ai
   doc clarified selector-parsed variant keys and the overlap
-  rule (PR #695; 10 fresh runs, 10/10). The re-measured sets
+  rule (PR #695). The re-measured sets
   are the ones counted below.
 
 ## Results per task (5 runs each)
@@ -104,7 +104,7 @@ counts the re-measured sets.
   both rules but never said variant keys are selector-parsed
   and named only state pseudo-classes for the overlap rule;
   it was clarified at those two spots (PR #695) and Task 6
-  was re-measured with 10 fresh runs: 10/10 first-try
+  was re-measured with 5 fresh runs: 5/5 first-try
   passes, every run applying both clarified passages.
 
 ## Measurement notes
