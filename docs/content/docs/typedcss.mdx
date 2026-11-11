@@ -7,7 +7,7 @@ TypedCSS is Plumeria with the merge moved to runtime. You write the same `css.cr
 
 Both release under the same version number. A TypedCSS release and a Plumeria release with the same version accept the same source.
 
-For new installations, Plumeria is recommended; for refactoring, TypedCSS offers greater flexibility. The rest of this page is about where the two stop being interchangeable, so the choice can be made per project — or per part of a project, since the same source runs on either.
+Plumeria is the recommendation for a new project; TypedCSS gives more room when refactoring an existing one. The rest of this page is about where the two stop being interchangeable, so the choice can be made per project — or per part of a project, since the same source runs on either.
 
 ## What it costs, and what it buys
 
@@ -17,11 +17,11 @@ TypedCSS carries a class map to the element and merges there. A style can travel
 
 > The right side still wins, property by property. Only the place where that is decided moves.
 >
-> If `Plumeria` represents a constrained category theory, then `TypedCSS` represents a free category theory.
+> If Plumeria is a constrained category, TypedCSS is the free one.
 
 ## The one limit that differs: prop drilling
 
-The two are compatible in every way except for one limit, and it is on the Plumeria side.
+The two accept the same source with one exception, and the limit is on the Plumeria side.
 
 Under Plumeria, a style that crosses a component boundary as a prop has to be applied by the component that receives it, on an element that component renders. It cannot be handed on to a second component, because the compiler would have to trace it through an arbitrary chain of wrappers to resolve the merge. See [Make the boundary a prop](/docs/thinking-in-plumeria#make-the-boundary-a-prop).
 
@@ -120,6 +120,8 @@ The ESLint plugin drops the rules that only exist because merges happen at build
 
 ## Moving between
 
+A codemod moves a project in either direction:
+
 ```sh
 npx @plumeria/codemod migrate-to-typedcss
 ```
@@ -128,22 +130,24 @@ npx @plumeria/codemod migrate-to-typedcss
 npx @typedcss/codemod migrate-to-plumeria
 ```
 
+A component that applies its styles with `sx` changes only at the import:
+
 ```tsx
 import * as css from '@typedcss/css'; // [!code ++]
 
 const styles = css.create({
-    text: {
-      fontSize: 14,
-    },
-    color: {
-      color: 'aqua',
-    }
+  text: {
+    fontSize: 14,
+  },
+  color: {
+    color: 'aqua',
+  },
 });
 
-export function Component({isActive}: {isActive: boolean}) {
+export function Component({ isActive }: { isActive: boolean }) {
   return (
     <button sx={[styles.text, isActive && styles.color]}>text</button>
-  )
+  );
 }
 ```
 
