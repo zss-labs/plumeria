@@ -4,8 +4,8 @@ description: 'Wrap your Next.js config with withPlumeria and set its compiler op
 stability: Stable
 ---
 
-[`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) is a plugin for using Plumeria with Next.js.
-It supports both Turbopack and Webpack for Next.js and provides style compilation and HMR (Hot Module Replacement) at build time.
+[`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) adds Plumeria to a Next.js project.
+It works with both Turbopack and Webpack, compiling styles in the build and updating them through HMR in development.
 
 ## Installation
 
@@ -15,7 +15,7 @@ pnpm i -D @plumeria/next-plugin
 
 ## Usage
 
-Wrap your configuration using `withPlumeria` in `next.config.ts` or `next.config.js`.
+Wrap the configuration with `withPlumeria` in `next.config.ts` or `next.config.js`.
 
 ```ts title="next.config.ts"
 import type { NextConfig } from "next";
@@ -31,7 +31,7 @@ export default withPlumeria(nextConfig);
 ## API
 ### `withPlumeria(nextConfig, options)`
 
-Takes a Next.js configuration object and returns a new configuration object with the necessary Turbopack or Webpack configurations added for Plumeria.
+Takes a Next.js configuration object and returns a new one with the Turbopack or Webpack settings Plumeria needs.
 
 - `nextConfig`: Next.js configuration object.
 - `options`: Compiler options, passed through to the loader, and `lint`.
