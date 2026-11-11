@@ -1,3 +1,12 @@
+## 22.0.8
+
+### Patch Changes
+
+- 6f46d7f: - Update: stop adding `rimraf .next` before `dev` and `build` on Next.js in init, since a kept `.next` builds safely
+  - Update: README of core, unplugin, eslint-plugin, inspector, headlessui, codemod and wind
+- Updated dependencies [6f46d7f]
+  - @plumeria/compiler@22.0.8
+
 ## 22.0.7
 
 ### Patch Changes
