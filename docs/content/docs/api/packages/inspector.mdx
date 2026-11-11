@@ -13,17 +13,15 @@ import { Inspector } from '@plumeria/inspector/production';
 
 ## Installation
 
-To start using the inspector, install the `@plumeria/inspector` package in your project.
-
 ```sh title="Terminal"
 pnpm i @plumeria/inspector
 ```
 
 ---
 
-## Basic Usage
+## Usage
 
-Import `Inspector` and render it at the root of your application (e.g., in a root layout or main entry point component).
+Render `Inspector` once at the root of the application, such as the root layout or the entry component.
 
 ```tsx title="app/layout.tsx"
 import { Inspector } from '@plumeria/inspector';
@@ -46,11 +44,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 ## Features
 
-- **Interactive Hover Overlay**: Hovering over elements displays a visual border highlight showing their target area.
-- **CSS Property Tooltip**: Shows the active CSS rules, classes, and properties injected by Plumeria for the hovered element.
-- **Target Freezing**: Press the `Shift` key to freeze/lock targeting onto the currently hovered element. This allows you to move your cursor into the inspector tooltip and scroll through rules. Press `Shift` again to unlock.
-- **Keyboard Shortcut**: Press `Cmd + I` / `Alt + I` to toggle the inspector on and off.
-- **Floating Badge Toggle**: A minimalist, semi-transparent badge in the bottom-right corner shows the inspector status and can be clicked to toggle it.
+- **Outline**: the element under the cursor is outlined.
+- **Tooltip**: shows the classes, rules and properties Plumeria applied to that element.
+- **Freeze**: `Shift` locks onto the hovered element, so the cursor can move into the tooltip and scroll its rules. `Shift` again unlocks.
+- **Shortcut**: `Cmd + I` / `Alt + I` turns the inspector on and off.
+- **Badge**: a badge in the bottom-right corner shows the status and toggles it on click.
 
 ---
 
@@ -62,11 +60,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 ---
 
-## Production Mode
+## Production mode
 
-By default, the `Inspector` imported from `@plumeria/inspector` is stripped from production builds entirely. The main entry point resolves through the `production` export condition to a no-op module, so your bundler emits no client chunk for it — costing 0KB in production.
+By default, the `Inspector` imported from `@plumeria/inspector` is stripped from production builds entirely. The main entry point resolves through the `production` export condition to a no-op module, so your bundler emits no client chunk for it.
 
-If you want the inspector accessible in production (for staging environments, demos, or public showcases), import from the `@plumeria/inspector/production` subpath instead:
+To keep the inspector in a production build, for staging or a demo, import from the `@plumeria/inspector/production` subpath instead:
 
 ```tsx
 import { Inspector } from '@plumeria/inspector/production';
@@ -85,11 +83,10 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 ---
 
-## Live Demo
+## Live demo
 
-The inspector is active right here on this documentation site! 
+The inspector is running on this page:
 
-To try it out:
 1. Click the **Inspector: ON** badge in the bottom-right corner, or press `Cmd + I` / `Alt + I`.
 2. Hover over any text, heading, or container on this page to see the outline and compiled rules.
 3. Press `Shift` to freeze the selection and explore the details in the tooltip.
