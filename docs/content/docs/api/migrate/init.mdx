@@ -4,7 +4,7 @@ description: 'One command that picks the right packages and plugin for your bund
 stability: Stable
 ---
 
-[`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init) sets Plumeria up in a project that already exists. Each bundler has its own plugin; the choice between them is not a judgement, it is a detection, so the command makes it.
+[`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init) sets Plumeria up in a project that already exists. Each bundler has its own plugin, and which one a project needs can be detected, so the command makes that choice.
 
 ```sh title="Terminal"
 npx @plumeria/init
@@ -52,6 +52,8 @@ On a codebase that already has styles, answer `3` and follow [Optional rules](/d
 
 `sx` unless you name another. A renamed prop is written into the plugin as `styleProp` and declared in `plumeria.d.ts` at the same time, so the two cannot disagree — a mismatch type-checks but is never compiled away.
 
+A renamed prop is rejected unless it is an identifier TypeScript can declare, and unless React leaves the name free — `className`, `style`, `key`, `ref` and `children` are refused, from the prompt and from `--style-prop` alike.
+
 ### Apply styles in .jsx/.tsx only through `sx`?
 
 Yes by default, which adds [`@plumeria/no-use-in-jsx`](/docs/api/plugins/eslint-plugin/optional-rules#no-use-in-jsx) to the lint config, so `css.use()` is reported in `.jsx` and `.tsx` files and the styling prop is the one way to apply styles there. Answer no, or pass `--allow-use`, when the project styles a third-party component that takes a class name only through `css.use()`.
@@ -59,8 +61,6 @@ Yes by default, which adds [`@plumeria/no-use-in-jsx`](/docs/api/plugins/eslint-
 ### Set up `@plumeria/eslint-plugin` for ESLint?
 
 Adds the plugin and writes or extends the flat config, so a style error is reported while you type. The build lints either way: the bundler plugin runs the same rules alongside the build and stops it on a style error. On esbuild and Bun, which the plugin cannot lint, the `build` script is prefixed with `plumeria-lint --` instead, with `--style-prop` when the styling prop was renamed.
-
-A renamed prop is rejected unless it is an identifier TypeScript can declare, and unless React leaves the name free — `className`, `style`, `key`, `ref` and `children` are refused, from the prompt and from `--style-prop` alike.
 
 ## What it writes
 
@@ -126,7 +126,7 @@ npx @plumeria/init --no-install         # write the configs, print the command
 npx @plumeria/init --cwd packages/app
 ```
 
-Without a TTY it never asks — every unanswered question takes its default, which is what makes it usable in CI. Colour comes from `node:util`'s `styleText`, which leaves the text alone when the output is not a terminal, so a piped or logged run carries no escape codes.
+Without a TTY it never asks — every unanswered question takes its default, which is what makes it usable in CI. Color comes from `node:util`'s `styleText`, which leaves the text alone when the output is not a terminal, so a piped or logged run carries no escape codes.
 
 ## Installation
 
