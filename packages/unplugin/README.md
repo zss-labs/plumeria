@@ -1,8 +1,7 @@
 # @plumeria/unplugin
 
-This is a universal bundler plugin for Plumeria. Built on [unplugin](https://github.com/unjs/unplugin), it provides plugins for all major frontend build tools from a single codebase.
-
-It completely eliminates runtime overhead by parsing Plumeria's Zero-Runtime CSS-in-JS at build time and extracting it as a virtual CSS module.
+Bundler plugin for Plumeria, built on [unplugin](https://github.com/unjs/unplugin).  
+It compiles the styling prop away and emits the project's stylesheet at build time, on every bundler below. For Next.js, use [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin).
 
 ## Compatible Bundlers
 
@@ -23,9 +22,10 @@ npm install -D @plumeria/unplugin
 yarn add -D @plumeria/unplugin
 # or
 pnpm add -D @plumeria/unplugin
-# Alternatively,
+# or
 bun add -D @plumeria/unplugin
 ```
+
 ## How to Use
 
 Import `@plumeria/unplugin` in the configuration file of each bundler, and register it as a plugin by calling the bundler-specific method (`vite()`, `webpack()`, etc.).
@@ -84,6 +84,8 @@ export default defineConfig({
 });
 ```
 
+`devEmitToDisk` writes the stylesheet to a file in development, so Farm's file watcher picks up style changes.
+
 ### Esbuild
 
 ```js
@@ -102,6 +104,7 @@ build({
 ```
 
 ### Rollup
+
 ```js
 // rollup.config.js
 import plumeria from '@plumeria/unplugin';
@@ -114,6 +117,7 @@ export default {
 ```
 
 ### Rolldown
+
 ```js
 // rolldown.config.js
 import plumeria from '@plumeria/unplugin';
@@ -126,6 +130,7 @@ export default {
 ```
 
 ### Bun
+
 ```js
 // build.js
 import plumeria from '@plumeria/unplugin';
@@ -137,9 +142,19 @@ await Bun.build({
   ],
 });
 ```
+
+### Declaring the styling prop
+
+Then declare the styling prop once in your project. `@plumeria/core` ships no prop declaration of its own, so nothing is accepted on host elements until you do:
+
+```ts
+// plumeria.d.ts
+/// <reference types="@plumeria/core/sx" />
+```
+
 ## Options
 
-You can control the files to be converted by passing options when calling the plugin. By default `ts/tsx/js/jsx` is targeted.
+Options are passed when calling the plugin.
 
 ```js
 plumeria.vite({
@@ -170,7 +185,7 @@ Renaming the prop takes two steps, and they have to agree. Tell the plugin:
 plumeria.vite({ styleProp: 'classStyle' });
 ```
 
-and declare the same name for TypeScript. `@plumeria/core` ships no prop declaration of its own, so add one file to your project:
+and declare the same name for TypeScript instead of referencing the default:
 
 ```ts
 // plumeria.d.ts
@@ -188,17 +203,13 @@ declare global {
 }
 ```
 
-For the default name, reference the declaration that ships with the package instead:
-
-```ts
-// plumeria.d.ts
-/// <reference types="@plumeria/core/sx" />
-```
-
 If the two disagree, the prop type-checks but is never compiled away. [`@plumeria/eslint-plugin`](https://www.npmjs.com/package/@plumeria/eslint-plugin) reads the same name from `settings.plumeria.styleProp`.
 
-## Development Mode and HMR (Hot Module Replacement)
+## Development and HMR
 
-`@plumeria/unplugin` provides HMR optimized for each bundler in development mode (dev server).
+- **Vite / Farm / Webpack / Rspack**: a style change reaches the browser through the dev server's HMR.
+- **esbuild / Rollup / Rolldown / Bun**: these have no HMR of their own, so styles are recompiled on the next build or watch rebuild.
 
-- **Vite / Farm / Webpack / Rspack**: The plugin extracts styles as CSS modules, enabling seamless updates via hot reloading.
+## License
+
+Plumeria is [MIT licensed](https://github.com/zss-labs/plumeria/blob/main/LICENSE).
