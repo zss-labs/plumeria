@@ -10,7 +10,7 @@ export type createStatic = <const T extends CreateStatic>(rule: T)=> T;
 export const createStatic: createStatic;
 ```
 
-`createStatic` defines **static values** and inlines them at build time. These can be used inside `create` or `createTheme` for conditions like media queries or other static references.
+`createStatic` defines **static values** and inlines them at build time. Read them inside `create` or `createTheme`, as a value or as a key such as a media query.
 
 ## Example
 
@@ -57,9 +57,9 @@ export const blue = css.createStatic({
 
 Read it as `blue[500]` or `blue['500']`.
 
-## Spreading Static Styles
+## Spreading static styles
 
-Since `createStatic` returns static values that are inlined at build time, you can also use it to define shared styles and spread them inside `create`. To ensure type safety, you can use the TypeScript `satisfies` operator with Plumeria's `css.CSSProperties` type.
+A `createStatic` value can also be a whole style object, spread inside `create`. Check it with `satisfies css.CSSProperties`, which keeps the literal types.
 
 ```ts title="TypeScript"
 import * as css from "@plumeria/core";
@@ -83,5 +83,5 @@ export const styles = css.create({
 Values can be imported from another module, or from a package that opts in with a `plumeria` export condition; see [Across packages](/docs/thinking-in-plumeria#across-packages). [`@plumeria/wind`](/docs/api/packages/wind) ships the Tailwind CSS design values this way.
 
 <Callout title="Good to know">
-  Internal API variables such as keyframes and viewTransitionClass and createTheme are inlined at parse time.
+  The names `keyframes`, `viewTransitionClass` and `createTheme` return are inlined at build time the same way.
 </Callout>
