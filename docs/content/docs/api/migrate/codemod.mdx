@@ -112,7 +112,7 @@ The attribute is safe to rewrite; the binding is a judgement call about the surr
   );
 ```
 
-Renaming the parameter as well is the usual next step — the codemod just will not guess it for you.
+Renaming the parameter as well is the usual next step, and it is left to you.
 
 ### Names it refuses
 
@@ -144,7 +144,7 @@ export default [
 
 And point the type declaration at the same name — see [Declaring the styling prop](/docs/api/types/Style#declaring-the-styling-prop).
 
-One practical note: the codemod does not reformat. If the new name is longer than the old one, lines that were near your print width can cross it. Run your formatter afterwards.
+The codemod does not reformat. If the new name is longer than the old one, lines that were near your print width can cross it. Run your formatter afterwards.
 
 ### Choosing another prop name
 
