@@ -2,20 +2,22 @@
 
 A development inspector for visualizing and debugging styled components in the browser.
 
-## Documentation(Demo)
+## Documentation
 
-Read the [documentation](https://plumeria.dev/docs/api/packages/inspector) for more details.
+Read the [documentation](https://plumeria.dev/docs/api/packages/inspector) for more details and a live demo.
+
 ## Installation
 
 ```bash
-pnpm install -D @plumeria/inspector
+pnpm add -D @plumeria/inspector
 ```
 
 ## Usage
 
+Render `Inspector` once at the root of the application.
+
 ```tsx
-// Use '@plumeria/inspector/production' subpath in production.
-import { Inspector } from '@plumeria/inspector'; 
+import { Inspector } from '@plumeria/inspector';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+```
+
+A production build strips it: the main entry resolves through the `production` export condition to a no-op module. To keep the inspector in a production build, for staging or a demo, import from the `@plumeria/inspector/production` subpath instead:
+
+```tsx
+import { Inspector } from '@plumeria/inspector/production';
 ```
 
 ## Props
