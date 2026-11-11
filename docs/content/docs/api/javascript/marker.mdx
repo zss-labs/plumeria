@@ -15,8 +15,7 @@ export type extended = <I extends string, P extends string>(id: I, pseudo: P) =>
 export const extended: extended;
 ```
 
-The **marker** and **extended** APIs enable context-aware styling without relying on rigid DOM hierarchies (such as strict parent-child nesting) or combinator syntax.
-These paired APIs maintain **atomicity** while allowing child elements to respond to parent states.
+`marker` and `extended` are a pair: a descendant responds to an ancestor's state without a combinator and without naming the path between them. The styles stay **atomic**.
 
 <Callout type="info">
   **Production ready.** These APIs compile to CSS container style queries (`@container style()`), which current versions of Chrome, Edge, Safari and Firefox all support.
@@ -26,7 +25,7 @@ These paired APIs maintain **atomicity** while allowing child elements to respon
 - **`extended(id, pseudo)`** - Applies styles to children when the marker is active
 
 ### Parameters
-The parameters must be linked (match) in both cases.
+Both calls take the same two arguments, and a pair is linked when they match.
 - **`id`** - A unique identifier linking the marker and extended styles
 - **`pseudo`** - The pseudo-class state (e.g., `':hover'`, `':focus'`, `':active'`)
 
@@ -199,7 +198,7 @@ The parameters must be linked (match) in both cases.
    }
    ```
 
-The CSS variable acts as a **signal** that propagates to descendants without DOM structure dependency.
+The CSS variable is a **signal** every descendant inherits, wherever it sits in the markup.
 
 <Callout title="ESLint Rule">
   The `no-combinator` rule enforces this pattern by disallowing combinator syntax.
