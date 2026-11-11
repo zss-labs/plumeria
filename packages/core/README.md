@@ -7,19 +7,23 @@
 ![Types](https://img.shields.io/badge/Types-100%25-6366F1?logo=npm&logoColor=white)
 ![Runtime](https://img.shields.io/badge/Runtime-never-6366F1?logo=npm&logoColor=white)
 
-**Plumeria** is a React styling library for reliable interfaces. The style on the right wins, not the one imported or loaded last: the compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
+**Plumeria** is a React styling library for reliable interfaces. When styles are combined in an array, the one on the right wins, not the one imported or loaded last: the compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
 
-> The compiler is written in Rust with oxc, so builds are fast. The CSS types and the property list the linter checks against are generated from MDN data, so properties and keywords follow what MDN documents.
+> The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://github.com/refirst11/css-compiler-bench). The CSS types and the property list the linter checks against are both generated from MDN data.
 
 ## Installation
-
-`@plumeria/core` contains type definitions only. Which JSX prop carries styles is declared in your project — one line for the default `sx`, see [Declaring the styling prop](#declaring-the-styling-prop). Styles are compiled away at build time by a bundler integration — [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) for Next.js, or [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) for Vite, Webpack, and others.
 
 ```sh
 npx @plumeria/init
 ```
 
-It detects the bundler and the package manager, installs the packages, and writes the configs. To set up by hand:
+It detects the bundler and the package manager, installs the packages, and writes the configs.
+
+To set up by hand, three pieces are needed:
+
+- `@plumeria/core`, which contains type definitions only. Every import is compiled away, so it is a dev dependency.
+- A bundler integration that compiles the styles at build time — [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) for Next.js, or [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) for Vite, Webpack, and others.
+- One declaration file naming the JSX prop that carries styles — see [Declaring the styling prop](#declaring-the-styling-prop).
 
 ```sh
 pnpm add -D @plumeria/core
@@ -29,30 +33,31 @@ See the [installation guide](https://plumeria.dev/docs/installation) for full se
 
 ## Example
 
-Styles can be passed to the `sx` prop. That prop accepts static and dynamic styles as an array. At build time, the compiler resolves `sx` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
+Pass styles to the `sx` prop as an array of static and dynamic styles. At build time, the compiler resolves `sx` into a static `className`; dynamic values are passed as CSS variables through the `style` attribute — no runtime library is involved.
 
 ```tsx
 import * as css from '@plumeria/core';
 
 const styles = css.create({
   text: {
-    fontSize: 12
+    fontSize: 12,
+    color: 'gray'
   },
-  cond: {
-    background: 'navy'
+  active: {
+    color: 'navy'
   },
   scale: (value) => ({
     scale: value
   })
 });
 
-export default function App({ cond }) {
+export default function App({ active }) {
   const scale = useScale(); // from your own hook
   return (
     <div
       sx={[
         styles.text,
-        cond && styles.cond,
+        active && styles.active,
         styles.scale(scale)
       ]}
     />
@@ -64,7 +69,11 @@ export default function App({ cond }) {
 
 ```tsx
 <div
-  className={'xhrr6ses xhxthtyw' + ' ' + (cond ? 'xj00ajs1' : '')}
+  className={
+    'xhrr6ses xhxthtyw' +
+    ' ' +
+    ({ '0': 'xuifcaas', '1': 'xvbwmxqp' }[active ? '1' : '0'] || 'xuifcaas')
+  }
   style={{ '--xfuma1qq-value': scale }}
 />
 ```
@@ -75,13 +84,20 @@ export default function App({ cond }) {
 .xhrr6ses:not(#\#) {
   font-size: 12px;
 }
+.xuifcaas {
+  color: gray;
+}
 .xhxthtyw {
   scale: var(--xfuma1qq-value);
 }
-.xj00ajs1 {
-  background: navy;
+.xvbwmxqp {
+  color: navy;
 }
 ```
+
+`text` and `active` both set `color`, and the element only ever receives one of the two classes: the merge is already decided in the compiled `className`. The `:not(#\#)` on `font-size` ranks a longhand above its shorthand without depending on stylesheet order — see [Specificity](https://plumeria.dev/docs/specificity).
+
+Explore the [documentation](https://plumeria.dev/) for the core principles, full API reference, and integrations.
 
 ## Declaring the styling prop
 
@@ -113,29 +129,32 @@ declare global {
 ```
 
 ```tsx
-<div classStyle={[styles.text, cond && styles.cond]} />
+<div classStyle={[styles.text, active && styles.active]} />
 ```
 
 Declaration merging is additive, so several names can coexist during a migration. Whichever you declare has to match what the bundler plugin was given — if they disagree the prop type-checks but is never compiled away.
 
-Explore the [documentation](https://plumeria.dev/) for the core principles, full API reference, and integrations.
-
 ## API Stability
 
-Plumeria publishes frequently. To make that legible, every public API is rated for **future** change likelihood — not past churn. The rating is a commitment about what will happen next, not a description of what already has.
+Plumeria publishes frequently. To make that legible, every public API is rated for **future** change likelihood — not past churn.
 
-| API                       | Stability |        |
-| ------------------------- | --------- | ------ |
-| `css.create`              | ★★★★★     | Frozen |
-| `css.createTheme`         | ★★★★★     | Frozen |
-| `css.createStatic`        | ★★★★★     | Frozen |
-| `css.keyframes`           | ★★★★★     | Frozen |
-| `css.viewTransitionClass` | ★★★★★     | Frozen |
-| `css.positionTry`         | ★★★★☆     | Stable |
-| `css.varType`             | ★★★★☆     | Stable |
-| `css.marker`              | ★★★★☆     | Stable |
-| `css.extended`            | ★★★★☆     | Stable |
-| `css.use`                 | ★★★★★     | Frozen |
+| Rating | Label      | Meaning                                                     |
+| ------ | ---------- | ----------------------------------------------------------- |
+| ★★★★★  | **Frozen** | Bug fixes ship continuously. The signature will not change. |
+| ★★★★☆  | **Stable** | Additive only. Existing signatures will not move.           |
+
+| API                       | Rating | Label  |
+| ------------------------- | ------ | ------ |
+| `css.create`              | ★★★★★  | Frozen |
+| `css.createTheme`         | ★★★★★  | Frozen |
+| `css.createStatic`        | ★★★★★  | Frozen |
+| `css.keyframes`           | ★★★★★  | Frozen |
+| `css.viewTransitionClass` | ★★★★★  | Frozen |
+| `css.positionTry`         | ★★★★☆  | Stable |
+| `css.varType`             | ★★★★☆  | Stable |
+| `css.marker`              | ★★★★☆  | Stable |
+| `css.extended`            | ★★★★☆  | Stable |
+| `css.use`                 | ★★★★★  | Frozen |
 
 ## License
 
