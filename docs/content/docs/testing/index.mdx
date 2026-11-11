@@ -3,7 +3,7 @@ title: 'Testing'
 description: 'Test styles at the component, the browser and the type checker.'
 ---
 
-Three questions get asked of a style, and each has its own answer. Does the component that uses it behave? Does the page it renders actually look right? Does the type checker accept the calls it should, and reject the rest?
+Three questions get asked of a style, and each has its own answer. Does the component that uses it behave? Does the page it renders look right? Does the type checker accept the calls it should, and reject the rest?
 
 ## Components
 
@@ -18,7 +18,7 @@ Either way the class names in the DOM are the ones the build gives them.
 
 The class names are real, but no stylesheet is loaded into the document — `document.styleSheets` is empty, and `getComputedStyle` returns initial values for every property the styles set. A test can see that the right classes were attached; it cannot see what they do.
 
-Anything that turns on the cascade — specificity between two styles, a `@media` branch, a `marker` and its `extended` styles — needs a real browser. Run those end to end, against the build, where the emitted stylesheet is actually applied.
+Anything that turns on the cascade — specificity between two styles, a `@media` branch, a `marker` and its `extended` styles — needs a real browser. Run those end to end, against the build, where the emitted stylesheet is applied.
 
 ## Types
 
@@ -51,5 +51,5 @@ An `@ts-expect-error` that stops being an error is itself reported, as `TS2578: 
 The work is already divided by the time a test runs. TypeScript offers the property names and values as you write them, and the [lint rules](/docs/api/plugins/eslint-plugin) check what you wrote — spelling, values, pseudos, selectors, order-dependent overlap. What neither of them states is the type that comes back out, and that is what this file pins: the branding that keeps one property's class name from being passed off as another's, and keys that do not exist.
 
 <Cards>
-  <Card title="See more about the lint rules" href="/docs/api/plugins/eslint-plugin" />
+  <Card title="Lint rules" href="/docs/api/plugins/eslint-plugin" />
 </Cards>
