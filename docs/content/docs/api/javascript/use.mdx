@@ -3,7 +3,7 @@ title: 'css.use / sx'
 description: 'Attach styles as a prop in JSX, or as a class name string anywhere else.'
 stability: Frozen
 ---
-To apply styles defined in Plumeria to a component, use the `sx` prop or the `css.use()` function.
+Styles reach an element through the `sx` prop, or through `css.use()` where no prop is available.
 
 ## sx
 ```ts
@@ -23,7 +23,7 @@ declare global {
 export type { Style };
 ```
 
-`sx` is a special prop for applying styles to components such as React. It is converted to `className` by the plugin at build time.
+`sx` is the prop that applies styles to a JSX element. The plugin compiles it to `className` at build time.
 
 ### Features
 - Accepts a single style, or an array of styles. Arrays can be nested.
@@ -56,7 +56,7 @@ export const use: use;
 ```
 `css.use()` converts styles into a string of class names. Use it where the `sx` prop is not available, for example when passing a class name to an external component that only accepts `className`.
 
-Pass every style to one `css.use()` call; a later argument takes precedence. Strings from separate calls are not merged when joined, so which rule wins depends on stylesheet order.
+Pass every style to one `css.use()` call; a later argument takes precedence.
 
 Each `css.use()` call is compiled separately. If results are joined and their
 styles set the same property, both classes reach the element and stylesheet
@@ -99,6 +99,6 @@ const className = css.use(styles.text);
 <ExternalComponent className={css.use(styles.text)} />
 ```
 
-<Callout title="Build time compiles">
-`sx` and `css.use()` are both processed by the plugin at build time. There is zero runtime overhead, and the final bundle will only contain the class name as a string.
+<Callout title="Compiled at build time">
+The plugin compiles both `sx` and `css.use()` at build time, so the bundle holds only the class name string.
 </Callout>
