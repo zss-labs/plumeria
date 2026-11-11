@@ -1636,19 +1636,9 @@ export const transformSource = async (
       return merged;
     }
     if (t.isObjectExpression(expr)) {
-      return objectExpressionToObject(
+      throwCompilationError(
+        '[plumeria] Inline style objects are not accepted.',
         expr,
-        mergedStaticTable,
-        mergedKeyframesTable,
-        mergedViewTransitionTable,
-        mergedCreateThemeHashTable,
-        scannedTables.createThemeObjectTable,
-        mergedCreateTable,
-        mergedCreateStaticHashTable,
-        scannedTables.createStaticObjectTable,
-        undefined,
-        mergedVarTypeTable,
-        mergedPositionTryTable,
       );
     } else if (
       t.isMemberExpression(expr) &&
