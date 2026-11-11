@@ -11,7 +11,7 @@ export type keyframes = <const T extends Keyframes>(rule: T) => string;
 export const keyframes: keyframes;
 ```
 
-The `keyframes()` method generates a unique animation variable name (a unique hash that is inlined during build time) that can be used in styles.
+`keyframes()` defines an `@keyframes` rule and returns its name, a unique hash inlined at build time, for use as `animationName`.
 
 ## Example
 
@@ -58,7 +58,7 @@ The `keyframes()` method generates a unique animation variable name (a unique ha
 
 ## Usage
 
-You can also trigger animations on hover or using other pseudo selectors:
+An animation can start from a pseudo-class such as `:hover`:
 
 ```ts
 const styles = css.create({
