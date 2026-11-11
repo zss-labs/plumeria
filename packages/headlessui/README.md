@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/License-MIT-10B981)
 ![npm](https://img.shields.io/npm/v/@plumeria/headlessui?&color=10B981)
 
-A curated set of essential headless primitives, built on [Radix UI](https://www.radix-ui.com/) and designed to work seamlessly with Plumeria's `sx` abstraction layer.
+Headless primitives built on [Radix UI](https://www.radix-ui.com/) that take Plumeria's `sx` prop.
 
 Each component is a pure passthrough — it forwards refs and spreads props onto the underlying Radix primitive. `sx` is compiled to `className`/`style` at the call site before the component runs, so no Plumeria-specific logic is needed inside the components.
 
@@ -273,4 +273,4 @@ The following twenty-five component groups are exported. All components support 
 
 ## License
 
-Plumeria is MIT licensed.
+Plumeria is [MIT licensed](https://github.com/zss-labs/plumeria/blob/main/LICENSE).
