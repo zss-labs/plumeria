@@ -21,17 +21,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Regenerate SKILL.md from ai.md
+      - name: Regenerate the skill from ai.md
         run: node scripts/build-skill.js
 
       - name: Commit and push
         run: |
-          if git diff --quiet -- plugins/plumeria/skills/plumeria/SKILL.md; then
+          git add plugins/plumeria/skills/plumeria
+          if git diff --cached --quiet; then
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add plugins/plumeria/skills/plumeria/SKILL.md
-          git commit -m 'chore(plugins/plumeria/skills/plumeria): regenerate SKILL.md from ai.md'
+          git commit -m 'chore(plugins/plumeria/skills/plumeria): regenerate the skill from ai.md'
           git pull --rebase
           git push
