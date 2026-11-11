@@ -6,11 +6,11 @@ stability: Stable
 
 import { HeadlessDemoLazy } from 'component/HeadlessDemoLazy';
 
-`@plumeria/headlessui` is a curated set of essential headless primitives, built on [Radix UI](https://www.radix-ui.com/)
+`@plumeria/headlessui` is a set of headless primitives built on [Radix UI](https://www.radix-ui.com/).
 
-## Installation `headlessui`
-Using `@plumeria/headlessui` requires the configuration of `@plumeria/core` and your bundler.
-Please refer to the [Installation](/docs/installation) section for details.
+## Installation
+
+Set up `@plumeria/core` and your bundler first; see [Installation](/docs/installation).
 
 ```sh title="Terminal"
 pnpm i @plumeria/headlessui
@@ -18,8 +18,8 @@ pnpm i @plumeria/headlessui
 
 ## How sx works
 
-`@plumeria/headlessui` is a dependency the build never scans, so a `sx` written on one of its components is **compiled to `className` and `style` at the call site — before the component ever runs**.
-Therefore, each `@plumeria/headlessui` component does not need to know about `sx` at all; it simply spreads `...props` onto the underlying Radix primitive.
+`@plumeria/headlessui` is a dependency the build never scans, so an `sx` written on one of its components is **compiled to `className` and `style` at the call site**, before the component runs.
+The components know nothing about `sx`; each one spreads `...props` onto the underlying Radix primitive.
 
 ```tsx
 import * as css from '@plumeria/core';
@@ -47,7 +47,7 @@ export const OpenButton = ({ sx }: { sx?: css.Style }) => (
 
 ---
 
-## Interactive Demo
+## Interactive demo
 
 Below is a live demo of twenty of the twenty-five component groups, styled with Plumeria.
 
@@ -57,7 +57,7 @@ Below is a live demo of twenty of the twenty-five component groups, styled with 
 
 ## Components
 
-The following twenty-five component groups are exported. All components support `ref` forwarding and props spread.
+The package exports twenty-five component groups. Every component forwards `ref` and spreads its props.
 
 ### Accordion
 
