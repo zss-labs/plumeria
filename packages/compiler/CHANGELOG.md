@@ -1,5 +1,12 @@
 # @plumeria/compiler
 
+## 22.0.9
+
+### Patch Changes
+
+- 34134e9: - Fix: reject inline style objects passed to `sx` or `css.use()` instead of dropping them
+  - Update: split the Claude Code plugin skill into reference files, so SKILL.md loads 15KB instead of 46KB
+
 ## 22.0.8
 
 ### Patch Changes

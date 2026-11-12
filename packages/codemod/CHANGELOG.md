@@ -1,5 +1,11 @@
 # @plumeria/codemod
 
+## 22.0.9
+
+### Patch Changes
+
+- 34134e9: Bump version to 22.0.9
+
 ## 22.0.8
 
 ### Patch Changes
