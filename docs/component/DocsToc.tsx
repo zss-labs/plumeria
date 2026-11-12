@@ -2,7 +2,7 @@
 
 import * as css from '@plumeria/core';
 import { useEffect, useRef, useState } from 'react';
-import { AnchorProvider, TOCItem, useActiveAnchors, type TOCItemType } from 'fumadocs-core/toc';
+import { AnchorProvider, useActiveAnchors, type TOCItemType } from 'fumadocs-core/toc';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 
@@ -90,20 +90,21 @@ const toPath = (segments: Segment[]) =>
     })
     .join('');
 
-// Eases both edges toward their targets each frame, so the thumb slides instead of jumping.
+// Slides both edges to their targets over a fixed time, ending exactly on them.
 const useGlide = (top: number, bottom: number) => {
   const [edges, setEdges] = useState([top, bottom]);
   const current = useRef(edges);
 
   useEffect(() => {
+    const [fromTop, fromBottom] = current.current;
+    const start = performance.now();
     let frame = 0;
-    const step = () => {
-      const [t, b] = current.current;
-      const next = [t + (top - t) * 0.2, b + (bottom - b) * 0.2];
-      const done = Math.abs(next[0] - top) < 0.5 && Math.abs(next[1] - bottom) < 0.5;
-      current.current = done ? [top, bottom] : next;
+    const step = (now: number) => {
+      const progress = Math.min((now - start) / 200, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      current.current = [fromTop + (top - fromTop) * eased, fromBottom + (bottom - fromBottom) * eased];
       setEdges(current.current);
-      if (!done) frame = requestAnimationFrame(step);
+      if (progress < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
@@ -135,9 +136,10 @@ function Items({ toc }: { toc: TOCItemType[] }) {
   }, [toc]);
 
   const height = segments.at(-1)?.bottom ?? 0;
-  const indexes = toc.flatMap((item, index) => (active.includes(item.url.slice(1)) ? [index] : []));
-  const first = segments[indexes[0]];
-  const last = segments[indexes.at(-1) ?? -1];
+  // Every visible heading is active; the first one in the page wins.
+  const current = toc.findIndex((item) => active.includes(item.url.slice(1)));
+  const first = segments[current];
+  const last = first;
   const [top, bottom] = useGlide(first?.top ?? 0, last?.bottom ?? 0);
   const inset = first && last ? `inset(${top}px 0 ${height - bottom}px 0)` : 'inset(0 0 100% 0)';
   const d = toPath(segments);
@@ -147,12 +149,13 @@ function Items({ toc }: { toc: TOCItemType[] }) {
       <ul ref={list} sx={styles.list}>
         {toc.map((item, index) => (
           <li key={item.url}>
-            <TOCItem
+            <a
               href={item.url}
+              data-active={index === current}
               className={css.use(styles.item, item.depth > 2 && styles.deep, index === 0 && styles.first)}
             >
               {item.title}
-            </TOCItem>
+            </a>
           </li>
         ))}
       </ul>
@@ -184,7 +187,7 @@ export function DocsToc({ toc }: { toc: TOCItemType[] }) {
             </svg>
             On this page
           </p>
-          <AnchorProvider toc={toc} single>
+          <AnchorProvider toc={toc}>
             <Items toc={toc} />
           </AnchorProvider>
         </>
