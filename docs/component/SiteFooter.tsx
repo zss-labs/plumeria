@@ -9,7 +9,7 @@ const styles = css.create({
   footer: {
     paddingTop: 40,
     marginTop: 48,
-    borderTopColor: 'var(--color-fd-border)',
+    borderTopColor: homeTheme.border,
     borderTopStyle: 'solid',
     borderTopWidth: 1,
     containerType: 'inline-size',
@@ -41,10 +41,10 @@ const styles = css.create({
   },
   link: {
     fontSize: 14,
-    color: 'var(--color-fd-muted-foreground)',
+    color: homeTheme.muted,
     transitionDuration: '0.2s',
     ':hover': {
-      color: 'var(--color-fd-foreground)',
+      color: homeTheme.foreground,
     },
   },
   external: {
@@ -60,7 +60,7 @@ const styles = css.create({
     justifyContent: 'flex-end',
     marginTop: 128,
     fontSize: 14,
-    color: 'var(--color-fd-muted-foreground)',
+    color: homeTheme.muted,
     [compact]: {
       flexWrap: 'wrap',
       justifyContent: 'center',
@@ -82,10 +82,10 @@ const styles = css.create({
   },
   socialLink: {
     display: 'inline-flex',
-    color: 'var(--color-fd-muted-foreground)',
+    color: homeTheme.muted,
     transitionDuration: '0.2s',
     ':hover': {
-      color: 'var(--color-fd-foreground)',
+      color: homeTheme.foreground,
     },
   },
   homeFooter: {
