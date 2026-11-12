@@ -1,39 +1,90 @@
 'use client';
 
 import * as css from '@plumeria/core';
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import type { SortedResult } from 'fumadocs-core/search';
-import {
-  SearchDialog as Dialog,
-  SearchDialogClose,
-  SearchDialogContent,
-  SearchDialogHeader,
-  SearchDialogIcon,
-  SearchDialogList,
-  SearchDialogListItem,
-  SearchDialogOverlay,
-} from 'fumadocs-ui/components/dialog/search';
-import type { SharedProps } from 'fumadocs-ui/contexts/search';
+import { Link } from 'waku';
+import { OPEN_SEARCH } from 'lib/openSearch';
+import { homeTheme } from 'lib/theme';
 
 const styles = css.create({
+  dialog: {
+    width: 'min(640px, 100vw - 32px)',
+    maxHeight: 'min(480px, 100dvh - 96px)',
+    padding: 0,
+    margin: 'auto',
+    overflow: 'hidden',
+    color: homeTheme.foreground,
+    background: homeTheme.background,
+    borderColor: homeTheme.border,
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderRadius: 16,
+    '[open]': {
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    '::backdrop': {
+      background: 'rgba(0, 0, 0, 0.4)',
+      backdropFilter: 'blur(2px)',
+    },
+  },
+  field: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    padding: '0 16px',
+    color: homeTheme.muted,
+    borderBottomColor: homeTheme.border,
+    borderBottomStyle: 'solid',
+    borderBottomWidth: 1,
+  },
   input: {
     flex: 1,
     width: 0,
-    fontSize: 18,
-    lineHeight: '28px',
+    height: 52,
+    fontFamily: 'inherit',
+    fontSize: 15,
+    color: homeTheme.foreground,
     outline: 'none',
-    background: 'transparent',
+    background: 'none',
+    borderWidth: 0,
     '::placeholder': {
-      color: 'var(--color-fd-muted-foreground)',
+      color: homeTheme.muted,
     },
+  },
+  list: {
+    padding: 8,
+    margin: 0,
+    overflowY: 'auto',
+    listStyle: 'none',
+  },
+  result: {
+    display: 'block',
+    padding: '8px 12px',
+    fontSize: 14,
+    color: homeTheme.muted,
+    textDecoration: 'none',
+    borderRadius: 8,
+    ':is(:hover, :focus-visible)': {
+      color: homeTheme.foreground,
+      outline: 'none',
+      background: homeTheme.accent,
+    },
+  },
+  empty: {
+    padding: '24px 12px',
+    fontSize: 14,
+    color: homeTheme.muted,
+    textAlign: 'center',
   },
   breadcrumbs: {
     display: 'flex',
     gap: 2,
     alignItems: 'center',
     fontSize: 12,
-    color: 'var(--color-fd-muted-foreground)',
+    color: homeTheme.muted,
   },
   title: {
     display: 'flex',
@@ -45,10 +96,10 @@ const styles = css.create({
   },
   hash: {
     flexShrink: 0,
-    color: 'var(--color-fd-muted-foreground)',
+    color: homeTheme.muted,
   },
   mark: {
-    color: 'var(--color-fd-primary)',
+    color: homeTheme.primary,
     textDecoration: 'underline',
   },
   code: {
@@ -158,40 +209,76 @@ const Hash = () => (
   </svg>
 );
 
-export const SearchDialog = (props: SharedProps) => {
+const DIALOG_ID = 'search-dialog';
+
+const SearchIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+export const SearchDialog = () => {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const { search, setSearch, query } = useDocsSearch({ type: 'static' });
   const [input, setInput] = useState('');
   const items = useMemo(
-    () => (query.data === 'empty' ? null : sortBySidebar(withPageBreadcrumbs(query.data ?? []), search)),
+    () => (query.data === 'empty' ? [] : sortBySidebar(withPageBreadcrumbs(query.data ?? []), search)),
     [query.data, search],
   );
 
+  // Mounts on the first request, so it opens right away and then on every later one.
+  useEffect(() => {
+    const show = () => {
+      dialog.current?.showModal();
+      setOpen(true);
+    };
+    show();
+    window.addEventListener(OPEN_SEARCH, show);
+    return () => window.removeEventListener(OPEN_SEARCH, show);
+  }, []);
+
   // Waits for the dialog to open, as the first query downloads the whole index.
   useEffect(() => {
-    if (props.open) setSearch(input || DEFAULT_QUERY);
-  }, [props.open, input, setSearch]);
+    if (open) setSearch(input || DEFAULT_QUERY);
+  }, [open, input, setSearch]);
+
+  const close = () => dialog.current?.close();
 
   return (
-    <Dialog search={input} onSearchChange={setInput} isLoading={query.isLoading} {...props}>
-      <SearchDialogOverlay />
-      <SearchDialogContent>
-        <SearchDialogHeader>
-          <SearchDialogIcon />
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Search documentation"
-            sx={styles.input}
-          />
-          <SearchDialogClose />
-        </SearchDialogHeader>
-        <SearchDialogList
-          items={items}
-          Item={({ item, onClick }) =>
-            item.type === 'action' ? (
-              <SearchDialogListItem item={item} onClick={onClick} />
-            ) : (
-              <SearchDialogListItem item={item} onClick={onClick}>
+    <dialog
+      ref={dialog}
+      id={DIALOG_ID}
+      aria-label="Search"
+      sx={styles.dialog}
+      onClose={() => setOpen(false)}
+      onClick={(event) => event.target === event.currentTarget && close()}
+    >
+      <label sx={styles.field}>
+        <SearchIcon />
+        <input
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Search documentation"
+          autoFocus
+          sx={styles.input}
+        />
+      </label>
+      {open && (
+        <ul sx={styles.list}>
+          {items.map((item) => (
+            <li key={item.id}>
+              <Link to={item.url} className={css.use(styles.result)} onClick={close}>
                 {item.breadcrumbs && item.breadcrumbs.length > 0 && (
                   <div sx={styles.breadcrumbs}>
                     {item.breadcrumbs.map((crumb, index) => (
@@ -206,11 +293,12 @@ export const SearchDialog = (props: SharedProps) => {
                   {item.type === 'heading' && <Hash />}
                   <span>{typeof item.content === 'string' ? renderContent(item.content) : item.content}</span>
                 </div>
-              </SearchDialogListItem>
-            )
-          }
-        />
-      </SearchDialogContent>
-    </Dialog>
+              </Link>
+            </li>
+          ))}
+          {!query.isLoading && items.length === 0 && <li sx={styles.empty}>No results</li>}
+        </ul>
+      )}
+    </dialog>
   );
 };
