@@ -45,4 +45,10 @@ export const homeTheme = css.createTheme('.dark', {
   muted: { default: '#737373', theme: '#b3b3b3cc' },
   border: { default: '#cccccc80', theme: '#6663' },
   accent: { default: '#d1d1d180', theme: '#6868684d' },
+  strong: { default: '#000000', theme: '#ffffff' },
+  prose: { default: '#454144', theme: '#8f8f8fcc' },
+  label: { default: '#808080', theme: '#807d82' },
+  code: { default: '#f5f5f5', theme: '#212121' },
+  primary: { default: '#d653bb', theme: '#d653bb' },
+  primarySoft: { default: 'rgba(214, 83, 187, 0.1)', theme: 'rgba(214, 83, 187, 0.1)' },
 });
