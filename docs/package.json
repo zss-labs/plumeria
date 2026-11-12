@@ -21,7 +21,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/og": "^0.11.1",
     "@vercel/speed-insights": "^2.0.0",
-    "fumadocs-core": "^16.9.3",
+    "fumadocs-core": "^16.19.0",
     "fumadocs-mdx": "^15.0.5",
     "katex": "^0.17.0",
     "monaco-editor": "^0.56.0",
