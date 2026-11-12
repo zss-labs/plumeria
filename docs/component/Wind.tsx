@@ -1,7 +1,7 @@
 import * as css from '@plumeria/core';
 import * as t from '@plumeria/wind';
 import { breakpoints } from 'lib/mediaQuery';
-import { theme } from 'lib/theme';
+import { homeTheme, theme } from 'lib/theme';
 import type { ReactNode } from 'react';
 
 const hues = {
@@ -98,7 +98,7 @@ const styles = css.create({
     display: 'grid',
     gridTemplateColumns: 'max-content max-content minmax(0, 1fr)',
     columnGap: 24,
-    borderTopColor: 'var(--color-fd-border)',
+    borderTopColor: homeTheme.border,
     borderTopStyle: 'solid',
     borderTopWidth: 1,
     [breakpoints.sm]: {
@@ -113,7 +113,7 @@ const styles = css.create({
     alignItems: 'center',
     minHeight: 29,
     padding: '4px 0',
-    borderBottomColor: 'var(--color-fd-border)',
+    borderBottomColor: homeTheme.border,
     borderBottomStyle: 'solid',
     borderBottomWidth: 1,
   },
@@ -155,7 +155,7 @@ const styles = css.create({
     marginBottom: 6,
     overflow: 'hidden',
     color: theme.textPrimary,
-    backgroundColor: 'var(--color-fd-muted)',
+    backgroundColor: homeTheme.code,
     borderRadius: 8,
   },
   // Every shadow token is black, so its stage stays light in dark mode too.
@@ -268,7 +268,7 @@ const samples = css.create({
     display: 'block',
     width: 56,
     height: 56,
-    borderColor: 'var(--color-fd-border)',
+    borderColor: homeTheme.border,
     borderStyle: 'solid',
     borderWidth: 1,
     fill: 'none',
