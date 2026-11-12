@@ -1,7 +1,7 @@
 'use client';
 
 import * as css from '@plumeria/core';
-import { useSearchContext } from 'fumadocs-ui/contexts/search';
+import { openSearch } from 'lib/openSearch';
 import { useEffect, useRef, ViewTransition } from 'react';
 import type {} from 'react/canary';
 import { useRouter } from 'waku';
@@ -147,10 +147,8 @@ const styles = css.create({
 });
 
 export const HomeSearchIcon = () => {
-  const { setOpenSearch } = useSearchContext();
-
   return (
-    <button type="button" aria-label="Search" sx={styles.icon} onClick={() => setOpenSearch(true)}>
+    <button type="button" aria-label="Search" sx={styles.icon} onClick={openSearch}>
       <svg
         width="14"
         height="14"
@@ -170,7 +168,6 @@ export const HomeSearchIcon = () => {
 };
 
 export const HomeSearchTrigger = () => {
-  const { setOpenSearch } = useSearchContext();
   const { path } = useRouter();
   const isDocs = path.startsWith('/docs');
   const wasDocs = useRef(isDocs);
@@ -182,12 +179,7 @@ export const HomeSearchTrigger = () => {
 
   return (
     <ViewTransition default="none" update={moved ? (isDocs ? droplet : dropletBack) : 'none'}>
-      <button
-        type="button"
-        aria-label="Search"
-        sx={[styles.trigger, isDocs && styles.centered]}
-        onClick={() => setOpenSearch(true)}
-      >
+      <button type="button" aria-label="Search" sx={[styles.trigger, isDocs && styles.centered]} onClick={openSearch}>
         <ViewTransition default="none" update={moved ? carried : 'none'}>
           <svg
             width="14"
