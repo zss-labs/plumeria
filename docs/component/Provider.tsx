@@ -1,53 +1,38 @@
 'use client';
 
-import * as css from '@plumeria/core';
-import { type ComponentProps, lazy, type ReactNode } from 'react';
-import { RootProvider } from 'fumadocs-ui/provider/waku';
-import { Link } from 'waku';
+import { ThemeProvider } from 'next-themes';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { OPEN_SEARCH, openSearch } from 'lib/openSearch';
 
 const SearchDialog = lazy(() => import('component/SearchDialog').then((m) => ({ default: m.SearchDialog })));
 
-const styles = css.create({
-  hotKey: {
-    display: 'inline-flex',
-    gap: 3,
-    alignItems: 'center',
-    height: '100%',
-    verticalAlign: 'top',
-  },
-  key: {
-    fontSize: '0.8em',
-    lineHeight: 1,
-    transform: 'translateY(-0.5px)',
-  },
-});
+export const Provider = ({ children }: { children: ReactNode }) => {
+  const [requested, setRequested] = useState(false);
 
-const hotKey = [
-  {
-    key: (event: KeyboardEvent) => (event.metaKey || event.ctrlKey) && event.key === 'k',
-    display: (
-      <span sx={styles.hotKey}>
-        <span>⌘</span>
-        <span sx={styles.key}>K</span>
-      </span>
-    ),
-  },
-];
+  useEffect(() => {
+    const request = () => setRequested(true);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        openSearch();
+      }
+    };
+    window.addEventListener(OPEN_SEARCH, request);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener(OPEN_SEARCH, request);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
-// Fumadocs prefetches its links on hover unless it is given a link of its own.
-const PrefetchLink = ({
-  href = '#',
-  prefetch = true,
-  children,
-  ...props
-}: ComponentProps<'a'> & { prefetch?: boolean }) => (
-  <Link to={href} unstable_prefetchOnView={prefetch ? {} : undefined} {...props}>
-    {children}
-  </Link>
-);
-
-export const Provider = ({ children }: { children: ReactNode }) => (
-  <RootProvider components={{ Link: PrefetchLink }} search={{ SearchDialog, hotKey, preload: false }}>
-    {children}
-  </RootProvider>
-);
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      {children}
+      {requested && (
+        <Suspense>
+          <SearchDialog />
+        </Suspense>
+      )}
+    </ThemeProvider>
+  );
+};
