@@ -1,4 +1,3 @@
-import 'fumadocs-ui/style.css';
 import '../styles/global.css';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
