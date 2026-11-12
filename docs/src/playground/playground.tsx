@@ -34,10 +34,14 @@ const styles = css.create({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gridArea: 'main',
-    height: 'calc(var(--fd-docs-height) - var(--fd-docs-row-2))',
+    gridRow: 1,
+    gridColumn: '2 / -1',
+    height: 'calc(100dvh - 56px)',
     overflow: 'hidden',
     color: theme.textPrimary,
+    [breakpoints.md]: {
+      height: 'calc(100dvh - 104px)',
+    },
   },
   bar: {
     display: 'grid',
