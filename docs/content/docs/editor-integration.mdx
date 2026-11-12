@@ -2,12 +2,12 @@
 title: 'Editor integration'
 description: 'A VS Code snippet for the styling prop, ESLint in the editor, and jumping to definitions.'
 ---
-import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Step, Steps } from "component/Steps";
 
 <Steps>
 <Step>
 ## sx snippet
-In VS Code, add a snippet that expands `class` into `sx={}`:
+In VS Code, add a snippet that expands `s` into `sx={}`:
 
 1. Open the Command Palette with `Shift` + `Cmd` + `P` (macOS) or `Shift` + `Ctrl` + `P` (Windows, Linux).
 2. Run **Snippets: Configure Snippets**.
@@ -16,27 +16,16 @@ In VS Code, add a snippet that expands `class` into `sx={}`:
 ```json title="typescriptreact.json"
 {
   "sx": {
-    "prefix": "class",
+    "prefix": "s",
     "body": "sx={$1}",
-    "description": "Plumeria sx",
+    "description": "sx",
   }
 }
 ```
 
-To list snippets first in the suggestions:
-
-```json title="settings.json"
-{
-  // ...other settings
-  "editor.snippetSuggestions": "top",
-  // ...
-}
-```
-
-
 ### Usage
 ```jsx
-<div class /> -> Enter -> <div sx={|} />
+<div s /> -> Enter -> <div sx={|} />
 ```
 </Step>
 <Step>
