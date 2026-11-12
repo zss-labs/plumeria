@@ -1,5 +1,6 @@
 import { defineDocs, defineConfig } from 'fumadocs-mdx/config';
 import { pageSchema } from 'fumadocs-core/source/schema';
+import { rehypeCodeDefaultOptions } from 'fumadocs-core/mdx-plugins';
 import lastModified from 'fumadocs-mdx/plugins/last-modified';
 import { z } from 'zod';
 import rehypeKatex from 'rehype-katex';
@@ -40,6 +41,14 @@ export default defineConfig({
         light: 'laserwave',
         dark: 'laserwave',
       },
+      transformers: [
+        ...(rehypeCodeDefaultOptions.transformers ?? []),
+        {
+          pre(node) {
+            node.properties['data-language'] = this.options.lang;
+          },
+        },
+      ],
     },
   },
 });
