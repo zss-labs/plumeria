@@ -1,15 +1,9 @@
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import 'katex/dist/katex.css';
 import type { ReactNode } from 'react';
-import { baseOptions } from 'lib/layout.config';
+import { DocsShell } from 'component/DocsShell';
 import { source } from 'lib/source';
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return (
-    <DocsLayout tree={source.pageTree} {...baseOptions}>
-      {children}
-    </DocsLayout>
-  );
+  return <DocsShell tree={source.pageTree}>{children}</DocsShell>;
 }
 
 export const getConfig = async () => {
