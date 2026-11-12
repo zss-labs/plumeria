@@ -1,5 +1,11 @@
 # @plumeria/wind
 
+## 22.0.10
+
+### Patch Changes
+
+- b902845: Bump version to 22.0.10
+
 ## 22.0.9
 
 ### Patch Changes

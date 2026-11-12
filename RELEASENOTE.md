@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.10 (Nov 12, 2026)
+
+- Feat: accept vendor-prefixed pseudo-elements for scrollbars and form controls in `validate-pseudos`
+
 ## 22.0.9 (Nov 11, 2026)
 
 - Fix: reject inline style objects passed to `sx` or `css.use()` instead of dropping them

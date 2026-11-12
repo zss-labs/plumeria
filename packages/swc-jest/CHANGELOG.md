@@ -1,5 +1,13 @@
 # @plumeria/swc-jest
 
+## 22.0.10
+
+### Patch Changes
+
+- b902845: Bump version to 22.0.10
+- Updated dependencies [b902845]
+  - @plumeria/compiler@22.0.10
+
 ## 22.0.9
 
 ### Patch Changes
