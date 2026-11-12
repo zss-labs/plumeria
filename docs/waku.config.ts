@@ -41,6 +41,8 @@ export default defineConfig({
       tsconfigPaths: true,
       dedupe: ['react', 'react-dom', 'waku'],
     },
+    // Pre-bundles the search client, so Vite stops reading Orama's published sourcemaps, which point to missing files.
+    optimizeDeps: { include: ['fumadocs-core/search/client'] },
     // Loads its fonts and wasm relative to its own files at runtime.
     environments: { rsc: { resolve: { external: ['@vercel/og'] } } },
     plugins: [
