@@ -1,3 +1,11 @@
+## 22.0.10
+
+### Patch Changes
+
+- b902845: - Feat: accept vendor-prefixed pseudo-elements for scrollbars and form controls in `validate-pseudos`
+- Updated dependencies [b902845]
+  - @plumeria/compiler@22.0.10
+
 ## 22.0.9
 
 ### Patch Changes
