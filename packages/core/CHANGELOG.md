@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.11
+
+### Patch Changes
+
+- 624294a: - Update: Regenerate the CSS types and property list from mdn-data, adding fitTolerance, hyphenateLimitLines, whiteSpaceTrim and wrapInside and removing flowTolerance.
+
 ## 22.0.10
 
 ### Patch Changes
