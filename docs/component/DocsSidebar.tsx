@@ -5,6 +5,7 @@ import { Link, useRouter } from 'waku';
 import { Fragment } from 'react';
 import type { Node, Root } from 'fumadocs-core/page-tree';
 import { MenuAutoClose } from 'component/MenuAutoClose';
+import { ExternalIcon } from 'component/ExternalIcon';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 
@@ -88,6 +89,9 @@ const styles = css.create({
     justifyContent: 'space-between',
     cursor: 'pointer',
     listStyle: 'none',
+  },
+  external: {
+    gap: 4,
   },
   arrow: {
     flexShrink: 0,
@@ -216,6 +220,20 @@ function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?
           </summary>
           <Items nodes={node.children} path={path} depth={depth + 1} />
         </details>
+      );
+    }
+    if (node.external) {
+      return (
+        <a
+          key={index}
+          href={node.url}
+          target="_blank"
+          rel="noreferrer"
+          className={css.use(styles.link, styles.external, depth > 0 && styles.nested)}
+        >
+          {node.name}
+          <ExternalIcon />
+        </a>
       );
     }
     const active = path === node.url;
