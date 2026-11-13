@@ -76,6 +76,14 @@ const styles = css.create({
   nested: {
     paddingLeft: 20,
   },
+  label: {
+    flex: 1,
+    alignSelf: 'stretch',
+    padding: '6px 8px',
+    margin: '-6px -8px',
+    color: 'inherit',
+    textDecoration: 'none',
+  },
   folder: {
     justifyContent: 'space-between',
     cursor: 'pointer',
@@ -181,8 +189,16 @@ function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?
     if (node.type === 'folder') {
       return (
         <details key={index} open={node.defaultOpen || node.index?.url === path || contains(node.children, path)}>
-          <summary sx={[styles.link, styles.folder, depth > 0 && styles.nested]}>
-            {node.name}
+          <summary
+            sx={[styles.link, styles.folder, depth > 0 && styles.nested, node.index?.url === path && styles.active]}
+          >
+            {node.index ? (
+              <Link to={node.index.url} className={css.use(styles.label)}>
+                {node.name}
+              </Link>
+            ) : (
+              node.name
+            )}
             <svg
               width="12"
               height="12"
@@ -198,14 +214,6 @@ function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?
               <path d="m9 18 6-6-6-6" />
             </svg>
           </summary>
-          {node.index && (
-            <Link
-              to={node.index.url}
-              className={css.use(styles.link, styles.nested, path === node.index.url && styles.active)}
-            >
-              Overview
-            </Link>
-          )}
           <Items nodes={node.children} path={path} depth={depth + 1} />
         </details>
       );
