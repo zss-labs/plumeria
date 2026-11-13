@@ -128,6 +128,9 @@ const styles = css.create({
     ':is(tr:last-child > *)': {
       borderBottomWidth: 0,
     },
+    ':first-child': {
+      whiteSpace: 'nowrap',
+    },
   },
   figure: {
     position: 'relative',
