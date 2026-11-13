@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.12 (Nov 13, 2026)
+
+Update: keywords in package.json
+
 ## 22.0.11 (Nov 13, 2026)
 
 - Update: Regenerate the CSS types and property list from mdn-data, adding fitTolerance, hyphenateLimitLines, whiteSpaceTrim and wrapInside and removing flowTolerance.

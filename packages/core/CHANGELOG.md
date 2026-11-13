@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.12
+
+### Patch Changes
+
+- d1f4e7b: Update: keywords in package.json
+
 ## 22.0.11
 
 ### Patch Changes

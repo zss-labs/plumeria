@@ -1,5 +1,11 @@
 # @plumeria/inspector
 
+## 22.0.12
+
+### Patch Changes
+
+- d1f4e7b: Bump version to 22.0.12
+
 ## 22.0.11
 
 ### Patch Changes
