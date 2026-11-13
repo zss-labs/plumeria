@@ -101,6 +101,8 @@ jobs:
       - name: Build the binary
         shell: bash
         working-directory: packages/compiler
+        env:
+          RUSTUP_TOOLCHAIN: ${{ matrix.toolchain || 'stable' }}
         run: pnpm build --target ${{ matrix.target }} ${{ matrix.flags }}
 
       - uses: actions/upload-artifact@v7
