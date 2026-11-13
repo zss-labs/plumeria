@@ -783,6 +783,7 @@ type fill = Paint | StableString;
 type fillOpacity = opacity;
 type fillRule = 'nonzero' | 'evenodd';
 type filter = 'none' | StableString;
+type fitTolerance = 'normal' | 'infinite' | number | StableString;
 type flex =
   | 'none'
   | 'content'
@@ -818,7 +819,6 @@ type flexWrap = 'nowrap' | 'wrap' | 'wrap-reverse' | 'balance' | StableString;
 type float = 'left' | 'right' | 'none' | 'inline-start' | 'inline-end';
 type floodColor = color;
 type floodOpacity = opacity;
-type flowTolerance = 'normal' | 'infinite' | number | StableString;
 type font =
   | 'caption'
   | 'icon'
@@ -1015,6 +1015,7 @@ type height =
   | StableString;
 type hyphenateCharacter = 'auto' | StableString;
 type hyphenateLimitChars = 'auto' | number | StableString;
+type hyphenateLimitLines = 'no-limit' | number | StableString;
 type hyphens = 'none' | 'manual' | 'auto';
 type imageOrientation = 'from-image' | 'flip' | StableString;
 type imageRendering = 'auto' | 'crisp-edges' | 'pixelated' | 'smooth';
@@ -1758,6 +1759,12 @@ type whiteSpaceCollapse =
   | 'preserve-breaks'
   | 'preserve-spaces'
   | 'break-spaces';
+type whiteSpaceTrim =
+  | 'none'
+  | 'discard-before'
+  | 'discard-after'
+  | 'discard-inner'
+  | StableString;
 type widows = number | StableString;
 type width =
   | 'auto'
@@ -1776,6 +1783,7 @@ type wordBreak =
   | 'auto-phrase';
 type wordSpacing = 'normal' | number | StableString;
 type wordWrap = 'normal' | 'break-word';
+type wrapInside = 'auto' | 'avoid';
 type writingMode =
   | 'horizontal-tb'
   | 'vertical-rl'
@@ -1991,6 +1999,7 @@ export type CSSTypes = Readonly<{
   fillOpacity?: all | fillOpacity;
   fillRule?: all | fillRule;
   filter?: all | filter;
+  fitTolerance?: all | fitTolerance;
   flex?: all | flex;
   flexBasis?: all | flexBasis;
   flexDirection?: all | flexDirection;
@@ -2002,7 +2011,6 @@ export type CSSTypes = Readonly<{
   float?: all | float;
   floodColor?: all | floodColor;
   floodOpacity?: all | floodOpacity;
-  flowTolerance?: all | flowTolerance;
   font?: all | font;
   fontFamily?: all | fontFamily;
   fontFeatureSettings?: all | fontFeatureSettings;
@@ -2057,6 +2065,7 @@ export type CSSTypes = Readonly<{
   height?: all | height;
   hyphenateCharacter?: all | hyphenateCharacter;
   hyphenateLimitChars?: all | hyphenateLimitChars;
+  hyphenateLimitLines?: all | hyphenateLimitLines;
   hyphens?: all | hyphens;
   imageOrientation?: all | imageOrientation;
   imageRendering?: all | imageRendering;
@@ -2393,6 +2402,7 @@ export type CSSTypes = Readonly<{
   WebkitTextStrokeWidth?: all | WebkitTextStrokeWidth;
   whiteSpace?: all | whiteSpace;
   whiteSpaceCollapse?: all | whiteSpaceCollapse;
+  whiteSpaceTrim?: all | whiteSpaceTrim;
   widows?: all | widows;
   width?: all | width;
   willChange?: all | willChange;
@@ -2400,6 +2410,7 @@ export type CSSTypes = Readonly<{
   wordBreak?: all | wordBreak;
   wordSpacing?: all | wordSpacing;
   wordWrap?: all | wordWrap;
+  wrapInside?: all | wrapInside;
   writingMode?: all | writingMode;
   x?: all | x;
   y?: all | y;
