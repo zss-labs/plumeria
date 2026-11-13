@@ -1,4 +1,8 @@
-Do not use AI token.
+Don't waste them.
+Save tokens:
+- Keep replies short; no recaps of what you already said.
+- Read only the lines you need; don't re-read files you just edited.
+- Don't run builds, tests or type checks unless asked.
 
 ## Commit conventions
 
