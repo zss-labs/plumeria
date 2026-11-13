@@ -64,6 +64,7 @@ jobs:
             target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: wasm32-wasip1-threads
+            toolchain: "1.99.1"
           - os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
             flags: "--use-napi-cross"
@@ -77,8 +78,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-node
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ matrix.toolchain || 'stable' }}
           targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
