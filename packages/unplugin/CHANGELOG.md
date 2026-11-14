@@ -1,5 +1,14 @@
 # @plumeria/unplugin
 
+## 22.0.13
+
+### Patch Changes
+
+- 3a51d2a: - Fix: link the single CSS bundle to entry chunks so the Vite manifest lists it under the entry's `css`. `plumeria.vite()` now returns an array of plugins.
+- Updated dependencies [3a51d2a]
+  - @plumeria/compiler@22.0.13
+  - @plumeria/eslint-plugin@22.0.13
+
 ## 22.0.12
 
 ### Patch Changes
