@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.13
+
+### Patch Changes
+
+- 3a51d2a: Bump version to 22.0.13
+
 ## 22.0.12
 
 ### Patch Changes
