@@ -336,7 +336,26 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     };
   }
 
-  return vitePlugin;
+  const cssBundlePlugin = {
+    name: '@plumeria/unplugin:vite-css-bundle',
+    enforce: 'post' as const,
+    generateBundle(_options: unknown, bundle: Record<string, any>) {
+      if (!isBuild || isRsc) return;
+      const sheet = Object.values(bundle).find(
+        (output) =>
+          output.type === 'asset' &&
+          output.originalFileNames?.includes('style.css'),
+      );
+      if (!sheet) return;
+      for (const output of Object.values(bundle)) {
+        if (output.type === 'chunk' && output.isEntry) {
+          output.viteMetadata?.importedCss.add(sheet.fileName);
+        }
+      }
+    },
+  };
+
+  return [vitePlugin, cssBundlePlugin];
 }
 
 export type VitePluginOptions = {
@@ -346,4 +365,4 @@ export type VitePluginOptions = {
 export default createVitePlugin<VitePluginOptions | undefined>(
   (options, metaOptions) =>
     attachViteHooks(unpluginFactory(options, metaOptions), options),
-) as (options?: VitePluginOptions) => Plugin;
+) as (options?: VitePluginOptions) => Plugin[];
