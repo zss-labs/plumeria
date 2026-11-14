@@ -53,7 +53,7 @@ const CSS_ID = '/project/src/Card.zero.css';
 afterEach(() => jest.clearAllMocks());
 
 it('merges Vite config for serve and build commands', () => {
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
 
   expect(
     plugin.config(
@@ -64,7 +64,7 @@ it('merges Vite config for serve and build commands', () => {
   expect(
     plugin.config({ build: { minify: false } }, { command: 'build' }),
   ).toMatchObject({ build: { minify: false, cssCodeSplit: false } });
-  expect((vite() as any).config({}, { command: 'build' })).toMatchObject({
+  expect((vite()[0] as any).config({}, { command: 'build' })).toMatchObject({
     build: { cssCodeSplit: false },
   });
 });
@@ -93,7 +93,7 @@ it('leaves packages exporting Plumeria source out of pre-bundling', () => {
   write('node_modules/plain/package.json', { exports: './index.js' });
   try {
     expect(
-      (vite() as any).config({ root }, { command: 'serve' }).optimizeDeps,
+      (vite()[0] as any).config({ root }, { command: 'serve' }).optimizeDeps,
     ).toEqual({ exclude: ['@plumeria/core', '@acme/tokens', '@acme/ui'] });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -107,7 +107,7 @@ it('reads the source packages from the compiler for the root it configures', () 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-vite-'));
   fs.writeFileSync(path.join(root, 'package.json'), '{}');
   try {
-    const plugin = vite({ lint: false }) as any;
+    const plugin = vite({ lint: false })[0] as any;
     sourcePackages.mockClear();
     plugin.config({ root }, { command: 'serve' });
     plugin.configResolved({ root, command: 'serve', plugins: [] });
@@ -126,16 +126,16 @@ it('starts the lint guard for builds only', () => {
   const { startLintGuard } = jest.requireMock<{ startLintGuard: jest.Mock }>(
     '@plumeria/eslint-plugin/guard',
   );
-  (vite() as any).config({}, { command: 'serve' });
+  (vite()[0] as any).config({}, { command: 'serve' });
   expect(startLintGuard).not.toHaveBeenCalled();
-  (vite() as any).config({}, { command: 'build' });
+  (vite()[0] as any).config({}, { command: 'build' });
   expect(startLintGuard).toHaveBeenCalledTimes(1);
-  (vite({ lint: false }) as any).config({}, { command: 'build' });
+  (vite({ lint: false })[0] as any).config({}, { command: 'build' });
   expect(startLintGuard).toHaveBeenCalledTimes(1);
 });
 
 it('configures RSC builds detected from environments and nested plugins', () => {
-  const environmentPlugin = vite() as any;
+  const environmentPlugin = vite()[0] as any;
   expect(
     environmentPlugin.config(
       { environments: { rsc: {} } },
@@ -145,7 +145,7 @@ it('configures RSC builds detected from environments and nested plugins', () => 
     environments: { rsc: { build: { cssCodeSplit: false } } },
   });
 
-  const namedPlugin = vite() as any;
+  const namedPlugin = vite()[0] as any;
   expect(
     namedPlugin.config(
       { plugins: [null, 'ignored', [{ name: 'rsc:server' }]] },
@@ -155,7 +155,7 @@ it('configures RSC builds detected from environments and nested plugins', () => 
     environments: { rsc: { build: { cssCodeSplit: false } } },
   });
 
-  const exactPlugin = vite() as any;
+  const exactPlugin = vite()[0] as any;
   expect(
     exactPlugin.config({ plugins: [{ name: 'rsc' }] }, { command: 'build' }),
   ).toHaveProperty('environments.rsc.build.cssCodeSplit', false);
@@ -164,7 +164,7 @@ it('configures RSC builds detected from environments and nested plugins', () => 
 it('reloads a changed virtual stylesheet only when it exists', async () => {
   const moduleNode = { id: CSS_ID };
   const reloadModule = jest.fn();
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   plugin.configResolved({ root: '/project', command: 'serve' });
   plugin.configureServer({
     moduleGraph: { getModuleById: jest.fn(() => moduleNode) },
@@ -201,7 +201,7 @@ it('uses the client environment graph for CSS updates', async () => {
     getModuleById: jest.fn<typeof cssModule | null, []>(() => cssModule),
     invalidateModule,
   };
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   plugin.configResolved({ root: '/project', command: 'serve' });
   plugin.configureServer({
     environments: {
@@ -252,7 +252,7 @@ it('uses the client environment graph for CSS updates', async () => {
 });
 
 it('imports the shared disk file when development CSS is emitted to disk', async () => {
-  const plugin = vite({ devEmitToDisk: true }) as any;
+  const plugin = vite({ devEmitToDisk: true })[0] as any;
   plugin.configResolved({ root: '/project', command: 'serve' });
 
   const result = await plugin.transform.handler(SOURCE, ID);
@@ -263,7 +263,7 @@ it('imports the shared disk file when development CSS is emitted to disk', async
 });
 
 it('imports the virtual module when CSS is not emitted to disk', async () => {
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   plugin.configResolved({ root: '/project', command: 'serve' });
 
   const result = await plugin.transform.handler(SOURCE, ID);
@@ -272,7 +272,7 @@ it('imports the virtual module when CSS is not emitted to disk', async () => {
 });
 
 it('omits CSS imports and emits one sorted stylesheet for an RSC build', async () => {
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   plugin.config({ environments: { rsc: {} } }, { command: 'build' });
   plugin.configResolved({ root: '/project', command: 'build' });
 
@@ -312,23 +312,63 @@ it('omits CSS imports and emits one sorted stylesheet for an RSC build', async (
 });
 
 it('does not emit an empty RSC stylesheet or run build hooks outside RSC', async () => {
-  const regularPlugin = vite() as any;
+  const regularPlugin = vite()[0] as any;
   const emitFile = jest.fn();
   await regularPlugin.buildEnd.call({ environment: { name: 'rsc' }, emitFile });
   expect(emitFile).not.toHaveBeenCalled();
 
-  const rscPlugin = vite() as any;
+  const rscPlugin = vite()[0] as any;
   rscPlugin.config({ plugins: [{ name: 'rsc' }] }, { command: 'build' });
   mockOptimizer.mockReturnValueOnce('');
   await rscPlugin.buildEnd.call({ environment: { name: 'rsc' }, emitFile });
   expect(emitFile).not.toHaveBeenCalled();
 });
 
+it('links the single CSS bundle to entry chunks in a non-RSC build', () => {
+  const [plugin, cssBundlePlugin] = vite() as any[];
+  const bundle = () => ({
+    'assets/style-x.css': {
+      type: 'asset',
+      fileName: 'assets/style-x.css',
+      originalFileNames: ['style.css'],
+    },
+    'entry.js': {
+      type: 'chunk',
+      isEntry: true,
+      viteMetadata: { importedCss: new Set<string>() },
+    },
+    'lazy.js': {
+      type: 'chunk',
+      isEntry: false,
+      viteMetadata: { importedCss: new Set<string>() },
+    },
+  });
+  expect(cssBundlePlugin.enforce).toBe('post');
+
+  const serve = bundle();
+  plugin.config({}, { command: 'serve' });
+  cssBundlePlugin.generateBundle({}, serve);
+  expect([...serve['entry.js'].viteMetadata.importedCss]).toEqual([]);
+
+  const build = bundle();
+  plugin.config({}, { command: 'build' });
+  cssBundlePlugin.generateBundle({}, build);
+  expect([...build['entry.js'].viteMetadata.importedCss]).toEqual([
+    'assets/style-x.css',
+  ]);
+  expect([...build['lazy.js'].viteMetadata.importedCss]).toEqual([]);
+
+  const rsc = bundle();
+  plugin.config({ plugins: [{ name: 'rsc' }] }, { command: 'build' });
+  cssBundlePlugin.generateBundle({}, rsc);
+  expect([...rsc['entry.js'].viteMetadata.importedCss]).toEqual([]);
+});
+
 it('adds affected components and dependent targets to a hot update', () => {
   const child = { id: '/project/src/Child.tsx' };
   const dependent = { id: '/project/src/Dependent.tsx' };
   const original = { id: ID };
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
 
   expect(plugin.handleHotUpdate({ modules: [], file: ID })).toBeUndefined();
 
@@ -396,7 +436,7 @@ it.each([
       ...childState,
     };
     const edited = { id: ID, ...editedState };
-    const plugin = vite() as any;
+    const plugin = vite()[0] as any;
     const send = jest.fn();
     const invalidateModule = jest.fn();
 
@@ -424,12 +464,12 @@ it.each([
 );
 
 it('ignores hot updates before a development server is configured', () => {
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   expect(plugin.handleHotUpdate({ modules: [], file: ID })).toBeUndefined();
 });
 
 it('keeps build mode out of development behavior', () => {
-  const plugin = vite() as any;
+  const plugin = vite()[0] as any;
   plugin.configResolved({ root: '/project', command: 'build' });
   expect(plugin.__plumeriaInternal.devCssSheets.size).toBe(0);
 });
