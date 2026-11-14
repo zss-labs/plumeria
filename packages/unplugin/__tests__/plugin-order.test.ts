@@ -50,7 +50,7 @@ it('declares the transform hook as a pre-ordered object on the core plugin', () 
 });
 
 it('keeps the pre order after the vite adapter rewraps the transform', () => {
-  const plugin = vite() as unknown as Hooked;
+  const plugin = vite()[0] as unknown as Hooked;
 
   expect(hookOrder(plugin)).toBe('pre');
   expect(typeof (plugin.transform as { handler?: unknown }).handler).toBe(
@@ -59,7 +59,7 @@ it('keeps the pre order after the vite adapter rewraps the transform', () => {
 });
 
 it('transforms before a framework plugin that also enforces pre and is listed first', () => {
-  const plugin = vite() as unknown as Hooked;
+  const plugin = vite()[0] as unknown as Hooked;
 
   expect(
     resolveTransformOrder([framework('vite-plugin-solid'), plugin]),
@@ -67,7 +67,7 @@ it('transforms before a framework plugin that also enforces pre and is listed fi
 });
 
 it('would run second without the pre order, which is the regression this guards', () => {
-  const plugin = vite() as unknown as Hooked;
+  const plugin = vite()[0] as unknown as Hooked;
   const withoutOrder: Hooked = {
     name: plugin.name,
     enforce: plugin.enforce,
