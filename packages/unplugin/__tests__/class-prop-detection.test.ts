@@ -41,7 +41,7 @@ const resolved = (names: string[]) =>
   }) as never;
 
 const run = async (names: string[]) => {
-  const plugin = vite() as unknown as Adapted;
+  const plugin = vite()[0] as unknown as Adapted;
   plugin.configResolved(resolved(names));
 
   const filePath = path.join(directory, `case-${counter++}.tsx`);
@@ -70,7 +70,7 @@ it('keeps className when no solid plugin is present', async () => {
 });
 
 it('keeps className when the resolved config carries no plugin list', async () => {
-  const plugin = vite() as unknown as Adapted;
+  const plugin = vite()[0] as unknown as Adapted;
   plugin.configResolved({ root: directory, command: 'build' } as never);
 
   const filePath = path.join(directory, `case-${counter++}.tsx`);
