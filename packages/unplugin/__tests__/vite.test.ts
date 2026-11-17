@@ -319,15 +319,21 @@ it('does not emit an empty RSC stylesheet or run build hooks outside RSC', async
 });
 
 it('imports one shared sheet compiled from the whole project in every environment of a non-RSC build', async () => {
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-vite-sheet-unit-')),
+  );
+  const card = path.join(root, 'src', 'Card.tsx');
+  fs.mkdirSync(path.dirname(card));
+  fs.writeFileSync(card, SOURCE);
   const plugin = vite()[0] as any;
   plugin.config({}, { command: 'build' });
-  plugin.configResolved({ root: '/project', command: 'build' });
+  plugin.configResolved({ root, command: 'build' });
 
   for (const name of ['client', 'ssr']) {
     const result = await plugin.transform.handler.call(
       { environment: { name } },
       SOURCE,
-      ID,
+      card,
     );
     expect(result.code).toBe(`transformed\nimport "${SHEET_ID}";`);
   }
@@ -337,8 +343,9 @@ it('imports one shared sheet compiled from the whole project in every environmen
   expect(mockGlobFiles).toHaveBeenCalledWith(
     expect.any(Array),
     expect.any(Array),
-    '/project',
+    root,
   );
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 it('leaves the shared sheet id to the dev server', () => {
