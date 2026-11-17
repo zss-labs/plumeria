@@ -33,6 +33,9 @@ jest.mock('@plumeria/compiler', () => ({
   globFiles: jest.fn(() => []),
 }));
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { unpluginFactory } from '../src/core';
 
 const { globFiles: mockGlobFiles } = jest.requireMock<{
@@ -232,6 +235,65 @@ it('uses a custom CSS import formatter and permits omitting the import', async (
   ).resolves.toEqual(
     expect.objectContaining({ code: 'transformed\nimport "/Card.zero.css";' }),
   );
+});
+
+it('stops a module the shared stylesheet cannot read', async () => {
+  const dir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-sheet-scope-')),
+  );
+  const root = path.join(dir, 'app');
+  const kit = path.join(root, 'node_modules', 'ui-kit');
+  fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
+  fs.mkdirSync(path.join(kit, 'src', 'dist'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'package.json'),
+    JSON.stringify({ dependencies: { 'ui-kit': '1.0.0' } }),
+  );
+  fs.writeFileSync(
+    path.join(kit, 'package.json'),
+    JSON.stringify({
+      name: 'ui-kit',
+      exports: { '.': { plumeria: './src/index.ts', default: './index.js' } },
+    }),
+  );
+  for (const file of [
+    'Card.ts',
+    'dist/Card.ts',
+    '../Shared.ts',
+    'node_modules/ui-kit/src/Card.ts',
+    'node_modules/ui-kit/src/dist/Card.ts',
+  ]) {
+    fs.writeFileSync(path.join(root, file), SOURCE);
+  }
+  const plugin = createPlugin();
+  plugin.__plumeriaInternal.setRoot(root);
+  plugin.__plumeriaInternal.setCssImport(
+    () => '\nimport "/__plumeria_sheet__.zero.css";',
+  );
+
+  for (const file of ['Card.ts', 'node_modules/ui-kit/src/Card.ts']) {
+    await expect(
+      plugin.transform.handler(SOURCE, path.join(root, file)),
+    ).resolves.toEqual(expect.objectContaining({ map: null }));
+  }
+  for (const file of [
+    '../Shared.ts',
+    'dist/Card.ts',
+    'node_modules/ui-kit/src/dist/Card.ts',
+  ]) {
+    await expect(
+      plugin.transform.handler(SOURCE, path.join(root, file)),
+    ).rejects.toThrow(/is outside the project files the shared stylesheet/);
+  }
+  await expect(
+    plugin.transform.handler(SOURCE, path.join(root, 'Virtual.ts')),
+  ).rejects.toThrow(/has no file on disk/);
+
+  plugin.__plumeriaInternal.setCssImport(null);
+  await expect(
+    plugin.transform.handler(SOURCE, path.join(root, '../Shared.ts')),
+  ).resolves.toEqual(expect.objectContaining({ map: null }));
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 it('falls back to empty CSS for a formatter and handles an empty first pass', async () => {
