@@ -1,14 +1,20 @@
 import { createBunPlugin } from 'unplugin';
 import { unpluginFactory, type PluginOptions } from './core';
 import { stripCssMarkersIn } from './css-marker';
+import { withProjectSheet } from './sheet';
 
 const createPlugin = (outputs: Set<string>) =>
-  createBunPlugin<PluginOptions | undefined>((options, metaOptions) => ({
-    ...unpluginFactory(options, metaOptions),
-    writeBundle() {
-      stripCssMarkersIn(outputs);
-    },
-  }));
+  createBunPlugin<PluginOptions | undefined>((options, metaOptions) => {
+    const plugin = withProjectSheet(
+      unpluginFactory(options, metaOptions),
+    ) as any;
+    return {
+      ...plugin,
+      writeBundle() {
+        stripCssMarkersIn(outputs);
+      },
+    };
+  });
 
 export default (options?: PluginOptions) => {
   const outputs = new Set<string>();
