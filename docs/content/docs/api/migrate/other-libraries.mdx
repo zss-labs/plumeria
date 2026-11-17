@@ -1,0 +1,358 @@
+---
+title: 'Other libraries'
+description: 'Move from StyleX, Tailwind CSS, CSS Modules, styled-components, Emotion, vanilla-extract or Panda CSS to Plumeria.'
+---
+
+Set Plumeria up first with [`@plumeria/init`](/docs/api/migrate/init), then move styles file by file.
+
+## StyleX
+
+The APIs keep their names and shapes. Most files change only at the import and at the call site.
+
+| StyleX | Plumeria |
+| :-- | :-- |
+| `stylex.create` | [`css.create`](/docs/api/javascript/create) |
+| `{...stylex.props()}` | `sx={[]}` or [`css.use`](/docs/api/javascript/use) |
+| `stylex.defineVars` + `stylex.createTheme` | [`css.createTheme`](/docs/api/javascript/createTheme) |
+| `stylex.defineConsts` | [`css.createStatic`](/docs/api/javascript/createStatic) |
+| `stylex.keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `stylex.viewTransitionClass` | [`css.viewTransitionClass`](/docs/api/javascript/viewTransitionClass) |
+| `stylex.positionTry` | [`css.positionTry`](/docs/api/javascript/positionTry) |
+
+```tsx title="Before"
+import * as stylex from '@stylexjs/stylex';
+
+<div {...stylex.props(styles.base, active && styles.active)} />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+<div sx={[styles.base, active && styles.active]} />
+```
+
+A style relayed through wrappers that the compiler cannot follow stops the build. Flatten it, or use [TypedCSS](/docs/typedcss).
+
+## Tailwind CSS
+
+The [Claude Code plugin](/docs/ai-agent-resources#claude-code-plugin) converts classes, `tv()` and `twMerge()` to Plumeria styles. [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens.
+
+```tsx title="Before"
+<button className="rounded-md bg-blue-600 px-4 text-sm text-slate-50" />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const styles = css.create({
+  button: {
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
+  },
+});
+
+<button sx={styles.button} />
+```
+
+## CSS Modules
+
+Each class becomes a key, and its rules move into the key as camelCase properties.
+
+| CSS Modules | Plumeria |
+| :-- | :-- |
+| `.button { … }` | `button: { … }` in [`css.create`](/docs/api/javascript/create) |
+| `.button:hover { … }` | `':hover': { … }` inside the key |
+| `@media (…) { .button { … } }` | `'@media (…)': { … }` inside the key |
+| `composes: base` | `sx={[styles.base, styles.button]}` |
+| `.card:hover .title { … }` | [`css.marker` and `css.extended`](/docs/api/javascript/marker) |
+| `@keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `:global(…)` | A plain `.css` file |
+
+```css title="Before"
+.button {
+  padding: 8px 16px;
+  color: white;
+}
+
+.button:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .button {
+    padding: 4px 8px;
+  }
+}
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    padding: '8px 16px',
+    color: 'white',
+    ':hover': {
+      opacity: 0.8,
+    },
+    '@media (max-width: 768px)': {
+      padding: '4px 8px',
+    },
+  },
+});
+
+<button sx={styles.button} />
+```
+
+[Selector rules](/docs/selector-rules) lists which selectors a key can hold.
+
+## styled-components
+
+A styled component becomes a plain element with the `sx` prop. A prop that changes a value becomes a function key, and a prop that picks a style becomes a lookup.
+
+| styled-components | Plumeria |
+| :-- | :-- |
+| `` styled.button`…` `` | `<button sx={styles.button}>` |
+| `` `color: ${(p) => p.color}` `` | A [function key](/docs/api/javascript/create#dynamic-values) |
+| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
+| `` `&:hover { … }` `` | `':hover': { … }` |
+| `` `& > span { … }` `` | A style on the `span`, or [`css.marker`](/docs/api/javascript/marker) |
+| `ThemeProvider` | [`css.createTheme`](/docs/api/javascript/createTheme), with no provider |
+| `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `createGlobalStyle` | A plain `.css` file |
+
+```tsx title="Before"
+import styled from 'styled-components';
+
+const Button = styled.button<{ primary?: boolean; width: string }>`
+  padding: 8px 16px;
+  width: ${(p) => p.width};
+  background: ${(p) => (p.primary ? 'blue' : 'gray')};
+
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    padding: '8px 16px',
+    backgroundColor: 'gray',
+    ':hover': {
+      opacity: 0.8,
+    },
+  },
+  primary: {
+    backgroundColor: 'blue',
+  },
+  width: (width: string) => ({
+    width,
+  }),
+});
+
+export const Button = ({ primary, width, ...props }) => (
+  <button sx={[styles.button, primary && styles.primary, styles.width(width)]} {...props} />
+);
+```
+
+Styles are compiled at build time, so nothing is injected into the page while it renders.
+
+## Emotion
+
+Object styles are already close to Plumeria styles: the properties stay camelCase, and `'&:hover'` drops the `&`. `@emotion/styled` follows the [styled-components](#styled-components) table.
+
+| Emotion | Plumeria |
+| :-- | :-- |
+| `css={{ … }}` | `sx={styles.box}` |
+| `` css={css`…`} `` | `sx={styles.box}`, with the rules as an object |
+| `'&:hover': { … }` | `':hover': { … }` |
+| `css={[base, active && activeStyle]}` or `cx()` | `sx={[styles.base, active && styles.active]}` |
+| `css={(theme) => ({ … })}` | [`css.createTheme`](/docs/api/javascript/createTheme), with no provider |
+| `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `<Global>` | A plain `.css` file |
+
+```tsx title="Before"
+/** @jsxImportSource @emotion/react */
+
+<div
+  css={{
+    padding: 16,
+    color: 'white',
+    '&:hover': {
+      opacity: 0.8,
+    },
+  }}
+/>
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  box: {
+    padding: 16,
+    color: 'white',
+    ':hover': {
+      opacity: 0.8,
+    },
+  },
+});
+
+<div sx={styles.box} />
+```
+
+Remove the `@jsxImportSource @emotion/react` pragma, or `jsxImportSource` from the compiler options, once no file uses the `css` prop.
+
+## vanilla-extract
+
+Styles move out of `.css.ts` files and next to the component that uses them.
+
+| vanilla-extract | Plumeria |
+| :-- | :-- |
+| `style({ … })` | A key in [`css.create`](/docs/api/javascript/create) |
+| `styleVariants`, `recipe` | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
+| `'@media': { '(…)': { … } }` | `'@media (…)': { … }` |
+| `selectors: { '&:hover': { … } }` | `':hover': { … }` |
+| `` selectors: { [`${parent}:hover &`]: { … } } `` | [`css.marker` and `css.extended`](/docs/api/javascript/marker) |
+| `createTheme`, `createThemeContract` | [`css.createTheme`](/docs/api/javascript/createTheme) |
+| `createVar` + `assignInlineVars` | A [function key](/docs/api/javascript/create#dynamic-values) |
+| `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `globalStyle` | A plain `.css` file |
+| `sprinkles` | [`@plumeria/wind`](/docs/api/packages/wind) tokens in `css.create` |
+
+```ts title="Before"
+// button.css.ts
+import { recipe } from '@vanilla-extract/recipes';
+
+export const button = recipe({
+  base: { padding: 8 },
+  variants: {
+    size: {
+      small: { fontSize: 12 },
+      large: { fontSize: 18 },
+    },
+  },
+});
+
+// Button.tsx
+<button className={button({ size })} />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    padding: 8,
+  },
+});
+
+const sizes = css.create({
+  small: {
+    fontSize: 12,
+  },
+  large: {
+    fontSize: 18,
+  },
+});
+
+<button sx={[styles.base, sizes[size]]} />
+```
+
+A theme no longer has a class to apply. The selector that switches it is part of the theme:
+
+```ts title="Before"
+// theme.css.ts
+import { createTheme, createThemeContract } from '@vanilla-extract/css';
+
+export const vars = createThemeContract({ text: null });
+export const light = createTheme(vars, { text: '#111' });
+export const dark = createTheme(vars, { text: '#eee' });
+
+// App.tsx
+<div className={isDark ? dark : light}>{children}</div>
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('.dark', {
+  text: {
+    default: '#111',
+    theme: '#eee',
+  },
+});
+
+<div>{children}</div>
+```
+
+## Panda CSS
+
+The style objects keep their shape. Conditions become selector keys, and token names become values.
+
+| Panda CSS | Plumeria |
+| :-- | :-- |
+| `css({ … })` | A key in [`css.create`](/docs/api/javascript/create) |
+| `cva`, config recipes | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
+| `cx()` | `sx={[styles.base, active && styles.active]}` |
+| `_hover: { … }` | `':hover': { … }` |
+| `md: { … }` | A `'@media (…)'` key from [`css.createStatic`](/docs/api/javascript/createStatic) |
+| `tokens` | [`css.createStatic`](/docs/api/javascript/createStatic), or [`@plumeria/wind`](/docs/api/packages/wind) |
+| `semanticTokens` with `_dark` | [`css.createTheme`](/docs/api/javascript/createTheme) |
+| `stack`, `flex` and other patterns | The properties they stand for |
+| `globalCss` | A plain `.css` file |
+
+```tsx title="Before"
+import { css } from '../styled-system/css';
+
+<button
+  className={css({
+    padding: '4',
+    color: 'white',
+    _hover: {
+      opacity: 0.8,
+    },
+    md: {
+      padding: '8',
+    },
+  })}
+/>
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+import { breakpoints } from './breakpoints';
+
+const styles = css.create({
+  button: {
+    padding: 16,
+    color: 'white',
+    ':hover': {
+      opacity: 0.8,
+    },
+    [breakpoints.md]: {
+      padding: 32,
+    },
+  },
+});
+
+<button sx={styles.button} />
+```
+
+```ts title="breakpoints.ts"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  md: '@media (min-width: 768px)',
+});
+```
+
+Once no file imports from `styled-system`, remove `panda.config.ts`, the generated `styled-system` directory and the PostCSS plugin.
