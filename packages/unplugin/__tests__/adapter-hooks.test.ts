@@ -85,7 +85,7 @@ describe('the vite adapter', () => {
     const config = plugin.config({}, { command: 'build' });
 
     expect(config.optimizeDeps.exclude).toContain('@plumeria/core');
-    expect(config.build.cssCodeSplit).toBe(false);
+    expect(config).not.toHaveProperty('build');
   });
 });
 
@@ -163,11 +163,10 @@ describe('the webpack adapter', () => {
   });
 });
 
-// Rollup, esbuild, rspack and bun take the core plugin as it is, with no
-// adapter in front of it, so its own virtual-module hooks are the whole
-// contract for those bundlers. The `/`-rooted spelling is the one the
-// transform writes into the module it compiles; the relative spelling is what
-// a bundler hands back after resolving that import against the importer.
+// Every adapter builds on the core plugin's own virtual-module hooks, so they
+// are the contract underneath all of them. The `/`-rooted spelling is the one
+// the transform writes into the module it compiles; the relative spelling is
+// what a bundler hands back after resolving that import against the importer.
 describe('the core plugin', () => {
   const core = () => {
     const plugin = unpluginFactory(undefined, {
@@ -228,7 +227,7 @@ describe('the lint guard through the adapters', () => {
     const tap = jest.fn((_name: string, fn: () => void) => fn());
     plugin.webpack({
       isChild: () => false,
-      hooks: { run: { tap } },
+      hooks: { run: { tap }, thisCompilation: { tap: jest.fn() } },
       context: DIR,
       options: { mode: 'production', module: { rules: [] } },
     });
