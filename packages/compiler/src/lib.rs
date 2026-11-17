@@ -307,6 +307,28 @@ pub fn source_packages(cwd: Option<String>) -> Result<Vec<SourcePackage>> {
         .collect())
 }
 
+#[napi(js_name = "globFiles")]
+pub fn glob_files(
+    include: Vec<String>,
+    exclude: Vec<String>,
+    cwd: Option<String>,
+) -> Result<Vec<String>> {
+    let cwd = std::path::PathBuf::from(current_dir(cwd)?);
+    let files = fs::glob::glob_sync(
+        &include,
+        fs::glob::GlobOptions {
+            cwd: &cwd,
+            exclude: &exclude,
+            expected_files: 0,
+        },
+    )
+    .map_err(failure)?;
+    Ok(files
+        .into_iter()
+        .map(|file| cwd.join(file).to_string_lossy().into_owned())
+        .collect())
+}
+
 #[napi(js_name = "resolveImportPath")]
 pub fn resolve_import_path(import_path: String, importer: String) -> Option<String> {
     lock_project().resolve_import_path(&import_path, &importer)
