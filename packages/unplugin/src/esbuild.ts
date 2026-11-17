@@ -2,6 +2,7 @@ import { createEsbuildPlugin } from 'unplugin';
 import * as path from 'path';
 import { unpluginFactory, type PluginOptions } from './core';
 import { stripCssMarkersIn } from './css-marker';
+import { withProjectSheet } from './sheet';
 
 type EsbuildOutputOptions = { outdir?: string; outfile?: string };
 
@@ -28,5 +29,5 @@ function attachEsbuildHooks(plugin: any) {
 
 export default createEsbuildPlugin<PluginOptions | undefined>(
   (options, metaOptions) =>
-    attachEsbuildHooks(unpluginFactory(options, metaOptions)),
+    attachEsbuildHooks(withProjectSheet(unpluginFactory(options, metaOptions))),
 );
