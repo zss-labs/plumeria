@@ -10,6 +10,7 @@ jest.mock('@plumeria/compiler', () => ({
   DEFAULT_STYLE_PROP: 'sx',
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
+  globFiles: jest.requireActual('@plumeria/compiler').globFiles,
   optimizer: jest.fn((css: string) => css),
   resolvePropertyPolicy: jest.fn(() => ({ policy: true })),
   transformSource: jest.fn(() => ({ code: 'transformed' })),
@@ -22,9 +23,11 @@ import * as path from 'path';
 import { unpluginFactory } from '../src/core';
 import { attachWebpackHooks } from '../src/webpack';
 
-const { transformSource: mockTransformSource } = jest.requireMock<{
-  transformSource: jest.Mock;
-}>('@plumeria/compiler');
+const { transformSource: mockTransformSource, compileCSS: mockCompileCSS } =
+  jest.requireMock<{
+    transformSource: jest.Mock;
+    compileCSS: jest.Mock;
+  }>('@plumeria/compiler');
 
 const ROOT = fs.realpathSync(
   fs.mkdtempSync(path.join(os.tmpdir(), 'plumeria-unplugin-package-')),
@@ -114,6 +117,28 @@ it('rereads the packages when the root changes', () => {
 
   plugin.__plumeriaInternal.setRoot(path.join(ROOT, 'node_modules'));
   expect(plugin.resolveId('ui-kit')).toBeNull();
+});
+
+it('compiles the package source ahead of the app in the project sheet', () => {
+  write(path.join(PKG, 'src', 'Button.tsx'), SOURCE);
+  write(path.join(PKG, 'src', 'Button.stories.tsx'), SOURCE);
+  write(path.join(ROOT, 'App.tsx'), SOURCE);
+  write(path.join(ROOT, 'dist', 'App.js'), SOURCE);
+  const plugin = unpluginFactory(
+    { lint: false, exclude: ['**/*.stories.tsx'] },
+    { framework: 'esbuild' } as never,
+  ) as any;
+  plugin.__plumeriaInternal.setRoot(ROOT);
+  mockCompileCSS.mockReturnValueOnce('.kit {}\n.app {}');
+
+  expect(plugin.__plumeriaInternal.projectCss()).toBe('.kit {}\n.app {}');
+  expect(mockCompileCSS).toHaveBeenCalledTimes(1);
+  expect(mockCompileCSS).toHaveBeenCalledWith(
+    expect.objectContaining({
+      cwd: ROOT,
+      files: [path.join(PKG, 'src', 'Button.tsx'), path.join(ROOT, 'App.tsx')],
+    }),
+  );
 });
 
 it('lets the webpack adapter include and resolve package source', () => {
