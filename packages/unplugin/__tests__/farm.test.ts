@@ -71,8 +71,10 @@ it('uses a direct CSS import in production and updates the compiler mode', () =>
   expect(cssImport({ cssId: '/sheet.css' })).toBe('\nimport "/sheet.css";');
   expect(diskImport).not.toHaveBeenCalled();
 
+  plugin.farm.configureCompiler({ config: { config: { mode: 'production' } } });
+  expect(internal.setDev).toHaveBeenLastCalledWith(false);
   plugin.farm.configureCompiler({
-    config: { compilation: { mode: 'development' } },
+    config: { config: { mode: 'development' } },
   });
   expect(internal.setDev).toHaveBeenLastCalledWith(true);
   plugin.farm.configureCompiler({});
