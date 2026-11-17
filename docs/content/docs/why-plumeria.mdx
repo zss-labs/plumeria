@@ -392,9 +392,11 @@ When StyleX is the better choice: you already run it, your codebase depends on i
 
 ## Coming from another styling system
 
-If you use CSS Modules, pseudo-classes, attribute selectors and at-rules use familiar CSS spelling; [Selector rules](/docs/selector-rules) explains which forms Plumeria supports.
+Most styles move with a small rewrite: the APIs keep StyleX's names, and CSS spelling stays as it is.
 
-From Tailwind, the [Claude Code plugin](/docs/ai-agent-resources#claude-code-plugin) has a skill that migrates classes to Plumeria styles, and [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens. From StyleX, the APIs keep their names and shapes, so most files change only at the import and at the call site, where `stylex.props()` becomes the `sx` prop. Themes are the exception, as [above](#plumeria-or-stylex): there is no `defineVars`, and [`createTheme`](/docs/api/javascript/createTheme) declares each variable's default and themed values in one call.
+<Cards>
+  <Card title="Other libraries" href="/docs/api/migrate/other-libraries" />
+</Cards>
 
 ## Next steps
 
