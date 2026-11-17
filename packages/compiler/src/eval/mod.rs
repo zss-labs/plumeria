@@ -306,7 +306,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
         }
 
         match val.kind() {
-            K::Str(value) => Ok(value.value.as_str().map(Value::str)),
+            K::Str(value) => value
+                .value
+                .as_str()
+                .map(|text| Some(Value::str(text)))
+                .ok_or_else(|| lone_surrogate(value.value.display())),
             K::Num(value) => Ok(Some(Value::Num(value.value))),
             K::Bool(value) => Ok(Some(Value::Bool(value))),
             K::Unary(_) => self.plain().expression(val).map(Some),
