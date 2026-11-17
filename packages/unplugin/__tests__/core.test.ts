@@ -30,9 +30,14 @@ jest.mock('@plumeria/compiler', () => ({
         ? '.second {}'
         : '.generated {}',
   ),
+  globFiles: jest.fn(() => []),
 }));
 
 import { unpluginFactory } from '../src/core';
+
+const { globFiles: mockGlobFiles } = jest.requireMock<{
+  globFiles: jest.Mock;
+}>('@plumeria/compiler');
 
 const { transformSource: mockTransformSource } = jest.requireMock<{
   transformSource: jest.Mock;
@@ -260,6 +265,62 @@ it('accumulates development CSS and keeps re-added sheets latest', async () => {
   ).toEqual(new Set(['.second {}', '.generated {}']));
   expect(mockOptimizer).toHaveBeenLastCalledWith('.second {}.generated {}');
   expect(mockOptimizer).toHaveBeenCalledTimes(3);
+});
+
+it('filters the project files through include and exclude patterns of either kind', () => {
+  const { compileCSS: mockCompileCSS } = jest.requireMock<{
+    compileCSS: jest.Mock;
+  }>('@plumeria/compiler');
+  mockGlobFiles.mockReturnValueOnce([
+    '/project/a.tsx',
+    '/project/skip/b.tsx',
+    '/project/legacy/c.tsx',
+    '/project/d.js',
+  ]);
+  const plugin = createPlugin({
+    styleProp: 'css',
+    include: /\.tsx?$/,
+    exclude: ['**/skip/**', /legacy/],
+  });
+  plugin.__plumeriaInternal.setRoot('/project');
+  mockCompileCSS.mockReturnValueOnce('.project {}');
+
+  expect(plugin.__plumeriaInternal.projectCss()).toBe('.project {}');
+  expect(mockGlobFiles).toHaveBeenCalledWith(
+    ['**/*.{js,jsx,ts,tsx}'],
+    ['**/node_modules/**', '**/dist/**'],
+    '/project',
+  );
+  expect(mockCompileCSS).toHaveBeenCalledWith({
+    include: [],
+    exclude: [],
+    files: ['/project/a.tsx'],
+    cwd: '/project',
+    styleProp: 'css',
+    withoutLogicalProperties: undefined,
+    withoutPhysicalProperties: undefined,
+  });
+  expect(mockOptimizer).toHaveBeenLastCalledWith('.project {}');
+});
+
+it('compiles the project sheet from the listed files as they are on disk', async () => {
+  const { compileCSS: mockCompileCSS } = jest.requireMock<{
+    compileCSS: jest.Mock;
+  }>('@plumeria/compiler');
+  const plugin = createPlugin();
+  plugin.__plumeriaInternal.setRoot('/project');
+  await plugin.transform.handler(`${SOURCE} SECOND`, '/project/Card.tsx');
+  await plugin.transform.handler(SOURCE, '/project/virtual.tsx?inline');
+  mockGlobFiles.mockReturnValueOnce([
+    '/project/Card.tsx',
+    '/project/Other.tsx',
+  ]);
+
+  plugin.__plumeriaInternal.projectCss();
+
+  const [options] = mockCompileCSS.mock.calls.at(-1)!;
+  expect(options.files).toEqual(['/project/Card.tsx', '/project/Other.tsx']);
+  expect(options).not.toHaveProperty('sources');
 });
 
 describe('the lint guard', () => {
