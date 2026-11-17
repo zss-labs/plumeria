@@ -30,7 +30,7 @@ function attachFarmHooks(plugin: any) {
     },
     configureCompiler(compiler: any) {
       if (plugin.__plumeriaInternal) {
-        isDev = compiler.config?.compilation?.mode !== 'production';
+        isDev = compiler.config?.config?.mode !== 'production';
         plugin.__plumeriaInternal.setDev(isDev);
       }
     },
