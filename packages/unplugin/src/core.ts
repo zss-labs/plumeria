@@ -7,6 +7,7 @@ import { lintOverrides, startLintGuard } from '@plumeria/eslint-plugin/guard';
 import { resolveSourcePackage, inSourcePackage } from 'zss-engine';
 
 const {
+  globFiles,
   resolvePropertyPolicy,
   optimizer,
   transformSource,
@@ -35,6 +36,12 @@ export interface PluginOptions extends PropertyPolicyOptions {
 /* istanbul ignore next -- SWC reports exported constant initializers as uncovered. */
 export const EXTENSION_PATTERN =
   /* istanbul ignore next */ /\.(ts|tsx|js|jsx)$/;
+
+const PROJECT_INCLUDE = ['**/*.{js,jsx,ts,tsx}'];
+const PROJECT_EXCLUDE = ['**/node_modules/**', '**/dist/**'];
+
+const listFiles = (cwd: string): string[] =>
+  globFiles(PROJECT_INCLUDE, PROJECT_EXCLUDE, cwd);
 
 export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   options = {},
@@ -115,6 +122,24 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
       },
       setCssImport(formatter: CssImportFormatter | null) {
         cssImport = formatter;
+      },
+      projectCss() {
+        const root = path.resolve(viteRoot);
+        const listed = [
+          ...packagesOf().flatMap((pkg) => pkg.sourceDirs.flatMap(listFiles)),
+          ...listFiles(root),
+        ].filter((file) => filter(file));
+        return optimizer(
+          compileCSS({
+            include: [],
+            exclude: [],
+            files: [...new Set(listed)],
+            cwd: root,
+            styleProp,
+            withoutLogicalProperties: options.withoutLogicalProperties,
+            withoutPhysicalProperties: options.withoutPhysicalProperties,
+          }),
+        );
       },
       setClassProp(value: string) {
         classProp = value;
