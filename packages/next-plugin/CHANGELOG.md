@@ -1,5 +1,14 @@
 # @plumeria/next-plugin
 
+## 22.0.14
+
+### Patch Changes
+
+- 186f778: Bump version to 22.0.14
+- Updated dependencies [186f778]
+  - @plumeria/eslint-plugin@22.0.14
+  - @plumeria/turbopack-loader@22.0.14
+
 ## 22.0.13
 
 ### Patch Changes
