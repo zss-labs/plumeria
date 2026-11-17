@@ -1,10 +1,12 @@
 import type { UnpluginFactory } from 'unplugin';
 import { createFilter } from '@rollup/pluginutils';
+import * as fs from 'fs';
 import * as path from 'path';
 import compiler from '@plumeria/compiler';
 import type { PropertyPolicyOptions, SourcePackage } from '@plumeria/compiler';
 import { lintOverrides, startLintGuard } from '@plumeria/eslint-plugin/guard';
 import { resolveSourcePackage, inSourcePackage } from 'zss-engine';
+import { SHEET_ID } from './sheet';
 
 const {
   globFiles,
@@ -42,6 +44,34 @@ const PROJECT_EXCLUDE = ['**/node_modules/**', '**/dist/**'];
 
 const listFiles = (cwd: string): string[] =>
   globFiles(PROJECT_INCLUDE, PROJECT_EXCLUDE, cwd);
+
+const collectedUnder = (dir: string, file: string): boolean => {
+  const relative = path.relative(dir, file).replace(/\\/g, '/');
+  return (
+    !relative.startsWith('..') &&
+    !path.isAbsolute(relative) &&
+    !relative
+      .split('/')
+      .some((segment) => segment === 'node_modules' || segment === 'dist')
+  );
+};
+
+function assertInProjectSheet(
+  file: string,
+  root: string,
+  sourceDirs: string[],
+): void {
+  if (![root, ...sourceDirs].some((dir) => collectedUnder(dir, file))) {
+    throw new Error(
+      `[plumeria] ${file} is outside the project files the shared stylesheet is compiled from, so its styles would be missing. Move it under ${root}, or publish it from a package with a plumeria export condition.`,
+    );
+  }
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `[plumeria] ${file} has no file on disk, so its styles would be missing from the shared stylesheet. Write css.create in a source file instead.`,
+    );
+  }
+}
 
 export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   options = {},
@@ -271,6 +301,14 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
                 css: cssLookup.get(cssFilename) ?? '',
               })
             : `\nimport ${JSON.stringify(cssId)};`;
+
+          if (statement?.includes(JSON.stringify(SHEET_ID))) {
+            assertInProjectSheet(
+              path.resolve(baseId),
+              path.resolve(viteRoot),
+              packagesOf().flatMap((pkg) => pkg.sourceDirs),
+            );
+          }
 
           return {
             code: statement ? transformedSource + statement : transformedSource,
