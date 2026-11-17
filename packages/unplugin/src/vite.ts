@@ -12,6 +12,7 @@ import type {
   UserConfig,
 } from 'vite';
 import { createDiskCssImport } from './disk-css';
+import { SHEET_ID, isSheetId } from './sheet';
 
 const { scanAll, optimizer } = compiler;
 
@@ -36,6 +37,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     setCssImport,
     setClassProp,
     resolveSource,
+    projectCss,
   } = plugin.__plumeriaInternal;
 
   const useDiskEmit = options?.devEmitToDisk ?? false;
@@ -47,7 +49,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
     : null;
 
   setCssImport((ctx: any) => {
-    if (isRsc && isBuild) return null;
+    if (isBuild) return isRsc ? null : `\nimport ${JSON.stringify(SHEET_ID)};`;
     if (isDev && diskCssImport) return diskCssImport(ctx);
     return `\nimport ${JSON.stringify(ctx.cssId)};`;
   });
@@ -181,19 +183,6 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
 
       isBuild = command === 'build';
       isRsc = isRscConfig(userConfig);
-
-      if (isBuild && !isRsc) {
-        configToReturn.build = {
-          ...(userConfig.build ?? {}),
-          cssCodeSplit: false,
-        };
-      }
-
-      if (isBuild && isRsc) {
-        configToReturn.environments = {
-          rsc: { build: { cssCodeSplit: false } },
-        };
-      }
 
       return configToReturn;
     },
@@ -335,6 +324,18 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
       return cssLookup.get(id) ?? null;
     };
   }
+
+  const resolveId = vitePlugin.resolveId;
+  vitePlugin.resolveId = function (this: unknown, id: string, ...rest: any[]) {
+    if (isBuild && isSheetId(id)) return id;
+    return resolveId.call(this, id, ...rest);
+  };
+
+  const load = vitePlugin.load;
+  vitePlugin.load = function (this: unknown, id: string, ...rest: any[]) {
+    if (isBuild && isSheetId(id)) return projectCss();
+    return load.call(this, id, ...rest);
+  };
 
   const cssBundlePlugin = {
     name: '@plumeria/unplugin:vite-css-bundle',
