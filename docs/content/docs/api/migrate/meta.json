@@ -1,5 +1,5 @@
 {
   "defaultOpen": false,
   "title": "Migrate",
-  "pages": ["init", "codemod"]
+  "pages": ["init", "codemod", "other-libraries"]
 }
