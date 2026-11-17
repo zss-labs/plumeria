@@ -31,11 +31,13 @@ TypedCSS has no equivalent limit. A style can be relayed, stored, or pulled from
 
 | Your situation | Choose |
 | :-- | :-- |
-| A new project, or a design system whose components apply the styles they receive | **Plumeria** — merges are settled at build time, nothing ships to merge them later, and a style that loses never reaches the element. |
-| Styles are relayed through wrapper components you cannot flatten | **TypedCSS** — relaying is the case the Plumeria compiler refuses. |
-| Styles arrive from context, a store, or another package at runtime | **TypedCSS** — the compiler cannot see those merges, the resolver can. |
-| You are migrating gradually and cannot yet say where every style ends up | **TypedCSS** first, for the flexibility; the same source can move to Plumeria later with the codemod below. |
-| Bundle size and runtime cost matter more than placement freedom | **Plumeria** — TypedCSS ships a resolver and a class map per call site. |
+| New project or design system | **Plumeria** |
+| Styles relayed through wrappers | **TypedCSS** |
+| Styles from context, a store or a package | **TypedCSS** |
+| Gradual migration | **TypedCSS**, then Plumeria |
+| Bundle size and runtime cost first | **Plumeria** |
+
+TypedCSS ships a resolver and a class map per call site. A gradual migration keeps the same source, so it can move to Plumeria later with the codemod below.
 
 ## The difference
 
