@@ -22,11 +22,13 @@ const setup = (coreConfig?: jest.Mock) => {
     setCssImport: jest.fn(),
     setRoot: jest.fn(),
     setDev: jest.fn(),
+    projectCss: jest.fn(() => '.a{content:"x"}'),
   };
   const diskImport = jest.fn(() => 'disk import');
   createDiskCssImport.mockReturnValue(diskImport);
   const corePlugin = {
     __plumeriaInternal: internal,
+    load: jest.fn(() => 'core css'),
     farm: coreConfig ? { config: coreConfig } : undefined,
   };
   unpluginFactory.mockReturnValue(corePlugin);
@@ -61,14 +63,15 @@ it('uses disk CSS imports in development with the configured root', () => {
   expect(createDiskCssImport.mock.calls[0][0]()).toBe('/project');
 });
 
-it('uses a direct CSS import in production and updates the compiler mode', () => {
+it('imports the shared stylesheet in production and updates the compiler mode', () => {
   const { plugin, internal, cssImport, diskImport } = setup();
+  const sheetImport = '\nimport "/__plumeria_sheet__.zero.css";';
 
-  expect(cssImport({ cssId: '/sheet.css' })).toBe('\nimport "/sheet.css";');
+  expect(cssImport({ cssId: '/sheet.css' })).toBe(sheetImport);
   plugin.farm.config({ compilation: { mode: 'production' } });
   expect(internal.setRoot).not.toHaveBeenCalled();
   expect(internal.setDev).toHaveBeenLastCalledWith(false);
-  expect(cssImport({ cssId: '/sheet.css' })).toBe('\nimport "/sheet.css";');
+  expect(cssImport({ cssId: '/sheet.css' })).toBe(sheetImport);
   expect(diskImport).not.toHaveBeenCalled();
 
   plugin.farm.configureCompiler({ config: { config: { mode: 'production' } } });
@@ -79,6 +82,19 @@ it('uses a direct CSS import in production and updates the compiler mode', () =>
   expect(internal.setDev).toHaveBeenLastCalledWith(true);
   plugin.farm.configureCompiler({});
   expect(internal.setDev).toHaveBeenLastCalledWith(true);
+});
+
+it('serves the whole project as the shared stylesheet of a production build', () => {
+  const { plugin, internal } = setup();
+
+  expect(internal.projectCss).not.toHaveBeenCalled();
+  expect(plugin.load('/__plumeria_sheet__.zero.css')).toBe('.a{content:"x"}');
+  expect(plugin.load('/Card.zero.css')).toBe('core css');
+  expect(plugin.farm.finalizeResources).toBeUndefined();
+
+  plugin.farm.config({ compilation: { mode: 'development' } });
+  expect(plugin.load('/__plumeria_sheet__.zero.css')).toBe('core css');
+  expect(internal.projectCss).toHaveBeenCalledTimes(1);
 });
 
 it('adds affected targets once and skips dependencies and unrelated files', () => {
