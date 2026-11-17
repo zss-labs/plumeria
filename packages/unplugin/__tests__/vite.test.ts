@@ -19,6 +19,7 @@ jest.mock('@plumeria/compiler', () => ({
   },
   compileCSS: () =>
     mockCompiledSource.includes('blue') ? '.box { color: blue; }' : '.box {}',
+  globFiles: jest.fn(() => []),
 }));
 jest.mock('../src/disk-css', () => ({
   ensureVirtualCssFile: jest.fn(),
@@ -35,10 +36,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import vite from '../src/vite';
+import { SHEET_ID } from '../src/sheet';
 
-const { scanAll: mockScanAll } = jest.requireMock<{ scanAll: jest.Mock }>(
-  '@plumeria/compiler',
-);
+const { scanAll: mockScanAll, globFiles: mockGlobFiles } = jest.requireMock<{
+  scanAll: jest.Mock;
+  globFiles: jest.Mock;
+}>('@plumeria/compiler');
 const { optimizer: mockOptimizer } = jest.requireMock<{ optimizer: jest.Mock }>(
   '@plumeria/compiler',
 );
@@ -63,10 +66,7 @@ it('merges Vite config for serve and build commands', () => {
   ).toEqual({ optimizeDeps: { exclude: ['existing', '@plumeria/core'] } });
   expect(
     plugin.config({ build: { minify: false } }, { command: 'build' }),
-  ).toMatchObject({ build: { minify: false, cssCodeSplit: false } });
-  expect((vite()[0] as any).config({}, { command: 'build' })).toMatchObject({
-    build: { cssCodeSplit: false },
-  });
+  ).not.toHaveProperty('build');
 });
 
 // The dependency scan resolves imports with Vite's own conditions, and a package
@@ -134,31 +134,25 @@ it('starts the lint guard for builds only', () => {
   expect(startLintGuard).toHaveBeenCalledTimes(1);
 });
 
-it('configures RSC builds detected from environments and nested plugins', () => {
-  const environmentPlugin = vite()[0] as any;
-  expect(
-    environmentPlugin.config(
-      { environments: { rsc: {} } },
-      { command: 'build' },
-    ),
-  ).toMatchObject({
-    environments: { rsc: { build: { cssCodeSplit: false } } },
-  });
+it('detects RSC builds from environments and nested plugins', async () => {
+  const configs = [
+    { environments: { rsc: {} } },
+    { plugins: [null, 'ignored', [{ name: 'rsc:server' }]] },
+    { plugins: [{ name: 'rsc' }] },
+  ];
+  for (const userConfig of configs) {
+    const plugin = vite()[0] as any;
+    expect(plugin.config(userConfig, { command: 'build' })).not.toHaveProperty(
+      'environments',
+    );
+    plugin.__plumeriaInternal.cssLookup.set('/project/a.zero.css', '.a {}');
+    const emitFile = jest.fn(() => 'sheet-ref');
 
-  const namedPlugin = vite()[0] as any;
-  expect(
-    namedPlugin.config(
-      { plugins: [null, 'ignored', [{ name: 'rsc:server' }]] },
-      { command: 'build' },
-    ),
-  ).toMatchObject({
-    environments: { rsc: { build: { cssCodeSplit: false } } },
-  });
-
-  const exactPlugin = vite()[0] as any;
-  expect(
-    exactPlugin.config({ plugins: [{ name: 'rsc' }] }, { command: 'build' }),
-  ).toHaveProperty('environments.rsc.build.cssCodeSplit', false);
+    await plugin.buildEnd.call({ environment: { name: 'client' }, emitFile });
+    expect(emitFile).not.toHaveBeenCalled();
+    await plugin.buildEnd.call({ environment: { name: 'rsc' }, emitFile });
+    expect(emitFile).toHaveBeenCalledTimes(1);
+  }
 });
 
 it('reloads a changed virtual stylesheet only when it exists', async () => {
@@ -322,6 +316,38 @@ it('does not emit an empty RSC stylesheet or run build hooks outside RSC', async
   mockOptimizer.mockReturnValueOnce('');
   await rscPlugin.buildEnd.call({ environment: { name: 'rsc' }, emitFile });
   expect(emitFile).not.toHaveBeenCalled();
+});
+
+it('imports one shared sheet compiled from the whole project in every environment of a non-RSC build', async () => {
+  const plugin = vite()[0] as any;
+  plugin.config({}, { command: 'build' });
+  plugin.configResolved({ root: '/project', command: 'build' });
+
+  for (const name of ['client', 'ssr']) {
+    const result = await plugin.transform.handler.call(
+      { environment: { name } },
+      SOURCE,
+      ID,
+    );
+    expect(result.code).toBe(`transformed\nimport "${SHEET_ID}";`);
+  }
+
+  expect(plugin.resolveId(`${SHEET_ID}?used`)).toBe(`${SHEET_ID}?used`);
+  expect(plugin.load(SHEET_ID)).toBe('.box {}');
+  expect(mockGlobFiles).toHaveBeenCalledWith(
+    expect.any(Array),
+    expect.any(Array),
+    '/project',
+  );
+});
+
+it('leaves the shared sheet id to the dev server', () => {
+  const plugin = vite()[0] as any;
+  plugin.config({}, { command: 'serve' });
+  plugin.configResolved({ root: '/project', command: 'serve' });
+
+  expect(plugin.load(SHEET_ID)).toBeNull();
+  expect(mockGlobFiles).not.toHaveBeenCalled();
 });
 
 it('links the single CSS bundle to entry chunks in a non-RSC build', () => {
