@@ -2,17 +2,24 @@ import { createFarmPlugin } from 'unplugin';
 import { unpluginFactory, EXTENSION_PATTERN } from './core';
 import type { PluginOptions } from './core';
 import { createDiskCssImport } from './disk-css';
+import { SHEET_ID, isSheetId } from './sheet';
 
 function attachFarmHooks(plugin: any) {
-  const { targets, setCssImport } = plugin.__plumeriaInternal;
+  const { targets, setCssImport, projectCss } = plugin.__plumeriaInternal;
   let isDev = false;
   let farmRoot = process.cwd();
 
   const diskCssImport = createDiskCssImport(() => farmRoot);
 
   setCssImport((ctx: any) =>
-    isDev ? diskCssImport(ctx) : `\nimport ${JSON.stringify(ctx.cssId)};`,
+    isDev ? diskCssImport(ctx) : `\nimport ${JSON.stringify(SHEET_ID)};`,
   );
+
+  const load = plugin.load;
+  plugin.load = function (this: unknown, id: string) {
+    if (!isDev && isSheetId(id)) return projectCss();
+    return load.call(this, id);
+  };
 
   const coreFarm = plugin.farm;
   plugin.farm = {
