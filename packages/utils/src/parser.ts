@@ -87,6 +87,45 @@ import {
   sourcePackagesStale,
 } from './resolver';
 
+function hasLoneSurrogate(raw: string): boolean {
+  let pendingHighSurrogate = false;
+  for (let index = 0; index < raw.length; index++) {
+    let code = raw.charCodeAt(index);
+    if (code === 0x5c) {
+      code = raw.charCodeAt(++index);
+      if (code === 0x0d) {
+        if (raw.charCodeAt(index + 1) === 0x0a) index++;
+        continue;
+      }
+      if (code === 0x0a || code === 0x2028 || code === 0x2029) continue;
+      if (code === 0x75) {
+        if (raw[index + 1] === '{') {
+          const end = raw.indexOf('}', index + 2);
+          code = parseInt(raw.slice(index + 2, end), 16);
+          index = end;
+        } else {
+          code = parseInt(raw.slice(index + 1, index + 5), 16);
+          index += 4;
+        }
+      }
+    }
+    const lowSurrogate = code >= 0xdc00 && code <= 0xdfff;
+    if (pendingHighSurrogate !== lowSurrogate) return true;
+    pendingHighSurrogate = code >= 0xd800 && code <= 0xdbff;
+  }
+  return pendingHighSurrogate;
+}
+
+function wellFormed(value: string, raw: string | undefined): string {
+  if (raw === undefined || !hasLoneSurrogate(raw)) return value;
+  throw new Error(
+    `[plumeria] The string "${value}" contains a lone surrogate, which CSS cannot represent. Write the complete character instead.`,
+  );
+}
+
+const stringValue = (node: StringLiteral): string =>
+  wellFormed(node.value, node.raw);
+
 export function unwrapExpression(node: any): any {
   while (
     node &&
@@ -604,7 +643,7 @@ export function objectExpressionToObject(
       t.isNumericLiteral(val) ||
       t.isBooleanLiteral(val)
     ) {
-      obj[key] = val.value;
+      obj[key] = t.isStringLiteral(val) ? stringValue(val) : val.value;
     } else if (t.isUnaryExpression(val)) {
       obj[key] = evaluateExpression(
         val,
@@ -722,7 +761,7 @@ export function collectLocalConsts(ast: Module): Record<string, any> {
         t.isNumericLiteral(init) ||
         t.isBooleanLiteral(init)
       ) {
-        result = init.value;
+        result = t.isStringLiteral(init) ? stringValue(init) : init.value;
       } else if (t.isIdentifier(init)) {
         result = resolveValue(init.value);
       } else if (t.isObjectExpression(init)) {
@@ -1013,7 +1052,7 @@ function getPropertyKey(
     return node.value;
   }
   if (t.isStringLiteral(node)) {
-    return node.value;
+    return stringValue(node);
   }
   if (node?.type === 'NumericLiteral') {
     throw new Error(
@@ -1023,7 +1062,7 @@ function getPropertyKey(
   if (node.type === 'Computed') {
     const expr = node.expression;
     if (t.isStringLiteral(expr)) {
-      return expr.value;
+      return stringValue(expr);
     }
     if (t.isIdentifier(expr)) {
       if (
@@ -1154,7 +1193,8 @@ function evaluateTemplateLiteral(
   let result = '';
 
   for (let i = 0; i < node.quasis.length; i++) {
-    result += node.quasis[i].cooked || node.quasis[i].raw;
+    const quasi = node.quasis[i];
+    result += quasi.cooked ? wellFormed(quasi.cooked, quasi.raw) : quasi.raw;
 
     if (i < node.expressions.length) {
       const expr = node.expressions[i];
@@ -1399,7 +1439,7 @@ function evaluateExpression(
     return evaluateCallExpression(node, staticTable);
   }
   if (t.isStringLiteral(node)) {
-    return node.value;
+    return stringValue(node);
   }
 
   if (t.isNumericLiteral(node)) {
