@@ -28,6 +28,7 @@ html.dark {
 :root {
   --plumeria-accent: #d653bb;
   --mono: ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  view-transition-name: none;
 }
 
 :root:not(:has([data-playground], [data-home])) {
