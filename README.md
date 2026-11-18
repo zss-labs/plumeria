@@ -4,7 +4,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=10B981)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=6366F1)
 
-**Plumeria** is a React styling library for reliable interfaces. When styles are combined in an array, the one on the right wins, not the one imported or loaded last: the compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
+**Plumeria** brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order. The compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
 
 > The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](#benchmark). The CSS types and the property list the linter checks against are both generated from MDN data.
 
