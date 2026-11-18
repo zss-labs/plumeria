@@ -1,5 +1,7 @@
 import * as css from '@plumeria/core';
 import { Link } from 'waku';
+import { Bundlers } from 'component/Bundlers';
+import { CopyCommand } from 'component/CopyCommand';
 import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import { breakpoints } from 'lib/mediaQuery';
@@ -86,6 +88,13 @@ const styles = css.create({
       opacity: 0.85,
     },
   },
+  install: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 24,
+    alignItems: 'center',
+    marginTop: 40,
+  },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
     [css.extended('primary', ':hover')]: {
@@ -126,6 +135,10 @@ export default function Page() {
             <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
               Why Plumeria?
             </Link>
+          </div>
+          <div sx={styles.install}>
+            <CopyCommand command="npx @plumeria/init" />
+            <Bundlers />
           </div>
         </div>
         <SiteFooter home />
