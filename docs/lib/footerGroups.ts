@@ -11,7 +11,7 @@ export const footerGroups = [
   {
     heading: 'Explore',
     links: [
-      { label: 'Play', href: '/playground' },
+      { label: 'Playground', href: '/playground' },
       { label: 'Blog', href: latestBlogUrl },
     ],
   },
