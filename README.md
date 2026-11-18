@@ -84,6 +84,8 @@ npx @plumeria/init
 
 It detects the bundler and the package manager, asks what it cannot detect — which spelling of a two-named property the project writes, what the styling prop is called, whether `.jsx`/`.tsx` files apply styles only through the styling prop, and whether to set up ESLint — then installs the packages and writes the configs. It shows the plan before writing anything.
 
+To set it up by hand, add [`@plumeria/next-plugin`](https://plumeria.dev/docs/integration/next) for Next.js or [`@plumeria/unplugin`](https://plumeria.dev/docs/integration) for Vite, webpack, Rollup and the other bundlers.
+
 ## Benchmark
 
 For how Plumeria compares with other libraries, see the [side-by-side benchmark](https://github.com/refirst11/css-compiler-bench).
