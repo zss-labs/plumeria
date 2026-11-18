@@ -98,13 +98,13 @@ export default function Page() {
   return (
     <main data-home sx={styles.home}>
       <Seo
-        title="Plumeria - React styling library"
-        subtitle="The style on the right wins, not the one imported or loaded last."
+        title="Plumeria — React styling system for reliable interfaces"
+        subtitle="Plumeria brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order."
       />
       <div sx={styles.page}>
         <div sx={styles.hero}>
           <h1 sx={styles.title}>Plumeria</h1>
-          <p sx={styles.description}>React styling library for reliable interfaces</p>
+          <p sx={styles.description}>React styling system for reliable interfaces</p>
           <div sx={styles.actions}>
             <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
               Get started
