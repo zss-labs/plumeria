@@ -26,7 +26,9 @@ const styles = css.create({
     userSelect: 'none',
   },
   button: {
+    display: 'grid',
     flexShrink: 0,
+    placeItems: 'center',
     padding: '0 12px',
     font: 'inherit',
     fontSize: 12,
@@ -41,6 +43,12 @@ const styles = css.create({
     ':hover': {
       color: '#ffffff',
     },
+  },
+  label: {
+    gridArea: '1 / 1',
+  },
+  hidden: {
+    visibility: 'hidden',
   },
 });
 
@@ -60,7 +68,8 @@ export function CopyCommand({ command }: { command: string }) {
         {command}
       </code>
       <button type="button" sx={styles.button} onClick={copy}>
-        {copied ? 'Copied' : 'Copy'}
+        <span sx={[styles.label, copied && styles.hidden]}>Copy</span>
+        <span sx={[styles.label, !copied && styles.hidden]}>Copied</span>
       </button>
     </div>
   );
