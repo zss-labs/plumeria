@@ -237,12 +237,12 @@ export const SiteHeader = () => (
           <Link to="/docs" unstable_prefetchOnView={{}} sx={styles.menuLink}>
             Docs
           </Link>
-          <a href="/playground" sx={styles.menuLink}>
-            Play
-          </a>
           <Link to="/blog" unstable_prefetchOnView={{}} sx={styles.menuLink}>
             Blog
           </Link>
+          <a href="/playground" sx={styles.menuLink}>
+            Playground
+          </a>
           <a
             href="https://refirst11.github.io/css-compiler-bench/"
             target="_blank"
