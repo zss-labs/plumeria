@@ -45,6 +45,7 @@ const BUNDLERS = [
   },
 ] as const;
 
+const INIT = 'M4 17l6-5-6-5M12 19h8';
 const MORE = 'M12 5v14M5 12h14';
 
 const styles = css.create({
@@ -87,6 +88,19 @@ function Logo({ bundler }: { bundler: (typeof BUNDLERS)[number] }) {
 export function Bundlers() {
   return (
     <nav aria-label="Integrations" sx={styles.row}>
+      <Link to="/docs/installation#one-command" sx={styles.link}>
+        <span sx={styles.name}>Init</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
+          <path
+            d={INIT}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </Link>
       {BUNDLERS.map((bundler) => (
         <Link key={bundler.name} to={bundler.href} sx={styles.link}>
           <span sx={styles.name}>{bundler.name}</span>
