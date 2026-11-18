@@ -70,6 +70,13 @@ export function keyframes(rule: StyleRule): string {
   return `kf-${hash}`;
 }
 
+export function positionTry(rule: StyleRule): string {
+  const hash = genBase36Hash(rule, 1, 8);
+  const { styleSheet } = transpile({ [`@position-try --pt-${hash}`]: rule }, undefined, '--global');
+  insert(styleSheet);
+  return `--pt-${hash}`;
+}
+
 export function createTheme(
   themeSelector: string,
   rule: Record<string, { default: string; theme: string }>,
