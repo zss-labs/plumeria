@@ -88,12 +88,19 @@ const styles = css.create({
       opacity: 0.85,
     },
   },
+  heroBody: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   install: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 24,
+    flexWrap: 'wrap',
+    gap: '16px 40px',
     alignItems: 'center',
-    marginTop: 40,
+    justifyContent: 'center',
   },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -112,29 +119,31 @@ export default function Page() {
       />
       <div sx={styles.page}>
         <div sx={styles.hero}>
-          <h1 sx={styles.title}>Plumeria</h1>
-          <p sx={styles.description}>React styling system for reliable interfaces</p>
-          <div sx={styles.actions}>
-            <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
-              Get started
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                sx={styles.arrow}
-              >
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </Link>
-            <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
-              Why Plumeria?
-            </Link>
+          <div sx={styles.heroBody}>
+            <h1 sx={styles.title}>Plumeria</h1>
+            <p sx={styles.description}>React styling system for reliable interfaces</p>
+            <div sx={styles.actions}>
+              <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
+                Get started
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  sx={styles.arrow}
+                >
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+              <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
+                Why Plumeria?
+              </Link>
+            </div>
           </div>
           <div sx={styles.install}>
             <CopyCommand command="npx @plumeria/init" />
