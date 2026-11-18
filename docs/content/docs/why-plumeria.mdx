@@ -337,6 +337,7 @@ StyleX is the closest relative, and the shared ground is real: both compile styl
 |  | StyleX | Plumeria |
 | :-- | :-- | :-- |
 | Merging | At runtime | At build time |
+| Two states at once | A fixed order of pseudo-classes | The style on the right gets [higher specificity](/docs/specificity#two-states-that-match-at-once) |
 | Call site | `sx={[]}` or `stylex.props()` | `sx={[]}` or [`css.use`](/docs/api/javascript/use) |
 | Themes | `defineVars` + `createTheme` | [`createTheme`](/docs/api/javascript/createTheme) |
 | Compiler | Babel | Rust (oxc) |
