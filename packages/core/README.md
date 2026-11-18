@@ -7,7 +7,7 @@
 ![Types](https://img.shields.io/badge/Types-100%25-6366F1?logo=npm&logoColor=white)
 ![Runtime](https://img.shields.io/badge/Runtime-never-6366F1?logo=npm&logoColor=white)
 
-**Plumeria** is a React styling library for reliable interfaces. When styles are combined in an array, the one on the right wins, not the one imported or loaded last: the compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
+**Plumeria** brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order. The compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
 
 > The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://github.com/refirst11/css-compiler-bench). The CSS types and the property list the linter checks against are both generated from MDN data.
 
