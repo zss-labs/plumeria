@@ -1,7 +1,6 @@
 import * as css from '@plumeria/core';
 import { Link } from 'waku';
 import { Bundlers } from 'component/Bundlers';
-import { CopyCommand } from 'component/CopyCommand';
 import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import { breakpoints } from 'lib/mediaQuery';
@@ -29,10 +28,9 @@ const styles = css.create({
     },
   },
   hero: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'grid',
+    gridTemplateRows: '1fr auto 1fr',
+    justifyItems: 'center',
     minHeight: 'calc(var(--hero-height, 100svh) - 56px)',
     paddingBlock: 48,
     textAlign: 'center',
@@ -90,17 +88,19 @@ const styles = css.create({
   },
   heroBody: {
     display: 'flex',
-    flex: 1,
     flexDirection: 'column',
+    gridRow: 2,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   install: {
     display: 'flex',
     flexWrap: 'wrap',
+    gridRow: 3,
     gap: '16px 40px',
     alignItems: 'center',
+    alignSelf: 'end',
     justifyContent: 'center',
+    paddingTop: 40,
   },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -146,7 +146,6 @@ export default function Page() {
             </div>
           </div>
           <div sx={styles.install}>
-            <CopyCommand command="npx @plumeria/init" />
             <Bundlers />
           </div>
         </div>
