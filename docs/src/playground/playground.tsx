@@ -20,6 +20,7 @@ const EXAMPLE_LINKS: { value: ExampleName; label: string }[] = [
   { value: 'card', label: 'Card' },
   { value: 'merge', label: 'Last style wins' },
   { value: 'view-transition', label: 'View Transitions' },
+  { value: 'position-try', label: 'Anchor Fallbacks' },
 ];
 
 type OutputTab = OutputKind | 'preview';
@@ -110,14 +111,19 @@ const styles = css.create({
   group: {
     display: 'flex',
     gap: 4,
+    maxWidth: '100%',
     padding: 3,
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
     background: theme.iconBg,
     borderRadius: 8,
   },
   option: {
+    flexShrink: 0,
     padding: '4px 10px',
     fontSize: 12,
     color: theme.textSecondary,
+    whiteSpace: 'nowrap',
     textDecoration: 'none',
     cursor: 'pointer',
     background: 'transparent',
