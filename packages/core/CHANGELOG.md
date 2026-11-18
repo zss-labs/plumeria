@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.15
+
+### Patch Changes
+
+- a00ffdb: - Update: Describe Plumeria as React styling with predictable overrides in package.json
+
 ## 22.0.14
 
 ### Patch Changes

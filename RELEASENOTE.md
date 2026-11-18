@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.15 (Nov 18, 2026)
+
+- Update: Describe Plumeria as React styling with predictable overrides in package.json
+
 ## 22.0.14 (Nov 17, 2026)
 
 - Fix: serve one shared stylesheet compiled from the project files when it loads in Vite, Rollup, Rolldown, Farm, esbuild and Bun builds, so media queries from different modules are ordered together and the bundler hashes and processes the CSS it ships.
