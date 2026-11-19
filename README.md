@@ -8,7 +8,7 @@
 
 ![A surveyor looking through a telescope, illustrated in blue and off-white](.github/assets/surveyor-banner.webp)
 
-> The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](#benchmark). The CSS types and the property list the linter checks against are both generated from MDN data.
+> The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://refirst11.github.io/css-compiler-bench/). The CSS types come from [cssdefs](https://github.com/zss-labs/cssdefs), and the property list the linter checks against is generated from MDN data.
 
 ## Example
 
@@ -90,7 +90,7 @@ To set it up by hand, add [`@plumeria/next-plugin`](https://plumeria.dev/docs/in
 
 ## Benchmark
 
-For how Plumeria compares with other libraries, see the [side-by-side benchmark](https://github.com/refirst11/css-compiler-bench).
+For how Plumeria compares with other libraries, see the [benchmark](https://refirst11.github.io/css-compiler-bench/). The [harness](https://github.com/refirst11/css-compiler-bench) is public.
 
 ## API Stability
 
