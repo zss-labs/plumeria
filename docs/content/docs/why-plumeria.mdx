@@ -330,6 +330,26 @@ export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
 });
 ```
 
+## Plumeria, Tailwind or CSS Modules
+
+Both are the usual starting point, and both leave the override question to something outside the call site. In CSS Modules, two rules of equal specificity are settled by the order their CSS reaches the page — and that order belongs to the whole app, not to the file you are reading, so route splitting and lazy loading can change it without any edit to the component. In Tailwind, two utilities for the same property are settled by their order in the generated stylesheet; the order of the class string does nothing, which is why `tailwind-merge` exists to resolve conflicts at runtime.
+
+|  | CSS Modules | Tailwind | Plumeria |
+| :-- | :-- | :-- | :-- |
+| Two styles set the same property | CSS load order across the app | Stylesheet order, or `tailwind-merge` at runtime | The style on the right, at build time |
+| Styles written as | CSS files | Utility classes | Typed objects in TypeScript |
+| Typos and unused styles | Not caught | Unknown classes produce no CSS | A build error |
+| Runtime values | CSS variables by hand | Arbitrary values or inline `style` | [Function keys](/docs/api/javascript/create#dynamic-values) compiled to CSS variables |
+| Setup | Built into most bundlers | One PostCSS or bundler plugin | One plugin per bundler |
+
+Where Plumeria is the weaker choice:
+
+- **Ecosystem.** Tailwind has component libraries, templates, editor tooling and years of answers to search. Plumeria has its own docs.
+- **What the build accepts.** A value the compiler cannot read, a `css.create` inside a component, or a style passed through a chain of wrappers is an error, not a fallback. CSS Modules and Tailwind accept all of these.
+- **Familiarity.** Most developers and most models already write Tailwind and plain CSS fluently. Plumeria's rules take some reading first.
+
+When the codebase is small or one person owns every style, load order rarely bites and the simpler tool is fine. Plumeria pays off when shared components accept styles from many call sites and an override that works on one page must not silently lose on another.
+
 ## Plumeria or StyleX
 
 StyleX is the closest relative, and the shared ground is real: both compile styles to atomic CSS at build time, both are type-safe, in both the last style applied wins, and Plumeria's API deliberately inherits StyleX's design philosophy. If those were the only criteria, there would be nothing to choose. The differences are in where the merge happens, what the call site looks like, and what checks run by default.
