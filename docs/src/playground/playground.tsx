@@ -21,6 +21,7 @@ const EXAMPLE_LINKS: { value: ExampleName; label: string }[] = [
   { value: 'merge', label: 'Last style wins' },
   { value: 'view-transition', label: 'View Transitions' },
   { value: 'position-try', label: 'Anchor Fallbacks' },
+  { value: 'var-type', label: 'Typed Variables' },
 ];
 
 type OutputTab = OutputKind | 'preview';
