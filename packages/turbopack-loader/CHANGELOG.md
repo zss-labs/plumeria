@@ -1,5 +1,13 @@
 # @plumeria/turbopack-loader
 
+## 22.0.16
+
+### Patch Changes
+
+- 48f510a: Bump version to 22.0.16
+- Updated dependencies [48f510a]
+  - @plumeria/compiler@22.0.16
+
 ## 22.0.15
 
 ### Patch Changes

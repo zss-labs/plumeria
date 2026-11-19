@@ -1,5 +1,11 @@
 # @plumeria/init
 
+## 22.0.16
+
+### Patch Changes
+
+- 48f510a: Bump version to 22.0.16
+
 ## 22.0.15
 
 ### Patch Changes

@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.0.16 (Nov 19, 2026)
+
+- Update: Add the surveyor banner and brand-colored badges to README.md
+
 ## 22.0.15 (Nov 18, 2026)
 
 - Update: Describe Plumeria as React styling with predictable overrides in package.json
