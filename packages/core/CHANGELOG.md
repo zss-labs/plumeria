@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.1.0
+
+### Minor Changes
+
+- 32731ff: - Update: CSS property types now come from the `cssdefs` package, pinned to 1.0.1, instead of a copy generated inside `@plumeria/core`; the accepted properties and values are unchanged
+
 ## 22.0.16
 
 ### Patch Changes
