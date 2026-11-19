@@ -1,5 +1,14 @@
 # @plumeria/unplugin
 
+## 22.1.1
+
+### Patch Changes
+
+- f90bec1: - Update: set the author to zss-labs in package.json
+- Updated dependencies [f90bec1]
+  - @plumeria/compiler@22.1.1
+  - @plumeria/eslint-plugin@22.1.1
+
 ## 22.1.0
 
 ### Minor Changes

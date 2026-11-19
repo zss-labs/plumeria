@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.1.1 (Nov 19, 2026)
+
+- Update: set the author to zss-labs in package.json
+
 ## 22.1.0 (Nov 19, 2026)
 
 - Update: CSS property types now come from the `cssdefs` package, pinned to 1.0.1, instead of a copy generated inside `@plumeria/core`; the accepted properties and values are unchanged
