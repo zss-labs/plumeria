@@ -1,6 +1,3 @@
-ignore:
-  - "packages/utils/src/**/*"
-
 coverage:
   status:
     project:
