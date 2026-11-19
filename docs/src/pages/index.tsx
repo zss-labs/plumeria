@@ -29,13 +29,15 @@ const styles = css.create({
   },
   hero: {
     display: 'grid',
-    gridTemplateRows: '1fr auto 1fr',
-    justifyItems: 'center',
+    gap: 32,
+    alignContent: 'center',
+    alignItems: 'center',
     minHeight: 'calc(var(--hero-height, 100svh) - 56px)',
     paddingBlock: 48,
-    textAlign: 'center',
     [breakpoints.md]: {
+      justifyItems: 'center',
       paddingBlock: 40,
+      textAlign: 'center',
     },
   },
   title: {
@@ -89,18 +91,41 @@ const styles = css.create({
   heroBody: {
     display: 'flex',
     flexDirection: 'column',
-    gridRow: 2,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    [breakpoints.md]: {
+      alignItems: 'center',
+    },
+  },
+  banner: {
+    width: '100%',
+    aspectRatio: '2.85',
+    overflow: 'hidden',
+    backgroundColor: '#294aa6',
+    borderRadius: 6,
+    [breakpoints.md]: {
+      aspectRatio: '2',
+    },
+  },
+  portrait: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#d5d4cc',
+    maskImage: 'url(/surveyor.webp)',
+    maskMode: 'luminance',
+    maskRepeat: 'no-repeat',
+    maskPosition: '55% 30%',
+    maskSize: '65% auto',
+    [breakpoints.md]: {
+      maskSize: '86% auto',
+    },
   },
   install: {
     display: 'flex',
     flexWrap: 'wrap',
-    gridRow: 3,
     gap: '16px 40px',
     alignItems: 'center',
-    alignSelf: 'end',
     justifyContent: 'center',
-    paddingTop: 40,
+    padding: '40px 0',
   },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -145,9 +170,12 @@ export default function Page() {
               </Link>
             </div>
           </div>
-          <div sx={styles.install}>
-            <Bundlers />
+          <div aria-hidden="true" sx={styles.banner}>
+            <div sx={styles.portrait} />
           </div>
+        </div>
+        <div sx={styles.install}>
+          <Bundlers />
         </div>
         <SiteFooter home />
       </div>
