@@ -1,5 +1,3 @@
-# Plumeria
-
 [![OpenSSF Best Practices](https://img.shields.io/cii/level/15164?label=openssf&color=294AA6)](https://www.bestpractices.dev/projects/15164)
 [![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=294AA6)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=294AA6)
