@@ -1,5 +1,13 @@
 # @plumeria/swc-jest
 
+## 22.1.2
+
+### Patch Changes
+
+- 6b661b7: Bump version to 22.1.2
+- Updated dependencies [6b661b7]
+  - @plumeria/compiler@22.1.2
+
 ## 22.1.1
 
 ### Patch Changes

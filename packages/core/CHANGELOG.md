@@ -1,5 +1,12 @@
 # @plumeria/core
 
+## 22.1.2
+
+### Patch Changes
+
+- 6b661b7: - Update: link the benchmark results and cssdefs in README.md
+  - Update: remove the rating legend from API Stability in README.md
+
 ## 22.1.1
 
 ### Patch Changes
