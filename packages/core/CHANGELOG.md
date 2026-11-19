@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.0.16
+
+### Patch Changes
+
+- 48f510a: - Update: Add the surveyor banner and brand-colored badges to README.md
+
 ## 22.0.15
 
 ### Patch Changes
