@@ -114,7 +114,7 @@ const styles = css.create({
     maskImage: 'url(/surveyor.webp)',
     maskMode: 'luminance',
     maskRepeat: 'no-repeat',
-    maskPosition: '55% 30%',
+    maskPosition: '72% 30%',
     maskSize: '65% auto',
     [breakpoints.md]: {
       maskSize: '86% auto',
