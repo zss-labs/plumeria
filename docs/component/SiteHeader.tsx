@@ -216,7 +216,7 @@ export const SiteHeader = () => (
   <header sx={styles.header}>
     <nav sx={styles.nav}>
       <Link to="/" unstable_prefetchOnView={{}} sx={styles.brand}>
-        <img src="/logo.svg" alt="" width="20" height="20" sx={styles.brandMark} />
+        <img src="/icon.svg" alt="" width="20" height="20" sx={styles.brandMark} />
         Plumeria
       </Link>
       <Link to={latestBlogUrl} unstable_prefetchOnView={{}} sx={styles.version}>
