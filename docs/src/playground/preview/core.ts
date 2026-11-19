@@ -77,6 +77,19 @@ export function positionTry(rule: StyleRule): string {
   return `--pt-${hash}`;
 }
 
+export function varType(rule: StyleRule): string {
+  const hash = genBase36Hash(rule, 1, 8);
+  const property = {
+    syntax: `"${typeof rule.syntax === 'string' ? rule.syntax : '*'}"`,
+    inherits: rule.inherits === true ? 'true' : 'false',
+    ...(rule.initialValue !== undefined && { initialValue: rule.initialValue }),
+  };
+  const { styleSheet } = transpile({ [`@property --pr-${hash}`]: property }, undefined, '--global');
+  keyframeSheets.add(styleSheet);
+  insert(styleSheet);
+  return `--pr-${hash}`;
+}
+
 export function createTheme(
   themeSelector: string,
   rule: Record<string, { default: string; theme: string }>,
