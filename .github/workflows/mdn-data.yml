@@ -18,13 +18,11 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-node
 
-      - name: Update the MDN and webref data
-        run: pnpm update --workspace-root --latest mdn-data @mdn/browser-compat-data @webref/css
+      - name: Update the MDN data
+        run: pnpm update --workspace-root --latest mdn-data @mdn/browser-compat-data
 
-      - name: Regenerate the property list and the CSS types
-        run: |
-          pnpm --filter @plumeria/eslint-plugin properties
-          pnpm --filter @plumeria/core csstypes
+      - name: Regenerate the property list
+        run: pnpm --filter @plumeria/eslint-plugin properties
 
       - name: Check for changes
         id: diff
@@ -54,8 +52,7 @@ jobs:
               git commit -m "$2"
             fi
           }
-          commit package.json 'chore: update the MDN and webref data in package.json'
-          commit pnpm-lock.yaml 'chore: update the MDN and webref data in pnpm-lock.yaml'
+          commit package.json 'chore: update the MDN data in package.json'
+          commit pnpm-lock.yaml 'chore: update the MDN data in pnpm-lock.yaml'
           commit packages/eslint-plugin/src/util/cssPropertyData.ts 'chore(eslint-plugin/util): regenerate the CSS property list from MDN data in cssPropertyData.ts'
-          commit packages/core/lib/csstypes.d.ts 'chore(core/lib): regenerate the CSS types from mdn-data in csstypes.d.ts'
           git push
