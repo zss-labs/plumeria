@@ -129,7 +129,7 @@ export default function Page() {
           <div sx={styles.heroBody}>
             <div>
               <h1 sx={styles.title}>Plumeria</h1>
-              <p sx={styles.description}>Predictable style overrides for React</p>
+              <p sx={styles.description}>React styling library for reliable interfaces</p>
             </div>
             <div sx={styles.actions}>
               <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
