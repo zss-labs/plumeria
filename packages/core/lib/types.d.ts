@@ -1,4 +1,4 @@
-import type { CSSTypes } from './csstypes';
+import type { CSSDefs } from 'cssdefs';
 
 type CSSVariableKey = `--${string}`;
 type CSSVariableValue = `var(${CSSVariableKey})`;
@@ -11,7 +11,7 @@ type CSSVariableProperty = {
 };
 
 type CommonProperties = {
-  [K in keyof CSSTypes]: CSSTypes[K] | CSSVariableValue | ThemeValue;
+  [K in keyof CSSDefs]: CSSDefs[K] | CSSVariableValue | ThemeValue;
 };
 
 type ArrayString = `[${string}`;
@@ -30,7 +30,7 @@ type AtRule =
   | `${AtKeyword}(${string}`
   | '@starting-style';
 
-type StyleKey = keyof CSSTypes;
+type StyleKey = keyof CSSDefs;
 type NestedKey = ColonString | ArrayString | AtRule;
 
 type AtRuleSelector = {
