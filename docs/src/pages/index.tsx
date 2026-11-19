@@ -1,6 +1,7 @@
 import * as css from '@plumeria/core';
 import { Link } from 'waku';
 import { Bundlers } from 'component/Bundlers';
+import { LastStyleWins } from 'component/LastStyleWins';
 import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import { breakpoints } from 'lib/mediaQuery';
@@ -139,14 +140,14 @@ export default function Page() {
   return (
     <main data-home sx={styles.home}>
       <Seo
-        title="Plumeria — React styling system for reliable interfaces"
+        title="Plumeria — Predictable style overrides for React"
         subtitle="Plumeria brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order."
       />
       <div sx={styles.page}>
         <div sx={styles.hero}>
           <div sx={styles.heroBody}>
             <h1 sx={styles.title}>Plumeria</h1>
-            <p sx={styles.description}>React styling system for reliable interfaces</p>
+            <p sx={styles.description}>Predictable style overrides for React</p>
             <div sx={styles.actions}>
               <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
                 Get started
@@ -174,6 +175,7 @@ export default function Page() {
             <div sx={styles.portrait} />
           </div>
         </div>
+        <LastStyleWins />
         <div sx={styles.install}>
           <Bundlers />
         </div>
