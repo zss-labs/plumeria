@@ -26,7 +26,7 @@ export const Card = () => (
   <main sx={styles.canvas}>
     <article sx={styles.card}>
       <div sx={styles.heading}>
-        <img sx={styles.logo} src="/logo.svg" alt="" width={20} height={20} />
+        <img sx={styles.logo} src="/icon.svg" alt="" width={20} height={20} />
         <p sx={styles.eyebrow}>Plumeria</p>
       </div>
       <h1 sx={styles.title}>Rust-based CSS compiler</h1>
