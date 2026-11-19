@@ -1,10 +1,14 @@
 # Plumeria
 
-[![OpenSSF Best Practices](https://img.shields.io/cii/level/15164?label=openssf&color=10B981)](https://www.bestpractices.dev/projects/15164)
-[![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=10B981)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
-![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=6366F1)
+[![OpenSSF Best Practices](https://img.shields.io/cii/level/15164?label=openssf&color=294AA6)](https://www.bestpractices.dev/projects/15164)
+[![Tests](https://img.shields.io/github/actions/workflow/status/zss-labs/plumeria/tests.yml?logo=github&logoColor=white&label=tests&color=294AA6)](https://github.com/zss-labs/plumeria/actions/workflows/tests.yml)
+![Codecov](https://img.shields.io/codecov/c/github/zss-labs/plumeria?logo=codecov&logoColor=white&color=294AA6)
 
 **Plumeria** brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order. The compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
+
+[Docs](https://plumeria.dev/docs) · [Blog](https://plumeria.dev/blog) · [Playground](https://plumeria.dev/playground)
+
+![A surveyor looking through a telescope, illustrated in blue and off-white](.github/assets/surveyor-banner.webp)
 
 > The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](#benchmark). The CSS types and the property list the linter checks against are both generated from MDN data.
 
