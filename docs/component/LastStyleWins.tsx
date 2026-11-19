@@ -27,7 +27,7 @@ const styles = css.create({
     display: 'grid',
     gap: 20,
     justifyItems: 'center',
-    paddingBlock: 48,
+    paddingBottom: 48,
   },
   grid: {
     display: 'grid',
