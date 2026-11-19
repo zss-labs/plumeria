@@ -1,7 +1,5 @@
 import * as css from '@plumeria/core';
 import { Link } from 'waku';
-import { Bundlers } from 'component/Bundlers';
-import { LastStyleWins } from 'component/LastStyleWins';
 import { Seo } from 'component/Seo';
 import { SiteFooter } from 'component/SiteFooter';
 import { breakpoints } from 'lib/mediaQuery';
@@ -30,16 +28,11 @@ const styles = css.create({
   },
   hero: {
     display: 'grid',
-    gap: 32,
+    gap: 24,
     alignContent: 'center',
     alignItems: 'center',
-    minHeight: 'calc(var(--hero-height, 100svh) - 56px)',
-    paddingBlock: 48,
-    [breakpoints.md]: {
-      justifyItems: 'center',
-      paddingBlock: 40,
-      textAlign: 'center',
-    },
+    minHeight: 'calc(100svh - 56px)',
+    paddingBlock: 32,
   },
   title: {
     fontSize: 'clamp(48px, 10vw, 64px)',
@@ -49,7 +42,7 @@ const styles = css.create({
   },
   description: {
     maxWidth: 640,
-    marginTop: 28,
+    marginTop: 12,
     fontSize: 'clamp(20px, 2.5vw, 28px)',
     lineHeight: 1.5,
     letterSpacing: '-0.02em',
@@ -58,8 +51,7 @@ const styles = css.create({
     display: 'flex',
     flexWrap: 'wrap',
     gap: 16,
-    justifyContent: 'center',
-    marginTop: 44,
+    alignItems: 'center',
   },
   button: {
     display: 'inline-flex',
@@ -92,10 +84,7 @@ const styles = css.create({
   heroBody: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
-    [breakpoints.md]: {
-      alignItems: 'center',
-    },
+    gap: 44,
   },
   banner: {
     width: '100%',
@@ -120,14 +109,6 @@ const styles = css.create({
       maskSize: '86% auto',
     },
   },
-  install: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '16px 40px',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '40px 0',
-  },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
     [css.extended('primary', ':hover')]: {
@@ -146,8 +127,10 @@ export default function Page() {
       <div sx={styles.page}>
         <div sx={styles.hero}>
           <div sx={styles.heroBody}>
-            <h1 sx={styles.title}>Plumeria</h1>
-            <p sx={styles.description}>Predictable style overrides for React</p>
+            <div>
+              <h1 sx={styles.title}>Plumeria</h1>
+              <p sx={styles.description}>Predictable style overrides for React</p>
+            </div>
             <div sx={styles.actions}>
               <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
                 Get started
@@ -174,10 +157,6 @@ export default function Page() {
           <div aria-hidden="true" sx={styles.banner}>
             <div sx={styles.portrait} />
           </div>
-        </div>
-        <LastStyleWins />
-        <div sx={styles.install}>
-          <Bundlers />
         </div>
         <SiteFooter home />
       </div>
