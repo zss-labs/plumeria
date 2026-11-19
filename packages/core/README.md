@@ -7,7 +7,7 @@
 
 ![A surveyor looking through a telescope, illustrated in blue and off-white](https://raw.githubusercontent.com/zss-labs/plumeria/main/.github/assets/surveyor-banner.webp)
 
-> The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://github.com/refirst11/css-compiler-bench). The CSS types and the property list the linter checks against are both generated from MDN data.
+> The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://refirst11.github.io/css-compiler-bench/). The CSS types come from [cssdefs](https://github.com/zss-labs/cssdefs), and the property list the linter checks against is generated from MDN data.
 
 ## Installation
 
@@ -133,13 +133,6 @@ declare global {
 Declaration merging is additive, so several names can coexist during a migration. Whichever you declare has to match what the bundler plugin was given — if they disagree the prop type-checks but is never compiled away.
 
 ## API Stability
-
-Plumeria publishes frequently. To make that legible, every public API is rated for **future** change likelihood — not past churn.
-
-| Rating | Label      | Meaning                                                     |
-| ------ | ---------- | ----------------------------------------------------------- |
-| ★★★★★  | **Frozen** | Bug fixes ship continuously. The signature will not change. |
-| ★★★★☆  | **Stable** | Additive only. Existing signatures will not move.           |
 
 | API                       | Rating | Label  |
 | ------------------------- | ------ | ------ |
