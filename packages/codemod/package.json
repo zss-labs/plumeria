@@ -2,7 +2,7 @@
   "name": "@plumeria/codemod",
   "version": "22.1.0",
   "description": "Codemods for Plumeria: rename the styling prop or an API",
-  "author": "Refirst 11",
+  "author": "zss-labs",
   "license": "MIT",
   "homepage": "https://plumeria.dev",
   "repository": {
