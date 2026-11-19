@@ -37,6 +37,6 @@ module.exports = {
     '<rootDir>/packages/turbopack-loader/src/dev-bridge-client.ts',
     '<rootDir>/packages/swc-jest/dist/',
     '<rootDir>/packages/utils/dist/',
-    '<rootDir>/packages/utils/src/index.ts',
+    '<rootDir>/packages/utils/src/',
   ],
 };
