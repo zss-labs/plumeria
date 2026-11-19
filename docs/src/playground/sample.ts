@@ -796,13 +796,208 @@ const styles = css.create({
 `,
   },
 ];
-export type ExampleName = 'card' | 'merge' | 'view-transition' | 'position-try';
+
+const VAR_TYPE_FILES: SampleFile[] = [
+  {
+    path: ENTRY,
+    label: 'VarType.tsx',
+    source: `import * as css from '@plumeria/core';
+import { useState } from 'react';
+
+const steps = [25, 50, 75, 100] as const;
+
+const progress = css.varType({
+  syntax: '<integer>',
+  inherits: true,
+  initialValue: '0',
+});
+
+const tint = css.varType({
+  syntax: '<color>',
+  inherits: true,
+  initialValue: '#547b7c',
+});
+
+export const VarTypeDemo = () => {
+  const [step, setStep] = useState<number>(25);
+
+  return (
+    <main sx={styles.canvas}>
+      <div sx={styles.pair}>
+        <figure
+          sx={[
+            styles.figure,
+            step === 25 && styles.quarter,
+            step === 50 && styles.half,
+            step === 75 && styles.threeQuarters,
+            step === 100 && styles.full,
+          ]}
+        >
+          <div sx={[styles.ring, styles.plainRing]} />
+          <div sx={[styles.swatch, styles.plainSwatch]} />
+          <figcaption sx={styles.caption}>--plain</figcaption>
+        </figure>
+        <figure
+          sx={[
+            styles.figure,
+            step === 25 && styles.quarter,
+            step === 50 && styles.half,
+            step === 75 && styles.threeQuarters,
+            step === 100 && styles.full,
+          ]}
+        >
+          <div sx={[styles.ring, styles.typedRing]} />
+          <div sx={[styles.swatch, styles.typedSwatch]} />
+          <figcaption sx={styles.caption}>css.varType</figcaption>
+        </figure>
+      </div>
+      <div sx={styles.controls}>
+        {steps.map((value) => (
+          <button
+            key={value}
+            type="button"
+            sx={[styles.step, step === value && styles.active]}
+            aria-pressed={step === value}
+            onClick={() => setStep(value)}
+          >
+            {value}%
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+};
+
+const styles = css.create({
+  canvas: {
+    position: 'fixed',
+    inset: 0,
+    display: 'grid',
+    gap: 'min(28px, 4vh)',
+    placeContent: 'safe center',
+    justifyItems: 'center',
+    padding: 16,
+    overflowY: 'auto',
+    fontFamily: 'system-ui, sans-serif',
+    colorScheme: 'light',
+    background: '#f3f1ec',
+  },
+  pair: {
+    display: 'flex',
+    gap: 'min(24px, 5vw)',
+  },
+  figure: {
+    display: 'grid',
+    gap: 12,
+    justifyItems: 'center',
+    margin: 0,
+  },
+  caption: {
+    fontFamily: 'ui-monospace, monospace',
+    fontSize: 12,
+    color: '#596055',
+  },
+  ring: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'min(140px, 36vw, 28vh)',
+    aspectRatio: '1',
+    borderRadius: '50%',
+    containerType: 'inline-size',
+    '::after': {
+      fontSize: '20cqi',
+      fontWeight: 600,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#2f3a32',
+      content: 'counter(value) "%"',
+    },
+  },
+  swatch: {
+    width: '100%',
+    height: 'min(56px, 10vh)',
+    borderRadius: 12,
+  },
+  plainRing: {
+    counterReset: 'value var(--plain)',
+    background: 'radial-gradient(closest-side, #fdfcf8 78%, transparent 80%), conic-gradient(#547b7c calc(var(--plain) * 1%), #e4e1d8 0)',
+    transition: '--plain 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)',
+  },
+  typedRing: {
+    counterReset: \`value var(\${progress})\`,
+    background: \`radial-gradient(closest-side, #fdfcf8 78%, transparent 80%), conic-gradient(#547b7c calc(var(\${progress}) * 1%), #e4e1d8 0)\`,
+    transition: \`\${progress} 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)\`,
+  },
+  plainSwatch: {
+    background: 'linear-gradient(135deg, var(--plain-tint), #2f3a32)',
+    transition: '--plain-tint 0.8s ease',
+  },
+  typedSwatch: {
+    background: \`linear-gradient(135deg, var(\${tint}), #2f3a32)\`,
+    transition: \`\${tint} 0.8s ease\`,
+  },
+  quarter: {
+    '--plain': '25',
+    '--plain-tint': '#547b7c',
+    [progress]: '25',
+    [tint]: '#547b7c',
+  },
+  half: {
+    '--plain': '50',
+    '--plain-tint': '#788b77',
+    [progress]: '50',
+    [tint]: '#788b77',
+  },
+  threeQuarters: {
+    '--plain': '75',
+    '--plain-tint': '#dc9e91',
+    [progress]: '75',
+    [tint]: '#dc9e91',
+  },
+  full: {
+    '--plain': '100',
+    '--plain-tint': '#d9b99b',
+    [progress]: '100',
+    [tint]: '#d9b99b',
+  },
+  controls: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  step: {
+    padding: '8px 14px',
+    fontSize: 14,
+    fontWeight: 600,
+    color: '#596055',
+    cursor: 'pointer',
+    background: '#fdfcf8',
+    borderWidth: 0,
+    borderRadius: 999,
+    ':hover': {
+      background: '#ece9e1',
+    },
+  },
+  active: {
+    color: '#fdfcf8',
+    background: '#547b7c',
+    ':hover': {
+      background: '#547b7c',
+    },
+  },
+});
+`,
+  },
+];
+
+export type ExampleName = 'card' | 'merge' | 'view-transition' | 'position-try' | 'var-type';
 
 export const EXAMPLES: Record<ExampleName, SampleFile[]> = {
   card: SAMPLE_FILES,
   merge: MERGE_FILES,
   'view-transition': VIEW_TRANSITION_FILES,
   'position-try': POSITION_TRY_FILES,
+  'var-type': VAR_TYPE_FILES,
 };
 
 export function exampleFromSearch(search: string): ExampleName {
