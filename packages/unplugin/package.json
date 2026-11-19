@@ -2,7 +2,7 @@
   "name": "@plumeria/unplugin",
   "version": "22.1.0",
   "description": "Universal Plumeria plugin for various build tools",
-  "author": "Refirst 11",
+  "author": "zss-labs",
   "license": "MIT",
   "homepage": "https://plumeria.dev",
   "repository": {
