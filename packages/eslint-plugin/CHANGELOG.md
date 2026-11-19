@@ -1,3 +1,11 @@
+## 22.1.2
+
+### Patch Changes
+
+- b445040: Bump version to 22.1.2
+- Updated dependencies [b445040]
+  - @plumeria/compiler@22.1.2
+
 ## 22.1.1
 
 ### Patch Changes

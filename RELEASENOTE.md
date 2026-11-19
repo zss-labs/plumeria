@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.1.2 (Nov 19, 2026)
+
+- Update: link the benchmark results and cssdefs in README.md
+
 ## 22.1.1 (Nov 19, 2026)
 
 - Update: set the author to zss-labs in package.json

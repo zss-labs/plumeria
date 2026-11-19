@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.1.2
+
+### Patch Changes
+
+- b445040: - Update: link the benchmark results and cssdefs in README.md
+
 ## 22.1.1
 
 ### Patch Changes
