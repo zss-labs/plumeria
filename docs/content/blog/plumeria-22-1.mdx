@@ -1,0 +1,49 @@
+---
+title: 'Plumeria 22.1'
+description: 'Update: CSS property types come from cssdefs'
+date: '2026-11-19'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+  <GitHubUser username="refirst11" subtext="Plumeria Core" />
+  <GitHubUser username="Anionix" subtext="Plumeria Core" />
+</div>
+
+Plumeria v22.1 takes its CSS property types from [cssdefs](https://www.npmjs.com/package/cssdefs), a new package that keeps TypeScript types for every CSS property. The properties and values Plumeria accepts are unchanged.
+
+## 1. cssdefs
+
+The types used to be generated inside `@plumeria/core` and rewritten every week from MDN and webref. That work now lives in its own package. cssdefs regenerates every week and publishes a patch when properties or values are added, and a minor when the specifications remove one.
+
+`@plumeria/core` pins cssdefs to an exact version. Reinstalling never changes your types. They change when you upgrade Plumeria, after the new version has gone through Plumeria's tests.
+
+cssdefs works without Plumeria:
+
+```ts
+import type { CSSDefs } from 'cssdefs';
+
+const style: CSSDefs = {
+  display: 'flex',
+  justifyContent: 'space-between',
+};
+```
+
+## 2. no-unknown-css-properties
+
+The ESLint rule keeps its own list. It accepts every property that was ever valid, including vendor-prefixed and legacy ones, so code that passed before still passes.
+
+## Others
+
+- The surveyor illustration is now available on the web page, npm, and GitHub.
+- The GitHub About and the home page now describe Plumeria as "React styling library for reliable interfaces".
+- The `package.json`and README.md description is "React styling with predictable overrides".
+
+---
+
+## Release notes
+
+## 22.1.0 (Nov 19, 2026)
+
+- Update: CSS property types now come from the `cssdefs` package, pinned to 1.0.1, instead of a copy generated inside `@plumeria/core`; the accepted properties and values are unchanged
