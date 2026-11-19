@@ -1,13 +1,11 @@
-# @plumeria/core
-
-![License](https://img.shields.io/badge/License-MIT-10B981)
-![npm](https://img.shields.io/npm/v/@plumeria/core?&color=10B981)
-
-![Web](https://img.shields.io/badge/Web-atomic-6366F1?logo=npm&logoColor=white)
-![Types](https://img.shields.io/badge/Types-100%25-6366F1?logo=npm&logoColor=white)
-![Runtime](https://img.shields.io/badge/Runtime-never-6366F1?logo=npm&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/%20-MIT-294AA6?logo=npm&logoColor=white&labelColor=555)](https://github.com/zss-labs/plumeria/blob/main/LICENSE)
+ ![Atomic CSS](https://img.shields.io/badge/%20-Atomic_CSS-294AA6?logo=npm&logoColor=white&labelColor=555) ![Zero Runtime](https://img.shields.io/badge/%20-Zero_Runtime-294AA6?logo=npm&logoColor=white&labelColor=555)
 
 **Plumeria** brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order. The compiler merges styles at build time, and an overridden property never reaches the element. What ships is class names and CSS. A value the compiler cannot resolve stops the build until it is fixed.
+
+[Docs](https://plumeria.dev/docs) · [Blog](https://plumeria.dev/blog) · [Playground](https://plumeria.dev/playground)
+
+![A surveyor looking through a telescope, illustrated in blue and off-white](https://raw.githubusercontent.com/zss-labs/plumeria/main/.github/assets/surveyor-banner.webp)
 
 > The compiler is written in Rust with oxc, so builds are fast — see the [benchmark](https://github.com/refirst11/css-compiler-bench). The CSS types and the property list the linter checks against are both generated from MDN data.
 
