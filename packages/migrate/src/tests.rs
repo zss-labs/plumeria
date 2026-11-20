@@ -280,12 +280,15 @@ fn keeps_conditions_in_place() {
 }
 
 #[test]
-fn leaves_other_class_names_on_class_name() {
+fn holds_other_class_names_beside_a_style() {
     let css = ".base { color: red }";
-    let out = converted(&format!("{IMPORT}<div className={{[props.className, s.base].filter(Boolean).join(' ')}} />;"), css);
-    assert!(out.ends_with("<div className={[props.className].filter(Boolean).join(' ')} sx={styles.base} />;"), "{out}");
-    let words = converted(&format!("{IMPORT}<div className={{`${{s.base}} active`}} />;"), css);
-    assert!(words.ends_with("<div className=\"active\" sx={styles.base} />;"), "{words}");
+    for code in [
+        "<div className={[props.className, s.base].filter(Boolean).join(' ')} />;",
+        "<div className={`${s.base} active`} />;",
+    ] {
+        let result = run(&format!("{IMPORT}{code}"), css);
+        assert_eq!(result.holds, ["class-name-mixed"], "{code}");
+    }
 }
 
 #[test]
