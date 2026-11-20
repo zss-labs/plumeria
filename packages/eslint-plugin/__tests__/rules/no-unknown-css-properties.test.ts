@@ -166,7 +166,7 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
     },
     {
       // Literal key and non-property element in checkStyleObject
-      code: `import { create } from '@plumeria/core'; create({ main: { 'background-color': 'red', [key]: 'blue', ['a' + 'b']: 'green' } });`,
+      code: `import { create } from '@plumeria/core'; create({ main: { 'backgroundColor': 'red', [key]: 'blue', ['a' + 'b']: 'green' } });`,
     },
     {
       // Other import from @plumeria/core to cover alias lookup failure
@@ -194,8 +194,7 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
             viewTransitionScope: 'all',
             textDecorationInset: '0.1em',
             columnRuleInset: '4px',
-            timelineTrigger: 'none',
-            flowTolerance: 'normal'
+            timelineTrigger: 'none'
           }
         });
       `,
@@ -206,11 +205,8 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
         const styles = css.create({
           main: {
             msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
             WebkitFontSmoothing: 'antialiased',
-            MozOsxFontSmoothing: 'grayscale',
             WebkitLineClamp: 2,
-            msTextSizeAdjust: '100%',
             gridGap: '8px'
           }
         });
@@ -218,6 +214,30 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
     },
   ],
   invalid: [
+    {
+      code: `
+        import * as css from '@plumeria/core';
+        const styles = css.create({
+          main: {
+            'background-color': 'red',
+            flowTolerance: 'normal',
+            WebkitOverflowScrolling: 'touch',
+            MozOsxFontSmoothing: 'grayscale',
+            msTextSizeAdjust: '100%'
+          }
+        });
+      `,
+      errors: [
+        { messageId: 'unknownProperty', data: { name: 'background-color' } },
+        { messageId: 'unknownProperty', data: { name: 'flowTolerance' } },
+        {
+          messageId: 'unknownProperty',
+          data: { name: 'WebkitOverflowScrolling' },
+        },
+        { messageId: 'unknownProperty', data: { name: 'MozOsxFontSmoothing' } },
+        { messageId: 'unknownProperty', data: { name: 'msTextSizeAdjust' } },
+      ],
+    },
     {
       code: `
         import * as css from '@plumeria/core';
@@ -420,7 +440,7 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
     {
       code: `
         import * as css from '@plumeria/core';
-        const above = css.positionTry({ positionAre: 'top' });
+        const above = css.positionTry({ positionAre: 'top', 'position-area': 'top' });
       `,
       errors: [
         {
@@ -429,6 +449,7 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
             name: 'positionAre',
           },
         },
+        { messageId: 'unknownProperty', data: { name: 'position-area' } },
       ],
     },
     {
