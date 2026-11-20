@@ -1,0 +1,238 @@
+---
+title: 'css.create'
+description: 'コンポーネントのスタイルの大半を書く、中心となるスタイリング API。'
+stability: Frozen
+---
+
+
+```ts
+export type create = <const T extends Record<string, CreateStyleValue>>(rule: T)=> CreateReturnType<T>;
+export const create: create;
+```
+
+`css.create` は、プロパティと値をオブジェクトに書いてスタイルを定義する API です。型チェック、エディターの入力補完、lint が使えます。
+
+コンパイルされるのは、実際に要素で使うスタイルだけです。
+
+## 例 [#example]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core'
+
+const styles = css.create({
+  container: {
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+  text: {
+    fontSize: '14px',
+    textDecoration: 'none',
+  },
+})
+
+export default function App() {
+  return (
+    <div
+      sx={[
+        styles.container,
+        styles.text
+      ]}
+    />
+  );
+}
+```
+
+ビルドすると、呼び出しはクラス名に置き換わり、Plumeria の import も消えます。
+
+**ビルド後の JavaScript**
+```tsx
+<div className="xxp6epoh xwbwwha1 xbief8v4 xzllkng3" />
+```
+
+**生成される CSS**
+
+```css
+.xxp6epoh {
+  display: flex;
+}
+.xwbwwha1 {
+  justify-content: space-between;
+}
+.xbief8v4:not(#\#) {
+  font-size: 14px;
+}
+.xzllkng3 {
+  text-decoration: none;
+}
+```
+
+プロパティと値の組み合わせごとに、一つのクラス（アトミッククラス）を作ります。クラス名はその組み合わせのハッシュで決まります。同じ宣言はどのファイルに書いても同じクラスを使い、異なる宣言の名前は衝突しません。
+
+
+## 動的な値 [#dynamic-values]
+
+値に関数を書いたキーを **function key** と呼びます。呼び出すと**動的なスタイル**が得られます。クラス名はビルド時に決まり、呼び出し時の値は CSS 変数として要素に届きます。
+
+```tsx
+const styles = css.create({
+  palette: (color: string) => ({
+    backgroundColor: color,
+  }),
+});
+
+export const Color = ({ color }) => {
+  return (
+    <span sx={styles.palette(color)}>Dynamic Color</span>
+  )
+}
+```
+
+引数には計算済みの値を渡します。引数の式は要素に書き込まれるので、副作用のある呼び出しや getter は複数回評価されることがあります。`css.createStatic` などの定義は引数の位置では変換されず、実行時には値がありません。`css.create` の中で参照してください。
+
+数値の単位は静的なスタイルと同じです。`width` には `px` が付き、`opacity` には付きません。`hsl()`、`brightness()`、`scaleX()` のような色・フィルター・拡大縮小の関数の中では、数値に単位は付きません。
+
+## Variants とブラケット記法 [#variants-bracket-notation]
+
+見た目の候補（バリアント）は `variantStyles[size]` のように角括弧で選びます。コンパイラはこの参照を、キーからクラス名を引く静的な表に変換します。
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    display: 'inline-flex',
+    borderRadius: '4px',
+    backgroundColor: 'blue',
+    color: 'white',
+  }
+});
+
+const sizeStyles = css.create({
+  small: {
+    fontSize: '12px',
+    padding: '4px 8px',
+  },
+  large: {
+    fontSize: '18px',
+    padding: '12px 24px',
+  }
+});
+
+type Size = 'small' | 'large';
+// can also use the type exhaustively via typeof sizeStyles
+
+export const Button = ({ size }: { size: Size }) => {
+  return (
+    <button sx={[styles.base, sizeStyles[size]]}>Button</button>
+  );
+};
+```
+
+<Callout type="warn" title="関数で定義したキーの扱い">
+  角括弧で選ぶための表には、関数で定義したキーは入りません。
+</Callout>
+
+### 最後に書いたものが勝つ [#the-last-source-wins]
+
+要素にスタイルを並べて渡すと、同じプロパティには最後に指定した値が残ります。上の例で候補のスタイルが基本のスタイルを上書きできるのはこのためです。
+
+固定のスタイル、条件式、角括弧で選んだスタイルのどれでも同じです。同じプロパティを指定する二つのスタイルを入れ替えると、結果も入れ替わります。
+
+```tsx
+const styles = css.create({
+  base: { color: 'white' },
+  muted: { color: 'slategray' },
+});
+
+const toneStyles = css.create({
+  brand: { color: 'royalblue' },
+  danger: { color: 'crimson' },
+});
+
+// muted wins — it is written last
+<button sx={[styles.base, toneStyles[tone], isMuted && styles.muted]} />
+
+// toneStyles wins — now it is
+<button sx={[styles.base, isMuted && styles.muted, toneStyles[tone]]} />
+```
+
+この例では三つとも `color` を指定しています。別々のプロパティを変える場合は競合しないので、上の例の `[styles.base, sizeStyles[size]]` は順番を変えても同じ結果です。
+
+上書きは入れ子の中でもプロパティ単位です。`:hover` の色を変えても、同じ `:hover` ブロックに書いたほかの指定は残ります。
+
+この規則はスタイルの配列に適用されます。定義の中でオブジェクトを `...` で展開する場合は JavaScript の規則に従います。同じキーがあると、後の値が前の値を、入れ子のオブジェクトごと置き換えます。
+
+`margin` と `marginTop` のように一括指定と個別指定が重なる場合は例外です。どちらを後に置いても、重なる部分は個別指定が優先されます。[スタイルの優先順位](/ja/docs/specificity)
+
+### ブラケット記法と条件式 [#conditions-with-bracket-notation]
+
+条件式は角括弧の中にも外にも書けます。どちらも一つの表を引くコードになります。
+
+```tsx
+<button sx={sizeStyles[isLarge ? keyA : keyB]} />
+<button sx={isLarge ? sizeStyles[keyA] : sizeStyles[keyB]} />
+<button sx={isActive && sizeStyles[key]} />
+```
+
+**ビルド後の JavaScript**
+```js
+({"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}[isLarge ? keyA : keyB] || "")
+```
+
+一度に選ばれる分岐は一つです。コンパイラは分岐ごとに組み合わせを作らず、表を引くキーの式に条件を含めます。
+
+対応表にどのキーが入るかは、条件の書き方で決まります。
+
+| 書き方 | 対応表に入るキー |
+| --- | --- |
+| `sizeStyles[isLarge ? keyA : keyB]` | `sizeStyles` のキー |
+| `isLarge ? sizeStyles[keyA] : sizeStyles[keyB]` | 同じく `sizeStyles` のキー |
+| `isLarge ? sizeStyles[keyA] : themeStyles[keyB]` | 両方のオブジェクトのキー |
+| `isLarge ? sizeStyles.large : sizeStyles.small` | 表は不要（次の例） |
+
+別のオブジェクトを選ぶ分岐も書けます。この場合は両方のキーが一つの表に入ります。
+
+どちらのキーも決まっている場合は `.large` や `.small` と直接書いてください。既知の二つのスタイルを選ぶだけなら、表は作られません。
+
+```diff
+- <button sx={sizeStyles[isLarge ? 'large' : 'small']} />
++ <button sx={isLarge ? sizeStyles.large : sizeStyles.small} />
+```
+
+**ビルド後の JavaScript**
+```js
+(isLarge ? "xpdfgu2b xj7b4jff" : "xhrr6ses x1v10r0u")
+```
+
+
+### 共通のプロパティは base スタイルに置く [#keep-common-properties-in-a-base-style]
+
+どの候補でも同じ指定は、各キーに繰り返し書かず、上の `styles.base` のような基本のスタイルにまとめます。
+
+候補間で競合しない指定は、組み合わせを記録する表の外に一度だけ出力されます。
+
+## ゼロランタイムのロジック [#zero-runtime-logic]
+
+候補、動的な prop、条件式の組み合わせをビルド時に解決します。多くの CSS-in-JS ライブラリのように、ブラウザーで描画のたびにオブジェクトを重ねたり、クラス名を連結したりする処理はありません。
+
+### 1. 掛け合わされるのは競合する軸だけ [#1-only-conflicting-axes-are-multiplied]
+
+コンパイラは要素に渡せるスタイルを調べ、同じプロパティを変えるものどうしを結んだグラフを作ります。組み合わせを展開するのは、実際に競合があるグループだけです。
+
+- **別々のプロパティを変える場合。** サイズとテーマが別々のプロパティを変えるなら、独立した表で選べます。候補が三つずつなら `3 + 3` 項目です。
+- **同じプロパティを変える場合。** どちらも `color` を変えるなら、そのグループだけを一つの表にまとめます。同じ三つずつの候補でも、今度は `3 × 3` 項目です。
+- **同時に選ばれない場合。** `?:` や `&&` の分岐では、選ばれた分岐をキーにして一つの表を引きます。両方の組み合わせを掛け合わせる必要はありません。
+
+同じ要素上でも、`color` を変える二組の候補と `fontSize` を変える二組は別のグループです。各組に三つの候補があれば、一つの `3 × 3 × 3 × 3` の表ではなく、`3 × 3` と `3 × 3` の二つの表になります。
+
+一つの候補が `color` と `fontSize` の両方を変えると、その候補を通じて二つのグループがつながります。両方の上書き結果を一緒に決める必要があるので、一つの表にまとまります。
+
+生成される表の大きさを決めるのは、その要素で競合する候補の組み合わせです。別のプロパティを変える候補をいくつ重ねても、項目は足し算で増えます。
+
+### 2. 一定の $O(1)$ ランタイムコスト [#2-constant-o1-runtime-cost]
+
+表を作るコストはビルド時にかかります。ブラウザーは計算済みの平らな表から一項目を読むだけなので、読み取り時間は $O(1)$ です。このために新しいオブジェクトや文字列を作ることも、それを後でガベージコレクターが回収することもありません。
+
+<Callout title="クラスの再利用">
+  同じ宣言には同じクラスを一度だけ出力します。CSS の大きさはコンポーネントの数ではなく、異なる宣言の数に応じて増えます。Plumeria の import もコンパイラが取り除きます。
+</Callout>
