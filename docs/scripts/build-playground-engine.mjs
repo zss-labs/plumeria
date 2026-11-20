@@ -126,6 +126,21 @@ for (const name of ['engine.mjs', 'libs.json']) {
 }
 await writeFile(join(root, 'public', 'playground', 'manifest.json'), JSON.stringify(sizes));
 
+await build({
+  entryPoints: [join(root, 'src', 'playground', 'migrate-worker.ts')],
+  outfile: join(root, 'public', 'playground', 'migrate-worker.mjs'),
+  bundle: true,
+  format: 'esm',
+  minify: true,
+  platform: 'browser',
+  target: 'es2022',
+  plugins: [stubPlugin],
+  logLevel: 'error',
+});
+
+const migrateDir = dirname(createRequire(import.meta.url).resolve('@plumeria/migrate/package.json'));
+await copyFile(join(migrateDir, 'dist', 'migrate.wasm'), join(root, 'public', 'playground', 'migrate.wasm'));
+
 const previewDir = join(root, 'public', 'playground', 'preview');
 const previewSrc = join(root, 'src', 'playground', 'preview');
 
