@@ -1,0 +1,180 @@
+---
+title: '@plumeria/codemod'
+description: 'スタイリング prop や Plumeria の API の名前を、ソース全体で書き換えます。'
+stability: Candidate
+---
+
+`@plumeria/codemod`はPlumeriaのソースファイルを書き直します。
+
+| 変形する | それが何をするか |
+| --- | --- |
+| `rename-prop` | JSX スタイリング属性と対応する `Style` プロパティシグネチャの名前を変更します。 |
+| `rename-api` | Plumeria APIの名前を変更し、そのインポートへの参照を更新します。 |
+
+すべてのトランスフォーマーは `--dry-run` をサポートしています。リライトを適用する前に変更をコミットし、個別にレビューして元に戻すことができます。
+
+## インストール [#installation]
+
+プロジェクトに追加せずに実行します：
+
+```sh title="Terminal"
+npx @plumeria/codemod rename-prop classStyle sx --dry-run
+```
+
+リポジトリにピン留めするには：
+
+```sh title="Terminal"
+pnpm i -D @plumeria/codemod
+```
+
+このパッケージはESLintとそのTypeScriptパサーに依存しています。Plumeriaをアップグレードする前に実行できます。
+
+22.0.0では、どちらの方向でもCSSモジュールの移行が削除されました。`migrate --from css-modules`と`migrate --from plumeria`コマンドは利用できなくなりました。
+
+## スタイリング prop の名前を変える [#renaming-the-styling-prop]
+
+```sh title="Terminal"
+npx @plumeria/codemod rename-prop <from> <to> [paths...]
+```
+
+`paths`は現在のディレクトリにデフォルトで設定されます。`dist`、`build`、`out`、`.next`、`coverage`は常にスキップされ、変換は`.js`、`.jsx`、`.mjs`、`.cjs`、`.ts`、`.tsx`、`.mts`、`.cts`を読み取ります。
+
+| オプション | 説明 |
+| --- | --- |
+| `-d`, `--dry-run` | 書くことなく何が変わるかを報告する |
+| `--no-types` | TypeScript宣言は変更しないでください |
+| `-h`, `--help` | 使用方法を表示する |
+| `-v`, `--version` | バージョンを表示する |
+
+`--dry-run`から始めます：
+
+```sh title="Terminal"
+npx @plumeria/codemod rename-prop classStyle sx --dry-run
+```
+
+```
+  src/Card.tsx  3
+  src/page.tsx  1
+
+4 occurrence(s) in 2 file(s) would become "sx".
+Run without --dry-run to apply.
+
+2 occurrence(s) need a manual rename — "classStyle" is bound to a local name there:
+  src/Card.tsx:8:24
+  src/Card.tsx:12:71
+```
+
+申請するにはフラグを下げてください。報告内容は同じですが、予測ではなく実際の件数が確認されています：
+
+```
+✔ renamed 4 occurrence(s) of "classStyle" to "sx" in 2 file(s).
+```
+
+gitのワーキングツリーが汚れている場合、書き込む前にそれが表示されます。書き直しはクリーンなツリーから取り消す方がはるかに簡単です。
+
+### 書き換えるもの [#what-it-rewrites]
+
+**JSX属性。**
+
+```diff
+- <div classStyle={styles.card} />
++ <div sx={styles.card} />
+```
+
+**`Style`で注釈されたプロパティの署名です。** これは`plumeria.d.ts`だけでなく、あなたのコンポーネント自身のプロパティもカバーします：
+
+```diff
+  interface CardProps {
+-   classStyle?: Style;
++   sx?: Style;
+  }
+```
+
+注釈は`Style`または`Plumeria.Style`である必要がありますので、同じキーを使用しているが関連のないインターフェースはそのまま残されます。宣言を完全にスキップするには、`--no-types`を渡してください。
+
+### 書き換えずに報告するもの [#what-it-reports-instead-of-rewriting]
+
+プロパティが破壊された場合、またはオブジェクトが読み取られた場合、名前はプロパティだけでなくローカルバインドであり、次のとおりです。
+
+```tsx
+const Card = ({ classStyle }: CardProps) => <div classStyle={classStyle} />;
+
+const Panel = (props: CardProps) => <section classStyle={props.classStyle} />;
+```
+
+属性は書き直すことができますが、結合は周囲のコードに関する判断です。それらのサイトは位置情報とともにリストされているので、手動で完了できます：
+
+```diff
+  const Card = ({ classStyle, title }: CardProps) => (
+-   <div classStyle={classStyle}>{title}</div>
++   <div sx={classStyle}>{title}</div>
+  );
+```
+
+パラメータの再名も通常の次のステップであり、それはあなた次第です。
+
+### 受け付けない名前 [#names-it-refuses]
+
+`<to>`は有効な識別子でなければならず、`<from>`とは異なるものでなければならず、Reactがすでに処理しているプロパティであることはできません — `className`, `key`, `ref`, `children`、または `style`：
+
+```
+✖ "style" is already used by React
+```
+
+解釈に失敗したファイルは最後に報告され、コマンドは`1`で終了するため、破損したファイルを名前を変更する必要のないファイルと間違えることはできません。
+
+### 書き換えた後 [#after-the-rewrite]
+
+コードモッドはソースを変更しますが、構成は変更しません。22.0.0以降のデフォルトである`sx`に移行するには、構成は不要です：bundlerプラグインとESLint設定から`styleProp: 'classStyle'`を削除し、宣言を`/// <reference types="@plumeria/core/sx" />`に変更してください。
+
+他の名前の場合は、ツールチェーンをそれに向けてください。
+
+```ts title="next.config.ts"
+export default withPlumeria({}, { styleProp: 'styleName' });
+```
+
+```ts title="eslint.config.ts"
+export default [
+  {
+    settings: { plumeria: { styleProp: 'styleName' } },
+  },
+];
+```
+
+そして、タイプ宣言を同じ名前に指します - [スタイリングプロパティの宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)を参照してください。
+
+コードモッドは再フォーマットしません。新しい名前が古い名前よりも長い場合、印刷幅の近くにあった行がそれを越えてしまう可能性があります。その後、フォーマターを実行してください。
+
+### 別の prop 名を選ぶ [#choosing-another-prop-name]
+
+名前は引数であるため、変換は特定のリリースに紐づいていません。プロパティ名をコードベースに合ったものに変更することも、同じコマンドです：
+
+```sh title="Terminal"
+npx @plumeria/codemod rename-prop sx styleName
+npx @plumeria/codemod rename-prop styleName sx
+```
+
+## API の名前を変える [#renaming-an-api]
+
+リリースがPlumeria APIを再名する場合、`rename-api`はコードを新しい名前に移動します。
+
+```sh title="Terminal"
+npx @plumeria/codemod rename-api <from> <to> [paths...]
+npx @plumeria/codemod rename-api viewTransition viewTransitionClass
+```
+
+それは `@plumeria/core` のネームスペースまたはデフォルトインポート、およびそれらへのすべての参照とともに名付けられたインポートを介して呼び出しを書き換えます。エイリアスはローカル名は保持するので、変更されるのはインポートのみです：
+
+```diff
+  import * as css from '@plumeria/core';
+- const fade = css.viewTransition({ old: { opacity: 0 } });
++ const fade = css.viewTransitionClass({ old: { opacity: 0 } });
+```
+
+```diff
+- import { viewTransition as vt } from '@plumeria/core';
++ import { viewTransitionClass as vt } from '@plumeria/core';
+  const slide = vt({ new: { opacity: 1 } });
+```
+
+`<to>`はAPI `@plumeria/core`のエクスポートである必要がありますので、誤字は表示されるのではなく報告されます。`--dry-run`は変更するファイルリストを示します。
