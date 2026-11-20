@@ -1425,3 +1425,60 @@ fn asks_for_init_before_migrating() {
     assert!(!crate::set_up(Some(r#"{ "overrides": { "@plumeria/core": "*", "@plumeria/unplugin": "*" } }"#)));
     assert!(!crate::set_up(Some("not json")));
 }
+
+#[test]
+fn vanilla_holds_a_sheet_it_does_not_read() {
+    let code = "import { style } from '@vanilla-extract/css';\nexport const button = style({ color: 'red' });\n";
+    for extension in ["tsx", "jsx", "mjs", "cjs"] {
+        let out = crate::vanilla_extract::convert(&format!("src/Button.css.{extension}"), code);
+        assert_eq!(kinds(&out), ["unsupported-extension"], "{extension}");
+    }
+}
+
+#[test]
+fn vanilla_keeps_what_a_held_sheet_imports() {
+    let files = |entries: &[(&str, &str)]| -> Vec<(String, String)> {
+        entries.iter().map(|(path, text)| (path.to_string(), text.to_string())).collect()
+    };
+    let kinds_of = |sheets: &[Sheet], path: &str| -> Vec<&'static str> {
+        sheets.iter().find(|s| s.path == path).map(|s| kinds(&s.converted)).unwrap_or_default()
+    };
+    let b = "import { style } from '@vanilla-extract/css';\nexport const b = style({ color: 'red' });\n";
+
+    let sheets = crate::vanilla_extract::collect(
+        &files(&[
+            ("src/a.css.tsx", "import { style } from '@vanilla-extract/css';\nimport { b } from './b.css';\nexport const a = style([b]);\n"),
+            ("src/b.css.ts", b),
+        ]),
+        None,
+        |_| false,
+    );
+    assert_eq!(kinds_of(&sheets, "src/a.css.tsx"), ["unsupported-extension"]);
+    assert_eq!(kinds_of(&sheets, "src/b.css.ts"), ["imported-by-sheet"]);
+
+    let sheets = crate::vanilla_extract::collect(
+        &files(&[
+            ("src/button.css.tsx", "import { recipe } from '@vanilla-extract/recipes';\nexport const button = recipe({});\n"),
+            ("src/card.css.ts", "import { recipe } from '@vanilla-extract/recipes';\nexport const card = recipe({});\n"),
+            ("src/plain.ts", "import { recipe } from '@vanilla-extract/recipes';\n"),
+        ]),
+        None,
+        |_| false,
+    );
+    assert_eq!(kinds_of(&sheets, "src/button.css.tsx"), ["unsupported-extension"]);
+    assert_eq!(kinds_of(&sheets, "src/card.css.ts"), ["unsupported-import"]);
+    assert_eq!(sheets.len(), 2);
+
+    let sheets = crate::vanilla_extract::collect(
+        &files(&[
+            ("src/tokens.css.mjs", "export { color } from './theme.css';\n"),
+            ("src/theme.css.ts", "import { style } from '@vanilla-extract/css';\nexport const color = style({ color: 'red' });\n"),
+            ("src/other.css.ts", "export const gap = 4;\n"),
+        ]),
+        None,
+        |_| false,
+    );
+    assert_eq!(kinds_of(&sheets, "src/tokens.css.mjs"), ["unsupported-extension"]);
+    assert_eq!(kinds_of(&sheets, "src/theme.css.ts"), ["imported-by-sheet"]);
+    assert_eq!(sheets.len(), 2);
+}
