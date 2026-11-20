@@ -1178,7 +1178,7 @@ export const A = () => <div css={[a, { gap: space }]} />;
     let styled = |code: &str| emotion_holds(&format!("import styled from '@emotion/styled';\n{code}"));
     assert_eq!(styled("const A = styled(Link)`color: red;`;\n<A />"), ["styled-component"]);
     assert_eq!(styled("const A = styled('div', { label: 'a' })`color: red;`;\n<A />"), ["styled-options"]);
-    assert_eq!(styled("const A = styled.div`color: ${p => p.c};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled("const A = styled.div`color: ${p => p.theme.c};`;\n<A />"), ["dynamic-value"]);
     assert_eq!(styled("const A = styled.div`color: red;`;\n<A className=\"x\" />"), ["styled-beside-attribute"]);
     assert_eq!(styled("const A = styled.div`color: red;`;\n<A {...props} />"), ["spread-props"]);
     assert_eq!(styled("const A = styled.div`color: red;`;\n<A as={Link} />"), ["styled-as"]);
@@ -1238,7 +1238,7 @@ export const A = () => <div sx={[styles.base, styles.Box]} id=\"a\">hi</div>;
 
 #[test]
 fn styled_components_holds_runtime_forms() {
-    assert_eq!(styled_holds("const A = styled.div`color: ${p => p.c};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => darken(p.c)};`;\n<A />"), ["dynamic-value"]);
     assert_eq!(styled_holds("const A = styled.div.attrs({ id: 'a' })`color: red;`;\n<A />"), ["unsupported-use"]);
     assert_eq!(styled_holds("const A = styled(Link)`color: red;`;\n<A />"), ["styled-component"]);
     assert_eq!(styled_holds("const A = styled.div`color: red;`;\n<A $tone=\"quiet\" />"), ["custom-prop"]);
@@ -1251,4 +1251,39 @@ fn styled_components_holds_runtime_forms() {
     assert_eq!(one("import styled from 'styled-components/native';"), ["unsupported-import"]);
     assert!(one("/** @jsxImportSource @emotion/react */\nimport { css } from 'styled-components';\n<div css={{}} />").is_empty());
     assert!(one("import { css } from '@emotion/react';\n<div css={{ color: 'red' }} />").is_empty());
+}
+
+#[test]
+fn styled_components_turns_props_into_function_keys() {
+    let outcome = styled_scan(
+        "const gap = 4;
+const Box = styled.div`
+  color: ${p => p.$tone};
+  margin: ${({ $wide }) => ($wide ? gap * 2 : gap)}px;
+  &:hover { color: ${p => p.$tone}; }
+`;
+export const A = ({ tone }) => <Box $tone={tone} $wide id=\"a\" />;
+",
+    );
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    let expected = "import * as css from '@plumeria/core';
+const gap = 4;
+const styles = css.create({
+  Box: (a, b) => ({
+    color: a,
+    margin: `${(b ? gap * 2 : gap)}px`,
+    ':hover': {
+      color: a,
+    },
+  }),
+});
+export const A = ({ tone }) => <div sx={styles.Box(tone, true)} id=\"a\" />;
+";
+    assert_eq!(outcome.rewritten.unwrap(), expected);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => p.c};`;\n<A />"), ["missing-prop"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => p.c};`;\n<A c={pick()} />"), ["prop-value"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => p.on && css`color: red;`};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => { return p.c; }};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${(p, t) => p.c};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => p};`;\n<A />"), ["dynamic-value"]);
 }
