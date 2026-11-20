@@ -1,5 +1,5 @@
 import { Seo } from 'component/Seo';
-import { Playground } from '../../playground/playground';
+import { Playground } from '../../../playground/playground';
 
 export default function Page() {
   return (
