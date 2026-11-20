@@ -1,0 +1,306 @@
+---
+title: 'その他のライブラリ'
+description: 'StyleX、Tailwind CSS、CSS Modules、styled-components、Emotion、vanilla-extract から Plumeria へ移行します。'
+---
+
+[@plumeria/init](/ja/docs/api/migrate/init) で設定してから [@plumeria/migrate](/ja/docs/api/migrate/migrate) を実行します。CLI が変換を保留した箇所は、次の対応表を参考に直してください。
+
+## StyleX [#stylex]
+
+`npx @plumeria/migrate from stylex` は、`stylex.create`、JSX 内の `stylex.props`、`keyframes`、`defineConsts`、`viewTransitionClass`、`positionTry` を変換します。
+
+API の名前と書き方が似ているので、多くのファイルでは import と呼び出し部分を変えるだけです。
+
+| StyleX | Plumeria |
+| :-- | :-- |
+| `stylex.create` | [`css.create`](/ja/docs/api/javascript/create) |
+| `{...stylex.props()}` | `sx={[]}` または [css.use](/ja/docs/api/javascript/use) |
+| `stylex.defineVars` + `stylex.createTheme` | [`css.createTheme`](/ja/docs/api/javascript/createTheme) |
+| `stylex.defineConsts` | [`css.createStatic`](/ja/docs/api/javascript/createStatic) |
+| `stylex.keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
+| `stylex.viewTransitionClass` | [`css.viewTransitionClass`](/ja/docs/api/javascript/viewTransitionClass) |
+| `stylex.positionTry` | [`css.positionTry`](/ja/docs/api/javascript/positionTry) |
+
+```tsx title="Before"
+import * as stylex from '@stylexjs/stylex';
+
+<div {...stylex.props(styles.base, active && styles.active)} />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+<div sx={[styles.base, active && styles.active]} />
+```
+
+スタイルを複数のラッパーに転送してコンパイラが追えない場合は、ビルドが止まります。スタイルを使う要素に直接渡せる形にしてください。
+
+## Tailwind CSS [#tailwind-css]
+
+`npx @plumeria/migrate from tailwindcss` は `className` の文字列と `cn` パッケージの `cn()` を変換します。CLI が保留する `tv()` と `twMerge()` は [Claude Code プラグイン](/ja/docs/ai-agent-resources#claude-code-のプラグイン)で変換できます。Tailwind のデザイン値は [@plumeria/wind](/ja/docs/api/packages/wind) のトークンで使えます。
+
+```tsx title="Before"
+<button className="rounded-md bg-blue-600 px-4 text-sm text-slate-50" />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const styles = css.create({
+  button: {
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
+  },
+});
+
+<button sx={styles.button} />
+```
+
+## CSS Modules [#css-modules]
+
+`npx @plumeria/migrate from css-modules` は各 `*.module.css` を `.styles.ts` に変換し、それを import するファイルも書き換えます。
+
+各クラスはスタイルのキーになり、中の宣言は camelCase のプロパティになります。
+
+| CSS Modules | Plumeria |
+| :-- | :-- |
+| `.button { … }` | [css.create](/ja/docs/api/javascript/create) の `button: { … }` |
+| `.button:hover { … }` | キーの中に `':hover': { … }` |
+| `@media (…) { .button { … } }` | キーの中に `'@media (…)': { … }` |
+| `composes: base` | `sx={[styles.base, styles.button]}` |
+| `.card:hover .title { … }` | [`css.marker` and `css.extended`](/ja/docs/api/javascript/marker) |
+| `@keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
+| `:global(…)` | 通常の `.css` ファイル |
+
+```css title="Before"
+.button {
+  padding: 8px 16px;
+  color: white;
+}
+
+.button:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .button {
+    padding: 4px 8px;
+  }
+}
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    padding: '8px 16px',
+    color: 'white',
+    ':hover': {
+      opacity: 0.8,
+    },
+    '@media (max-width: 768px)': {
+      padding: '4px 8px',
+    },
+  },
+});
+
+<button sx={styles.button} />
+```
+
+キーに使えるセレクターは[セレクターの書き方](/ja/docs/selector-rules)にまとまっています。
+
+## styled-components [#styled-components]
+
+`npx @plumeria/migrate from styled-components` は、styled で作った HTML 要素、スタイルが読む prop、`keyframes` を変換します。
+
+styled コンポーネントは `sx` を持つ通常の要素に変わります。値を変える prop は関数の引数に、スタイルを選ぶ prop はキーで候補を選ぶ式になります。
+
+| styled-components | Plumeria |
+| :-- | :-- |
+| `` styled.button`…` `` | `<button sx={styles.button}>` |
+| `` `color: ${(p) => p.color}` `` | [関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values) |
+| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
+| `` `&:hover { … }` `` | `':hover': { … }` |
+| `` `& > span { … }` `` | `span` 自体にスタイルを付けるか、[css.marker](/ja/docs/api/javascript/marker) を使う |
+| `ThemeProvider` | [css.createTheme](/ja/docs/api/javascript/createTheme) を使う。プロバイダーは不要 |
+| `keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
+| `createGlobalStyle` | 通常の `.css` ファイル |
+
+```tsx title="Before"
+import styled from 'styled-components';
+
+const Button = styled.button<{ primary?: boolean; width: string }>`
+  padding: 8px 16px;
+  width: ${(p) => p.width};
+  background: ${(p) => (p.primary ? 'blue' : 'gray')};
+
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    padding: '8px 16px',
+    backgroundColor: 'gray',
+    ':hover': {
+      opacity: 0.8,
+    },
+  },
+  primary: {
+    backgroundColor: 'blue',
+  },
+  width: (width: string) => ({
+    width,
+  }),
+});
+
+export const Button = ({ primary, width, ...props }) => (
+  <button sx={[styles.button, primary && styles.primary, styles.width(width)]} {...props} />
+);
+```
+
+スタイルはビルド時に CSS に変換されるので、描画中にページに CSS を挿入する処理はありません。
+
+## Emotion [#emotion]
+
+`npx @plumeria/migrate from emotion` は `css` prop、`css` のスタイル、`@emotion/styled` の要素、`keyframes` を変換します。
+
+オブジェクト形式のプロパティは、そのまま camelCase が使えます。`'&:hover'` は `&` を外します。`@emotion/styled` の対応は [styled-components](#styled-components-styled-components) と同じです。
+
+| Emotion | Plumeria |
+| :-- | :-- |
+| `css={{ … }}` | `sx={styles.box}` |
+| `` css={css`…`} `` | ルールをオブジェクトで定義し、`sx={styles.box}` で渡す |
+| `'&:hover': { … }` | `':hover': { … }` |
+| `css={[base, active && activeStyle]}` または `cx()` | `sx={[styles.base, active && styles.active]}` |
+| `css={(theme) => ({ … })}` | [css.createTheme](/ja/docs/api/javascript/createTheme) を使う。プロバイダーは不要 |
+| `keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
+| `<Global>` | 通常の `.css` ファイル |
+
+```tsx title="Before"
+/** @jsxImportSource @emotion/react */
+
+<div
+  css={{
+    padding: 16,
+    color: 'white',
+    '&:hover': {
+      opacity: 0.8,
+    },
+  }}
+/>
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  box: {
+    padding: 16,
+    color: 'white',
+    ':hover': {
+      opacity: 0.8,
+    },
+  },
+});
+
+<div sx={styles.box} />
+```
+
+どのファイルでも `css` prop を使わなくなったら、`@jsxImportSource @emotion/react` の指定か、コンパイラ設定の `jsxImportSource` を削除します。
+
+## vanilla-extract [#vanilla-extract]
+
+`npx @plumeria/migrate from vanilla-extract` は、対応する `.css.ts` と `.css.js` を同じ場所の `.styles.ts` と `.styles.js` に変換します。各 `style` は一つの `styles` 内のキーに、各 `styleVariants` は個別の対応表になります。`keyframes` の位置は変わりません。表の `recipe` 以降は手で移行します。
+
+| vanilla-extract | Plumeria |
+| :-- | :-- |
+| `style({ … })` | [css.create](/ja/docs/api/javascript/create) のキー |
+| `styleVariants` | `sizes[size]` のように[キーで選ぶ](/ja/docs/api/javascript/create#variants-とブラケット記法-variants-bracket-notation) |
+| `'@media': { '(…)': { … } }` | `'@media (…)': { … }` |
+| `selectors: { '&:hover': { … } }` | `':hover': { … }` |
+| `keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
+| `recipe` | `sizes[size]` のように[キーで選ぶ](/ja/docs/api/javascript/create#variants-とブラケット記法-variants-bracket-notation) |
+| `` selectors: { [`${parent}:hover &`]: { … } } `` | [`css.marker` and `css.extended`](/ja/docs/api/javascript/marker) |
+| `createTheme`, `createThemeContract` | [`css.createTheme`](/ja/docs/api/javascript/createTheme) |
+| `createVar` + `assignInlineVars` | [関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values) |
+| `globalStyle` | 通常の `.css` ファイル |
+| `sprinkles` | `css.create` の中で [@plumeria/wind](/ja/docs/api/packages/wind) のトークンを使う |
+
+`recipe` の変換が保留された場合の書き換え例です。
+
+```ts title="Before"
+// button.css.ts
+import { recipe } from '@vanilla-extract/recipes';
+
+export const button = recipe({
+  base: { padding: 8 },
+  variants: {
+    size: {
+      small: { fontSize: 12 },
+      large: { fontSize: 18 },
+    },
+  },
+});
+
+// Button.tsx
+<button className={button({ size })} />
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    padding: 8,
+  },
+});
+
+const sizes = css.create({
+  small: {
+    fontSize: 12,
+  },
+  large: {
+    fontSize: 18,
+  },
+});
+
+<button sx={[styles.base, sizes[size]]} />
+```
+
+テーマ用のクラスを適用する代わりに、切り替え条件となるセレクターをテーマの定義に書きます。
+
+```ts title="Before"
+// theme.css.ts
+import { createTheme, createThemeContract } from '@vanilla-extract/css';
+
+export const vars = createThemeContract({ text: null });
+export const light = createTheme(vars, { text: '#111' });
+export const dark = createTheme(vars, { text: '#eee' });
+
+// App.tsx
+<div className={isDark ? dark : light}>{children}</div>
+```
+
+```tsx title="After"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('.dark', {
+  text: {
+    default: '#111',
+    theme: '#eee',
+  },
+});
+
+<div>{children}</div>
+```
