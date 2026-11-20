@@ -1,0 +1,61 @@
+---
+title: 'Vite'
+description: "Vite に Plumeria を設定します。"
+---
+
+Vite で [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) を使う例は [`examples/example-vite-react`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-react) にあります。プラグインはスタイルを CSS に変換し、開発中は HMR で変更を反映します。
+
+[@plumeria/init](/ja/docs/api/migrate/init) を実行すると Vite を検出し、必要な設定を書き込みます。以下は、同じ設定を手動で追加する手順です。
+
+## インストール
+```sh title="Terminal"
+pnpm i -D @plumeria/unplugin
+```
+
+## プラグインを設定する
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite';
+import plumeria from '@plumeria/unplugin';
+
+export default defineConfig({
+  plugins: [plumeria.vite()],
+});
+```
+
+`plumeria.vite()` には設定オブジェクトを渡せます。
+
+```ts title="vite.config.ts"
+export default defineConfig({
+  plugins: [
+    plumeria.vite({
+      include: ['./src/**/*.{ts,tsx}'],
+      exclude: ['**/node_modules/**'],
+      styleProp: 'classStyle',
+    }),
+  ],
+});
+```
+
+- `include` はコンパイルするファイルを glob または正規表現で指定します。
+- `exclude` はコンパイル対象から外すファイルを glob または正規表現で指定します。
+- `styleProp` は JSX でスタイルを受け取る prop の名前です。初期値は `'sx'` です。
+
+以上がよく使う設定です。開発中も CSS をディスクに書き出すには `devEmitToDisk` を使います。`withoutLogicalProperties` と `withoutPhysicalProperties` は、物理名と論理名の両方があるプロパティを一方の書き方にそろえる設定です。全設定と型は [@plumeria/unplugin](/ja/docs/api/plugins/unplugin) にあります。
+
+## sx の型を読み込む
+
+`@plumeria/core` を入れただけでは JSX の prop の型は追加されません。プロジェクトで使う prop 名に合わせて型宣言を読み込みます。
+
+標準の `sx` を使う場合は、パッケージ付属の型宣言を参照します。`src/` があればその中に、なければプロジェクトのルートに次のファイルを置きます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+`styleProp` を `'classStyle'` などに変えた場合は、`vite.config.ts`と同じ名前で型を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+<Cards>
+  <Card title="パッケージとして配布する" href="/ja/docs/creating-packages" />
+  <Card title="インストール" href="/ja/docs/installation" />
+</Cards>
