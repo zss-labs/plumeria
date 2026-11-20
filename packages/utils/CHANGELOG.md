@@ -1,5 +1,11 @@
 # @plumeria/utils
 
+## 22.2.2
+
+### Patch Changes
+
+- cafc969: - Perf: Emit static class names as JSX string attributes.
+
 ## 22.2.1
 
 ### Patch Changes

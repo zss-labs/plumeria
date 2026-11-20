@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/init",
-  "version": "22.2.1",
+  "version": "22.2.2",
   "description": "One command that sets up Plumeria: detects the bundler, installs the packages, writes the configs",
   "author": "zss-labs",
   "license": "MIT",
