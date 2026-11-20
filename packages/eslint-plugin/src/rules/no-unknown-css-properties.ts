@@ -2,7 +2,6 @@
  * @fileoverview Disallow unknown CSS properties
  */
 
-import { camelToKebabCase } from 'zss-engine';
 import type { ObjectExpression, ImportSpecifier } from 'estree';
 import type { Rule } from 'eslint';
 import { styleObjectFromValue } from '../util/styleObject';
@@ -11,45 +10,45 @@ import { cssPropertyData } from '../util/cssPropertyData';
 const knownProperties = new Set(cssPropertyData);
 
 const positionTryProperties = new Set([
-  'position-anchor',
-  'position-area',
+  'positionAnchor',
+  'positionArea',
   'inset',
-  'inset-block',
-  'inset-block-start',
-  'inset-block-end',
-  'inset-inline',
-  'inset-inline-start',
-  'inset-inline-end',
+  'insetBlock',
+  'insetBlockStart',
+  'insetBlockEnd',
+  'insetInline',
+  'insetInlineStart',
+  'insetInlineEnd',
   'top',
   'right',
   'bottom',
   'left',
-  'place-self',
-  'align-self',
-  'justify-self',
-  'inline-size',
-  'min-inline-size',
-  'max-inline-size',
+  'placeSelf',
+  'alignSelf',
+  'justifySelf',
+  'inlineSize',
+  'minInlineSize',
+  'maxInlineSize',
   'width',
-  'min-width',
-  'max-width',
-  'block-size',
-  'min-block-size',
-  'max-block-size',
+  'minWidth',
+  'maxWidth',
+  'blockSize',
+  'minBlockSize',
+  'maxBlockSize',
   'height',
-  'min-height',
-  'max-height',
+  'minHeight',
+  'maxHeight',
   'margin',
-  'margin-block',
-  'margin-block-start',
-  'margin-block-end',
-  'margin-inline',
-  'margin-inline-start',
-  'margin-inline-end',
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
+  'marginBlock',
+  'marginBlockStart',
+  'marginBlockEnd',
+  'marginInline',
+  'marginInlineStart',
+  'marginInlineEnd',
+  'marginTop',
+  'marginRight',
+  'marginBottom',
+  'marginLeft',
 ]);
 
 export const noUnknownCssProperties: Rule.RuleModule = {
@@ -165,12 +164,11 @@ export const noUnknownCssProperties: Rule.RuleModule = {
         } else {
           return;
         }
-        const kebabName = camelToKebabCase(keyName);
-        if (positionTryProperties.has(kebabName)) return;
+        if (positionTryProperties.has(keyName)) return;
         context.report({
           node: prop.key,
           messageId:
-            /^[:[@]|^--/.test(keyName) || knownProperties.has(kebabName)
+            /^[:[@]|^--/.test(keyName) || knownProperties.has(keyName)
               ? 'positionTryProperty'
               : 'unknownProperty',
           data: {
@@ -211,8 +209,7 @@ export const noUnknownCssProperties: Rule.RuleModule = {
               !keyName.startsWith('@') &&
               !keyName.startsWith('--')
             ) {
-              const kebabName = camelToKebabCase(keyName);
-              if (!knownProperties.has(kebabName)) {
+              if (!knownProperties.has(keyName)) {
                 context.report({
                   node: prop.key,
                   messageId:
