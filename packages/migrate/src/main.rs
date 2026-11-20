@@ -17,7 +17,7 @@ use oxc_span::SourceType;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use consumer::{mentions, scan, Hold, Sheet};
-use resolve::{basename, normalize, Paths};
+use resolve::{basename, Paths};
 use stylesheet::{convert, Report};
 
 const IGNORED: &[&str] = &["node_modules", "dist", "build", "out", ".next", ".git", "coverage"];
@@ -26,23 +26,23 @@ const DEFAULT_STYLE_PROP: &str = "sx";
 const TEXTS:&[&str] = &["css", "scss", "sass", "less", "vue", "svelte", "astro", "mdx", "html"];
 
 const USAGE: &str = "Usage:
-  npx @plumeria/migrate --from css-modules [paths...]
+  npx @plumeria/migrate <from>
+
+From:
+  css-modules
 
 Options:
-      --from        what to migrate from (css-modules)
       --dry-run     report what would change without writing
       --style-prop  the styling prop (default: styleProp in the bundler config, else sx)
   -h, --help        show this help";
 
 struct Options {
-    targets: Vec<String>,
     dry_run: bool,
     style_prop: String,
 }
 
 fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
-    let mut targets = Vec::new();
-    let mut from = None;
+    let mut from = Vec::new();
     let mut dry_run = false;
     let mut style_prop = None;
     let mut iter = args.iter();
@@ -50,25 +50,21 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
         match arg.as_str() {
             "-h" | "--help" => return Ok(None),
             "--dry-run" => dry_run = true,
-            "--from" => from = iter.next().cloned(),
             "--style-prop" => style_prop = Some(iter.next().cloned().ok_or("--style-prop needs a name")?),
             flag if flag.starts_with('-') => return Err(format!("Unknown option {flag}")),
-            path => targets.push(normalize(path)),
+            name => from.push(name),
         }
     }
-    match from.as_deref() {
-        Some("css-modules") => {}
-        Some(other) => return Err(format!("Cannot migrate from {other}. Available: css-modules")),
-        None => return Err("--from is required. Available: css-modules".to_string()),
-    }
-    if targets.is_empty() {
-        targets.push(String::new());
+    match from.as_slice() {
+        ["css-modules"] => {}
+        [other] => return Err(format!("Cannot migrate from {other}.")),
+        _ => return Err("Name one thing to migrate from.".to_string()),
     }
     let style_prop = match style_prop {
         Some(name) => name,
         None => configured_style_prop()?.unwrap_or_else(|| DEFAULT_STYLE_PROP.to_string()),
     };
-    Ok(Some(Options { targets, dry_run, style_prop }))
+    Ok(Some(Options { dry_run, style_prop }))
 }
 
 struct StyleProps(Vec<String>);
@@ -182,13 +178,9 @@ fn main() -> ExitCode {
 }
 
 fn run(options: &Options) -> ExitCode {
-    let mut found = Vec::new();
-    for target in &options.targets {
-        walk(target, &mut found);
-    }
-    let mut paths: Vec<String> = found.into_iter().filter(|p| p.ends_with(".module.css")).collect();
-    paths.sort();
-    paths.dedup();
+    let mut project = Vec::new();
+    walk("", &mut project);
+    let paths: Vec<String> = project.iter().filter(|p| p.ends_with(".module.css")).cloned().collect();
     if paths.is_empty() {
         println!("No *.module.css found.");
         return ExitCode::SUCCESS;
@@ -212,8 +204,6 @@ fn run(options: &Options) -> ExitCode {
         sheets.push(Sheet { path, target, converted });
     }
 
-    let mut project = Vec::new();
-    walk("", &mut project);
     let sources: Vec<(String, String)> = project
         .iter()
         .filter(|p| SOURCES.contains(&extension(p)))
