@@ -1,6 +1,7 @@
 mod cascade;
 mod consumer;
 mod css;
+mod emotion;
 mod resolve;
 mod stylesheet;
 mod stylex;
@@ -38,6 +39,7 @@ const USAGE: &str = "Usage:
 
 Sources:
   css-modules
+  emotion
   stylex
   tailwindcss
 
@@ -68,6 +70,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     }
     let source = match from.as_slice() {
         ["from", "css-modules"] => "css-modules",
+        ["from", "emotion"] => "emotion",
         ["from", "stylex"] => "stylex",
         ["from", "tailwindcss"] => "tailwindcss",
         ["from", other] => return Err(format!("Cannot migrate from {other}.")),
@@ -188,6 +191,7 @@ fn main() -> ExitCode {
         }
     };
     match options.source {
+        "emotion" => emotion::run(&options),
         "stylex" => stylex::run(&options),
         "tailwindcss" => tailwind::run(&options),
         _ => run(&options),
