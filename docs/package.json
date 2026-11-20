@@ -6,6 +6,7 @@
     "predev": "node scripts/copy-playground-libs.mjs && node scripts/build-playground-engine.mjs",
     "prebuild": "node scripts/copy-playground-libs.mjs && node scripts/build-playground-engine.mjs",
     "build": "waku build",
+    "postbuild": "node scripts/localize-html.mjs",
     "dev": "waku dev",
     "start": "node scripts/serve.mjs",
     "postinstall": "fumadocs-mdx"
