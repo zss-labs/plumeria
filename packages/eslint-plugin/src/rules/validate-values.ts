@@ -2414,6 +2414,65 @@ function getValidator(key: string): ValidatorFn | null {
   return validator;
 }
 
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+function suggestKeyword(key: string, value: string): string | null {
+  const input = value.toLowerCase();
+  if (!input || /\s/.test(input)) return null;
+  let best: string | null = null;
+  let bestDistance = Infinity;
+  let tied = false;
+  for (const candidate of new Set(validData[key])) {
+    if (/\s/.test(candidate)) continue;
+    const limit = Math.max(1, Math.floor(candidate.length / 3));
+    if (Math.abs(input.length - candidate.length) > limit) continue;
+    const distance = editDistance(input, candidate.toLowerCase());
+    if (distance > limit) continue;
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+      tied = false;
+    } else if (distance === bestDistance) {
+      tied = true;
+    }
+  }
+  return tied ? null : best;
+}
+
+function valueHint(key: string, value: string): string {
+  if (
+    integerGroupProperties.includes(key) &&
+    /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value.trim())
+  ) {
+    return positiveIntegerProperties.includes(key)
+      ? ' Use a positive integer.'
+      : ' Use an integer.';
+  }
+  const suggestion = suggestKeyword(key, value);
+  if (suggestion) return ` Did you mean '${suggestion}'?`;
+  const keywords = [...new Set(validData[key])];
+  if (keywords.length === 0) return '';
+  if (!getValidator(key)) return ` Property keywords: ${keywords.join(', ')}.`;
+  return ` Keyword examples include ${keywords
+    .slice(0, 3)
+    .map((keyword) => `'${keyword}'`)
+    .join(', ')}.`;
+}
+
 const contextDependentUnits = [
   'cap',
   'ch',
@@ -2536,8 +2595,7 @@ export const validateValues: Rule.RuleModule = {
         'Validate camelCase CSS property values in JS objects or JSX',
     },
     messages: {
-      validateValue:
-        "'{{key}}' has an invalid value '{{value}}'. Valid values: {{validValues}}",
+      validateValue: "'{{key}}' has an invalid value '{{value}}'.{{hint}}",
       invalidPrimitive:
         "'{{key}}' cannot be assigned a {{type}} value ({{value}}). CSS properties require string or number values.",
       invalidNumber:
@@ -2638,7 +2696,7 @@ export const validateValues: Rule.RuleModule = {
               data: {
                 key,
                 value: String(rawValue),
-                validValues: validData[key].join(', '),
+                hint: valueHint(key, String(rawValue)),
               },
             });
           }
@@ -2670,14 +2728,14 @@ export const validateValues: Rule.RuleModule = {
           context.report({
             node: property.value,
             messageId: 'validateValue',
-            data: { key, value, validValues: validData[key].join(', ') },
+            data: { key, value, hint: valueHint(key, value) },
           });
         } else if (!validator) {
           // Fallback for known properties that don't have a specific Regex implemented but failed Enum checks
           context.report({
             node: property.value,
             messageId: 'validateValue',
-            data: { key, value, validValues: validData[key].join(', ') },
+            data: { key, value, hint: valueHint(key, value) },
           });
         }
       });
