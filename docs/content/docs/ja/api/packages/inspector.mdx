@@ -1,0 +1,92 @@
+---
+title: '@plumeria/inspector'
+description: "要素にポインターを置くと、適用されたクラスと CSS を確認できます。"
+stability: Candidate
+---
+
+import { Inspector } from '@plumeria/inspector/production';
+
+<Inspector initial />
+`@plumeria/inspector` は、アプリに一度置くだけで使えるコンポーネントです。ポインターの下の要素を枠で囲み、適用された Plumeria のルールをブラウザーに表示します。
+
+---
+
+## インストール
+
+```sh title="Terminal"
+pnpm i @plumeria/inspector
+```
+
+---
+
+## 使い方
+
+ルートレイアウトやエントリーコンポーネントなど、アプリのルートに `Inspector` を一度だけ置きます。
+
+```tsx title="app/layout.tsx"
+import { Inspector } from '@plumeria/inspector';
+import type { ReactNode } from 'react';
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <html>
+      <body>
+        {/* Render the inspector component */}
+        <Inspector initial />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## 操作
+
+- **枠線。** ポインターの下の要素を囲みます。
+- **ツールチップ。** その要素に適用されたクラス、ルール、プロパティを表示します。
+- **選択の固定。** `Shift` を押すと要素を固定し、ツールチップ内に移動してルールをスクロールできます。もう一度押すと解除します。
+- **ショートカット。** `Cmd + I` または `Alt + I` で有効・無効を切り替えます。
+- **バッジ。** 右下に現在の状態を表示し、クリックすると切り替わります。
+
+---
+
+## 初期状態
+
+| prop | 型 | 初期値 | 説明 |
+| --- | --- | --- | --- |
+| `initial` | `boolean` | `false` | `true` なら有効、`false` なら無効の状態で起動します。 |
+
+---
+
+## 本番で使う
+
+通常の `@plumeria/inspector` から import した `Inspector` は、本番ビルドで完全に取り除かれます。`production` の export 条件が何もしないモジュールを選ぶので、クライアント用チャンクも生成されません。
+
+検証環境やデモで本番ビルドにも残したい場合は、`@plumeria/inspector/production` から読み込みます。
+
+```tsx
+import { Inspector } from '@plumeria/inspector/production';
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <html>
+      <body>
+        <Inspector initial />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## このページで試す
+
+このページでインスペクターを操作できます。
+
+1. 右下の **Inspector: ON** バッジをクリックするか、`Cmd + I` または `Alt + I` を押します。
+2. このページの文字、見出し、コンテナーにポインターを置くと、枠線と生成されたルールが表示されます。
+3. `Shift` で選択を固定し、ツールチップ内の詳細を確認します。
