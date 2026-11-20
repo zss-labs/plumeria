@@ -1,0 +1,105 @@
+---
+title: 'css.positionTry'
+description: 'アンカー配置で使う、名前付きの @position-try フォールバック。'
+stability: Stable
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+```ts
+export type positionTry = <const T extends PositionTry>(rule: T) => CSSVariableKey;
+export const positionTry: positionTry;
+```
+
+`positionTry()`は `@position-try` ルールを作成し、その名前を返します。このルールは、アランカー位置付けされた要素のフォールバック位置を記述し、要素がその位置に収まらないときに `positionTryFallbacks` プロパティを通じてそれを使用します。このルールは、それを使用するスタイルに隣接して定義され、グローバルなスタイルシートに記述されるのではなく、名前で参照されます。
+
+[Anchor Fallbacksプレイグラウンド例](/playground?example=position-try)を試してみてください。
+
+要素を配置しているプロパティのみが許可されます：
+
+- `positionAnchor`と`positionArea`
+- インサート：`inset`、`top`、`left`、`insetInline`、その他のインサートプロパティ
+- マージン：`margin`とその長手
+- サイズ：`width`、`height`、`inlineSize`、`blockSize`とその`min`と`max`の形式
+- セルフアライメント：`alignSelf`、`justifySelf`、`placeSelf`
+
+その他のプロパティはタイプエラーであり、`no-unknown-css-properties`はエディタでそれを報告します。
+
+## 例 [#example]
+
+トリガーの下にメニューが開きます。下にスペースがない場合は、より短い高さでトリガーの右側に移動します：
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core'
+
+    const right = css.positionTry({
+      positionArea: 'right',
+      maxHeight: 200,
+      marginTop: 0,
+      marginLeft: 8,
+    });
+
+    const styles = css.create({
+      menu: {
+        position: 'absolute',
+        positionAnchor: '--trigger',
+        positionArea: 'bottom',
+        maxHeight: 320,
+        marginTop: 8,
+        overflow: 'auto',
+        positionTryFallbacks: right,
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    @position-try --pt-xucneogw {
+      position-area: right;
+      max-height: 200px;
+      margin-top: 0px;
+      margin-left: 8px;
+    }
+
+    .xobmrwib { position: absolute; }
+    .x54fk64s { position-anchor: --trigger; }
+    .xa1mxswp { position-area: bottom; }
+    .xit236su { max-height: 320px; }
+    .xxb8i1k0:not(#\#):not(#\#) { margin-top: 8px; }
+    .x87fkz9f { overflow: auto; }
+    .xlst8ed0:not(#\#) { position-try-fallbacks: --pt-xucneogw; }
+    ```
+  </Tab>
+</Tabs>
+
+反対側に移動することはすでにキーワードでカバーされています：`positionTryFallbacks: 'flip-block'`はメニューをトリガーの上の位置に移動し、マージンも変更します。サイズやレイアウトなど、サイドよりもフォールバックが変化する場合は`positionTry()`を使用してください。名前とキーワードは一緒にリストし、ブラウザは順に試みます。
+
+## 別のファイルで使う [#usage-in-another-file]
+
+定義は他のどの値と同様に、エクスポートしてインポートできます。
+
+```ts title="fallbacks.ts"
+import * as css from '@plumeria/core'
+
+export const right = css.positionTry({
+  positionArea: 'right',
+  maxHeight: 200,
+  marginTop: 0,
+  marginLeft: 8,
+});
+```
+
+```ts title="Menu.tsx"
+import * as css from '@plumeria/core'
+import { right } from './fallbacks'
+
+const styles = css.create({
+  menu: {
+    positionTryFallbacks: right,
+  },
+});
+```
+
+`@position-try`ルールは、その名前が`css.create`で使用される場合にのみエミットされるため、何も使用しない定義はスタイルシートに追加されません。
