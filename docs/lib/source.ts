@@ -2,9 +2,20 @@ import { docs, meta, blogDocs, blogMeta } from '../.source/server';
 import { loader } from 'fumadocs-core/source';
 import type { Node, Root } from 'fumadocs-core/page-tree';
 import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
+import { i18n } from 'lib/i18n';
+
+const isTranslation = (path: string) => i18n.languages.some((lang) => path.startsWith(`${lang}/`));
+const enDocs = docs.filter((doc) => !isTranslation(doc.info.path));
+const enMeta = meta.filter((item) => !isTranslation(item.info.path));
 
 export const source = loader({
   baseUrl: '/docs',
+  source: toFumadocsSource(enDocs, enMeta),
+});
+
+export const localizedSource = loader({
+  baseUrl: '/docs',
+  i18n,
   source: toFumadocsSource(docs, meta),
 });
 
@@ -12,8 +23,8 @@ export const source = loader({
 export const searchSource = loader({
   baseUrl: '/docs',
   source: toFumadocsSource(
-    docs.filter((doc) => doc.info.path !== 'ai.md'),
-    meta,
+    enDocs.filter((doc) => doc.info.path !== 'ai.md'),
+    enMeta,
   ),
 });
 
