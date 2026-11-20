@@ -63,7 +63,7 @@ fn key_of<'a>(key: &'a PropertyKey<'a>) -> Option<&'a str> {
     }
 }
 
-fn field<'a>(expression: &'a Expression<'a>, name: &str) -> Option<&'a Expression<'a>> {
+pub fn field<'a>(expression: &'a Expression<'a>, name: &str) -> Option<&'a Expression<'a>> {
     let Expression::ObjectExpression(object) = expression else { return None };
     object.properties.iter().find_map(|property| match property {
         ObjectPropertyKind::ObjectProperty(property) if key_of(&property.key) == Some(name) => Some(&property.value),
