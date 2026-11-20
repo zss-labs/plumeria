@@ -53,7 +53,7 @@ const s = css.create({
 export const A = ({ x }: { x?: Style }) => <div sx={x} />;`,
       });
       expect(code).toContain(`import type { Style } from '@plumeria/core';`);
-      expect(code).toContain('<div className={""} />');
+      expect(code).toContain(`<div className="" />`);
       expect(css).toBe('');
     });
 
@@ -67,7 +67,7 @@ export const A = ({ x }: { x?: Style; p?: P }) => <div sx={s.a} />;`,
         `import type { Style, CSSProperties as P } from '@plumeria/core'`,
       );
       expect(code).not.toContain('make');
-      expect(code).toContain(`<div className={"${RED}"} />`);
+      expect(code).toContain(`<div className="${RED}" />`);
     });
 
     it('reads a style object imported under another name', async () => {
@@ -78,7 +78,7 @@ export const styles = css.create({ a: { color: 'teal' } });`,
 import { styles as st, missing } from './styles';
 export const A = () => <div sx={st.a} />;`,
       });
-      expect(code).toMatch(/<div className=\{"x[a-z0-9]+"\} \/>/);
+      expect(code).toMatch(/<div className="x[a-z0-9]+" \/>/);
       expect(css).toContain('color: teal');
     });
 
@@ -89,7 +89,7 @@ const o = other.create({ a: { color: 'blue' } });
 export const A = () => <div sx={s.a} />;`,
       );
       expect(code).toContain(`other.create({ a: { color: 'blue' } })`);
-      expect(code).toContain(`<div className={"${RED}"} />`);
+      expect(code).toContain(`<div className="${RED}" />`);
     });
   });
 
@@ -98,14 +98,14 @@ export const A = () => <div sx={s.a} />;`,
       const { code } = await app(
         `export const A = () => <div sx={undefined} />;`,
       );
-      expect(code).toContain('<div className={""} />');
+      expect(code).toContain(`<div className="" />`);
     });
 
     it('reads undefined in an array as no entry', async () => {
       const { code } = await app(
         `export const A = () => <div sx={[s.a, undefined]} />;`,
       );
-      expect(code).toContain(`<div className={"${RED}"} />`);
+      expect(code).toContain(`<div className="${RED}" />`);
     });
 
     it('skips a hole in an array under a condition', async () => {
@@ -192,7 +192,7 @@ export const A = ({ n }: any) => <><i sx={s.fn("3")} /><b sx={s.fn(n)} /><u sx={
       const { code } = await app(
         `export const A = ({ n }: any) => <div sx={s.fn({ size: n })} />;`,
       );
-      expect(code).toContain('<div className={""} />');
+      expect(code).toContain(`<div className="" />`);
     });
 
     it('hands a function key to a component as a key and its variables', async () => {
@@ -234,10 +234,10 @@ export const A = ({ local }: any) => <div sx={local} />;
 export const B = () => <div sx={local} />;`,
       );
       expect(code).toContain(
-        'export const A = ({ local }: any) => <div className={""} />;',
+        `export const A = ({ local }: any) => <div className="" />;`,
       );
       expect(code).toContain(
-        `export const B = () => <div className={"${RED}"} />;`,
+        `export const B = () => <div className="${RED}" />;`,
       );
     });
 
@@ -245,7 +245,7 @@ export const B = () => <div sx={local} />;`,
       const { code } = await app(
         `export default function ({ boxStyle }: { boxStyle?: css.Style }) { return <div sx={boxStyle} />; }`,
       );
-      expect(code).toContain('return <div className={""} />;');
+      expect(code).toContain(`return <div className="" />;`);
     });
 
     it('reads a defaulted prop beside patterns it does not name', async () => {
@@ -267,7 +267,7 @@ export const A = () => <Card c={s.b} />;`,
 export const A = () => <div sx={s.a} />;`,
       );
       expect(code).toContain('const Card = memo(config);');
-      expect(code).toContain(`<div className={"${RED}"} />`);
+      expect(code).toContain(`<div className="${RED}" />`);
     });
 
     it('empties a style object exported through a specifier list', async () => {
@@ -289,17 +289,17 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a namespaced attribute',
         `<svg xlink:href="x" sx={s.a} />`,
-        `<svg xlink:href="x" className={"${RED}"} />`,
+        `<svg xlink:href="x" className="${RED}" />`,
       ],
       [
         'a spread attribute',
         `<div {...p} sx={s.a} />`,
-        `<div {...p} className={"${RED}"} />`,
+        `<div {...p} className="${RED}" />`,
       ],
       [
         'a className without a value',
         `<div className sx={s.a} />`,
-        `<div  className={"${RED}"} />`,
+        `<div  className="${RED}" />`,
       ],
       [
         'a className string',
@@ -314,7 +314,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a className beside a style that is not there',
         `<div className="x" sx={undefined} />`,
-        `<div  className={"x"} />`,
+        `<div  className="x" />`,
       ],
     ])('keeps %s', async (_name, element, expected) => {
       const { code } = await app(`export const A = (p: any) => ${element};`);
@@ -394,7 +394,7 @@ export const all = [statics, statics.gap, statics.zzz, theme, theme.color, style
 
     it('reads a whole style object in the style prop as no class', async () => {
       const { code } = await app(`export const A = () => <div sx={s} />;`);
-      expect(code).toContain('<div className={""} />');
+      expect(code).toContain(`<div className="" />`);
     });
   });
 
@@ -803,7 +803,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
       const { code, css } = await app(
         BLUE + `export const A = () => <div sx={[s.a, t.c]} />;`,
       );
-      expect(code).toMatch(/<div className=\{"x[a-z0-9]+"\} \/>/);
+      expect(code).toMatch(/<div className="x[a-z0-9]+" \/>/);
       expect(code).not.toContain(RED);
       expect(css).toBe('.xgmn1kmt { color: blue; }\n');
     });
