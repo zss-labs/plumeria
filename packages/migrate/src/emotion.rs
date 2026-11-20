@@ -503,17 +503,104 @@ struct Scan<'s> {
     jsx: FxHashSet<SymbolId>,
     animations: Vec<(u32, u32, String)>,
     reads: RefCell<FxHashSet<SymbolId>>,
-    components: FxHashMap<SymbolId, (String, String)>,
+    components: FxHashMap<SymbolId, (String, String, Vec<String>)>,
     aliases: FxHashMap<SymbolId, String>,
     handled: FxHashSet<u32>,
     taken: FxHashSet<String>,
     params: Option<Params>,
+    props: Option<Params>,
     kinds: FxHashMap<SymbolId, Shape>,
     imported: FxHashMap<SymbolId, (String, String)>,
     exports: &'s dyn Fn(&str, &str) -> Option<Shape>,
     styles: Vec<(String, String)>,
     edits: Vec<(u32, u32, String)>,
     holds: Vec<Hold>,
+}
+
+fn fresh(taken: &FxHashSet<String>, params: &Params) -> String {
+    (0..)
+        .map(|i: usize| {
+            let letter = (b'a' + (i % 26) as u8) as char;
+            if i < 26 { letter.to_string() } else { format!("{letter}{}", i / 26) }
+        })
+        .find(|n| !taken.contains(n) && !params.iter().any(|(_, _, p)| p == n))
+        .unwrap()
+}
+
+fn simple(expression: &Expression) -> bool {
+    match expression.get_inner_expression() {
+        Expression::Identifier(_)
+        | Expression::StringLiteral(_)
+        | Expression::NumericLiteral(_)
+        | Expression::BooleanLiteral(_)
+        | Expression::NullLiteral(_) => true,
+        Expression::StaticMemberExpression(member) => simple(&member.object),
+        Expression::UnaryExpression(unary) => unary.operator != UnaryOperator::Delete && simple(&unary.argument),
+        Expression::BinaryExpression(binary) => simple(&binary.left) && simple(&binary.right),
+        Expression::LogicalExpression(logical) => simple(&logical.left) && simple(&logical.right),
+        Expression::ConditionalExpression(conditional) => {
+            simple(&conditional.test) && simple(&conditional.consequent) && simple(&conditional.alternate)
+        }
+        Expression::TemplateLiteral(template) => template.expressions.iter().all(simple),
+        _ => false,
+    }
+}
+
+struct PropRead<'s, 'scan> {
+    scan: &'scan Scan<'s>,
+    whole: Option<SymbolId>,
+    names: FxHashMap<SymbolId, String>,
+    uses: Vec<(Span, String)>,
+    broken: bool,
+}
+
+impl PropRead<'_, '_> {
+    fn use_prop(&mut self, span: Span, name: &str) {
+        if name == "theme" {
+            self.broken = true;
+        }
+        self.uses.push((span, name.to_string()));
+    }
+}
+
+impl<'a> Visit<'a> for PropRead<'_, '_> {
+    fn visit_static_member_expression(&mut self, member: &StaticMemberExpression<'a>) {
+        if let Expression::Identifier(identifier) = &member.object
+            && self.whole.is_some()
+            && self.scan.reference(identifier) == self.whole
+        {
+            return self.use_prop(member.span, member.property.name.as_str());
+        }
+        walk::walk_static_member_expression(self, member);
+    }
+
+    fn visit_identifier_reference(&mut self, identifier: &IdentifierReference<'a>) {
+        let symbol = self.scan.reference(identifier);
+        if let Some(name) = symbol.and_then(|s| self.names.get(&s)).cloned() {
+            return self.use_prop(identifier.span, &name);
+        }
+        let known = match symbol {
+            Some(symbol) => Some(symbol) != self.whole && self.scan.ident_shape(identifier).is_some_and(|s| s.primitive()),
+            None => identifier.name == "undefined",
+        };
+        self.broken |= !known;
+    }
+
+    fn visit_object_expression(&mut self, _: &ObjectExpression<'a>) {
+        self.broken = true;
+    }
+
+    fn visit_arrow_function_expression(&mut self, _: &ArrowFunctionExpression<'a>) {
+        self.broken = true;
+    }
+
+    fn visit_function(&mut self, _: &Function<'a>, _: oxc_semantic::ScopeFlags) {
+        self.broken = true;
+    }
+
+    fn visit_tagged_template_expression(&mut self, _: &TaggedTemplateExpression<'a>) {
+        self.broken = true;
+    }
 }
 
 struct FrameRead<'s, 'scan> {
@@ -588,11 +675,12 @@ impl<'s> Scan<'s> {
         }
     }
 
-    fn styled_element(&mut self, element: &JSXElement, tag: &str, sx: &str) {
+    fn styled_element(&mut self, element: &JSXElement, tag: &str, sx: &str, props: &[String]) {
         let opening = &element.opening_element;
         let at = opening.span.start;
         let mut tag = tag.to_string();
-        let mut removed = None;
+        let mut removed = Vec::new();
+        let mut values: Vec<(&str, String)> = Vec::new();
         for item in &opening.attributes {
             let JSXAttributeItem::Attribute(attribute) = item else {
                 return self.hold("spread-props", self.source(opening.name.span()), at);
@@ -605,19 +693,40 @@ impl<'s> Scan<'s> {
                         if literal.value.as_str().is_some_and(|v| v.starts_with(|c: char| c.is_ascii_lowercase())) =>
                     {
                         tag = literal.value.as_str().unwrap_or_default().to_string();
-                        removed = Some(attribute.span);
+                        removed.push(attribute.span);
                     }
                     _ => return self.hold("styled-as", self.source(attribute.span), at),
                 }
             } else if name == "className" || name == "css" || name == self.style_prop {
                 return self.hold("styled-beside-attribute", name, at);
+            } else if props.iter().any(|p| p == name) {
+                let value = match &attribute.value {
+                    None => "true".to_string(),
+                    Some(JSXAttributeValue::StringLiteral(literal)) => quote(literal.value.as_str().unwrap_or_default()),
+                    Some(JSXAttributeValue::ExpressionContainer(container)) => match container.expression.as_expression() {
+                        Some(expression) if simple(expression) => self.source(expression.span()).to_string(),
+                        _ => return self.hold("prop-value", name, attribute.span.start),
+                    },
+                    _ => return self.hold("prop-value", name, attribute.span.start),
+                };
+                values.push((name, value));
+                if !dom_prop(name) {
+                    removed.push(attribute.span);
+                }
             } else if !dom_prop(name) {
                 return self.hold("custom-prop", name, attribute.span.start);
             }
         }
+        let mut sx = sx.to_string();
+        for prop in props {
+            let Some((_, value)) = values.iter().find(|(name, _)| name == prop) else {
+                return self.hold("missing-prop", prop.as_str(), at);
+            };
+            sx = sx.replace(&format!("\0{prop}\0"), value);
+        }
         let name = opening.name.span();
         self.edits.push((name.start, name.end, format!("{tag} {}={{{sx}}}", self.style_prop)));
-        if let Some(span) = removed {
+        for span in removed {
             let start = if self.text[..span.start as usize].ends_with(' ') { span.start - 1 } else { span.start };
             self.edits.push((start, span.end, String::new()));
         }
@@ -648,27 +757,75 @@ impl<'s> Scan<'s> {
                 Shape::Object(keys) => keys.get(member.property.name.as_str()).cloned(),
                 _ => None,
             },
-            Expression::Identifier(identifier) => {
-                let symbol = self.reference(identifier)?;
-                if self.scoping.symbol_scope_id(symbol) != self.scoping.root_scope_id()
-                    || self.aliases.contains_key(&symbol)
-                    || self.css.contains(&symbol)
-                {
-                    return None;
-                }
-                let shape = match (self.kinds.get(&symbol), self.imported.get(&symbol)) {
-                    (Some(shape), _) => Some(shape.clone()),
-                    (None, Some((source, name))) => (self.exports)(source, name),
-                    (None, None) => None,
-                }?;
-                if self.params.is_some() && !shape.primitive() && shape != Shape::Frames {
-                    return None;
-                }
-                self.reads.borrow_mut().insert(symbol);
-                Some(shape)
-            }
+            Expression::Identifier(identifier) => self.ident_shape(identifier),
             _ => None,
         }
+    }
+
+    fn ident_shape(&self, identifier: &IdentifierReference) -> Option<Shape> {
+        let symbol = self.reference(identifier)?;
+        if self.scoping.symbol_scope_id(symbol) != self.scoping.root_scope_id()
+            || self.aliases.contains_key(&symbol)
+            || self.css.contains(&symbol)
+        {
+            return None;
+        }
+        let shape = match (self.kinds.get(&symbol), self.imported.get(&symbol)) {
+            (Some(shape), _) => Some(shape.clone()),
+            (None, Some((source, name))) => (self.exports)(source, name),
+            (None, None) => None,
+        }?;
+        if self.params.is_some() && !shape.primitive() && shape != Shape::Frames {
+            return None;
+        }
+        self.reads.borrow_mut().insert(symbol);
+        Some(shape)
+    }
+
+    fn prop_param(&mut self, expression: &Expression) -> Option<String> {
+        let Expression::ArrowFunctionExpression(arrow) = expression.get_inner_expression() else { return None };
+        let [param] = arrow.params.items.as_slice() else { return None };
+        let body = arrow.get_expression().filter(|_| !arrow.r#async && arrow.params.rest.is_none())?;
+        if param.initializer.is_some() || matches!(body.get_inner_expression(), Expression::SequenceExpression(_)) {
+            return None;
+        }
+        let mut read = PropRead { scan: self, whole: None, names: FxHashMap::default(), uses: Vec::new(), broken: false };
+        match &param.pattern {
+            BindingPattern::BindingIdentifier(identifier) => read.whole = identifier.symbol_id.get(),
+            BindingPattern::ObjectPattern(object) if object.rest.is_none() => {
+                for property in &object.properties {
+                    let name = key_name(&property.key).filter(|_| !property.computed)?;
+                    let BindingPattern::BindingIdentifier(identifier) = &property.value else { return None };
+                    read.names.insert(identifier.symbol_id.get()?, name);
+                }
+            }
+            _ => return None,
+        }
+        read.visit_expression(body);
+        if read.broken {
+            return None;
+        }
+        let mut uses = read.uses;
+        uses.sort_by_key(|(span, _)| span.start);
+        let props = self.props.as_mut()?;
+        let span = body.span();
+        let mut out = String::new();
+        let mut last = span.start;
+        for (used, prop) in uses {
+            let name = match props.iter().find(|(k, _, _)| *k == prop) {
+                Some((_, _, name)) => name.clone(),
+                None => {
+                    let name = fresh(&self.taken, props);
+                    props.push((prop.clone(), format!("\0{prop}\0"), name.clone()));
+                    name
+                }
+            };
+            out.push_str(&self.text[last as usize..used.start as usize]);
+            out.push_str(&name);
+            last = used.end;
+        }
+        out.push_str(&self.text[last as usize..span.end as usize]);
+        Some(out)
     }
 
     fn nest(&mut self, path: &Path, name: &str, at: u32) -> Vec<Path> {
@@ -757,6 +914,8 @@ impl<'s> Scan<'s> {
                     seen.insert(*index);
                     let text = if self.root_static(expression) {
                         self.source(expression.span()).to_string()
+                    } else if self.props.is_some() {
+                        self.prop_param(expression)?
                     } else {
                         self.param(expression)?
                     };
@@ -781,7 +940,7 @@ impl<'s> Scan<'s> {
         })
     }
 
-    fn template(&mut self, tagged: &TaggedTemplateExpression, name: Option<&str>) -> Option<Vec<String>> {
+    fn template(&mut self, tagged: &TaggedTemplateExpression, name: Option<&str>, styled: bool) -> Option<Vec<String>> {
         let quasi = &tagged.quasi;
         let at = tagged.span.start;
         let mut items = Vec::new();
@@ -817,10 +976,12 @@ impl<'s> Scan<'s> {
         };
         let before = self.holds.len();
         let saved = std::mem::replace(&mut self.params, name.is_none().then(Vec::new));
+        self.props = styled.then(Vec::new);
         let mut decls = Vec::new();
         let mut seen = FxHashSet::default();
         self.read_css(&rule.children, &Path { at: None, pseudo: String::new() }, true, &exprs, &mut seen, at, &mut decls);
-        let params = std::mem::replace(&mut self.params, saved).unwrap_or_default();
+        let mut params = std::mem::replace(&mut self.params, saved).unwrap_or_default();
+        params.extend(self.props.take().unwrap_or_default());
         if self.holds.len() == before && exprs.iter().enumerate().any(|(i, e)| e.is_some() && !seen.contains(&i)) {
             self.hold("interpolation-position", "${}", at);
         }
@@ -992,13 +1153,7 @@ impl<'s> Scan<'s> {
         if let Some((_, _, name)) = params.iter().find(|(k, _, _)| *k == key) {
             return Some(name.clone());
         }
-        let name = (0..)
-            .map(|i: usize| {
-                let letter = (b'a' + (i % 26) as u8) as char;
-                if i < 26 { letter.to_string() } else { format!("{letter}{}", i / 26) }
-            })
-            .find(|n| !taken.contains(n) && !params.iter().any(|(_, _, p)| p == n))
-            .unwrap();
+        let name = fresh(taken, params);
         params.push((key, source, name.clone()));
         Some(name)
     }
@@ -1145,7 +1300,7 @@ impl<'s> Scan<'s> {
                 Some(if items.len() == 1 { items.into_iter().next().unwrap() } else { format!("[{}]", items.join(", ")) })
             }
             Expression::TaggedTemplateExpression(tagged) if self.is_css(&tagged.tag) => {
-                let items = self.template(tagged, None)?;
+                let items = self.template(tagged, None, false)?;
                 Some(if items.len() == 1 { items.into_iter().next().unwrap() } else { format!("[{}]", items.join(", ")) })
             }
             Expression::ArrowFunctionExpression(_) | Expression::FunctionExpression(_) => {
@@ -1164,10 +1319,10 @@ impl<'a> Visit<'a> for Scan<'_> {
     fn visit_jsx_element(&mut self, element: &JSXElement<'a>) {
         let opening = &element.opening_element;
         if let JSXElementName::IdentifierReference(name) = &opening.name
-            && let Some((tag, sx)) = self.reference(name).and_then(|s| self.components.get(&s)).cloned()
+            && let Some((tag, sx, props)) = self.reference(name).and_then(|s| self.components.get(&s)).cloned()
         {
             if !tag.is_empty() {
-                self.styled_element(element, &tag, &sx);
+                self.styled_element(element, &tag, &sx, &props);
             }
             for item in &opening.attributes {
                 self.visit_jsx_attribute_item(item);
@@ -1308,6 +1463,7 @@ pub fn scan_file(
         handled: FxHashSet::default(),
         taken: scoping.symbol_ids().map(|s| scoping.symbol_name(s).to_string()).collect(),
         params: None,
+        props: None,
         kinds: {
             let inits = const_inits(program);
             scoping
@@ -1453,7 +1609,7 @@ pub fn scan_file(
                 Some(Err(kind)) => {
                     scan.hold(kind, identifier.name.as_str(), declarator.span.start);
                     if let Some(symbol) = identifier.symbol_id.get() {
-                        scan.components.insert(symbol, (String::new(), String::new()));
+                        scan.components.insert(symbol, (String::new(), String::new(), Vec::new()));
                     }
                     continue;
                 }
@@ -1461,7 +1617,7 @@ pub fn scan_file(
                 None => None,
             };
             let items = match init {
-                Expression::TaggedTemplateExpression(tagged) => scan.template(tagged, name),
+                Expression::TaggedTemplateExpression(tagged) => scan.template(tagged, name, tag.is_some()),
                 Expression::CallExpression(call) => scan.arguments(call, name),
                 _ => None,
             };
@@ -1473,7 +1629,8 @@ pub fn scan_file(
             let Some(symbol) = identifier.symbol_id.get() else { continue };
             match tag {
                 Some(tag) => {
-                    scan.components.insert(symbol, (tag, alias));
+                    let props = alias.split('\0').skip(1).step_by(2).map(str::to_string).collect();
+                    scan.components.insert(symbol, (tag, alias, props));
                 }
                 None => {
                     scan.aliases.insert(symbol, alias);
