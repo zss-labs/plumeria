@@ -23,6 +23,10 @@ import type { getConfig as File_BlogSlug_getConfig } from './pages/blog/[...slug
 import type { getConfig as File_BlogIndex_getConfig } from './pages/blog/index';
 // prettier-ignore
 import type { getConfig as File_Index_getConfig } from './pages/index';
+// prettier-ignore
+import type { getConfig as File_JaDocsSlug_getConfig } from './pages/ja/docs/[...slug]';
+// prettier-ignore
+import type { getConfig as File_JaDocsIndex_getConfig } from './pages/ja/docs/index';
 
 // prettier-ignore
 type Page =
@@ -35,12 +39,15 @@ type Page =
 | ({ path: '/_root' } & GetConfigResponse<typeof File_Root_getConfig>)
 | ({ path: '/blog/[...slug]' } & GetConfigResponse<typeof File_BlogSlug_getConfig>)
 | ({ path: '/blog' } & GetConfigResponse<typeof File_BlogIndex_getConfig>)
-| ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>);
+| ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>)
+| ({ path: '/ja/docs/[...slug]' } & GetConfigResponse<typeof File_JaDocsSlug_getConfig>)
+| ({ path: '/ja/docs' } & GetConfigResponse<typeof File_JaDocsIndex_getConfig>);
 
 // prettier-ignore
 type Layout =
 | { path: '/' }
-| { path: '/blog' };
+| { path: '/blog' }
+| { path: '/ja' };
 
 // prettier-ignore
 declare module 'waku/router' {
