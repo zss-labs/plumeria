@@ -94,6 +94,7 @@ pub struct FileScan {
     style_exports: FxHashSet<String>,
     has_core: bool,
     core_insert: (u32, String),
+    has_style_prop: bool,
 }
 
 fn key_name(key: &PropertyKey) -> Option<String> {
@@ -148,6 +149,7 @@ struct Scan<'s> {
     follow_keys: FxHashSet<(SymbolId, String)>,
     props_arg: Option<(usize, bool)>,
     uses_css: bool,
+    emits_style_prop: bool,
     holds: Vec<Hold>,
     edits: Vec<(u32, u32, String)>,
     creates: Vec<Create>,
@@ -512,6 +514,7 @@ impl<'a> Visit<'a> for Scan<'_> {
         } else if let Some(name) = beside {
             self.hold("props-beside-attribute", name, element.span.start);
         } else if let Some(text) = self.props_text(spreads[0].1) {
+            self.emits_style_prop |= !text.is_empty();
             let span = element.attributes[spreads[0].0].span();
             self.edits.push((span.start, span.end, text));
         }
@@ -611,6 +614,23 @@ fn imports_of(program: &Program) -> Vec<(String, Vec<String>, bool)> {
     found
 }
 
+struct StylePropVisitor<'s> {
+    name: &'s str,
+    found: bool,
+}
+
+impl<'a> Visit<'a> for StylePropVisitor<'_> {
+    fn visit_jsx_attribute(&mut self, attribute: &JSXAttribute<'a>) {
+        if matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name.as_str() == self.name)
+            && matches!(&attribute.value, Some(JSXAttributeValue::ExpressionContainer(_)))
+        {
+            self.found = true;
+        } else {
+            walk::walk_jsx_attribute(self, attribute);
+        }
+    }
+}
+
 pub fn scan_file(file: &str, text: &str, style_prop: &str) -> FileScan {
     let mut out = FileScan::default();
     let Ok(source_type) = SourceType::from_path(file) else { return out };
@@ -655,6 +675,11 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str) -> FileScan {
         return out;
     }
     if !out.stylex {
+        if !out.has_core && text.contains(style_prop) {
+            let mut visitor = StylePropVisitor { name: style_prop, found: false };
+            visitor.visit_program(program);
+            out.has_style_prop = visitor.found;
+        }
         return out;
     }
     if parsed.fatal_error || !parsed.diagnostics.is_empty() {
@@ -677,6 +702,7 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str) -> FileScan {
         follow_keys: FxHashSet::default(),
         props_arg: None,
         uses_css: false,
+        emits_style_prop: false,
         holds: Vec::new(),
         edits: Vec::new(),
         creates: Vec::new(),
@@ -809,10 +835,11 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str) -> FileScan {
 
     let header = if scan.uses_css { "import * as css from '@plumeria/core';" } else { "import '@plumeria/core';" };
     for (index, span) in stylex_imports.iter().enumerate() {
-        if index == 0 {
+        if index == 0 && (scan.uses_css || !scan.emits_style_prop) {
             scan.edits.push((span.start, span.end, header.to_string()));
         } else {
-            let end = if text[span.end as usize..].starts_with('\n') { span.end + 1 } else { span.end };
+            let rest = &text[span.end as usize..];
+            let end = span.end + if rest.starts_with("\r\n") { 2 } else { u32::from(rest.starts_with('\n')) };
             scan.edits.push((span.start, end, String::new()));
         }
     }
@@ -1183,7 +1210,7 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
     }
     let mut given = Vec::new();
     for &i in &carriers {
-        if held.contains_key(&i) || scans[i].has_core {
+        if held.contains_key(&i) || scans[i].has_core || scans[i].has_style_prop {
             continue;
         }
         let (at, text) = &scans[i].core_insert;
