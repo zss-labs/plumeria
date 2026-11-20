@@ -87,6 +87,75 @@ const overflowAlignment = [
   'unsafe flex-end',
 ];
 
+const positionAreaKeywords = [
+  'left',
+  'center',
+  'right',
+  'span-left',
+  'span-right',
+  'x-start',
+  'x-end',
+  'span-x-start',
+  'span-x-end',
+  'x-self-start',
+  'x-self-end',
+  'span-x-self-start',
+  'span-x-self-end',
+  'span-all',
+  'top',
+  'bottom',
+  'span-top',
+  'span-bottom',
+  'y-start',
+  'y-end',
+  'span-y-start',
+  'span-y-end',
+  'y-self-start',
+  'y-self-end',
+  'span-y-self-start',
+  'span-y-self-end',
+  'block-start',
+  'block-end',
+  'span-block-start',
+  'span-block-end',
+  'inline-start',
+  'inline-end',
+  'span-inline-start',
+  'span-inline-end',
+  'self-block-start',
+  'self-block-end',
+  'span-self-block-start',
+  'span-self-block-end',
+  'self-inline-start',
+  'self-inline-end',
+  'span-self-inline-start',
+  'span-self-inline-end',
+  'start',
+  'end',
+  'span-start',
+  'span-end',
+  'self-start',
+  'self-end',
+  'span-self-start',
+  'span-self-end',
+];
+const cornerShapeKeywords = [
+  'round',
+  'scoop',
+  'bevel',
+  'notch',
+  'square',
+  'squircle',
+];
+const timelineTriggerRange = [
+  'normal',
+  'cover',
+  'contain',
+  'entry',
+  'exit',
+  'entry-crossing',
+  'exit-crossing',
+];
 const validData: { [key: string]: readonly string[] } = {
   all: [], // 1
   appearance: [
@@ -1214,6 +1283,257 @@ const validData: { [key: string]: readonly string[] } = {
   windowDrag: ['none', 'move'], // 467
   wordWrap: ['normal', 'break-word'], // 468
   wrapInside: ['auto', 'avoid'], // 469
+  floodColor: [], // 470
+  lightingColor: [], // 471
+  strokeColor: [], // 472
+  ruleColor: [], // 473
+  rowRuleColor: [], // 474
+  WebkitTextFillColor: [], // 475
+  WebkitTextStrokeColor: [], // 476
+  WebkitTapHighlightColor: [], // 477
+  cx: [], // 478
+  cy: [], // 479
+  x: [], // 480
+  y: [], // 481
+  columnHeight: ['auto'], // 482
+  lineHeightStep: [], // 483
+  ruleWidth: [...widthKeywords], // 484
+  rowRuleWidth: [...widthKeywords], // 485
+  WebkitTextStrokeWidth: [...widthKeywords], // 486
+  gridColumnGap: [], // 487
+  gridRowGap: [], // 488
+  gridGap: [], // 489
+  boxFlex: [], // 490
+  floodOpacity: [], // 491
+  orphans: [], // 492
+  boxFlexGroup: [], // 493
+  boxOrdinalGroup: [], // 494
+  readingOrder: [], // 495
+  lineClamp: ['none'], // 496
+  WebkitLineClamp: ['none'], // 497
+  maxLines: ['none'], // 498
+  hyphenateLimitLines: ['no-limit'], // 499
+  WebkitMaskImage: ['none'], // 500
+  alignTracks: [
+    'normal',
+    'baseline',
+    'first baseline',
+    'last baseline',
+    'space-between',
+    'space-around',
+    'space-evenly',
+    'stretch',
+    'center',
+    'start',
+    'end',
+    'flex-start',
+    'flex-end',
+  ], // 501
+  anchorName: ['none'], // 502
+  anchorScope: ['none', 'all'], // 503
+  animation: ['none'], // 504
+  animationComposition: ['replace', 'add', 'accumulate'], // 505
+  animationTrigger: ['none'], // 506
+  borderShape: ['none'], // 507
+  bufferedRendering: ['auto', 'dynamic', 'static'], // 508
+  caret: ['auto'], // 509
+  clip: ['auto'], // 510
+  colorRendering: ['auto', 'optimizeSpeed', 'optimizeQuality'], // 511
+  columnRuleInset: ['overlap-join'], // 512
+  columnRuleInsetCap: ['overlap-join'], // 513
+  columnRuleInsetCapEnd: ['overlap-join'], // 514
+  columnRuleInsetCapStart: ['overlap-join'], // 515
+  columnRuleInsetEnd: ['overlap-join'], // 516
+  columnRuleInsetJunction: ['overlap-join'], // 517
+  columnRuleInsetJunctionEnd: ['overlap-join'], // 518
+  columnRuleInsetJunctionStart: ['overlap-join'], // 519
+  columnRuleInsetStart: ['overlap-join'], // 520
+  containIntrinsicBlockSize: ['none'], // 521
+  containIntrinsicHeight: ['none'], // 522
+  containIntrinsicInlineSize: ['none'], // 523
+  containIntrinsicSize: ['none'], // 524
+  containIntrinsicWidth: ['none'], // 525
+  container: ['none'], // 526
+  containerName: ['none'], // 527
+  cornerBlockEndShape: [...cornerShapeKeywords], // 528
+  cornerBlockStartShape: [...cornerShapeKeywords], // 529
+  cornerBottomLeftShape: [...cornerShapeKeywords], // 530
+  cornerBottomRightShape: [...cornerShapeKeywords], // 531
+  cornerBottomShape: [...cornerShapeKeywords], // 532
+  cornerEndEndShape: [...cornerShapeKeywords], // 533
+  cornerEndStartShape: [...cornerShapeKeywords], // 534
+  cornerInlineEndShape: [...cornerShapeKeywords], // 535
+  cornerInlineStartShape: [...cornerShapeKeywords], // 536
+  cornerLeftShape: [...cornerShapeKeywords], // 537
+  cornerRightShape: [...cornerShapeKeywords], // 538
+  cornerShape: [...cornerShapeKeywords], // 539
+  cornerStartEndShape: [...cornerShapeKeywords], // 540
+  cornerStartStartShape: [...cornerShapeKeywords], // 541
+  cornerTopLeftShape: [...cornerShapeKeywords], // 542
+  cornerTopRightShape: [...cornerShapeKeywords], // 543
+  cornerTopShape: [...cornerShapeKeywords], // 544
+  d: ['none'], // 545
+  dynamicRangeLimit: ['standard', 'no-limit', 'constrained'], // 546
+  fitTolerance: ['normal', 'infinite'], // 547
+  flexLineCount: [], // 548
+  fontSmooth: [
+    'auto',
+    'never',
+    'always',
+    'xx-small',
+    'x-small',
+    'small',
+    'medium',
+    'large',
+    'x-large',
+    'xx-large',
+    'xxx-large',
+  ], // 549
+  fontWidth: [
+    'normal',
+    'ultra-condensed',
+    'extra-condensed',
+    'condensed',
+    'semi-condensed',
+    'semi-expanded',
+    'expanded',
+    'extra-expanded',
+    'ultra-expanded',
+  ], // 550
+  imageResolution: ['from-image'], // 551
+  interestDelay: ['normal'], // 552
+  interestDelayEnd: ['normal'], // 553
+  interestDelayStart: ['normal'], // 554
+  justifyTracks: [
+    'normal',
+    'space-between',
+    'space-around',
+    'space-evenly',
+    'stretch',
+    'center',
+    'start',
+    'end',
+    'flex-start',
+    'flex-end',
+    'left',
+    'right',
+  ], // 555
+  linkParameters: ['none'], // 556
+  listStyle: ['none', 'inside', 'outside'], // 557
+  masonryAutoFlow: ['pack', 'next', 'definite-first', 'ordered'], // 558
+  objectViewBox: ['none'], // 559
+  page: ['auto'], // 560
+  pathLength: ['none'], // 561
+  perspectiveOrigin: ['left', 'center', 'right', 'top', 'bottom'], // 562
+  positionAnchor: ['normal', 'auto', 'none', 'match-parent'], // 563
+  positionArea: ['none', ...positionAreaKeywords], // 564
+  positionTry: [
+    'none',
+    'flip-block',
+    'flip-inline',
+    'flip-start',
+    ...positionAreaKeywords,
+  ], // 565
+  positionTryFallbacks: [
+    'none',
+    'flip-block',
+    'flip-inline',
+    'flip-start',
+    ...positionAreaKeywords,
+  ], // 566
+  positionVisibility: [
+    'always',
+    'anchors-valid',
+    'anchors-visible',
+    'no-overflow',
+  ], // 567
+  rowRule: [], // 568
+  rowRuleInset: ['overlap-join'], // 569
+  rowRuleInsetCap: ['overlap-join'], // 570
+  rowRuleInsetCapEnd: ['overlap-join'], // 571
+  rowRuleInsetCapStart: ['overlap-join'], // 572
+  rowRuleInsetEnd: ['overlap-join'], // 573
+  rowRuleInsetJunction: ['overlap-join'], // 574
+  rowRuleInsetJunctionEnd: ['overlap-join'], // 575
+  rowRuleInsetJunctionStart: ['overlap-join'], // 576
+  rowRuleInsetStart: ['overlap-join'], // 577
+  rowRuleStyle: [...lineStyle], // 578
+  rule: [], // 579
+  ruleInset: ['overlap-join'], // 580
+  ruleInsetCap: ['overlap-join'], // 581
+  ruleInsetEnd: ['overlap-join'], // 582
+  ruleInsetJunction: ['overlap-join'], // 583
+  ruleInsetStart: ['overlap-join'], // 584
+  scrollSnapCoordinate: ['none'], // 585
+  scrollSnapDestination: [], // 586
+  scrollSnapPointsX: ['none'], // 587
+  scrollSnapPointsY: ['none'], // 588
+  scrollTimeline: ['none'], // 589
+  scrollTimelineAxis: ['block', 'inline', 'x', 'y'], // 590
+  scrollTimelineName: ['none'], // 591
+  speakAs: [
+    'normal',
+    'spell-out',
+    'digits',
+    'literal-punctuation',
+    'no-punctuation',
+  ], // 592
+  textAutospace: [
+    'normal',
+    'no-autospace',
+    'ideograph-alpha',
+    'ideograph-numeric',
+    'punctuation',
+    'insert',
+    'replace',
+    'auto',
+  ], // 593
+  textBox: [
+    'normal',
+    'none',
+    'trim-start',
+    'trim-end',
+    'trim-both',
+    'auto',
+    'text',
+    'cap',
+    'ex',
+    'ideographic',
+    'ideographic-ink',
+  ], // 594
+  textBoxEdge: ['auto', 'text', 'cap', 'ex', 'ideographic', 'ideographic-ink'], // 595
+  textDecoration: ['none'], // 596
+  textDecorationInset: ['auto'], // 597
+  textDecorationSkip: [
+    'none',
+    'objects',
+    'spaces',
+    'leading-spaces',
+    'trailing-spaces',
+    'edges',
+    'box-decoration',
+  ], // 598
+  textDecorationSkipSpaces: ['none', 'all', 'start', 'end'], // 599
+  textFit: ['none', 'grow', 'shrink'], // 600
+  timelineScope: ['none', 'all'], // 601
+  timelineTrigger: ['none'], // 602
+  timelineTriggerActivationRange: [...timelineTriggerRange], // 603
+  timelineTriggerActivationRangeEnd: [...timelineTriggerRange], // 604
+  timelineTriggerActivationRangeStart: [...timelineTriggerRange], // 605
+  timelineTriggerActiveRange: ['auto', ...timelineTriggerRange], // 606
+  timelineTriggerActiveRangeEnd: ['auto', ...timelineTriggerRange], // 607
+  timelineTriggerActiveRangeStart: ['auto', ...timelineTriggerRange], // 608
+  timelineTriggerName: ['none'], // 609
+  timelineTriggerSource: ['auto', 'none'], // 610
+  triggerScope: ['none', 'all'], // 611
+  viewTimeline: ['none'], // 612
+  viewTimelineAxis: ['block', 'inline', 'x', 'y'], // 613
+  viewTimelineInset: ['auto'], // 614
+  viewTimelineName: ['none'], // 615
+  viewTransitionClass: ['none'], // 616
+  viewTransitionGroup: ['normal', 'contain', 'nearest'], // 617
+  viewTransitionName: ['none', 'match-element'], // 618
+  whiteSpaceTrim: ['none', 'discard-before', 'discard-after', 'discard-inner'], // 619
 };
 
 export { validData };
