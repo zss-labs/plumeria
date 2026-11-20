@@ -1,0 +1,141 @@
+---
+title: 'css.viewTransitionClass'
+description: 'View Transitions API で、ページや状態の変化をまたいで要素をアニメーションさせます。'
+stability: Frozen
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+```ts
+export type viewTransitionClass = <const T extends ViewTransition>(rule: T) => string;
+export const viewTransitionClass: viewTransitionClass;
+```
+
+`viewTransitionClass()`は、ビュートランジエーションのアニメーション方法をカスタマイズします。`view-transition-class`を返します。定義されたルールは、そのクラスを持つすべてのトランジエーションを選択するため、1つの定義は任意の数の要素で共有できます。
+
+[トランジションのプレイスメーカーの例を見る](/playground?example=view-transition) を試してみてください。
+
+```ts
+type ViewTransitionOptions = {
+  group?: CSSProperties;
+  imagePair?: CSSProperties;
+  new?: CSSProperties;
+  old?: CSSProperties;
+};
+```
+
+## React で使う [#usage-with-react]
+
+クラスを`<ViewTransition>`の`default`、`enter`、`exit`、`update`、または`share`プロパティに渡します：
+
+<Tabs items={["tsx", "css"]}>
+  <Tab>
+    ```tsx title="TypeScript"
+    import * as css from '@plumeria/core';
+    import { ViewTransition } from 'react';
+
+    const fadeIn = css.keyframes({
+      from: { opacity: 0 },
+      to: { opacity: 1 },
+    });
+
+    const fadeOut = css.keyframes({
+      from: { opacity: 1 },
+      to: { opacity: 0 },
+    });
+
+    const longCrossFade = css.viewTransitionClass({
+      old: {
+        animationName: fadeOut,
+        animationDuration: '1.2s',
+      },
+      new: {
+        animationName: fadeIn,
+        animationDuration: '1.2s',
+      },
+    });
+
+    export const Page = ({ children }: { children: React.ReactNode }) => (
+      <ViewTransition default={longCrossFade}>{children}</ViewTransition>
+    );
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    @keyframes kf-xmzotw7h {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+
+    @keyframes kf-x34h9adh {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    ::view-transition-old(*.vt-xsq18f68) {
+      animation-name: kf-xmzotw7h;
+      animation-duration: 1.2s;
+    }
+    ::view-transition-new(*.vt-xsq18f68) {
+      animation-name: kf-x34h9adh;
+      animation-duration: 1.2s;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+プロパティは、条件やトランジションタイプでキー付けされたオブジェクトなど、Reactが受け入れる形式を受け入れます。
+
+```tsx
+<ViewTransition
+  enter={forward ? slideIn : fadeIn}
+  update={{ 'nav-back': slideOut, default: 'none' }}
+>
+```
+
+遷移中にリンクされる要素は、`name`だけで決定されます。独自の文字列を指定してください（例：`name={`photo-${id}`}`）。クラスがどのようにアニメーションさせるかを決定させます。
+
+## `css.create` で使う [#usage-in-csscreate]
+
+`viewTransitionClass`で設定し、トランジションに参加する`viewTransitionName`の横に配置します。
+
+<Tabs items={["tsx", "css"]}>
+  <Tab>
+    ```tsx title="TypeScript"
+    import * as css from '@plumeria/core';
+
+    const slide = css.viewTransitionClass({
+      group: { animationDuration: '0.4s' },
+    });
+
+    const styles = css.create({
+      card: {
+        viewTransitionName: 'card',
+        viewTransitionClass: slide,
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    ::view-transition-group(*.vt-xsko7jjz) {
+      animation-duration: 0.4s;
+    }
+
+    .xga8f3th { view-transition-name: card; }
+    .xl2q8e2d { view-transition-class: vt-xsko7jjz; }
+    ```
+  </Tab>
+</Tabs>
+
+## ルールが出力されるとき [#when-the-rules-are-emitted]
+
+ルールは、クラスが `css.create` で使用されている場合、または `react` からインポートされた `<ViewTransition>` のプロパティで使用されるときに発行されます。コンパイラはそのインポートを通じてそれを検出するため、独自のワッパーコンポーネントを通じて渡されるクラスは見えません。直接 `<ViewTransition>` に記述するか、`css.create` で `viewTransitionClass` で設定してください。
