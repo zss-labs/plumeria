@@ -1,0 +1,61 @@
+---
+title: 'Next.js'
+description: "Next.js に Plumeria を設定します。"
+---
+
+Next.js で [`@plumeria/next-plugin`](https://www.npmjs.com/package/@plumeria/next-plugin) を使う例は [`examples/example-nextjs`](https://github.com/zss-labs/plumeria/tree/main/examples/example-nextjs) にあります。プラグインはスタイルを CSS に変換し、開発中は HMR で変更を反映します。
+
+[@plumeria/init](/ja/docs/api/migrate/init) を実行すると Next.js を検出し、必要な設定を書き込みます。以下は、同じ設定を手動で追加する手順です。
+
+## インストール
+```sh title="Terminal"
+pnpm i -D @plumeria/next-plugin
+```
+
+## next.config.ts
+
+`withPlumeria` は Turbopack と Webpack の両方で使えます。
+
+```ts title="next.config.ts"
+import type { NextConfig } from "next";
+import { withPlumeria } from "@plumeria/next-plugin";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default withPlumeria(nextConfig);
+```
+
+`withPlumeria` の第2引数にコンパイラの設定を渡せます。
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, {
+  include: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  exclude: ['**/node_modules/**', '**/.next/**'],
+  styleProp: 'classStyle',
+});
+```
+
+- `include` はスタイルの抽出元のファイルを glob で指定します。標準では拡張子が js、jsx、ts、tsx のすべてのファイルが対象です。
+- `exclude` は除外するファイルの glob です。標準では `node_modules`、`dist`、`.next` を除きます。
+- `styleProp` は JSX でスタイルを受け取る prop の名前です。初期値は `'sx'` です。
+
+以上がよく使う設定です。`withoutLogicalProperties` と `withoutPhysicalProperties` を使うと、物理名と論理名の両方があるプロパティを一方の書き方にそろえられます。全設定と型は [@plumeria/next-plugin](/ja/docs/api/plugins/next-plugin) を参照してください。
+
+## sx の型を読み込む
+
+`@plumeria/core` を入れただけでは JSX の prop の型は追加されません。プロジェクトで使う prop 名に合わせて型宣言を読み込みます。
+
+標準の `sx` を使う場合は、パッケージ付属の型宣言を参照します。`src/` があればその中に、なければプロジェクトのルートに次のファイルを置きます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+`styleProp` を `'classStyle'` などに変えた場合は、`next.config.ts`と同じ名前で型を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+<Cards>
+  <Card title="パッケージとして配布する" href="/ja/docs/creating-packages" />
+  <Card title="インストール" href="/ja/docs/installation" />
+</Cards>
