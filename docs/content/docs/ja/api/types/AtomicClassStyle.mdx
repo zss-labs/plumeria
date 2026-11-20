@@ -1,0 +1,74 @@
+---
+title: 'AtomicClassStyle'
+description: '1 つの動的なスタイルの型。function key を呼び出すと得られます。'
+---
+
+```ts
+type AtomicClassStyle<T>;
+export type { AtomicClassStyle };
+```
+
+`AtomicClassStyle` は、[関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values)を呼んだ結果一つを表します。[AtomicStyle](/ja/docs/api/types/AtomicStyle) と同じように、型引数には必要なプロパティを書きます。関数の結果は、実際に返すプロパティに応じて型が決まります。静的なスタイルは受け付けません。
+
+呼び出す側で計算した値は、CSS 変数として要素に届きます。そのため動的なスタイルは `sx` に渡します。クラス名だけを受け取る prop と区別するのは、この値も要素に届けるためです。
+
+## 例 [#example]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  sized: (width: number) => ({ width }),
+  fixed: { width: '120px' },
+});
+
+type Sized = css.AtomicClassStyle<{ width: number }>;
+
+const a: Sized = styles.sized(120); // ok
+const b: Sized = styles.sized;      // Type error, the function has to be called
+const c: Sized = styles.fixed;      // Type error, no function produced this style
+```
+
+指定したプロパティは必須です。動的なスタイルでも、別のプロパティしか設定していないものは渡せません。
+
+```tsx
+const styles = css.create({
+  offset: (top: number) => ({ top }),
+});
+
+const a: css.AtomicClassStyle<{ width: number }> = styles.offset(8); // Type error
+```
+
+## 呼び出したスタイルの中身 [#what-a-called-style-shows]
+
+関数の戻り値には、設定したプロパティごとに [AtomicClassStyleFor](/ja/docs/api/types/AtomicClassStyleFor) 型の項目が入ります。
+
+```ts title="TypeScript"
+const styles = css.create({
+  palette: (color: string) => ({ padding: 4, background: color }),
+});
+
+// styles.palette('red')
+Readonly<{
+  padding: css.AtomicClassStyleFor<'padding', number>;
+  background: css.AtomicClassStyleFor<'background', string>;
+}>;
+```
+
+印は各項目に付くので、プロパティを一つだけ取り出しても残ります。[StaticStyles](/ja/docs/api/types/StaticStyles) はこの印で動的なスタイルを見分けます。印が表すのは値の出どころです。例の `padding` は固定値ですが、戻り値全体が一緒に要素に届くので、同じ印が付きます。
+
+## 3 つの使い分け [#choosing-between-the-three]
+
+動的なスタイルを受け取れるかどうかは、コンポーネントが CSS 変数を要素に渡せるかで決まります。次の三つの型を使い分けます。
+
+| 型 | 静的なスタイル | 関数で作ったスタイル |
+| --- | --- | --- |
+| [AtomicStyle](/ja/docs/api/types/AtomicStyle) | 使える | 使える |
+| `AtomicClassStyle` | 使えない | 使える |
+| [StaticStyles](/ja/docs/api/types/StaticStyles) | 使える | 使えない |
+
+[css.use()](/ja/docs/api/javascript/use) はクラス名だけを返すので、これを使うコンポーネントには通常 `StaticStyles` が適しています。呼び出し側で計算した値を適用するためのコンポーネントには `AtomicClassStyle` を使います。
+
+<Callout title="補足">
+`StaticStyles` はスタイルのリストで、配列や条件が偽のときの値も受け取れます。`AtomicClassStyle` と `AtomicStyle` は一つのスタイルを表します。リストの書き方は [Style](/ja/docs/api/types/Style) を参照してください。
+</Callout>
