@@ -1882,6 +1882,10 @@ ruleTester.run('validate-values', validateValues, {
         "'position' has an invalid value 'fixd'. Did you mean 'fixed'?",
       ],
       [
+        `fontSize: 'xx-smal'`,
+        "'fontSize' has an invalid value 'xx-smal'. Did you mean 'xx-small'?",
+      ],
+      [
         `WebkitLineClamp: 2.5`,
         "'WebkitLineClamp' has an invalid value '2.5'. Use a positive integer.",
       ],
