@@ -1,0 +1,142 @@
+---
+title: '@plumeria/init'
+description: 'バンドラーに合ったパッケージとプラグインを選んでくれる、1 つのコマンド。'
+stability: Stable
+---
+
+[`@plumeria/init`](https://www.npmjs.com/package/@plumeria/init)は、すでに存在するプロジェクトにPlumeriaを設定します。各バンドラーには独自のプラグインがあり、プロジェクトが必要とするものが検出できるため、このコマンドはその選択を行います。
+
+```sh title="Terminal"
+npx @plumeria/init
+```
+
+プロジェクトを読み取り、読み取れないものを尋ね、計画を表示し、それからのみ書き込みます。回答する前に何もインストールしたりパッチを適用したりしません。
+
+```sh title="Terminal"
+✔ detected  next  pnpm  typescript
+
+  ➡︎ install  @plumeria/core @plumeria/next-plugin @plumeria/eslint-plugin rimraf
+  + write    plumeria.d.ts     sx
+  ~ patch    next.config.ts    withPlumeria(...)
+  ~ patch    eslint.config.ts  plumeria.configs.recommended
+  ~ patch    package.json      predev: rimraf .next, prebuild: rimraf .next
+
+Apply? (Y/n)
+```
+
+実行する前にコミットしてください。そうすれば、`git checkout`で書き込みを元に戻すことができます。
+
+## 検出するもの [#what-it-detects]
+
+パッケージマネージャは`packageManager`から、またはそのフィールドが存在しない場合はロックファイルから取得されます。どちらもディレクトリがinitで実行されるディレクトリから上へ向かって検索されるため、ワークスペース内のパッケージは`npm`ではなく、ワークスペースのルートが使用するマネージャでインストールされます。
+
+バンドラーは依存関係ファイル、そしてまだインストールされていない場合（`next`、`vite`、`astro`、`webpack`、`rspack`、`rollup`、`rolldown`、`esbuild`、`farm`、`bun`）の構成ファイルから読み取られます。バンドラーが読み込むNext.jsは、Next.jsが読み込まれる前に読み込まれるため、Nextプロジェクトには[`@plumeria/next-plugin`](/ja/docs/api/plugins/next-plugin)が、その他のものは対応するファクトリー付きで[`@plumeria/unplugin`](/ja/docs/api/plugins/unplugin)が適用されます。適用するかどうかは、`--bundler <name>`を渡して自分で決定してください。
+
+## 質問すること [#what-it-asks]
+
+### lint で強制する書き方はどちらか [#which-spelling-should-lint-enforce]
+
+```sh title="Terminal"
+  1: logical   marginBlockStart, insetInlineStart
+  2: physical  marginTop, left
+  3: none      no policy
+```
+
+一つの回答が両方のレベルに到達します。バンドラープラグインは `withoutPhysicalProperties` または `withoutLogicalProperties` を受け取るため、対応するコンパイルができません。一方、ESLint は `@plumeria/no-physical-properties` または `@plumeria/no-logical-properties` を受け取るため、入力中に報告されます。これらは同じ選択が二度行われたことと同じで、一つの回答から設定することで、両方の方向性が一致するように保たれています。
+
+`--sizes`は、`width`と`inlineSize`がペアであるサイズ軸にも拡張されます。
+
+既存のスタイルがある場合は `3` を選び、[追加できるルール](/ja/docs/api/plugins/eslint-plugin/optional-rules)の手順に従います。先に lint で全箇所の修正候補を確認し、移行後にビルド設定を有効にします。
+
+### スタイルを渡す JSX の prop はどれか [#which-jsx-prop-carries-styles]
+
+`sx`、別の名前を付けない限りです。名前を変更したプロパティはプラグインに`styleProp`として書き込まれ、同時に`plumeria.d.ts`に宣言されるため、二者は矛盾することはできません。タイプチェックでは不一致が検出されますが、コンパイル時に削除されることはありません。
+
+名前が変更されたプロパティは、TypeScriptが宣言できる識別子である場合、およびReactが名前を自由に使える場合を除き、拒否されます。`className`、`style`、`key`、`ref`、`children`は、プロンプトからおよび`--style-prop`から同様に拒否されます。
+
+### .jsx/.tsx でのスタイルの適用を `sx` だけにするか [#apply-styles-in-jsxtsx-only-through-sx]
+
+はい、デフォルトでは、`lint config`に[`@plumeria/no-use-in-jsx`](/ja/docs/api/plugins/eslint-plugin/optional-rules#no-use-in-jsx-no-use-in-jsx)を追加するため、`css.use()`は`.jsx`および`.tsx`ファイルで報告され、スタイルプロパティがそこでスタイルを適用する唯一の方法となります。プロジェクトが`css.use()`のみでクラス名を受け取るサードパーティコンポーネントをスタイル化している場合は、「no」と返信するか、`--allow-use`を渡してください。
+
+### ESLint に `@plumeria/eslint-plugin` をセットアップするか [#set-up-plumeriaeslint-plugin-for-eslint]
+
+プラグインを追加し、フラット構成を書き込むか拡張するため、入力中にスタイルエラーが報告されます。どちらの場合でもビルドはリントされます。バンドラープラグインはビルドと並行して同じルールを実行し、スタイルエラーが発生した時点でビルドを停止します。プラグインがリントできないesbuildやBunでは、代わりに`build`スクリプトは`plumeria-lint --`でプレフィックスされ、スタイルプロパティが再名された場合は`--style-prop`が付けられます。
+
+## 書き込むもの [#what-it-writes]
+
+| ファイル | 何がそれに着くのですか |
+| --- | --- |
+| `plumeria.d.ts` | プロジェクトに1つある場合、`src/`でTypeScriptが読み込むスタイリングプロップ |
+| バンドラー構成 | プラグイン、そして回答者が選択したオプション |
+| `eslint.config.ts` | `plumeria.configs.recommended`、要求されたルール、そしてスタイルプロパティが再名されたときには `settings.plumeria.styleProp` |
+| `package.json` | esbuildとBunでは、`build`スクリプトの前に`plumeria-lint --`を、Next.jsでは`dev`と`build`の前に`rimraf .next`を使用してください。 |
+
+既存のファイルは置き換えではなくパッチが適用されます。インポートは最後のインポートの後に行われ、プラグインは`plugins`配列に追加され、Next構成はデフォルトのエクスポートがラップされます。
+
+```ts title="next.config.ts"
+import type { NextConfig } from 'next';
+import { withPlumeria } from '@plumeria/next-plugin'; // [!code ++]
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default nextConfig; // [!code --]
+export default withPlumeria(nextConfig, { withoutLogicalProperties: true }); // [!code ++]
+```
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import plumeria from '@plumeria/unplugin'; // [!code ++]
+
+export default defineConfig({
+  plugins: [react(), plumeria.vite({ withoutLogicalProperties: true })], // [!code ++]
+});
+```
+
+Next.jsでは、`pre`スクリプトがビルドキャッシュをクリアし、これによりバージョン変更がコンパイルエラーとして読み取られないようにしています。プロジェクトに実際に存在する`dev`と`build`それぞれに1つずつ追加されますので、スクリプトがないプロジェクトには追加されず、`rimraf`はスクリプトが追加されたときにのみインストールされます：
+
+```json title="package.json"
+  "scripts": {
+    "predev": "rimraf .next",
+    "prebuild": "rimraf .next",
+    "dev": "next dev",
+    "build": "next build"
+  }
+```
+
+プロジェクトがすでに書いた`predev`または`prebuild`はそのまま残されます。キャッシュをクリアすることは、リントの問題ではなくNext.jsの問題なので、`--no-eslint`はそれをそのままにします。
+
+すでに設定されているとみなされるのは、プラグインが*呼び出される*ことであり、単にインポートされることだけではありません。`plumeria.version`の単語やコメント、文字列、正規表現定数の中の呼び出しはすべて設定されていないと読み取られます。なぜなら、これらはすべて何も登録しないからです。何も呼び出さないインポートはスキップされるのではなく完了し、ファイルがすでに名付けられているバインドが実際に呼び出されます。複数の行にわたるインポートは1つのステートメントとして読み取られるため、決して重複しません。2回目の実行は何も書き込まれず、半ば完了したものは完了します。
+
+拡張している`plugins`配列は、構成オブジェクトが所有しているものです。たとえばVitestの場合、ネストされたキーである`test`に属する`plugins`は、決して書き込まれません。プラグインを安全に配置できない場所（構成オブジェクト自体に`plugins`配列がない構成、構成ではなくビルドスクリプト、レガシーの`.eslintrc`など）では、何も操作されず、スニペットが出力され、コマンドは`1`で終了します。
+
+## オプション [#options]
+
+```sh title="Terminal"
+npx @plumeria/init --dry-run            # show the plan, write nothing
+npx @plumeria/init --yes                # take every default, ask nothing
+npx @plumeria/init --physical --sizes   # answer the spelling question up front
+npx @plumeria/init --style-prop classStyle
+npx @plumeria/init --allow-use          # keep css.use() in .jsx/.tsx files
+npx @plumeria/init --bundler rollup
+npx @plumeria/init --no-eslint          # leave ESLint out
+npx @plumeria/init --no-install         # write the configs, print the command
+npx @plumeria/init --cwd packages/app
+```
+
+TTYがないと、決して質問されません。回答されない質問はすべてデフォルト値が適用されるため、CIで使用できるのです。カラーは`node:util`の`styleText`から生成されます。この関数は出力が端末でない場合、テキストをそのまま残します。そのため、パイプされた実行やログ出力ではエスケープコードは含まれません。
+
+## インストール [#installation]
+
+なしです。`npx`で実行すると、その後また消えてしまいます。コマンドは`plumeria-init`なので、リポジトリにピン留めしたい場合はインストールしてください。
+
+```sh title="Terminal"
+pnpm i -D @plumeria/init
+```
+
+<Cards>
+  <Card title="手動で設定する" href="/ja/docs/installation" />
+  <Card title="既存のプロジェクトを Plumeria に移す" href="/ja/docs/api/migrate/codemod" />
+</Cards>
