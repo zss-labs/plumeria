@@ -23,7 +23,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       isDev: false,
       addDependency: () => {},
     });
-    const match = /className=\{"([^"]*)"\}/.exec(code);
+    const match = /className="([^"]*)"/.exec(code);
     return new Set(match ? match[1].split(' ') : []);
   };
 
