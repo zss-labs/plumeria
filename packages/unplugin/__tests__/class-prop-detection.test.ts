@@ -59,14 +59,14 @@ afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
 it('writes the class attribute when a solid plugin is in the resolved config', async () => {
   const code = await run(['solid', '@plumeria/unplugin:vite']);
 
-  expect(code).toContain('class={');
+  expect(code).toContain('class="');
   expect(code).not.toContain('className={');
 });
 
 it('keeps className when no solid plugin is present', async () => {
   const code = await run(['vite:react-babel', '@plumeria/unplugin:vite']);
 
-  expect(code).toContain('className={');
+  expect(code).toContain('className="');
 });
 
 it('keeps className when the resolved config carries no plugin list', async () => {
@@ -81,5 +81,5 @@ it('keeps className when the resolved config carries no plugin list', async () =
     filePath,
   );
 
-  expect(result?.code).toContain('className={');
+  expect(result?.code).toContain('className="');
 });
