@@ -431,3 +431,268 @@ fn resolves_paths_defined_in_a_parent() {
     let out = apply("import s from '@/ui/Card.module.css';\n<div className={s.card} />;", &outcome.edits);
     assert!(out.contains("from './ui/Card.styles';"), "{out}");
 }
+
+type StylexRun = (Vec<(String, String)>, Vec<(String, Vec<&'static str>)>);
+
+fn stylex(files: &[(&str, &str)]) -> StylexRun {
+    let sources: Vec<(String, String)> = files.iter().map(|(f, t)| (f.to_string(), t.to_string())).collect();
+    let plan = crate::stylex::plan(&sources, None, "sx");
+    let rewrites = plan.rewrites.iter().map(|(i, t)| (sources[*i].0.clone(), t.clone())).collect();
+    let held = plan.held.iter().map(|(i, h)| (sources[*i].0.clone(), h.iter().map(|h| h.kind).collect())).collect();
+    (rewrites, held)
+}
+
+fn stylex_one(code: &str) -> String {
+    let (rewrites, held) = stylex(&[("src/Card.tsx", code)]);
+    assert!(held.is_empty(), "{held:?}");
+    rewrites[0].1.clone()
+}
+
+fn stylex_holds(code: &str) -> Vec<&'static str> {
+    let (_, held) = stylex(&[("src/Card.tsx", code)]);
+    held.into_iter().flat_map(|(_, kinds)| kinds).collect()
+}
+
+const STYLEX: &str = "import * as stylex from '@stylexjs/stylex';\n";
+
+#[test]
+fn stylex_moves_conditions_out_of_values() {
+    let code = format!(
+        "{STYLEX}
+const styles = stylex.create({{
+  base: {{
+    color: {{ default: 'black', ':hover': 'blue', '@media (max-width: 600px)': 'red' }},
+    padding: 8,
+  }},
+}});
+
+export const Card = () => <div {{...stylex.props(styles.base)}} />;
+"
+    );
+    let expected = "import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    color: 'black',
+    padding: 8,
+    ':hover': {
+      color: 'blue',
+    },
+    '@media (max-width: 600px)': {
+      color: 'red',
+    },
+  },
+});
+
+export const Card = () => <div sx={styles.base} />;
+";
+    assert_eq!(stylex_one(&code), expected);
+}
+
+#[test]
+fn stylex_puts_a_pseudo_under_its_at_rule() {
+    let code = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', ':hover': {{ default: 'b', '@media (x)': 'c' }} }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&code);
+    assert!(out.contains("':hover': {\n      color: 'b',\n    },\n    '@media (x)': {\n      ':hover': {\n        color: 'c',\n      },\n    },"), "{out}");
+}
+
+#[test]
+fn stylex_fills_the_states_a_later_style_replaces() {
+    let code = format!(
+        "{STYLEX}const s = stylex.create({{\n  a: {{ color: {{ default: 'black', ':hover': 'blue' }} }},\n  b: {{ color: 'red' }},\n}});\n<div {{...stylex.props(s.a, s.b)}} />;"
+    );
+    let out = stylex_one(&code);
+    assert!(out.contains("  b: {\n    color: 'red',\n    ':hover': {\n      color: 'red',\n    },\n  },"), "{out}");
+    assert!(out.ends_with("<div sx={[s.a, s.b]} />;"), "{out}");
+}
+
+#[test]
+fn stylex_leaves_a_style_that_never_follows_as_written() {
+    let code = format!(
+        "{STYLEX}const s = stylex.create({{\n  a: {{ color: {{ default: 'black', ':hover': 'blue' }} }},\n  b: {{ color: 'red' }},\n}});\n<div {{...stylex.props(s.b)}} />;\n<p {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&code);
+    assert!(out.contains("  b: {\n    color: 'red',\n  },"), "{out}");
+}
+
+#[test]
+fn stylex_holds_what_plumeria_cannot_state() {
+    let null = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: 'black' }}, b: {{ color: {{ default: null, ':hover': 'green' }} }} }});\n<div {{...stylex.props(s.a, s.b)}} />;"
+    );
+    assert_eq!(stylex_holds(&null), ["null-value"]);
+    let overlap = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', ':hover': 'b', ':focus': 'c' }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    assert_eq!(stylex_holds(&overlap), ["overlapping-states"]);
+    let beside = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: 'a' }} }});\n<div className=\"x\" {{...stylex.props(s.a)}} />;"
+    );
+    assert_eq!(stylex_holds(&beside), ["props-beside-attribute"]);
+    let theme = format!("{STYLEX}export const dark = stylex.createTheme(vars, {{ color: 'white' }});");
+    assert_eq!(stylex_holds(&theme), ["unsupported-api"]);
+    let crossed = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', '@media (min-width: 600px)': 'b', '@media (orientation: landscape)': 'c' }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    assert_eq!(stylex_holds(&crossed), ["media-order", "media-order"]);
+}
+
+#[test]
+fn stylex_keeps_media_queries_in_written_order() {
+    let narrow_first = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', '@media (min-width: 900px)': 'c', '@media (min-width: 600px)': 'b' }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&narrow_first);
+    assert!(out.contains("'@media (min-width: 900px)': {\n      color: 'b',\n    },"), "{out}");
+    let broad_first = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', '@media (min-width: 600px)': 'b', '@media (min-width: 900px)': 'c' }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&broad_first);
+    assert!(out.contains("'@media (min-width: 900px)': {\n      color: 'c',\n    },"), "{out}");
+}
+
+#[test]
+fn stylex_reports_the_requires_stylex_compiles() {
+    for code in [
+        "const stylex = require('@stylexjs/stylex');\nconst s = stylex.create({ a: { color: 'a' } });\n",
+        "const { create, props } = require('@stylexjs/stylex');\nconst s = create({ a: { color: 'a' } });\n",
+    ] {
+        assert_eq!(stylex_holds(code), ["require"], "{code}");
+    }
+    let tokens = "const stylex = require('@stylexjs/stylex');\nmodule.exports = stylex.create({ a: { color: 'a' } });\n";
+    let card = format!("{STYLEX}import t from './tokens';\n<div {{...stylex.props(t.a)}} />;");
+    let (rewrites, held) = stylex(&[("src/tokens.js", tokens), ("src/Card.tsx", &card)]);
+    assert!(rewrites.is_empty(), "{rewrites:?}");
+    assert_eq!(
+        held,
+        [
+            ("src/tokens.js".to_string(), vec!["require"]),
+            ("src/Card.tsx".to_string(), vec!["linked-to-held"]),
+        ]
+    );
+}
+
+#[test]
+fn stylex_turns_flat_constants_into_create_static() {
+    let tokens = "import * as stylex from '@stylexjs/stylex';\nexport const space = stylex.defineConsts({ gap: 8, brand: 'red' });\n";
+    let card = "import * as stylex from '@stylexjs/stylex';\nimport { space } from './tokens.stylex';\nconst s = stylex.create({ a: { gap: space.gap, color: space.brand } });\nexport const Card = () => <div {...stylex.props(s.a)} />;\n";
+    let (rewrites, held) = stylex(&[("src/tokens.stylex.ts", tokens), ("src/Card.tsx", card)]);
+    assert!(held.is_empty(), "{held:?}");
+    let out = |file: &str| rewrites.iter().find(|(f, _)| f == file).unwrap().1.clone();
+    assert_eq!(
+        out("src/tokens.stylex.ts"),
+        "import * as css from '@plumeria/core';\nexport const space = css.createStatic({ gap: 8, brand: 'red' });\n"
+    );
+    let card = out("src/Card.tsx");
+    assert!(card.contains("import { space } from './tokens.stylex';"), "{card}");
+    assert!(card.contains("const s = css.create({\n  a: {\n    gap: space.gap,\n    color: space.brand,\n  },\n});"), "{card}");
+}
+
+#[test]
+fn stylex_reports_constants_that_are_not_flat_literals() {
+    for code in [
+        "export const c = stylex.defineConsts({ gap: { default: 8 } });",
+        "export const c = stylex.defineConsts({ gap: -8 });",
+        "export const c = stylex.defineConsts({ ...base });",
+        "export function f() { return stylex.defineConsts({ gap: 8 }); }",
+    ] {
+        assert_eq!(stylex_holds(&format!("{STYLEX}{code}")), ["unsupported-consts"], "{code}");
+    }
+}
+
+#[test]
+fn stylex_renames_view_transition_classes_and_position_tries() {
+    let code = format!(
+        "{STYLEX}const fadeIn = stylex.keyframes({{ from: {{ opacity: 0 }}, to: {{ opacity: 1 }} }});
+export const cross = stylex.viewTransitionClass({{ old: {{ animationName: fadeIn, animationDuration: '1.2s' }} }});
+const above = stylex.positionTry({{ positionArea: 'top', marginBottom: 8 }});
+const s = stylex.create({{ tip: {{ positionTryFallbacks: `${{above}}, flip-inline` }} }});
+export const Tip = () => <div {{...stylex.props(s.tip)}} />;
+"
+    );
+    let out = stylex_one(&code);
+    assert!(out.starts_with("import * as css from '@plumeria/core';\nconst fadeIn = css.keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });\nexport const cross = css.viewTransitionClass({ old: { animationName: fadeIn, animationDuration: '1.2s' } });\nconst above = css.positionTry({ positionArea: 'top', marginBottom: 8 });\n"), "{out}");
+    assert!(out.contains("positionTryFallbacks: `${above}, flip-inline`,"), "{out}");
+}
+
+#[test]
+fn stylex_reports_view_transitions_and_position_tries_it_cannot_rename() {
+    for (code, kind) in [
+        ("export const v = stylex.viewTransitionClass({ wrapper: { opacity: 0 } });", "unsupported-view-transition"),
+        ("export const v = stylex.viewTransitionClass({ old: { opacity: { default: 0, '@media (x)': 1 } } });", "unsupported-view-transition"),
+        ("const p = stylex.positionTry({ top: { default: 0, ':hover': 4 } });", "unsupported-position-try"),
+        ("function f() { return stylex.positionTry({ top: 0 }); }", "unsupported-position-try"),
+        ("const p = stylex.positionTry({ top: getGap() + 1 });", "unsupported-position-try"),
+        ("const p = stylex.positionTry({ top: `${getGap()}px` });", "unsupported-position-try"),
+        ("const p = stylex.positionTry({ top: gap?.small });", "unsupported-position-try"),
+    ] {
+        assert_eq!(stylex_holds(&format!("{STYLEX}{code}")), [kind], "{code}");
+    }
+}
+
+#[test]
+fn stylex_converts_only_values_it_can_read_statically() {
+    let code = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ marginTop: -4, gap: space.gap, width: `${{size}}px`, color: c }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&code);
+    assert!(out.contains("    marginTop: -4,\n    gap: space.gap,\n    width: `${size}px`,\n    color: c,\n"), "{out}");
+    for value in ["pick() + ''", "`${pick()}px`", "dark ? 'a' : 'b'", "theme?.color", "a + b"] {
+        let code = format!("{STYLEX}const s = stylex.create({{ a: {{ color: {value} }} }});\n<div {{...stylex.props(s.a)}} />;");
+        assert_eq!(stylex_holds(&code), ["dynamic-value"], "{value}");
+    }
+}
+
+#[test]
+fn stylex_declares_the_compound_of_equal_states() {
+    let code = format!(
+        "{STYLEX}const s = stylex.create({{ a: {{ color: {{ default: 'a', ':hover': 'b', ':focus': 'b' }} }} }});\n<div {{...stylex.props(s.a)}} />;"
+    );
+    let out = stylex_one(&code);
+    assert!(out.contains("':focus:hover': {\n      color: 'b',\n    },"), "{out}");
+}
+
+#[test]
+fn stylex_turns_a_style_prop_type_into_css_style() {
+    let code = "import * as stylex from '@stylexjs/stylex';
+import type { StyleXStyles } from '@stylexjs/stylex';
+const styles = stylex.create({ base: { color: 'black' } });
+export const Button = ({ xstyle }: { xstyle?: StyleXStyles }) => <button {...stylex.props(styles.base, xstyle)} />;
+";
+    let expected = "import * as css from '@plumeria/core';
+const styles = css.create({
+  base: {
+    color: 'black',
+  },
+});
+export const Button = ({ xstyle }: { xstyle?: css.Style }) => <button sx={[styles.base, xstyle]} />;
+";
+    assert_eq!(stylex_one(code), expected);
+}
+
+#[test]
+fn stylex_holds_the_files_linked_to_a_held_one() {
+    let tokens = "import * as stylex from '@stylexjs/stylex';\nexport const colors = stylex.defineVars({ primary: 'blue' });\n";
+    let button = "import * as stylex from '@stylexjs/stylex';\nimport { colors } from './tokens.stylex';\nconst s = stylex.create({ a: { color: colors.primary } });\nexport const B = () => <div {...stylex.props(s.a)} />;\n";
+    let (rewrites, held) = stylex(&[("src/tokens.stylex.ts", tokens), ("src/Button.tsx", button)]);
+    assert!(rewrites.is_empty(), "{rewrites:?}");
+    assert_eq!(
+        held,
+        [
+            ("src/tokens.stylex.ts".to_string(), vec!["unsupported-api"]),
+            ("src/Button.tsx".to_string(), vec!["linked-to-held"]),
+        ]
+    );
+}
+
+#[test]
+fn stylex_gives_a_file_that_carries_styles_the_core_import() {
+    let button = "import * as stylex from '@stylexjs/stylex';\nexport const styles = stylex.create({ base: { color: 'black' } });\n";
+    let app = "'use client';\nimport { styles } from './Button';\nexport const App = () => <Button xstyle={styles.base} />;\n";
+    let (rewrites, held) = stylex(&[("src/Button.tsx", button), ("src/App.tsx", app)]);
+    assert!(held.is_empty(), "{held:?}");
+    let app = &rewrites.iter().find(|(f, _)| f == "src/App.tsx").unwrap().1;
+    assert!(app.starts_with("'use client';\nimport '@plumeria/core';\nimport { styles }"), "{app}");
+}
