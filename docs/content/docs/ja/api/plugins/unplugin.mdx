@@ -1,0 +1,105 @@
+---
+title: '@plumeria/unplugin'
+description: 'Next.js 以外のすべての連携で使うバンドラープラグインのインストールと設定。'
+stability: Stable
+---
+
+[@plumeria/unplugin](https://www.npmjs.com/package/@plumeria/unplugin) は、複数のバンドラーで使える Plumeria のプラグインです。
+
+## インストール [#installation]
+
+```sh title="Terminal"
+pnpm i -D @plumeria/unplugin
+```
+
+## 設定 [#configuration]
+```ts
+import plumeria from '@plumeria/unplugin';
+export default {
+  plugins: [
+    plumeria.vite({
+      include: ['**/*.{ts,tsx}'],
+      exclude: ['**/node_modules/**'],
+      devEmitToDisk: false,
+      styleProp: 'classStyle',
+    }),
+  ],
+};
+```
+
+### オプション [#options]
+
+- `include` には処理するファイルの glob または正規表現を指定します。
+- `exclude` には除外するファイルの glob または正規表現を指定します。
+- `devEmitToDisk` を有効にすると、開発中は仮想モジュールの代わりに CSS ファイル（`zero-virtual.css`）をディスクに書き出します。初期値は `false` です。
+- `styleProp` は JSX のスタイル用 prop 名です。標準は `'sx'` です。
+- `withoutLogicalProperties` は物理名もあるプロパティの論理名を禁止します。初期値は `false` です。
+- `withoutPhysicalProperties` は論理名もあるプロパティの物理名を禁止します。初期値は `false` です。
+- `lint` は esbuild と Bun を除く各バンドラーで、本番ビルド時に [@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) を実行します。初期値は `true` です。
+
+```ts
+interface PluginOptions {
+  include?: string | RegExp | Array<string | RegExp>;
+  exclude?: string | RegExp | Array<string | RegExp>;
+  devEmitToDisk?: boolean;
+  styleProp?: string;
+  withoutLogicalProperties?: boolean | { sizes?: boolean };
+  withoutPhysicalProperties?: boolean | { sizes?: boolean };
+  lint?: boolean;
+}
+```
+
+### styleProp [#styleprop]
+
+prop 名を変えるには、次の二か所の名前をそろえます。まずプラグインに指定します。
+
+```ts
+plumeria.vite({ styleProp: 'classStyle' });
+```
+
+次に TypeScript に同じ名前を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+名前が違うと型チェックは通っても prop が変換されません。[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) は `settings.plumeria.styleProp` から名前を読みます。
+
+### withoutLogicalProperties と withoutPhysicalProperties [#withoutlogicalproperties-and-withoutphysicalproperties]
+
+同じ辺の論理名と物理名は詳細度が同じで、併用すると記述順で結果が変わります。この設定で一方の書き方を禁止できます。
+
+```ts
+plumeria.vite({ withoutPhysicalProperties: true });
+```
+
+違反があると最初の箇所でビルドを止め、ファイルと推奨する名前を表示します。自動で書き換えません。`{ sizes: true }` を指定すると、辺に加えて幅と高さ、min と max、overflow、overscroll-behavior、contain-intrinsic-size の両軸を含む12組も対象になります。
+
+```ts
+plumeria.vite({ withoutPhysicalProperties: { sizes: true } });
+```
+
+二つを同時に指定すると設定エラーです。`withoutPhysicalProperties` には [no-physical-properties](/ja/docs/api/plugins/eslint-plugin/optional-rules)、`withoutLogicalProperties` には [no-logical-properties](/ja/docs/api/plugins/eslint-plugin/optional-rules) を合わせ、`sizes` もそろえてください。逆にすると、lint が提案した名前をビルドが拒否します。
+
+順位が決まらない理由と、自動で書き換えない理由は[スタイルの優先順位](/ja/docs/specificity)で説明しています。
+
+### lint [#lint]
+
+本番ビルドと並行して oxlint が [@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) を実行します。追加設定は不要です。コンパイルが先に終わっても lint を待ち、警告やエラーがあればビルドは失敗します。
+
+| バンドラー | lint を実行する場合 | 実行しない場合 |
+| --- | --- | --- |
+| Vite | `vite build` | 開発サーバー、Vitest |
+| webpack、Rspack | 単発のビルド | `--watch`、開発サーバー |
+| Rollup、Rolldown | 単発のビルド | `--watch` |
+| Farm | `farm build` | `farm start` |
+
+esbuild と Bun は単発ビルドと監視モードを判別できないため、自動では実行しません。`plumeria-lint` を別に実行してください。
+
+スクリプトやテストからビルドした場合もチェックし、lint エラーでそのプロセスが終了します。不要な場合は `lint: false` を渡します。
+
+推奨ルールを実行し、`withoutLogicalProperties` または `withoutPhysicalProperties` に対応する[名前のルール](/ja/docs/api/plugins/eslint-plugin/optional-rules)も追加します。`{ sizes }` と `styleProp` の設定も引き継ぎます。`eslint.config.*` は読みません。
+
+oxlint は `.gitignore` の対象を除外し、Plumeria のルールだけを実行します。
+
+`plumeria-lint -- vite build` を使っても lint は一回だけです。無効にするには次のように設定します。
+
+```ts
+plumeria.vite({ lint: false });
+```
