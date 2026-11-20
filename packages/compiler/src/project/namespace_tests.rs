@@ -124,7 +124,7 @@ fn compiles_a_namespace_read_before_anything_was_scanned() {
     );
     let mut project = Project::default();
     let output = transform_source(&mut project, &env(&dir, "app.tsx")).unwrap();
-    assert!(output.code.contains("className={\""));
+    assert!(output.code.contains("className=\""));
     assert!(!output.code.contains("t$blue"));
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -145,6 +145,6 @@ fn exports_read_before_the_first_scan_leave_the_file_to_it() {
     let tokens = dir.join("tokens.ts").to_string_lossy().into_owned();
     assert!(project.resolve_export(&tokens, "blue").is_some());
     let output = transform_source(&mut project, &env(&dir, "app.tsx")).unwrap();
-    assert!(output.code.contains("className={\""));
+    assert!(output.code.contains("className=\""));
     std::fs::remove_dir_all(&dir).unwrap();
 }
