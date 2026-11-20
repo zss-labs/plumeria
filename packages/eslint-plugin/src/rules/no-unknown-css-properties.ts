@@ -9,6 +9,15 @@ import { cssPropertyData } from '../util/cssPropertyData';
 
 const knownProperties = new Set(cssPropertyData);
 
+function camelCaseCandidate(name: string): string | null {
+  if (!name.includes('-')) return null;
+  const camel = name.replace(/-([a-z])/g, (_, char: string) =>
+    char.toUpperCase(),
+  );
+  const candidate = name.startsWith('-ms-') ? `ms${camel.slice(2)}` : camel;
+  return knownProperties.has(candidate) ? candidate : null;
+}
+
 const positionTryProperties = new Set([
   'positionAnchor',
   'positionArea',
@@ -60,6 +69,8 @@ export const noUnknownCssProperties: Rule.RuleModule = {
     },
     messages: {
       unknownProperty: "Unknown CSS property '{{ name }}'.",
+      kebabCaseProperty:
+        "Use '{{ camel }}' for '{{ name }}' in Plumeria styles.",
       unknownNestedProperty:
         "Unknown CSS property '{{ name }}'. Nested selectors start with ':', '[' or '@'.",
       positionTryProperty:
@@ -165,14 +176,21 @@ export const noUnknownCssProperties: Rule.RuleModule = {
           return;
         }
         if (positionTryProperties.has(keyName)) return;
+        const candidate = camelCaseCandidate(keyName);
+        const camel =
+          candidate && positionTryProperties.has(candidate) ? candidate : null;
         context.report({
           node: prop.key,
-          messageId:
-            /^[:[@]|^--/.test(keyName) || knownProperties.has(keyName)
+          messageId: camel
+            ? 'kebabCaseProperty'
+            : candidate ||
+                /^[:[@]|^--/.test(keyName) ||
+                knownProperties.has(keyName)
               ? 'positionTryProperty'
               : 'unknownProperty',
           data: {
             name: keyName,
+            camel: camel ?? '',
           },
         });
       });
@@ -210,14 +228,17 @@ export const noUnknownCssProperties: Rule.RuleModule = {
               !keyName.startsWith('--')
             ) {
               if (!knownProperties.has(keyName)) {
+                const camel = camelCaseCandidate(keyName);
                 context.report({
                   node: prop.key,
-                  messageId:
-                    isCreate && prop.value.type === 'ObjectExpression'
+                  messageId: camel
+                    ? 'kebabCaseProperty'
+                    : isCreate && prop.value.type === 'ObjectExpression'
                       ? 'unknownNestedProperty'
                       : 'unknownProperty',
                   data: {
                     name: keyName,
+                    camel: camel ?? '',
                   },
                 });
               }
