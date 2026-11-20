@@ -230,7 +230,7 @@ Apply a style prop on an element the component renders. Passing it on to another
 <Header headerStyle={[styles.base, styles.primary]} />
 ```
 
-One hop is the whole allowance: a style may cross one component boundary, from the caller to the component that applies it. If forwarding is the design and the wrapper cannot go — a style that arrives from context, or a chain owned by another package — that is the one case this model refuses on purpose. The same source runs on [TypedCSS](/docs/typedcss), the dual model that merges at runtime and lets a style travel any number of hops; [which one, when](/docs/typedcss#which-one-when) lists the situations on each side.
+One hop is the whole allowance: a style may cross one component boundary, from the caller to the component that applies it. If forwarding is the design and the wrapper cannot go — a style that arrives from context, or a chain owned by another package — that is the one case this model refuses on purpose.
 
 So far:
 
@@ -546,5 +546,4 @@ The import compiles away, so a package that exports only definitions can ship it
   <Card title="Selector rules" href="/docs/selector-rules" />
   <Card title="API reference" href="/docs/api" />
   <Card title="Troubleshooting" href="/docs/troubleshooting" />
-  <Card title="TypedCSS, the dual model" href="/docs/typedcss" />
 </Cards>
