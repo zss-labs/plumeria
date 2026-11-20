@@ -1,0 +1,549 @@
+---
+title: "スタイルの組み立て方"
+description: "小さなコンポーネントから共通パッケージまで、スタイルの置き場所と使い方を紹介します。"
+---
+
+<img src="/project-grows.svg" width={1000} height={400} alt="一つのファイルからスタイルモジュールや共有パッケージに分けても、Notice のクラス名は変わらない" />
+
+スタイルを整理するときには、二つの規則を押さえておくと便利です。クラス名はプロパティと値で決まり、定義の置き場所は出力に影響しません。どれを優先するかは `sx` 配列に並べた順番で決まります。ファイル構成は読みやすさを基準に決め、成長に合わせて変えられます。
+
+ここでは `Notice` という一つのコンポーネントを例に、最初のスタイルから、複数のパッケージで値を共有する段階までをたどります。
+
+## コンポーネントの隣に書く
+
+一つのコンポーネントだけが使うスタイルは、そのコンポーネントと同じファイルか、同じフォルダーの `styles.ts` に置きます。どちらも生成されるクラスは同じなので、プロジェクト内で書き方をそろえてください。
+
+<img src="/colocation.svg" width={1000} height={420} alt="Notice.tsx にスタイルを書く場合と、Notice フォルダーの index.tsx から styles.ts を読む場合は、同じクラス一覧になる" />
+
+一つのファイルに書く場合、スタイルを export する必要はありません。
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  notice: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+  },
+  title: {
+    fontWeight: 600,
+  },
+});
+
+export const Notice = ({ title }: { title: string }) => (
+  <div sx={styles.notice}>
+    <strong sx={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+フォルダーに分ける場合は、モジュールを二つに分け、`index.tsx` だけが `styles.ts` を読み込みます。
+
+```ts title="components/Notice/styles.ts"
+import * as css from '@plumeria/core';
+
+export const styles = css.create({
+  notice: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+  },
+  title: {
+    fontWeight: 600,
+  },
+});
+```
+
+```tsx title="components/Notice/index.tsx"
+import { styles } from './styles';
+
+export const Notice = ({ title }: { title: string }) => (
+  <div sx={styles.notice}>
+    <strong sx={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+利用側の import は `components/Notice` のままです。ページでも同じように、`page.tsx` の隣に `styles.ts` を置けます。
+
+`css.create` はモジュールのトップレベルに置きます。関数内に書くとビルドが止まります。同じコンポーネントファイルでは未使用のキーも検出されるので、要素を消したとき、残ったスタイルに気付けます。このチェックはファイル単位なので、別の `styles.ts` の未使用キーは報告されません。エラーの意味と直し方は[困ったときは](/ja/docs/troubleshooting)を参照してください。
+
+## 上書きしたい順に並べる
+
+役割ごとにキーを分け、基本のスタイルから個別のスタイルの順に並べます。`pinned` なら、キー一つと条件一つで書けます。
+
+```tsx
+const styles = css.create({
+  // ...
+  pinned: {
+    position: 'sticky',
+    top: 0,
+  },
+});
+
+<div sx={[styles.notice, pinned && styles.pinned]}>
+```
+
+右側が優先されるので、どのスタイルがどれを上書きするかを配列から読めます。`sx` は配列、三項演算子、条件式を受け取ります。ヘルパーの import やクラス名の連結は不要です。
+
+## 候補から選ぶ
+
+prop でいくつかの見た目から選ぶなら、その候補専用の `css.create` を作り、キーで選びます。バリアント用の特別な設定は必要ありません。
+
+```tsx
+const toneStyles = css.create({
+  info: {
+    color: '#0b5fff',
+    backgroundColor: '#eef4ff',
+  },
+  danger: {
+    color: '#b42318',
+    backgroundColor: '#fef3f2',
+  },
+});
+
+type NoticeProps = {
+  title: string;
+  tone?: keyof typeof toneStyles; // [!code hl]
+  pinned?: boolean;
+};
+
+export const Notice = ({ title, tone = 'info', pinned }: NoticeProps) => (
+  <div sx={[styles.notice, toneStyles[tone], pinned && styles.pinned]}>
+    <strong sx={styles.title}>{title}</strong>
+  </div>
+);
+```
+
+prop の型をスタイルのキーから作れば、選べる値と定義がそろいます。`warning` キーがない間は `tone="warning"` が型エラーになります。
+
+```text title="next build"
+Type '"warning"' is not assignable to type '"danger" | "info" | undefined'.
+```
+
+キーで選ぶ式は、クラス名を引くための表に変換されます。
+
+```tsx title="Output"
+<div
+  className={
+    "xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7" + " " +
+    ((pinned) ? "xxkkh052 x3v14h35" : "") + " " +
+    ({"info":"xuin35ub xkex1i2c","danger":"xt5mu2nw x7tnr6ub"}[tone] || "")
+  }
+>
+```
+
+既定値は関数の引数に書きます。複数の条件を組み合わせたいときは、配列に条件を一つ追加します。
+
+```tsx
+tone === 'danger' && pinned && styles.pinnedDanger
+```
+
+## 状態に応じて CSS を使う
+
+DOM の属性ですでに表せる状態なら、スタイル用 prop や分岐は必要ありません。要素に属性を付け、その値に合うセレクターを書きます。
+
+```tsx
+const styles = css.create({
+  notice: {
+    // ...
+    '[data-state="closing"]': {
+      opacity: 0,
+    },
+  },
+});
+
+<div data-state={state} sx={styles.notice}>
+```
+
+`:hover`、`:focus-visible`、`:disabled`、`[aria-*]` でも同じです。入れ子の規則は[セレクターの書き方](/ja/docs/selector-rules)を参照してください。
+
+子孫の要素を祖先の状態に反応させるには、[マーカー](/ja/docs/api/javascript/marker)を使います。通常のキーに結合子で DOM の経路を書くとエラーになります。経路に依存しないので、途中のマークアップを変えてもルールが効きます。
+
+```tsx
+const styles = css.create({
+  notice: {
+    ...css.marker('notice', ':hover'), // [!code hl]
+    // ...
+  },
+  dismiss: {
+    alignSelf: 'flex-end',
+    opacity: 0.6,
+    [css.extended('notice', ':hover')]: { // [!code hl]
+      opacity: 1,
+    },
+  },
+});
+```
+
+一つのスタイル内で、同時に当てはまる二つの状態が同じプロパティを変更する場合は、両方に当てはまるときの値も指定します。指定がないとビルド時に報告されます。[二つの状態が重なるとき](/ja/docs/specificity#同時に一致する-2-つの状態-two-states-that-match-at-once)
+
+## 実行時の値を渡す
+
+実行時に決まる値は、関数で定義したスタイルに渡します。クラスは共通のものを使い、値だけが CSS 変数として要素に届きます。
+
+```tsx
+const styles = css.create({
+  progress: (width: string) => ({
+    width,
+    height: 2,
+    backgroundColor: 'currentColor',
+  }),
+});
+
+<div sx={styles.progress(`${remaining}%`)} />
+```
+
+```html title="Output"
+<div class="xjyavzpg xt4pryfr xbjfqarc" style="--x7vdqwo0-width:40%"></div>
+```
+
+```css title="Generated CSS"
+.xjyavzpg { width: var(--x7vdqwo0-width); }
+.xt4pryfr { height: 2px; }
+.xbjfqarc:not(#\#) { background-color: currentColor; }
+```
+
+ほかの宣言に実行時の値を入れるとビルドが止まり、関数を使うよう案内されます。計算したキーもビルド時に決まる必要があります。セレクターやブレークポイントは直接書くか、[createStatic](/ja/docs/api/javascript/createStatic) で定義します。
+
+## スタイルを prop で受け取る
+
+コンポーネントは、ほかの値と同じようにスタイルを prop で受け取れます。配列の最後に置くと、呼び出す側で上書きできます。
+
+```tsx
+type NoticeProps = {
+  // ...
+  sx?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+};
+```
+
+[Style](/ja/docs/api/types/Style) はすべてのスタイルを受け取れます。[StyleProps](/ja/docs/api/types/StyleProps) は列挙したプロパティだけを許可し、[WithoutProperties](/ja/docs/api/types/WithoutProperties) は列挙したプロパティ以外を許可します。
+
+受け取ったスタイルは自分が描画する要素に付けます。別のコンポーネントに転送すると、コンパイラがラッパーを次々に追う必要があるためビルドが止まります。転送だけをするラッパーは外し、要素を描画するコンポーネントに直接スタイルを渡してください。
+
+```tsx
+<Header headerStyle={[styles.base, styles.primary]} />
+```
+
+スタイルが越えられるコンポーネントの境界は、呼び出し元から適用先までの一回だけです。コンテキストから届くスタイルや、別パッケージが管理するラッパーの列など、転送が前提で境界を減らせない設計には意図的に対応していません。
+
+ここまでのファイル構成です。
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  notice: {
+    ...css.marker('notice', ':hover'),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+    '[data-state="closing"]': {
+      opacity: 0,
+    },
+  },
+  pinned: {
+    position: 'sticky',
+    top: 0,
+  },
+  title: {
+    fontWeight: 600,
+  },
+  dismiss: {
+    alignSelf: 'flex-end',
+    opacity: 0.6,
+    [css.extended('notice', ':hover')]: {
+      opacity: 1,
+    },
+  },
+  progress: (width: string) => ({
+    width,
+    height: 2,
+    backgroundColor: 'currentColor',
+  }),
+});
+
+const toneStyles = css.create({
+  info: {
+    color: '#0b5fff',
+    backgroundColor: '#eef4ff',
+  },
+  danger: {
+    color: '#b42318',
+    backgroundColor: '#fef3f2',
+  },
+});
+
+type NoticeProps = {
+  title: string;
+  tone?: keyof typeof toneStyles;
+  pinned?: boolean;
+  state?: 'open' | 'closing';
+  remaining: number;
+  sx?: css.WithoutProperties<'position' | 'top' | 'right' | 'bottom' | 'left'>;
+};
+
+export const Notice = ({
+  title,
+  tone = 'info',
+  pinned,
+  state = 'open',
+  remaining,
+  sx,
+}: NoticeProps) => (
+  <div
+    data-state={state}
+    sx={[
+      styles.notice,
+      toneStyles[tone],
+      pinned && styles.pinned,
+      sx,
+    ]}
+  >
+    <strong sx={styles.title}>{title}</strong>
+    <button sx={styles.dismiss}>Dismiss</button>
+    <div sx={styles.progress(`${remaining}%`)} />
+  </div>
+);
+```
+
+## 値を共有する
+
+`Notice` に色を直接書くと、ダークテーマを追加するたびに各コンポーネントに分岐が必要になります。色を別のファイルに移し、セレクターやクエリーで切り替える値を [createTheme](/ja/docs/api/javascript/createTheme) にまとめます。
+
+```ts title="styles/theme.ts"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('.dark', {
+  info: {
+    default: '#0b5fff',
+    theme: '#8ab4ff',
+  },
+  infoSurface: {
+    default: '#eef4ff',
+    theme: '#10203f',
+  },
+});
+```
+
+```tsx title="components/Notice.tsx"
+import { theme } from '../styles/theme';
+
+const toneStyles = css.create({
+  info: {
+    color: theme.info, // [!code hl]
+    backgroundColor: theme.infoSurface, // [!code hl]
+  },
+  // ...
+});
+```
+
+スタイルは CSS 変数を読むので、`Notice` にダークモード用の分岐やプロバイダーを書く必要はありません。
+
+```css title="Generated CSS"
+:where(:root) {
+  --x4iemmlw-info: #0b5fff;
+  --x2cyw8xi-info-surface: #eef4ff;
+}
+.dark {
+  --x4iemmlw-info: #8ab4ff;
+  --x2cyw8xi-info-surface: #10203f;
+}
+.xq5fprsm { color: var(--x4iemmlw-info); }
+.xshf6edi:not(#\#) { background-color: var(--x2cyw8xi-info-surface); }
+```
+
+ブレークポイントなど変化しない値は [createStatic](/ja/docs/api/javascript/createStatic) にまとめます。ビルド時に使う場所へ値が入ります。[@plumeria/wind](/ja/docs/api/packages/wind) も同じ仕組みで Tailwind CSS のデザイン値を提供します。
+
+```ts title="styles/tokens.ts"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  sm: '@media (max-width: 640px)',
+});
+```
+
+値の名前を変えると、使う側の名前もそろえるまでビルドがエラーを報告します。
+
+```text title="next build"
+Error: [plumeria] Unknown style member: theme.info does not exist.
+```
+
+## 二か所で使うスタイルを移す
+
+`Notice` と同じ並べ方が `Card` にも必要になったら、共通のスタイルを別のモジュールに移します。使うファイルがそれぞれ import します。
+
+```ts title="styles/layout.ts"
+import * as css from '@plumeria/core';
+
+export const layout = css.create({
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+});
+```
+
+```tsx title="components/Card.tsx"
+import type { ReactNode } from 'react';
+import { layout } from '../styles/layout';
+
+export const Card = ({ children }: { children: ReactNode }) => (
+  <article sx={layout.stack}>{children}</article>
+);
+```
+
+`styles/` は定義を公開するだけで、コンポーネントを import したり描画したりしません。依存関係は `styles/ ← components/ ← app/` の一方向です。
+
+```
+app/
+└─ page.tsx
+components/
+├─ Card.tsx
+└─ Notice.tsx
+styles/
+├─ layout.ts
+├─ theme.ts
+└─ tokens.ts
+```
+
+## ファイルを分ける
+
+<img src="/refactoring-is-free.svg" width={1000} height={470} alt="スタイルを Notice.tsx から styles/layout.ts に移しても要素に付くクラス名は同じ" />
+
+移動してもブラウザーに届くものは変わりません。クラス名はプロパティと値から決まるので、`Notice` に付くクラスは元と同じです。
+
+```tsx title="components/Notice.tsx"
+const styles = css.create({
+  notice: {
+    display: 'flex', // [!code --]
+    flexDirection: 'column', // [!code --]
+    gap: 12, // [!code --]
+    padding: 16,
+    borderRadius: 8,
+  },
+});
+
+<div sx={styles.notice}> // [!code --]
+<div sx={[layout.stack, styles.notice]}> // [!code ++]
+```
+
+```tsx title="Output, before and after"
+<div className={"xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7"}>
+```
+
+モジュールを二つに分けても、一つにまとめても同じです。コードが増えたときに、読みやすい構成に整理できます。
+
+## スタイルを読み込む
+
+コンパイラは、定義を参照した場所に結果を直接書き込みます。import の扱いもこの仕組みで決まります。
+
+`sx` を書くだけのファイルでは、`@plumeria/core` の import は省けます。別の名前の prop でコンポーネントに渡す場合は必要です。コンパイラがその import を目印にファイルを見つけるためです。
+
+```text title="next build"
+  × @plumeria(custom-props-require-import): bodyStyle passes a style from
+  "../styles/layout", so this file must import "@plumeria/core".
+   ╭─[components/Panel.tsx:4:36]
+ 3 │ 
+ 4 │ export const Panel = () => <Notice bodyStyle={layout.stack} />;
+   ·                                    ────────────────────────
+   ╰────
+```
+
+Plumeria を使うすべてのファイルに import を置いても問題ありません。追加の探索なしに対象と分かるので、最も速い方法でもあります。
+
+名前空間としてまとめて import した場合も、名前付き import と同じように定義名で参照します。
+
+```ts title="styles/layout.ts"
+import * as css from '@plumeria/core';
+import * as tokens from './tokens';
+
+export const layout = css.create({
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    [tokens.breakpoints.sm]: {
+      gap: 8,
+    },
+  },
+});
+```
+
+コンパイラには、どの定義を読むかが分かる必要があります。文字列キー、分割代入、残余要素、または `tokens` 全体を渡す書き方はビルドエラーになります。
+
+```text title="next build"
+Error: [plumeria] tokens.breakpoints reads a Plumeria definition through a
+namespace import, which cannot be compiled. Import it by name:
+import { breakpoints } from '...'.
+```
+
+import した名前がすべてビルド時に置き換わると、import 自体も消え、バンドラーはそれを通じてモジュールを読み込みません。実行時にも値を読む、コンポーネントを描画する、再 export する場合の import は残ります。グローバル CSS の読み込みなど、モジュールを実行する必要がある場合は、そのための import を別に書きます。
+
+```ts
+import './tokens';
+```
+
+## パッケージ間で共有する
+
+二つ目のアプリでも同じ値を使うなら、パッケージに移します。パッケージの exports の `plumeria` 条件に TypeScript のソースを指定します。
+
+```json title="packages/tokens/package.json"
+{
+  "name": "@acme/tokens",
+  "exports": {
+    ".": {
+      "plumeria": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  }
+}
+```
+
+```ts title="packages/tokens/src/index.ts"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  sm: '@media (max-width: 640px)',
+});
+```
+
+アプリの依存関係にそのパッケージを追加すると、ローカルのモジュールと同じように読めます。変えるのは import の行だけです。
+
+```tsx title="components/Notice.tsx"
+import * as css from '@plumeria/core';
+import { breakpoints } from '@acme/tokens'; // [!code hl]
+
+const styles = css.create({
+  notice: {
+    padding: 16,
+    [breakpoints.sm]: {
+      padding: 12,
+    },
+  },
+});
+```
+
+コンパイラは `@acme/tokens/colors` のようなサブパスやパターン形式の exports、pnpm ストアからリンクしたパッケージでもこの条件をたどります。`dependencies`、`devDependencies`、`peerDependencies`、`optionalDependencies` が対象です。条件がないパッケージは読めないので、そこから定義を使おうとするとビルドが止まります。
+
+ある Plumeria パッケージが別の Plumeria パッケージの定義を使う場合は、両方をアプリの依存関係に入れます。たとえば `@plumeria/wind` を使ったパッケージだけを登録すると、ビルドは通っても `@plumeria/wind` を参照する宣言は出力されません。
+
+定義の import はビルドで消えるので、定義だけのパッケージは [@plumeria/wind](/ja/docs/api/packages/wind) のようにソースだけを配れます。実行時に使うコードも公開する場合は、そのコード向けに `default` 条件を残します。
+
+## 次に読むページ
+
+<Cards>
+  <Card title="スタイルを重ねる規則" href="/ja/docs/composition-laws" />
+  <Card title="スタイルの優先順位" href="/ja/docs/specificity" />
+  <Card title="セレクターの書き方" href="/ja/docs/selector-rules" />
+  <Card title="API リファレンス" href="/ja/docs/api" />
+  <Card title="困ったときは" href="/ja/docs/troubleshooting" />
+</Cards>
