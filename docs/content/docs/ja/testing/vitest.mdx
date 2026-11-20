@@ -1,0 +1,65 @@
+---
+title: 'Vitest'
+description: '設定に @plumeria/unplugin を入れて、Vitest で Plumeria のコンポーネントを描画します。'
+---
+
+Vitest は Vite で動くので、設定に直接プラグインを追加します。
+
+```ts title="vitest.config.ts"
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import plumeria from '@plumeria/unplugin';
+
+export default defineConfig({
+  plugins: [react(), plumeria.vite()],
+  test: {
+    environment: 'jsdom',
+  },
+});
+```
+
+プラグインがコンポーネントを変換するので、DOM に届く時点ではスタイル用 prop はクラス名に変わっています。
+
+```html
+<h1 class="xvdv6o3r xggb8uiu xvazecna">Vite + React</h1>
+```
+
+Next.js プロジェクトでも、`vitest.config.ts` に同じプラグインを追加します。`@plumeria/next-plugin` が動くのは Next.js のバンドラー上だけで、Vitest では実行されないためです。
+
+## すること [#do]
+
+コンポーネントの動きを確かめます。条件によって別のスタイルを選ぶと実際の `className` も変わるので、次のように比較できます。
+
+```tsx title="tabs.test.tsx"
+import { render, screen } from '@testing-library/react';
+import { expect, test } from 'vitest';
+import { Tabs } from './tabs';
+
+test('the active tab is styled apart from the rest', () => {
+  render(<Tabs active="b" />);
+
+  const a = screen.getByRole('tab', { name: 'A' });
+  const b = screen.getByRole('tab', { name: 'B' });
+
+  expect(b.getAttribute('aria-selected')).toBe('true');
+  expect(b.className).not.toBe(a.className);
+});
+```
+
+- 通常のコンポーネントと同じように、テキスト、ロール、状態、イベントを確認します。
+- 条件付きのスタイルが切り替わったかは、二回の描画結果や二つの要素のクラス名を比べて確認します。
+- 別ファイルのスタイルも import できます。通常のビルドと同じように変換されます。
+
+## しないこと [#dont]
+
+```tsx
+expect(heading.className).toBe('xvdv6o3r xggb8uiu xvazecna'); // don't
+expect(getComputedStyle(heading).color).toBe('red'); // don't
+```
+
+- 生成されるクラス名を期待値に直接書くのは避けてください。クラス名はプロパティと値のハッシュなので、スタイルを一つ足すだけで、コンポーネントの動作が正しくてもテストが失敗します。
+- jsdom は CSS を適用しないので、計算後のスタイル値の比較は避けます。[ブラウザーで確認すること](/ja/docs/testing#jsdom-で分からないこと-what-jsdom-does-not-give-you)
+
+<Cards>
+  <Card title="@plumeria/unplugin の設定" href="/ja/docs/api/plugins/unplugin" />
+</Cards>
