@@ -4,20 +4,11 @@ import { ESLint } from 'eslint';
 import * as tsParser from '@typescript-eslint/parser';
 import { renameProp } from './transforms/rename-prop';
 import { renameApi } from './transforms/rename-api';
-import {
-  migrateToTypedCSS,
-  toTypedCSS,
-} from './transforms/migrate-to-typedcss';
-import { installCommand, migrateManifests } from './package-json';
 import type { Linter } from 'eslint';
 
 const { version } = require('../package.json') as { version: string };
 
-const TRANSFORMS = [
-  'rename-prop',
-  'rename-api',
-  'migrate-to-typedcss',
-] as const;
+const TRANSFORMS = ['rename-prop', 'rename-api'] as const;
 
 const APIS = [
   'create',
@@ -52,7 +43,6 @@ const USAGE = `plumeria-codemod — codemods for migrating Plumeria APIs
 Usage
   npx @plumeria/codemod rename-prop <from> <to> [paths...]
   npx @plumeria/codemod rename-api <from> <to> [paths...]
-  npx @plumeria/codemod migrate-to-typedcss [paths...]
 
 Options
   -d, --dry-run    report what would change without writing
@@ -64,7 +54,6 @@ Examples
   npx @plumeria/codemod rename-prop classStyle sx
   npx @plumeria/codemod rename-prop classStyle sx src app --dry-run
   npx @plumeria/codemod rename-api viewTransition viewTransitionClass
-  npx @plumeria/codemod migrate-to-typedcss src --dry-run
 
 Paths default to the current directory. After the rewrite, point the toolchain
 at the new name with \`styleProp\` on your bundler plugin, and with
@@ -120,17 +109,6 @@ function parseArgs(argv: string[]): RenameOptions | null {
     );
   }
 
-  if (transform === 'migrate-to-typedcss') {
-    return {
-      transform: 'migrate-to-typedcss',
-      from: 'Plumeria',
-      to: 'typedcss',
-      targets: rest.length > 0 ? rest : ['.'],
-      dryRun,
-      includeTypes,
-    };
-  }
-
   const [from, to, ...targets] = rest;
 
   if (!from || !to) {
@@ -174,24 +152,17 @@ function parseArgs(argv: string[]): RenameOptions | null {
 function buildConfig(options: RenameOptions): Linter.Config[] {
   const { transform, from, to, includeTypes } = options;
   const rule =
-    transform === 'migrate-to-typedcss'
+    transform === 'rename-api'
       ? {
-          plugins: {
-            codemod: { rules: { 'migrate-to-typedcss': migrateToTypedCSS } },
-          },
-          rules: { 'codemod/migrate-to-typedcss': 'error' },
+          plugins: { codemod: { rules: { 'rename-api': renameApi } } },
+          rules: { 'codemod/rename-api': ['error', { from, to }] },
         }
-      : transform === 'rename-api'
-        ? {
-            plugins: { codemod: { rules: { 'rename-api': renameApi } } },
-            rules: { 'codemod/rename-api': ['error', { from, to }] },
-          }
-        : {
-            plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
-            rules: {
-              'codemod/rename-prop': ['error', { from, to, includeTypes }],
-            },
-          };
+      : {
+          plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
+          rules: {
+            'codemod/rename-prop': ['error', { from, to, includeTypes }],
+          },
+        };
 
   return [
     { ignores: IGNORES },
@@ -239,30 +210,7 @@ export async function main(argv: string[]): Promise<number> {
 
   if (!options) return 0;
 
-  const code = await rewriteSource(options);
-  if (options.transform !== 'migrate-to-typedcss') return code;
-  migratePackages(options);
-  return code;
-}
-
-function migratePackages({ targets, dryRun }: RenameOptions): void {
-  const cwd = process.cwd();
-  const changes = migrateManifests(targets, toTypedCSS, dryRun);
-  if (changes.length === 0) return;
-
-  console.log('');
-  for (const { file, moved } of changes) {
-    console.log(`  ${path.relative(cwd, file)}`);
-    for (const entry of moved) console.log(`    ${entry}`);
-  }
-  if (dryRun) {
-    console.log(`\n${changes.length} package.json file(s) would be updated.`);
-    return;
-  }
-  console.log(`\n✔ updated ${changes.length} package.json file(s).`);
-  console.log(
-    `\nNext: run \`${installCommand(cwd)}\` to install the @typedcss/* packages.`,
-  );
+  return rewriteSource(options);
 }
 
 async function rewriteSource(options: RenameOptions): Promise<number> {
@@ -326,9 +274,7 @@ async function rewriteSource(options: RenameOptions): Promise<number> {
       );
       await ESLint.outputFixes(applied);
       console.log(
-        options.transform === 'migrate-to-typedcss'
-          ? `\n✔ rewrote ${total} Plumeria import(s) and plugin(s) to typedcss in ${changes.length} file(s).`
-          : `\n✔ renamed ${total} occurrence(s) of "${from}" to "${to}" in ${changes.length} file(s).`,
+        `\n✔ renamed ${total} occurrence(s) of "${from}" to "${to}" in ${changes.length} file(s).`,
       );
     }
   }
