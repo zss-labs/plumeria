@@ -431,8 +431,9 @@ fn single_call<'b, 'a>(declaration: &'b VariableDeclaration<'a>) -> Option<(&'b 
 }
 
 fn through_newline(text: &str, span: Span) -> (u32, u32, String) {
-    let end = if text[span.end as usize..].starts_with('\n') { span.end + 1 } else { span.end };
-    (span.start, end, String::new())
+    let rest = &text[span.end as usize..];
+    let newline = if rest.starts_with("\r\n") { 2 } else { u32::from(rest.starts_with('\n')) };
+    (span.start, span.end + newline, String::new())
 }
 
 pub fn convert(file: &str, text: &str) -> Converted {
@@ -579,7 +580,9 @@ pub fn convert(file: &str, text: &str) -> Converted {
 
     if let Some((last, rest)) = style_spans.split_last() {
         for span in rest {
-            edits.push(through_newline(text, *span));
+            let rest = &text[span.end as usize..];
+            let blank = rest.len() - rest.trim_start_matches(['\r', '\n']).len();
+            edits.push((span.start, span.end + blank as u32, String::new()));
         }
         edits.push((last.start, last.end, format!("export const styles = {};", render_create(&entries))));
     }
