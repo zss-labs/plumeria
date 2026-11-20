@@ -1,0 +1,144 @@
+---
+title: '@plumeria/wind'
+description: "Tailwind CSS の色、文字の大きさ、余白などを Plumeria で使えます。"
+stability: Stable
+---
+
+import { Palettes, Scale } from 'component/Wind';
+
+値はビルド時にスタイルへ展開されます。このパッケージのために実行用バンドルが増えることはありません。
+
+## インストール
+
+```sh title="Terminal"
+pnpm i -D @plumeria/wind
+```
+
+## 使い方
+
+```tsx title="Button.tsx"
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const styles = css.create({
+  button: {
+    paddingInline: t.spacing[4],
+    fontSize: t.text.sm,
+    color: t.slate[50],
+    backgroundColor: t.blue[600],
+    borderRadius: t.radius.md,
+  },
+});
+```
+
+まとめて import する名前は自由です。名前付き import でも同じように使えます。
+
+[関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values)の引数にトークンを渡しても変換されません。`css.create` の中で参照してください。
+
+---
+
+## 色
+
+<Palettes />
+
+### color
+<Scale name="color" />
+
+## 文字
+
+### font
+<Scale name="font" />
+
+### text
+<Scale name="text" />
+
+### textLineHeight
+<Scale name="textLineHeight" />
+
+### fontWeight
+<Scale name="fontWeight" />
+
+### tracking
+<Scale name="tracking" />
+
+### leading
+<Scale name="leading" />
+
+## 余白
+
+<Scale name="spacing" />
+
+## 枠線と効果
+
+### radius
+<Scale name="radius" />
+
+### shadow
+<Scale name="shadow" />
+
+### insetShadow
+<Scale name="insetShadow" />
+
+### dropShadow
+<Scale name="dropShadow" />
+
+### textShadow
+<Scale name="textShadow" />
+
+### blur
+<Scale name="blur" />
+
+## レイアウト
+
+### breakpoint
+<Scale name="breakpoint" />
+
+ブレークポイントの値は長さです。それを使ってクエリー全体を書きます。
+
+```tsx title="Grid.tsx"
+const styles = css.create({
+  grid: {
+    gap: t.spacing[2],
+    [`@media (width >= ${t.breakpoint.md})`]: {
+      gap: t.spacing[4],
+    },
+  },
+});
+```
+
+### container
+<Scale name="container" />
+
+### aspect
+<Scale name="aspect" />
+
+### perspective
+<Scale name="perspective" />
+
+## 動き
+
+### ease
+<Scale name="ease" />
+
+### transition
+<Scale name="transition" />
+
+### animate
+<Scale name="animate" />
+
+アニメーションにはキーフレームの定義（`t.spin`、`t.ping`、`t.pulse`、`t.bounce`）と、その再生時間などの指定を組み合わせます。
+
+```tsx title="Spinner.tsx"
+import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const styles = css.create({
+  spinner: {
+    animation: `${t.spin} ${t.animate.spin}`,
+  },
+});
+```
+
+---
+
+値は MIT ライセンスの Tailwind CSS v4 から採用しています。
