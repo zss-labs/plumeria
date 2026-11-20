@@ -1,0 +1,48 @@
+---
+title: 'Rolldown'
+description: "Rolldown に Plumeria を設定します。"
+---
+
+Rolldown で [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) を使う例は [`examples/example-rolldown`](https://github.com/zss-labs/plumeria/tree/main/examples/example-rolldown) にあります。Plumeria のスタイルを CSS に変換し、Rolldown が出力する CSS ファイルに含めます。
+
+[@plumeria/init](/ja/docs/api/migrate/init) を実行すると Rolldown を検出し、必要な設定を書き込みます。以下は、同じ設定を手動で追加する手順です。
+
+## インストール
+```sh title="Terminal"
+pnpm i -D @plumeria/unplugin
+```
+
+## プラグインを設定する
+```js title="rolldown.config.js"
+import { defineConfig } from 'rolldown';
+import plumeria from '@plumeria/unplugin';
+import postcss from 'rollup-plugin-postcss';
+
+export default defineConfig({
+  input: 'src/index.tsx',
+  output: {
+    dir: 'dist',
+  },
+  moduleTypes: {
+    css: 'empty',
+  },
+  plugins: [plumeria.rolldown(), postcss({ extract: true })],
+});
+```
+
+## sx の型を読み込む
+
+`@plumeria/core` を入れただけでは JSX の prop の型は追加されません。プロジェクトで使う prop 名に合わせて型宣言を読み込みます。
+
+標準の `sx` を使う場合は、パッケージ付属の型宣言を参照します。`src/` があればその中に、なければプロジェクトのルートに次のファイルを置きます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+`styleProp` を `'classStyle'` などに変えた場合は、プラグインの設定と同じ名前で型を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+<Cards>
+  <Card title="パッケージとして配布する" href="/ja/docs/creating-packages" />
+  <Card title="インストール" href="/ja/docs/installation" />
+</Cards>
