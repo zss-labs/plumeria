@@ -15,6 +15,7 @@ playwright-report
 .mdx-previewrc.json
 docs/out
 packages/compiler/target/
+packages/migrate/target/
 packages/compiler/npm/
 packages/compiler/*.node
 packages/compiler/*.wasm
