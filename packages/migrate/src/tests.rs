@@ -1414,3 +1414,14 @@ fn vanilla_preserves_namespace_variant_reads() {
         assert_eq!(run_with(&code, std::slice::from_ref(&sheet), None).holds, [kind], "{access}");
     }
 }
+
+#[test]
+fn asks_for_init_before_migrating() {
+    assert!(!crate::set_up(None));
+    assert!(!crate::set_up(Some(r#"{ "dependencies": { "@plumeria/core": "*" } }"#)));
+    assert!(!crate::set_up(Some(r#"{ "devDependencies": { "@plumeria/unplugin": "*" } }"#)));
+    assert!(crate::set_up(Some(r#"{ "dependencies": { "@plumeria/core": "*" }, "devDependencies": { "@plumeria/unplugin": "*" } }"#)));
+    assert!(crate::set_up(Some(r#"{ "dependencies": { "@plumeria/core": "*", "@plumeria/next-plugin": "*" } }"#)));
+    assert!(!crate::set_up(Some(r#"{ "overrides": { "@plumeria/core": "*", "@plumeria/unplugin": "*" } }"#)));
+    assert!(!crate::set_up(Some("not json")));
+}
