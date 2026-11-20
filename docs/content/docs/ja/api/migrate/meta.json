@@ -1,0 +1,5 @@
+{
+  "defaultOpen": false,
+  "title": "移行",
+  "pages": ["init", "migrate", "codemod", "other-libraries"]
+}
