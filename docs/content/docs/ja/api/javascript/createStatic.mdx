@@ -1,0 +1,87 @@
+---
+title: css.createStatic
+description: 'ブレークポイントなど、スタイルやテーマから参照できる定数。'
+stability: Frozen
+---
+
+
+```ts
+export type createStatic = <const T extends CreateStatic>(rule: T)=> T;
+export const createStatic: createStatic;
+```
+
+`createStatic`は**定値**を定義し、ビルド時にインラインします。`create`または`createTheme`内で、値として、またはメディアクエリなどのキーとして読み取ります。
+
+## 例 [#example]
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+export const breakpoints = css.createStatic({
+  xs: '@media (max-width: 480px)',
+  sm: '@media (max-width: 640px)',
+  md: '@media (max-width: 768px)',
+  lg: '@media (max-width: 1024px)',
+  xl: '@media (max-width: 1280px)',
+});
+```
+
+## 使い方 [#usage]
+```ts
+import * as css from "@plumeria/core";
+import { breakpoints } from "lib/mediaQuery";
+
+export const styles = css.create({
+  container: {
+    [breakpoints.sm]: {
+      padding: 16,
+    },
+    [breakpoints.lg]: {
+      padding: 32,
+    },
+  },
+});
+```
+
+### 数値のキー [#numeric-keys]
+
+カラースケールのように数値キーを引用してください。引用されていない数字はビルドを停止します：
+
+```ts title="tokens.ts"
+import * as css from "@plumeria/core";
+
+export const blue = css.createStatic({
+  '500': '#3b82f6',
+});
+```
+
+`blue[500]`または`blue['500']`として読みます。
+
+## 静的なスタイルをスプレッドする [#spreading-static-styles]
+
+`createStatic`の値は、`create`内にスプレッドされる完全なスタイルオブジェクトでも構いません。文字通りの型を維持する`satisfies css.CSSProperties`で確認してください。
+
+```ts title="TypeScript"
+import * as css from "@plumeria/core";
+
+const flexBox = css.createStatic({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+} satisfies css.CSSProperties);
+
+export const styles = css.create({
+  container: {
+    ...flexBox,
+    backgroundColor: "red",
+  },
+});
+```
+
+## 共有する [#sharing]
+
+値は別のモジュール、または`plumeria`エクスポート条件でオプションとして選択されたパッケージからインポートできます。[パッケージ間で共有する](/ja/docs/thinking-in-plumeria#パッケージ間で共有する)を参照してください。[`@plumeria/wind`](/ja/docs/api/packages/wind)は、この方法でTailwind CSSデザイン値を配信します。
+
+<Callout title="補足">
+  `keyframes`、`viewTransitionClass`、`createTheme` の名前は、ビルド時に同じようにインラインされます。
+</Callout>
