@@ -254,7 +254,7 @@ export async function DocPage({ slug, lang = i18n.defaultLanguage }: { slug?: st
               </Link>
             )}
           </nav>
-          <SiteFooter />
+          <SiteFooter lang={lang} />
         </>
       }
     >
