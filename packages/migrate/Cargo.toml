@@ -17,6 +17,7 @@ oxc_parser = "0.158.0"
 oxc_semantic = "0.158.0"
 oxc_span = "0.158.0"
 rustc-hash = "2"
+ryu-js = "1"
 
 [profile.release]
 lto = "fat"
