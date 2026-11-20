@@ -43,9 +43,9 @@ const wide = css.create({
       ),
     );
     const code = typeof result === 'string' ? result : (result?.code ?? '');
-    const found = code.match(/className=\{([\s\S]*?)\} \/>/);
+    const found = code.match(/className=(?:\{([\s\S]*?)\}|"([^"]*)") \/>/);
     if (!found) throw new Error(`no className in:\n${code}`);
-    return found[1];
+    return found[1] ?? JSON.stringify(found[2]);
   };
 
   const classesOf = (expr: string, on = true) =>
