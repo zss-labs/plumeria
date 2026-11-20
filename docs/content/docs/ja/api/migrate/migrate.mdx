@@ -1,0 +1,109 @@
+---
+title: '@plumeria/migrate'
+description: 'ほかのライブラリのスタイルを、1 つのコマンドで Plumeria に移します。'
+stability: Candidate
+---
+
+[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) は既存プロジェクトのスタイルを Plumeria スタイルに書き換え、それらを `sx` プロパティとして読み取る呼び出し場所を設定します。まず [`@plumeria/init`](/ja/docs/api/migrate/init) でプロジェクトを設定してください。`dependencies` または `devDependencies` に `@plumeria/core` やバンドラープラグインがない場合、CLI は書き込み前に停止します。
+
+```sh title="Terminal"
+npx @plumeria/migrate from vanilla-extract --dry-run
+npx @plumeria/migrate from vanilla-extract
+```
+
+変更を元に戻すためにGitを使用できるように、移行する前にコミットしてください。CLIには逆移行コマンドはありません。
+
+| `from`の後にソース | 読みます |
+| --- | --- |
+| [`css-modules`](/playground/migrate?from=css-modules) | `*.module.css`とそれらをインポートするファイル |
+| [`vanilla-extract`](/playground/migrate?from=vanilla-extract) | `*.css.ts`、`*.css.js`、そしてそれらをインポートするファイル |
+| [`emotion`](/playground/migrate?from=emotion) | `@emotion/react`と`@emotion/styled` |
+| [`styled-components`](/playground/migrate?from=styled-components) | `styled-components` |
+| [`stylex`](/playground/migrate?from=stylex) | `@stylexjs/stylex` |
+| [`tailwindcss`](/playground/migrate?from=tailwindcss) | `className`文字列、そして`cn`パッケージからの`cn()` |
+
+| オプション | |
+| --- | --- |
+| `--dry-run` | 書くことなく何が変わるかを報告してください。 |
+| `--style-prop <name>` | スタイリングプロップ。バンドラー構成ではデフォルトで `styleProp` に設定され、それ以外は `sx` に設定されます。 |
+
+## 保留 [#holds]
+
+CLIが動作を変更せずに移行できないものは、そのまま残し、**hold**として報告します：理由、表現、または名前、そしてその場所です。
+
+```sh title="Terminal"
+  src/Card.css.ts  ->  src/Card.styles.ts
+
+1 stylesheet(s) would be converted, 2 consumer(s) rewritten.
+Run without --dry-run to apply.
+
+Left in place — nothing was written for these stylesheets:
+
+src/theme.css.ts
+  3:1  unsupported-api  createTheme
+        Only style, styleVariants and keyframes are converted. Move the rest out by hand, then run again.
+```
+
+emotion、styled-components、stylex、tailwindcss は、保留箇所があればそのファイル全体を残します。CSS Modules と vanilla-extract は、保留したスタイルシートとその参照を残します。同じファイル内に変換できた別のスタイルシートの参照があれば、その参照は更新します。変換したスタイルシートは `.styles.ts`（`.css.js` は `.styles.js`）に置き換え、元のファイルを削除します。保留が一つでもあると、`--dry-run` の場合も失敗の終了コードを返します。
+
+### css-modules [#css-modules]
+
+- 名前が指定されたまたは`?raw`インポート、または計算されたキーによって読み込まれるクラス
+- 別ファイルからの `composes`
+- 兄弟コンビネーターとatルール：キーは保持できない
+- 一つの`className`に他のクラス文字列と混ざったモジュールクラス
+- `.vue`、`.svelte`、`.astro`、または`.mdx`ファイルに指定されたスタイルシート
+- すでに存在する目的地`.styles.ts`
+
+### vanilla-extract [#vanilla-extract]
+
+- `globalStyle`、`createVar`、`createTheme`、および `@vanilla-extract/recipes` または `sprinkles`
+- フォールバック配列と`vars`
+- `&` と擬似クラスまたは属性（例：`& > p` または `${parent} &`）を超えたセレクター
+- 互いにインポートする`.css.ts`ファイル
+- `.css.tsx`、`.css.jsx`、`.css.mjs`、および`.css.cjs`ファイル
+- `styleVariants` マッピング関数、または他のスタイルから構成されたバリエーション
+- 三元の中の落ち着いたスタイル
+
+### emotion [#emotion]
+
+- テーマのコールバック、`css={(theme) => …}`
+- エクスポートされる`css`スタイル
+- カスタムコンポーネントの`css`プロパティ
+- `<Global>`と`css`、`jsx`、`keyframes`を超えた他のAPI
+
+### styled-components [#styled-components]
+
+- `styled(Link)`およびその他のラップされたコンポーネント
+- `.attrs()`と`createGlobalStyle`
+- ランタイムヘルパーを呼び出す間接補間
+- スタイルが読み取るプロップを省略するコールサイト
+
+### stylex [#stylex]
+
+- 順序に依存する優先順位を持つ州
+- Plumeriaの対応がない`defineVars`、`createTheme`、その他のAPI
+- `stylex.props`はJSXの外に、または`className`の横に置く
+- 動的値とフォールバック配列
+
+### tailwindcss [#tailwindcss]
+
+- 不明なユーティリティまたは衝突するユーティリティ
+- 実行時に構築されたクラス文字列
+- `twMerge()` と他の場所からの `cn()` — `import { cn } from 'cn'` で書き換え、その後再度実行してください。
+- `clsx()`と`classnames`
+- カスタムバリエーション
+- カスタムコンポーネントに関するクラス
+- `tailwind.config.*` テーマは、何も読み取られる前に実行を停止します。CLIは、CSSで記述された Tailwind CSS v4 テーマを読み取ることができます。
+
+[他のライブラリ](/ja/docs/api/migrate/other-libraries)は、各ライブラリがPlumeriaで何になるかを示しています。
+
+## AI で仕上げる [#finish-with-ai]
+
+このプロンプトを使って、コードエージェントにレポートとプロジェクトを渡してください。
+
+```text title="Prompt"
+Finish the remaining migration to Plumeria. Read the Plumeria AI guide, then inspect each reported location and its consumers. Use the hold reason to identify the behavior the automatic rewrite could not preserve. Keep class-name strings where another API expects them, and preserve composition order, conditional styles, and component props. Resolve each hold or explain which behavior needs my decision. Rerun the same migration with `--dry-run` and report any remaining holds. Check remaining uses before removing the old library or its configuration.
+```
+
+エージェントは、書き直す際に従うべきルールについて[Plumeria AIガイド](/docs/ai.md)を読みます。
