@@ -20,7 +20,7 @@ use crate::{apply, extension, walk as walk_files, Options, SOURCES};
 
 const PACKAGE: &str = "@stylexjs/stylex";
 const TYPES: &[&str] = &["StyleXStyles", "StyleXStylesWithout", "StaticStyles", "StaticStylesWithout"];
-const SUFFIXES: &[&str] = &[
+pub(crate) const SUFFIXES: &[&str] = &[
     "", ".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx",
 ];
 const STATE_LIMIT: usize = 64;
