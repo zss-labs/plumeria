@@ -1,0 +1,429 @@
+---
+title: "Plumeria を使う理由"
+description: "スタイルの順番を管理し、書き間違いをビルド時に見つけられます。"
+date: '2026-07-12'
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+間違った値は見つけやすくても、正しい値が上書きされた原因は見つけにくいものです。コンポーネントを別のファイルに移す、あるチャンクが先に読み込まれる、呼び出し元がスタイルを追加する。それだけで今まで効いていた指定が負けることがあります。エラーも差分の異常もないのに、触っていないページの見た目が変わります。リファクタリングのたびに起こり得る問題で、AI が次々とコードを移す場合は目で追い切れません。
+
+Plumeria はビルド時にスタイルを重ねます。同じプロパティは配列の右側が優先され、上書きされたクラスは要素に付きません。CSS の読み込み順に左右されず、書き間違いがあればビルドが止まります。ブラウザーに届くのはクラス名と CSS です。
+
+## 配列の右側を優先する
+
+<img src="/right-side-wins.svg" width={1000} height={460} alt="チャンクの読み込み順が変わっても、最後に渡したスタイルが効く" />
+
+次のコンポーネントは、自分のスタイルを先に、受け取ったスタイルを最後に適用します。二つのスタイルは別のモジュールにあり、どちらも `color` を指定しています。
+
+```tsx title="Badge.tsx"
+import * as css from '@plumeria/core';
+import type { ReactNode } from 'react';
+
+const styles = css.create({
+  badge: {
+    padding: 4,
+    color: 'gray',
+  },
+});
+
+type BadgeProps = {
+  sx?: css.Style;
+  children: ReactNode;
+};
+
+export const Badge = ({ sx, children }: BadgeProps) => (
+  <span sx={[styles.badge, sx]}>{children}</span> // [!code hl]
+);
+```
+
+```ts title="accent.ts"
+import * as css from '@plumeria/core';
+
+export const accent = css.create({
+  text: {
+    color: 'teal',
+  },
+});
+```
+
+```tsx title="Page.tsx"
+import { accent } from './accent';
+import { Badge } from './Badge';
+
+export const Page = () => <Badge sx={accent.text}>New</Badge>;
+```
+
+要素に付くクラスは、各プロパティにつき一つです。
+
+```html title="Output"
+<span class="x8ti24uy xxcejlqg">New</span>
+```
+
+```css title="Generated CSS"
+.xxcejlqg { color: teal; }
+.x8ti24uy { padding: 4px; }
+.xuifcaas { color: gray; }
+```
+
+灰色のルールは CSS に残ります。上書きのない `Badge` が使うためです。灰色のルールは青緑色より後にありますが、この要素には灰色のクラスが付かないので影響しません。コンパイラはプロジェクトが `Badge` に渡すスタイルを調べ、組み合わせごとの結果を表にします。
+
+```tsx title="Badge.tsx (output)"
+<span
+  className={
+    "x8ti24uy" + " " + ({"x672n4nd":"xxcejlqg"}[sx] || "xuifcaas")
+  }
+>
+  {children}
+</span>
+```
+
+`Page.tsx` の import の順番を入れ替えても、`accent` を同じファイルに移しても、要素に付くクラスは同じです。両方の順番を[実際のブラウザーでテスト](https://github.com/zss-labs/plumeria/blob/main/test-e2e/test/relay-order.test.ts)しています。
+
+個別指定は一括指定より優先されます。`margin` と `marginTop` はどちらを先に書いても、上の余白には `marginTop` が効きます。条件付きの指定や入れ子のセレクターは基本の指定より優先されます。そのため `@media` の条件に当てはまれば、CSS 内の位置に関係なく、同じプロパティの基本値を上書きできます。
+
+[スタイルを重ねる規則](/ja/docs/composition-laws)では、この動きを数式でも説明しています。[スタイルの優先順位](/ja/docs/specificity)では、どの指定が優先されるかと、自動では順位を付けられない[四つの組み合わせ](/ja/docs/specificity#ソースの順番がまだ決めるもの-what-source-order-still-decides)の扱いを説明します。
+
+スタイルを書く場所も出力に影響しません。クラス名はプロパティと値で決まるので、[スタイルを別のモジュールに移しても](/ja/docs/thinking-in-plumeria#ファイルを分ける)、同じクラスと CSS が生成されます。
+
+[プレイグラウンドで上書きの順番を試す](/playground?example=merge)
+
+## 問題をビルド時に見つける
+
+`next build` は、コンパイルと並行して oxlint で [Plumeria の ESLint ルール](/ja/docs/api/plugins/eslint-plugin)を実行します。追加設定は不要です。エラーや警告があればビルドは止まります。[unplugin](/ja/docs/api/plugins/unplugin#lint-lint) も同じですが、esbuild と Bun では [@plumeria/init](/ja/docs/api/migrate/init) がビルドコマンドの前に `plumeria-lint --` を付けます。
+
+```tsx title="components/Menu.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  menu: {
+    position: 'fixd', // [!code hl]
+    top: 0,
+    padding: 8,
+  },
+});
+
+export const Menu = () => <nav sx={styles.menu} />;
+```
+
+```text title="next build"
+  ⚠ @plumeria(validate-values): 'position' has an invalid value 'fixd'.
+  Did you mean 'fixed'?
+   ╭─[components/Menu.tsx:5:15]
+ 4 │   menu: {
+ 5 │     position: 'fixd',
+   ·               ──────
+ 6 │     top: 0,
+   ╰────
+
+Found 1 warning and 0 errors.
+Finished in 119ms on 50 files with 19 rules using 2 threads.
+
+✖ [plumeria] Linting failed. Aborting build...
+```
+
+メッセージには理由が表示され、箇所を特定できる場合は該当するコードも示されます。次はその例です。
+
+| 書いたコード | ビルド時のメッセージ |
+| :-- | :-- |
+| `colr: 'red'` | `Unknown CSS property 'colr'.` |
+| どこからも使われていないキー | `The key 'stale' is defined but never referenced anywhere.` |
+| `'> a': { ... }` | `Combinator ">" is not allowed unless inside functional pseudo-classes.` |
+| `className` と `sx` を併用 | `"sx" handles both "className" and "style". Avoid mixing them.` |
+| `sx={{ color: 'red' }}` | `Do not pass inline objects to "sx". It only accepts compiled styles from css.create().` |
+| コンポーネント内で `css.create` を呼ぶ | `Move css.create() to module scope and reference the result inside the function.` |
+| 受け取ったスタイルを適用せず、別のコンポーネントに渡す | `'headerStyle' is never applied here. Apply it to sx or css.use() on an element this component renders.` |
+
+直し方まで示すメッセージもあります。たとえば、同時に当てはまる二つの状態に優先順位を付けられないときは、その指定方法が表示されます。
+
+```text title="next build"
+  ⚠ @plumeria(no-order-dependent-overlap): ':hover' and ':focus' can match at
+  the same time and both set 'color', but neither outranks the other, so the
+  result depends on the order they are written. Declare ':hover:focus' if the
+  intersection has a value of its own, or split them into separate styles and
+  compose them in the order that should win.
+   ╭─[components/Button.tsx:8:5]
+ 7 │     },
+ 8 │     ':focus': {
+   ·     ────────
+ 9 │       color: 'blue',
+   ╰────
+```
+
+### 変更できる範囲を決める
+
+コンポーネント側で受け取るスタイルを制限できます。[WithoutProperties](/ja/docs/api/types/WithoutProperties) は呼び出す側が変更できないプロパティを指定し、[StyleProps](/ja/docs/api/types/StyleProps) は変更できるプロパティだけを列挙します。
+
+```tsx title="Panel.tsx"
+import * as css from '@plumeria/core';
+import type { ReactNode } from 'react';
+
+const styles = css.create({
+  panel: {
+    display: 'flex',
+    padding: 8,
+  },
+});
+
+type PanelProps = {
+  sx?: css.WithoutProperties<'position' | 'top' | 'left'>; // [!code hl]
+  children: ReactNode;
+};
+
+export const Panel = ({ sx, children }: PanelProps) => (
+  <div sx={[styles.panel, sx]}>{children}</div>
+);
+```
+
+```tsx title="Page.tsx"
+import * as css from '@plumeria/core';
+import { Panel } from './Panel';
+
+const styles = css.create({
+  tinted: {
+    color: 'teal',
+  },
+  pinned: {
+    position: 'fixed',
+  },
+});
+
+export const Page = () => (
+  <>
+    <Panel sx={styles.tinted}>Accepted</Panel>
+    <Panel sx={styles.pinned}>Type error</Panel> {/* [!code hl] */}
+  </>
+);
+```
+
+疑似クラスやアットルールの中もチェックされます。`:hover` の中に書いた場合でも、禁止した `position` は渡せません。
+
+## ビルド時に CSS を作る
+
+`@plumeria/core` の公開する入口はすべて `.d.ts` ファイルです。ブラウザーで動かすライブラリコードはなく、スタイルの解決を実行時まで持ち越すこともありません。
+
+コンパイラは oxc のパーサーでソースを読み、コードを実行しません。モジュールの実行結果に依存するスタイルは作れません。`const` の値はたどれますが、実行しないと分からない値はエラーになります。
+
+```tsx title="components/Box.tsx"
+import * as css from '@plumeria/core';
+
+const SPACING = Math.max(8, 16); // [!code hl]
+
+const styles = css.create({
+  box: {
+    padding: SPACING,
+  },
+});
+
+export const Box = () => <div sx={styles.box} />;
+```
+
+```text title="next build"
+Error: [plumeria] Cannot resolve the value of "padding" at build time
+(SPACING). Values in css.create must be statically known; pass a runtime
+value through the function form, css.create({ name: (value) => ({ ... }) }).
+```
+
+ビルド後にライブラリコードが残らないので、React Server Component でも `'use client'` を追加せずスタイルを使えます。lint を無効にした同じ構成の Next.js アプリでは、CSS Modules のビルドに比べて約0.4秒の追加でした。[計測結果の比較](https://refirst11.github.io/css-compiler-bench/)
+
+## AI でコードを書く
+
+ページを見られないエージェントにとって、エラーが出ずにスタイルが上書きされる問題は特に発見しにくいものです。Plumeria ではコードを移しただけで表示は変わらず、間違いは修正に使えるビルドメッセージとして返ります。
+
+oxlint は Claude Code、Cursor、Codex などの実行環境を認識します。エージェントにはコードの抜粋を省き、位置、ルール、直す内容を一行にまとめて返します。
+
+```text title="next build, run by a coding agent"
+components/Menu.tsx:5:15: warning @plumeria(validate-values): 'position' has an invalid value 'fixd'. Did you mean 'fixed'?
+
+✖ [plumeria] Linting failed. Aborting build...
+```
+
+エージェントはメッセージを見て自分の変更を直し、通るまでビルドを繰り返せます。
+
+初期設定も自動化できます。`npx @plumeria/init --yes` は質問をせずに設定を進めます。英語版の各資料は URL の末尾に `.md` を付けると Markdown で読めます。[AI に渡す資料](/ja/docs/ai-agent-resources)には最初に渡すプロンプトと Claude Code プラグインがあります。
+
+## CSS との対応
+
+プロパティは CSS の名前を camelCase で、値は CSS と同じ形で書きます。疑似クラス、属性セレクター、アットルールの書き方も CSS と同じです。独自のユーティリティ名を覚える必要はありません。型と、リンターがチェックするプロパティ一覧は、MDN のデータから生成しています。
+
+```tsx title="MenuItem.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  item: {
+    padding: 8,
+    borderRadius: 6,
+    '[aria-current="page"]': { // [!code hl]
+      fontWeight: 600, // [!code hl]
+    }, // [!code hl]
+    ':hover': {
+      backgroundColor: '#f4f4f5',
+    },
+    '@media (min-width: 768px)': {
+      padding: 12,
+    },
+  },
+});
+
+export const MenuItem = () => (
+  <a href="/" aria-current="page" sx={styles.item}>
+    Home
+  </a>
+);
+```
+
+```css title="Generated CSS"
+.xymmdeuh { padding: 8px; }
+.x1b4ohri { border-radius: 6px; }
+.x8nzehgc:not(#\#):not(#\#)[aria-current="page"] { font-weight: 600; }
+.xzvfwjlv:not(#\#):not(#\#):hover { background-color: #f4f4f5; }
+@media (min-width: 768px) {
+  .xy3st0md:not(#\#) { padding: 12px; }
+}
+```
+
+支援技術もスタイルも、同じ `aria-current` 属性で状態を判断します。そのため、読み上げと表示の状態がずれません。コンパイラが `:not(#\#)` を重ねるのは、CSS の記述順に依存せず優先順位を付けるためです。
+
+通常のセレクターに DOM の経路を書く結合子は使えません。親の状態に応じて子孫を変える場合は [css.marker と css.extended](/ja/docs/api/javascript/marker) を使います。
+
+```tsx title="Card.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  card: {
+    ...css.marker('card', ':hover'), // [!code hl]
+    padding: 16,
+  },
+  action: {
+    opacity: 0.6,
+    [css.extended('card', ':hover')]: { // [!code hl]
+      opacity: 1,
+    },
+  },
+});
+
+export const Card = () => (
+  <article sx={styles.card}>
+    <footer>
+      <button sx={styles.action}>Open</button>
+    </footer>
+  </article>
+);
+```
+
+カードの内側なら、ボタンをどこに移してもルールが効きます。要素までの経路を指定していないからです。
+
+テーマは CSS 変数で表します。[createTheme](/ja/docs/api/javascript/createTheme) に切り替え用のセレクターやクエリーを渡すので、コンポーネントにダークモード用の分岐やプロバイダーを書く必要はありません。
+
+```ts title="theme.ts"
+import * as css from '@plumeria/core';
+
+export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
+  surface: {
+    default: '#fff',
+    theme: '#111',
+  },
+  text: {
+    default: '#111',
+    theme: '#eee',
+  },
+});
+```
+
+## Tailwind CSS や CSS Modules との違い
+
+CSS Modules と Tailwind CSS はどちらも一般的な選択肢です。CSS Modules では、詳細度が同じルールの勝ち負けは、アプリ全体で CSS がページに届く順番で決まります。ルートごとの分割や遅延読み込みで、コンポーネントを編集しなくても結果が変わることがあります。Tailwind CSS では、同じプロパティを変えるユーティリティの優先順位は生成された CSS の順序で決まります。クラス名を並べ替えても変わらないため、実行時に競合を解決する `tailwind-merge` が使われます。
+
+|  | CSS Modules | Tailwind | Plumeria |
+| :-- | :-- | :-- | :-- |
+| 同じプロパティを指定した場合 | アプリ全体での CSS の読み込み順 | CSS 内の順番、または実行時の `tailwind-merge` | ビルド時に配列の右側を選ぶ |
+| スタイルの書き方 | CSS ファイル | ユーティリティクラス | TypeScript の型付きオブジェクト |
+| つづり間違いや未使用のスタイル | 検出しない | 未知のクラスには CSS を生成しない | ビルドエラー |
+| 実行時に決まる値 | CSS 変数を自分で設定 | 任意の値、またはインラインの `style` | [関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values)を CSS 変数に変換 |
+| 初期設定 | 多くのバンドラーに標準搭載 | PostCSS またはバンドラーのプラグイン一つ | バンドラーに合うプラグイン一つ |
+
+次の点では、ほかの選択肢が向いています。
+
+- **周辺のツールと情報。** Tailwind CSS にはコンポーネント集、テンプレート、エディター向けツール、長年蓄積された質問と回答があります。Plumeria の資料は主にこのドキュメントです。
+- **ビルドで許される書き方。** コンパイラが読めない値、コンポーネント内の `css.create`、ラッパーを何段も経由するスタイルはエラーになります。CSS Modules や Tailwind CSS には、これらのビルド時の制限がありません。
+- **慣れ。** 多くの開発者や AI モデルは、すでに Tailwind CSS や通常の CSS に慣れています。Plumeria を使うには、まずルールを読む必要があります。
+
+小さなプロジェクトや、一人がすべてのスタイルを管理する場合には、読み込み順で困ることは少なく、シンプルなツールで十分です。多くの場所から共通コンポーネントにスタイルを渡し、どのページでも同じ上書きを効かせたいときに Plumeria が役立ちます。
+
+## StyleX との違い
+
+StyleX は Plumeria に最も近いライブラリです。どちらもビルド時にアトミック CSS を作り、型をチェックでき、最後に適用したスタイルが優先されます。Plumeria の API は意図的に StyleX の設計を受け継いでいます。選ぶ基準になる違いは、スタイルを重ねるタイミング、呼び出す側の書き方、標準で実行するチェックです。
+
+|  | StyleX | Plumeria |
+| :-- | :-- | :-- |
+| スタイルを重ねるタイミング | 実行時 | ビルド時 |
+| 二つの状態に同時に当てはまる場合 | 疑似クラスの優先順位が固定 | 右側のスタイルの[詳細度を上げる](/ja/docs/specificity#同時に一致する-2-つの状態-two-states-that-match-at-once) |
+| 呼び出し側の書き方 | `sx={[]}` または `stylex.props()` | `sx={[]}` または [css.use](/ja/docs/api/javascript/use) |
+| テーマ | `defineVars` + `createTheme` | [`createTheme`](/ja/docs/api/javascript/createTheme) |
+| コンパイラ | Babel | Rust（oxc） |
+| チェック | ESLint プラグイン | ビルドに組み込み |
+| ビルド時に決まらない場合 | 実行時に `stylex.props()` で処理 | 解決できる場合はビルド時に処理し、できない場合はエラー |
+
+多くのプロジェクトでは、特に次の二点が選ぶ基準になります。
+
+**実行時にスタイルを重ねるか。** Plumeria は重ね合わせのコードを配らないため、ファイルや prop をまたぐ場合もビルド時に結果を決めます。ラッパー間で転送され続けるスタイルなど、追跡できないものはエラーになります。StyleX には実行時にスタイルを重ねる小さな処理があり、複数のコンポーネントに渡した後でも適用できます。自分のコンポーネントが受け取ったスタイルを直接適用するのか、さらに転送することが多いのかで選べます。
+
+**テーマを切り替える場所。** StyleX では `props()` で適用した場所にテーマが効きます。Plumeria では切り替え条件をテーマの定義に書きます。
+
+<Tabs items={["StyleX", "Plumeria"]}>
+  <Tab>
+    ```tsx title="StyleX"
+    // tokens.stylex.ts
+    export const colors = stylex.defineVars({
+      surface: '#fff',
+      text: '#111',
+    });
+
+    // theme.ts
+    export const dark = stylex.createTheme(colors, {
+      surface: '#111',
+      text: '#eee',
+    });
+
+    // App.tsx
+    <div {...stylex.props(isDark && dark)}>{children}</div>
+    ```
+  </Tab>
+  <Tab>
+    ```tsx title="Plumeria"
+    // theme.ts
+    export const theme = css.createTheme('.dark', {
+      surface: {
+        default: '#fff',
+        theme: '#111',
+      },
+      text: {
+        default: '#111',
+        theme: '#eee',
+      },
+    });
+
+    // App.tsx
+    <div>{children}</div>
+    ```
+  </Tab>
+</Tabs>
+
+すでに StyleX を使い、そのレシピやテーマの書き方に依存している場合や、実行時の重ね合わせが必要な場合は StyleX が向いています。Plumeria は書き方を厳しくする代わりに、配布前にすべての組み合わせの結果を確定します。共通する API の形よりも、この違いが乗り換える理由になります。
+
+## ほかのライブラリから移行する
+
+多くのスタイルは小さな変更で移せます。API には StyleX と同じ名前が多く、CSS の書き方もそのまま使えます。
+
+<Cards>
+  <Card title="ほかのライブラリからの移行" href="/ja/docs/api/migrate/other-libraries" />
+</Cards>
+
+## 始める
+
+<Cards>
+  <Card title="インストール" href="/ja/docs/installation" />
+  <Card title="スタイルの組み立て方" href="/ja/docs/thinking-in-plumeria" />
+  <Card title="プレイグラウンド" href="/playground" />
+  <Card title="スタイルを重ねる規則" href="/ja/docs/composition-laws" />
+</Cards>
