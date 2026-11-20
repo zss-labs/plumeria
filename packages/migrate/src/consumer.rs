@@ -985,14 +985,12 @@ pub fn scan(
         holds: Vec::new(),
     };
 
-    let mut has_core = false;
     let mut imports: Vec<(Span, usize, Vec<SymbolId>)> = Vec::new();
     for statement in &program.body {
         match statement {
             Statement::ImportDeclaration(declaration) => {
                 let specifier = declaration.source.value.as_str().unwrap_or_default();
                 if specifier == CORE {
-                    has_core = true;
                     for item in declaration.specifiers.iter().flatten() {
                         match item {
                             ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => {
@@ -1131,15 +1129,7 @@ pub fn scan(
             }
             _ => format!("import {{ {} }} from '{specifier}';", names.join(", ")),
         };
-        let prefix = if position > 0 {
-            ""
-        } else if need_namespace {
-            "import * as css from '@plumeria/core';\n"
-        } else if !has_core {
-            "import '@plumeria/core';\n"
-        } else {
-            ""
-        };
+        let prefix = if position == 0 && need_namespace { "import * as css from '@plumeria/core';\n" } else { "" };
         scan.edits.push((span, format!("{prefix}{imported}")));
     }
 
