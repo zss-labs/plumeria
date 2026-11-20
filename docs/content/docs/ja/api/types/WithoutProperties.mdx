@@ -1,0 +1,57 @@
+---
+title: 'WithoutProperties'
+description: '指定したもの以外のすべてのプロパティを受け付けるスタイルのリスト。'
+---
+
+```ts
+type WithoutProperties<K extends StyleKey> = StyleProps<Exclude<StyleKey, K>>;
+export type { WithoutProperties };
+```
+
+`WithoutProperties` は [StyleProps](/ja/docs/api/types/StyleProps) と逆で、指定したもの以外のプロパティを受け付けます。いくつかのプロパティだけ上書きを禁止し、残りを自由に使えるようにするときに便利です。
+
+## 例 [#example]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    display: 'flex',
+    padding: '8px',
+  },
+});
+
+type PanelProps = {
+  sx?: css.WithoutProperties<'position' | 'top' | 'left'>;
+};
+
+export function Panel({ sx }: PanelProps) {
+  return <div sx={[styles.base, sx]} />;
+}
+```
+
+```tsx
+<Panel sx={styles.tinted} />  // ok when tinted only sets color
+<Panel sx={styles.pinned} />  // Type error when pinned sets position
+```
+
+## ネストしたブロックも対象 [#nested-blocks-are-covered]
+
+除外する指定は疑似クラスやアットルールの中にも効きます。セレクターの中だけに書いたレイアウト用のプロパティも検出できます。
+
+```ts
+// Both are rejected by WithoutProperties<'position'>
+const styles = css.create({
+  hoverPinned: {
+    ':hover': {
+      position: 'fixed',
+    },
+  },
+  widePinned: {
+    '@media (min-width: 640px)': {
+      position: 'sticky',
+    },
+  },
+});
+```
