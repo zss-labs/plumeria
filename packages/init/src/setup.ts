@@ -707,11 +707,10 @@ const scriptAction = (detected: Detected, answers: Answers): Action => {
   const notes: string[] = [];
 
   const existing = scripts.build;
-  const guard = answers.eslint && guardsByScript(detected);
-  if (guard && existing && existing.includes('plumerialint')) {
+  if (existing && existing.includes('plumerialint')) {
     scripts.build = existing.replace(/plumerialint/g, 'plumeria-lint');
     notes.push(`build: ${scripts.build}`);
-  } else if (guard && existing && !existing.includes('plumeria-lint')) {
+  } else if (existing && !existing.includes('plumeria-lint')) {
     scripts.build = buildScript(existing, answers.styleProp);
     notes.push(`build: ${scripts.build}`);
   }
@@ -720,10 +719,9 @@ const scriptAction = (detected: Detected, answers: Answers): Action => {
     return {
       kind: 'skip',
       label: 'skip',
-      note:
-        guard && !existing
-          ? 'no build script to guard'
-          : 'the scripts already carry it',
+      note: existing
+        ? 'the scripts already carry it'
+        : 'no build script to guard',
       file: 'package.json',
     };
   }
