@@ -1,0 +1,51 @@
+---
+title: 'Plumeria 22.2'
+description: 'Preview a migration to Plumeria and review the styles that need a decision.'
+date: '2026-11-20'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+  <GitHubUser username="refirst11" subtext="Plumeria Core" />
+  <GitHubUser username="Anionix" subtext="Plumeria Core" />
+</div>
+
+Plumeria 22.2 introduces `@plumeria/migrate`, a CLI for moving an existing project's styles to Plumeria. You can preview which files it can convert and see where it needs you to make a decision.
+
+## Migrate existing styles
+
+Run `npx @plumeria/migrate from <source>` from the project root with Node.js 20 or later. Choose one of six sources: `css-modules`, `vanilla-extract`, `emotion`, `styled-components`, `stylex`, or `tailwindcss`.
+
+Start with a clean Git working tree so you can use Git to undo the one-way migration. For a CSS Modules project, set up Plumeria and preview the conversion:
+
+```sh
+npx @plumeria/init
+npx @plumeria/migrate from css-modules --dry-run
+```
+
+Read the report, then apply the changes:
+
+```sh
+npx @plumeria/migrate from css-modules
+```
+
+If your project does not declare `@plumeria/core` and a supported bundler plugin, the CLI stops before writing any files and points you to `@plumeria/init`. The preview still works before setup.
+
+## Work through holds
+
+A **hold** identifies a case the CLI cannot safely convert. The report gives the file, the reason, and a source location when available. For example, the vanilla-extract converter handles `style`, `styleVariants`, and `keyframes`. A stylesheet that uses `createTheme`, `createVar`, `globalStyle`, or recipes is held for review.
+
+For CSS Modules and vanilla-extract, a hold preserves the whole stylesheet and skips the consumer edits for that sheet. For the other sources, a hold preserves the affected source file. Other files can still convert in the same run, so check both the summary and your Git diff.
+
+To finish, give your coding agent the project, the CLI report, and the [prompt in the migrate README](https://github.com/zss-labs/plumeria/blob/main/packages/migrate/README.md#finish-the-remaining-work-with-ai). The prompt asks the agent to inspect each held location and its consumers, preserve the existing behavior, and rerun the preview to show what still needs your input.
+
+## ESLint and cssdefs
+
+Plumeria 22.1 moved the CSS property types in `@plumeria/core` to cssdefs. In 22.2, the ESLint plugin generates its CSS property list from the same definitions, pinned by core to cssdefs 1.0.2. Value validation now covers every property in `CSSDefs`, and a test checks that the rule accepts the literal values declared by cssdefs.
+
+The diagnostics also give more specific edits. If you write `position: 'fixd'`, `validate-values` suggests `fixed`. A kebab-case property such as `'background-color'` gets a suggestion for `backgroundColor`. When a media query is nested inside a pseudo-selector, `no-invalid-selector` explains how to reorder them.
+
+## TypedCSS deprecation
+
+TypedCSS, introduced in Plumeria 22.0 as a second execution model, is now deprecated. Use Plumeria for new projects. In 22.2, `@plumeria/codemod` removes the `migrate-to-typedcss` command and its `migrateToTypedCSS` export.
