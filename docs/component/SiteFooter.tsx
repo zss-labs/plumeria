@@ -1,6 +1,7 @@
 import * as css from '@plumeria/core';
 import { Link } from 'waku';
 import { copyright, footerGroups, footerSocialLinks } from 'lib/footerGroups';
+import type { Language } from 'lib/i18n';
 import { homeTheme } from 'lib/theme';
 import { ExternalIcon } from 'component/ExternalIcon';
 
@@ -105,7 +106,8 @@ const styles = css.create({
   },
 });
 
-export function SiteFooter({ home = false }: { home?: boolean }) {
+export function SiteFooter({ home = false, lang = 'en' }: { home?: boolean; lang?: Language }) {
+  const ja = lang === 'ja';
   return (
     <footer sx={[styles.footer, home && styles.homeFooter]}>
       <nav aria-label="Resources" sx={styles.groups}>
@@ -126,7 +128,11 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
                       <ExternalIcon />
                     </a>
                   ) : (
-                    <Link to={href} unstable_prefetchOnView={{}} sx={[styles.link, home && styles.homeMuted]}>
+                    <Link
+                      to={ja && href.startsWith('/docs/') ? `/ja${href}` : href}
+                      unstable_prefetchOnView={{}}
+                      sx={[styles.link, home && styles.homeMuted]}
+                    >
                       {label}
                     </Link>
                   )}
