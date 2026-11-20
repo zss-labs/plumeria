@@ -13,7 +13,8 @@ export const noInnerCall: Rule.RuleModule = {
         'An error occurs if a specific call is made within a function',
     },
     messages: {
-      noInnerCall: 'Do not use {{name}} inside functions',
+      noInnerCall:
+        'Move {{name}}() to module scope and reference the result inside the function.',
     },
     schema: [],
   },
