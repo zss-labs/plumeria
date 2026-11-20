@@ -1,7 +1,7 @@
 {
   "name": "@plumeria/migrate",
   "version": "22.1.2",
-  "description": "Migrate between CSS Modules and Plumeria",
+  "description": "Migrate other styling library to Plumeria",
   "author": "zss-labs",
   "license": "MIT",
   "homepage": "https://plumeria.dev",
