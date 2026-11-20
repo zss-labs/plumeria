@@ -2,7 +2,8 @@ import * as css from '@plumeria/core';
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import { findNeighbour, type Node } from 'fumadocs-core/page-tree';
-import { source } from 'lib/source';
+import { i18n, type Language } from 'lib/i18n';
+import { localizedSource, source } from 'lib/source';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 import { CopyPage } from 'component/CopyButton';
@@ -177,15 +178,17 @@ const Chevron = ({ d }: { d: string }) => (
   </svg>
 );
 
-export default async function Page({ slug }: { slug?: string[] }) {
-  const page = source.getPage(slug);
+export async function DocPage({ slug, lang = i18n.defaultLanguage }: { slug?: string[]; lang?: Language }) {
+  const page = localizedSource.getPage(slug, lang);
   if (!page) notFound();
 
+  const tree = localizedSource.getPageTree(lang);
   const { body: MDX, toc } = await page.data.load();
-  const section = getSection(source.pageTree.children, page.url);
+  const section = getSection(tree.children, page.url);
   const stabilityEntry = page.data.stability ? stability[page.data.stability] : undefined;
-  const { previous, next } = findNeighbour(source.pageTree, page.url);
-  const describe = (url: string) => source.getPages().find((item) => item.url === url)?.data.description;
+  const { previous, next } = findNeighbour(tree, page.url);
+  const describe = (url: string) => localizedSource.getPages(lang).find((item) => item.url === url)?.data.description;
+  const contentPath = page.locale && page.locale !== i18n.defaultLanguage ? `${page.locale}/${page.path}` : page.path;
 
   return (
     <DocsArticle
@@ -211,7 +214,7 @@ export default async function Page({ slug }: { slug?: string[] }) {
       footer={
         <>
           <a
-            href={`https://github.com/zss-labs/plumeria/blob/main/docs/content/docs/${page.path}`}
+            href={`https://github.com/zss-labs/plumeria/blob/main/docs/content/docs/${contentPath}`}
             target="_blank"
             rel="noreferrer noopener"
             sx={styles.edit}
@@ -258,6 +261,10 @@ export default async function Page({ slug }: { slug?: string[] }) {
       <MDX components={mdxComponents} />
     </DocsArticle>
   );
+}
+
+export default function Page({ slug }: { slug?: string[] }) {
+  return <DocPage slug={slug} />;
 }
 
 export const getConfig = async () => {
