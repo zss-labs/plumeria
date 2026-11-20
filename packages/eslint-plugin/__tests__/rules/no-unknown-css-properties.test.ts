@@ -219,6 +219,33 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
         import * as css from '@plumeria/core';
         const styles = css.create({
           main: {
+            '-webkit-line-clamp': 2,
+            '-ms-overflow-style': 'none',
+            'not-a-property': 'red',
+            'font-size': { color: 'red' },
+          }
+        });
+      `,
+      errors: [
+        {
+          message:
+            "Use 'WebkitLineClamp' for '-webkit-line-clamp' in Plumeria styles.",
+        },
+        {
+          message:
+            "Use 'msOverflowStyle' for '-ms-overflow-style' in Plumeria styles.",
+        },
+        { messageId: 'unknownProperty', data: { name: 'not-a-property' } },
+        {
+          message: "Use 'fontSize' for 'font-size' in Plumeria styles.",
+        },
+      ],
+    },
+    {
+      code: `
+        import * as css from '@plumeria/core';
+        const styles = css.create({
+          main: {
             'background-color': 'red',
             flowTolerance: 'normal',
             WebkitOverflowScrolling: 'touch',
@@ -228,7 +255,10 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
         });
       `,
       errors: [
-        { messageId: 'unknownProperty', data: { name: 'background-color' } },
+        {
+          message:
+            "Use 'backgroundColor' for 'background-color' in Plumeria styles.",
+        },
         { messageId: 'unknownProperty', data: { name: 'flowTolerance' } },
         {
           messageId: 'unknownProperty',
@@ -440,7 +470,7 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
     {
       code: `
         import * as css from '@plumeria/core';
-        const above = css.positionTry({ positionAre: 'top', 'position-area': 'top' });
+        const above = css.positionTry({ positionAre: 'top', 'position-area': 'top', 'background-color': 'red' });
       `,
       errors: [
         {
@@ -449,7 +479,13 @@ ruleTester.run('no-unknown-css-properties', noUnknownCssProperties, {
             name: 'positionAre',
           },
         },
-        { messageId: 'unknownProperty', data: { name: 'position-area' } },
+        {
+          message: "Use 'positionArea' for 'position-area' in Plumeria styles.",
+        },
+        {
+          messageId: 'positionTryProperty',
+          data: { name: 'background-color' },
+        },
       ],
     },
     {
