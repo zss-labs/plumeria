@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 456" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <style>
+    :root { --paper: #fdfcf8; --ink: #222; --soft: #777; --accent: #0d9488; --id: #9a5b2a; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #0b0b0b; --ink: #e6e6e6; --soft: #8a8a8a; --accent: #2dd4bf; --id: #e8b586; }
+    }
+    .bg { fill: var(--paper); }
+    .line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+    .accent { stroke: var(--accent); }
+    .code { fill: var(--ink); font-size: 15px; }
+    .dim { fill: var(--soft); }
+    .id { fill: var(--id); }
+    .hl { fill: var(--accent); }
+    .title { fill: var(--ink); font-size: 16px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+    .note { fill: var(--soft); font-size: 15px; font-weight: 600; font-family: "Inter", system-ui, sans-serif; }
+    .hatch { stroke: var(--accent); stroke-width: 1; opacity: 0.25; }
+  </style>
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+    <clipPath id="resolve-clip"><rect x="426" y="219" width="498" height="59" /></clipPath>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain" />
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.55" result="mask" />
+      <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked" />
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="8" result="edge" />
+      <feDisplacementMap in="inked" in2="edge" scale="0.9" />
+    </filter>
+  </defs>
+
+  <rect class="bg" width="960" height="456" />
+
+  <g filter="url(#rough)">
+    <path class="line" d="M424 30 L926 28 L928 165 L426 167 Z" />
+    <path class="ghost" d="M428 34 L922 33 L923 161 L429 163 Z" />
+
+    <g clip-path="url(#resolve-clip)">
+      <path class="hatch" d="M400 290 L470 210 M424 290 L494 210 M448 290 L518 210 M472 290 L542 210 M496 290 L566 210 M520 290 L590 210 M544 290 L614 210 M568 290 L638 210 M592 290 L662 210 M616 290 L686 210 M640 290 L710 210 M664 290 L734 210 M688 290 L758 210 M712 290 L782 210 M736 290 L806 210 M760 290 L830 210 M784 290 L854 210 M808 290 L878 210 M832 290 L902 210 M856 290 L926 210 M880 290 L950 210" />
+    </g>
+    <path class="line accent" d="M424 217 L926 219 L924 280 L426 278 Z" />
+    <path class="ghost accent" d="M428 221 L922 222 L920 276 L429 274 Z" />
+
+    <path class="line" d="M342 99 C362 97 384 101 402 99" />
+    <path class="line" d="M391 92 L403 99 L391 106" />
+
+    <path class="line" d="M345 239 C366 241 386 237 402 239" />
+    <path class="line" d="M391 232 L403 239 L391 246" />
+
+    <path class="line" d="M663 167 C661 182 665 196 663 210" />
+    <path class="line" d="M656 199 L663 211 L670 199" />
+
+    <path class="line accent" d="M663 280 C662 290 664 298 663 307 C560 305 340 309 237 307 C236 316 238 324 237 334" />
+    <path class="line accent" d="M230 323 L237 335 L244 323" />
+    <path class="line accent" d="M663 307 C684 306 700 308 718 307 C717 316 719 324 718 334" />
+    <path class="line accent" d="M711 323 L718 335 L725 323" />
+
+    <path class="ghost" d="M34 346 L447 344 M480 345 L926 343" />
+  </g>
+
+  <g filter="url(#ink)">
+  <text class="title" x="34" y="52">button.ts</text>
+  <text class="code" x="34" y="90"><tspan class="dim">export const</tspan> btn = css.create({</text>
+  <text class="code" x="54" y="117">base: { padding: 16 },</text>
+  <text class="code" x="34" y="144">});</text>
+  <text class="note" x="349" y="85">scan</text>
+
+  <text class="title" x="444" y="58">Definition tables</text>
+  <text class="code dim" x="444" y="95">create_hash</text>
+  <text class="code" x="570" y="95">…/button.ts-btn → <tspan class="id">x2vyv31m</tspan></text>
+  <text class="code dim" x="444" y="132">create_obj</text>
+  <text class="code" x="570" y="132"><tspan class="id">x2vyv31m</tspan> → { base: { padding: 16 } }</text>
+
+  <text class="title" x="34" y="203">Card.tsx</text>
+  <text class="code" x="34" y="235"><tspan class="dim">import</tspan> { btn } <tspan class="dim">from</tspan> './button';</text>
+  <text class="code" x="34" y="263">&lt;p sx={btn.base} /&gt;</text>
+
+  <text class="title" x="444" y="244">Resolve btn.base</text>
+  <text class="code" x="444" y="267">padding: 16 → <tspan class="hl">xqqbxt1d</tspan></text>
+
+  <text class="title" x="34" y="377">Transformed JSX</text>
+  <text class="title" x="480" y="377">Generated CSS</text>
+  <text class="code" x="34" y="416">&lt;p className={"<tspan class="hl">xqqbxt1d</tspan>"} /&gt;</text>
+  <text class="code" x="480" y="416">.<tspan class="hl">xqqbxt1d</tspan> { padding: 16px; }</text>
+  </g>
+</svg>
