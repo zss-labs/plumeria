@@ -65,14 +65,14 @@ const d = css.create({
   toned: ({ tone = 'navy' }) => ({ backgroundColor: tone }),
 });
 `;
-    const classOf = (code: string) => code.match(/className=\{"([^"]+)"/)?.[1];
+    const classOf = (code: string) => code.match(/className="([^"]+)"/)?.[1];
 
     it('applies a parameter default without an inline style', async () => {
       const { code } = await run(
         defaults + 'export const A = () => <div sx={d.tinted()} />;',
         'default-omitted.tsx',
       );
-      expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
+      expect(code).toMatch(/className="[a-z0-9]+"/);
       expect(code).not.toContain('style={{');
     });
 
@@ -97,7 +97,7 @@ const d = css.create({
         defaults + 'export const A = () => <div sx={d.toned({})} />;',
         'default-named.tsx',
       );
-      expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
+      expect(code).toMatch(/className="[a-z0-9]+"/);
       expect(code).not.toContain('style={{');
     });
 
@@ -130,7 +130,7 @@ export const B = () => <div sx={s.bare()} />;`,
         defaults + 'export const A = () => <div sx={d.plain()} />;',
         'default-none.tsx',
       );
-      expect(code).toMatch(/className=\{"[a-z0-9]+"\}/);
+      expect(code).toMatch(/className="[a-z0-9]+"/);
       expect(code).not.toContain('style={{');
     });
 
@@ -143,7 +143,7 @@ export const Imported = (p: any) => <p sx={importedStyles.tone(p.color)} />;`;
 
       const { code } = await transformSource(env(source, file));
 
-      expect(code).toContain('className={');
+      expect(code).toContain('className="');
       expect(code).toContain('p.color');
       expect(code).toMatch(/"--[^"}]+-color"/);
     });
@@ -153,7 +153,7 @@ export const Imported = (p: any) => <p sx={importedStyles.tone(p.color)} />;`;
       // declaration produces inline, or the scope the body reads is the
       // consumer's rather than the one it was written in.
       const classesOf = (code: string) =>
-        code.match(/className=\{"([^"]*)"\}/)?.[1];
+        code.match(/className="([^"]*)"/)?.[1];
 
       const compare = async (declaration: string, leadIn = '') => {
         const stylesFile = path.join(DIR, 'scoped.styles.ts');
@@ -241,7 +241,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
         header + `export const A = (p: any) => <div sx={s.palette(p.c)} />;`,
         'a.tsx',
       );
-      expect(code).toContain('className={"xokp0532"}');
+      expect(code).toContain('className="xokp0532"');
       expect(code).toContain(
         `style={{ "--x80848wl-color": (typeof (p.c) === 'number' ? (p.c) + 'px' : (p.c)) }}`,
       );
@@ -413,8 +413,8 @@ export const K = (p: any) => (<div>
 </div>);`,
         'folding.tsx',
       );
-      expect(code).toContain('<i className={"xymr32dw"} />');
-      expect(code).toContain('<b className={"x2x7bpc1"} />');
+      expect(code).toContain('<i className="xymr32dw" />');
+      expect(code).toContain('<b className="x2x7bpc1" />');
       expect(code).toContain(
         '"--xav007xm-color": (typeof (`rgb(${p.r} 0 0)`) === \'number\'',
       );
