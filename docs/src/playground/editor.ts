@@ -12,8 +12,8 @@ import { loadEngine } from './engine';
 import type { LintFix, LintMessage, SpellingPolicy } from './engine-types';
 import type { SampleFile } from './sample';
 
-const LIGHT_THEME = 'vitesse-light';
-const DARK_THEME = 'vitesse-dark';
+export const LIGHT_THEME = 'vitesse-light';
+export const DARK_THEME = 'vitesse-dark';
 
 const SCOPES: Record<string, string> = {
   namespace: 'entity.name.type.module',
@@ -67,7 +67,7 @@ function withDarkSelection(theme: ThemeRegistration): ThemeRegistration {
 
 let highlighter: Promise<HighlighterCore> | undefined;
 
-function setupHighlighting() {
+export function setupHighlighting() {
   highlighter ??= createHighlighterCore({
     themes: [onBackground(vitesseLight, '#ffffff'), onBackground(withDarkSelection(vitesseDark), '#000000')],
     langs: [
@@ -172,7 +172,7 @@ declare global {
   }
 }
 
-function setupEnvironment() {
+export function setupEnvironment() {
   self.MonacoEnvironment = {
     getWorker: () =>
       new Worker(new URL('monaco-editor/editor/editor.worker.js', import.meta.url), {
@@ -422,7 +422,7 @@ export async function mount(
     automaticLayout: true,
     minimap: { enabled: false },
     stickyScroll: { enabled: false },
-    fontSize: 12.35,
+    fontSize: 12,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     padding: { top: 16, bottom: 16 },
@@ -442,7 +442,7 @@ export async function mount(
     automaticLayout: true,
     minimap: { enabled: false },
     stickyScroll: { enabled: false },
-    fontSize: 13,
+    fontSize: 12,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     padding: { top: 16, bottom: 16 },
