@@ -1,0 +1,109 @@
+---
+title: '@plumeria/migrate'
+description: 'Move styles from another library to Plumeria in one command.'
+stability: Candidate
+---
+
+[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) rewrites an existing project's styles as Plumeria styles, and the call sites that read them as the `sx` prop. Set the project up with [`@plumeria/init`](/docs/api/migrate/init) first: without `@plumeria/core` and a bundler plugin in `dependencies` or `devDependencies`, the CLI stops before writing.
+
+```sh title="Terminal"
+npx @plumeria/migrate from vanilla-extract --dry-run
+npx @plumeria/migrate from vanilla-extract
+```
+
+Commit before migrating so you can use Git to undo the changes. The CLI has no reverse migration command.
+
+| Source after `from` | Reads |
+| --- | --- |
+| `css-modules` | `*.module.css` and the files that import them |
+| `vanilla-extract` | `*.css.ts`, `*.css.js` and the files that import them |
+| `emotion` | `@emotion/react` and `@emotion/styled` |
+| `styled-components` | `styled-components` |
+| `stylex` | `@stylexjs/stylex` |
+| `tailwindcss` | `className` strings, and `cn()` from the `cn` package |
+
+| Option | |
+| --- | --- |
+| `--dry-run` | Report what would change without writing |
+| `--style-prop <name>` | The styling prop. Defaults to `styleProp` in the bundler config, else `sx` |
+
+## Holds
+
+What the CLI cannot carry over without changing behavior, it leaves in place and reports as a **hold**: the reason, the expression or name, and where it is.
+
+```sh title="Terminal"
+  src/Card.css.ts  ->  src/Card.styles.ts
+
+1 stylesheet(s) would be converted, 2 consumer(s) rewritten.
+Run without --dry-run to apply.
+
+Left in place — nothing was written for these stylesheets:
+
+src/theme.css.ts
+  3:1  unsupported-api  createTheme
+        Only style, styleVariants and keyframes are converted. Move the rest out by hand, then run again.
+```
+
+For emotion, styled-components, stylex and tailwindcss, a hold leaves the whole file untouched. For CSS Modules and vanilla-extract, it leaves the stylesheet and the references to it as written; a file that also imports a stylesheet that converts still has those references rewritten. A converted stylesheet is replaced by its `.styles.ts` (`.styles.js` for a `.css.js`) and the original is removed. A run with any hold exits with a failure code, `--dry-run` included.
+
+### css-modules
+
+- A named or `?raw` import, or a class read by a computed key
+- `composes` from another file
+- Sibling combinators and at-rules a key cannot hold
+- A module class mixed with other class strings in one `className`
+- The stylesheet named in a `.vue`, `.svelte`, `.astro` or `.mdx` file
+- A destination `.styles.ts` that already exists
+
+### vanilla-extract
+
+- `globalStyle`, `createVar`, `createTheme` and `@vanilla-extract/recipes` or `sprinkles`
+- Fallback arrays and `vars`
+- Selectors beyond `&` and a pseudo-class or attribute, such as `& > p` or `${parent} &`
+- `.css.ts` files that import each other
+- `.css.tsx`, `.css.jsx`, `.css.mjs` and `.css.cjs` files
+- A `styleVariants` mapping function, or a variant composed from other styles
+- A composed style inside a ternary
+
+### emotion
+
+- Theme callbacks, `css={(theme) => …}`
+- A `css` style that is exported
+- The `css` prop on a custom component
+- `<Global>` and other APIs beyond `css`, `jsx` and `keyframes`
+
+### styled-components
+
+- `styled(Link)` and other wrapped components
+- `.attrs()` and `createGlobalStyle`
+- An interpolation that calls a runtime helper
+- A call site that leaves out a prop the styles read
+
+### stylex
+
+- States whose precedence depends on order
+- `defineVars`, `createTheme` and other APIs without a Plumeria counterpart
+- `stylex.props` outside JSX, or beside a `className`
+- Dynamic values and fallback arrays
+
+### tailwindcss
+
+- Unknown or conflicting utilities
+- Class strings built at runtime
+- `twMerge()` and a `cn()` from elsewhere — rewrite them with `import { cn } from 'cn'`, then run again
+- `clsx()` and `classnames`
+- Custom variants
+- Classes on custom components
+- A `tailwind.config.*` theme stops the run before anything is read. The CLI can read a Tailwind CSS v4 theme written in CSS.
+
+[Other libraries](/docs/api/migrate/other-libraries) maps what each hold becomes in Plumeria.
+
+## Finish with AI
+
+Give your coding agent the report and the project, with this prompt:
+
+```text title="Prompt"
+Finish the remaining migration to Plumeria. Read the Plumeria AI guide, then inspect each reported location and its consumers. Use the hold reason to identify the behavior the automatic rewrite could not preserve. Keep class-name strings where another API expects them, and preserve composition order, conditional styles, and component props. Resolve each hold or explain which behavior needs my decision. Rerun the same migration with `--dry-run` and report any remaining holds. Check remaining uses before removing the old library or its configuration.
+```
+
+The agent reads [the Plumeria AI guide](/docs/ai.md) for the rules the rewrite has to follow.
