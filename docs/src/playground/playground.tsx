@@ -9,6 +9,7 @@ import type { ExampleName } from './sample';
 import type { OutputKind, PlaygroundHandle } from './editor';
 import { loadEngine, onEngineProgress } from './engine';
 import type { SpellingPolicy } from './engine-types';
+import { PageSwitch } from './switch';
 
 const POLICIES: { value: SpellingPolicy; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -36,18 +37,14 @@ const styles = css.create({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gridRow: 1,
     gridColumn: '2 / -1',
     height: 'calc(100dvh - 56px)',
     overflow: 'hidden',
     color: theme.textPrimary,
-    [breakpoints.md]: {
-      height: 'calc(100dvh - 104px)',
-    },
   },
   bar: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
     fontSize: 13,
     borderBottomColor: theme.cardBorder,
     borderBottomStyle: 'solid',
@@ -106,7 +103,15 @@ const styles = css.create({
     padding: '10px 16px',
     fontSize: 13,
   },
+  field: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    minWidth: 0,
+    maxWidth: '100%',
+  },
   label: {
+    flexShrink: 0,
     color: theme.textMuted,
   },
   group: {
@@ -389,31 +394,36 @@ export function Playground() {
     <div sx={styles.root}>
       <div sx={styles.bar}>
         <div sx={styles.editorBar}>
-          <span sx={styles.label}>Example</span>
-          <div sx={styles.group}>
-            {EXAMPLE_LINKS.map((item) => (
-              <a
-                key={item.value}
-                href={item.value === 'card' ? '/playground' : `/playground?example=${item.value}`}
-                aria-current={example === item.value ? 'page' : undefined}
-                sx={[styles.option, example === item.value && styles.optionActive]}
-              >
-                {item.label}
-              </a>
-            ))}
+          <PageSwitch current="compile" />
+          <div sx={styles.field}>
+            <span sx={styles.label}>Example</span>
+            <div sx={styles.group}>
+              {EXAMPLE_LINKS.map((item) => (
+                <a
+                  key={item.value}
+                  href={item.value === 'card' ? '/playground' : `/playground?example=${item.value}`}
+                  aria-current={example === item.value ? 'page' : undefined}
+                  sx={[styles.option, example === item.value && styles.optionActive]}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
           </div>
-          <span sx={styles.label}>Property spelling</span>
-          <div sx={styles.group}>
-            {POLICIES.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setPolicy(item.value)}
-                sx={[styles.option, policy === item.value && styles.optionActive]}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div sx={styles.field}>
+            <span sx={styles.label}>Property spelling</span>
+            <div sx={styles.group}>
+              {POLICIES.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setPolicy(item.value)}
+                  sx={[styles.option, policy === item.value && styles.optionActive]}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <span sx={styles.count}>
