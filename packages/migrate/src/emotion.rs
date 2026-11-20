@@ -23,10 +23,41 @@ use crate::stylex::{position, SUFFIXES};
 use crate::tailwind::class_hash;
 use crate::{apply, extension, walk as walk_files, Options, SOURCES};
 
-const PACKAGE: &str = "@emotion/react";
+pub struct Library {
+    react: &'static str,
+    styled: &'static str,
+    scope: &'static str,
+    pragma: Option<&'static str>,
+    foreign: Option<&'static str>,
+    configs: &'static [&'static str],
+    missing: &'static str,
+    leftover: &'static str,
+}
+
+pub const EMOTION: Library = Library {
+    react: "@emotion/react",
+    styled: "@emotion/styled",
+    scope: "@emotion/",
+    pragma: Some("@emotion/react"),
+    foreign: None,
+    configs: &["@emotion/"],
+    missing: "No @emotion/react or @emotion/styled import found.",
+    leftover: "These configs still name @emotion. Remove the jsxImportSource and the Emotion Babel plugin once nothing is left:",
+};
+
+pub const STYLED_COMPONENTS: Library = Library {
+    react: "styled-components",
+    styled: "styled-components",
+    scope: "styled-components/",
+    pragma: None,
+    foreign: Some("@emotion/"),
+    configs: &["styled-components", "styledComponents"],
+    missing: "No styled-components import found.",
+    leftover: "These configs still name styled-components. Remove the styled-components compiler option or Babel plugin once nothing is left:",
+};
+
 const AT_RULES: &[&str] = &["@media", "@container", "@supports"];
 const PLACEHOLDER: &str = "__emotion_";
-const STYLED: &str = "@emotion/styled";
 const DOM_PROPS: &[&str] = &[
     "accept", "action", "alt", "autoComplete", "autoFocus", "autoPlay", "checked", "children", "colSpan", "cols",
     "contentEditable", "controls", "cx", "cy", "d", "dangerouslySetInnerHTML", "decoding", "defaultChecked",
@@ -230,6 +261,7 @@ fn frames_of(init: &Expression, names: &FxHashSet<&str>) -> bool {
 pub struct Module {
     kinds: FxHashMap<String, Shape>,
     forwards: FxHashMap<String, (String, String)>,
+    imports: Vec<(String, String)>,
 }
 
 pub fn module(file: &str, text: &str) -> Module {
@@ -242,22 +274,31 @@ pub fn module(file: &str, text: &str) -> Module {
     let mut imports: FxHashMap<&str, (String, String)> = FxHashMap::default();
     for statement in &program.body {
         let Statement::ImportDeclaration(declaration) = statement else { continue };
+        if declaration.import_kind.is_type() {
+            continue;
+        }
         let source = declaration.source.value.as_str().unwrap_or_default();
         for specifier in declaration.specifiers.iter().flatten() {
             match specifier {
+                ImportDeclarationSpecifier::ImportSpecifier(named) if named.import_kind.is_type() => {}
                 ImportDeclarationSpecifier::ImportSpecifier(named) => {
                     imports.insert(named.local.name.as_str(), (source.to_string(), named.imported.name().to_string()));
                 }
                 ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => {
                     imports.insert(default.local.name.as_str(), (source.to_string(), "default".to_string()));
                 }
-                ImportDeclarationSpecifier::ImportNamespaceSpecifier(_) => {}
+                ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => {
+                    imports.insert(namespace.local.name.as_str(), (source.to_string(), "*".to_string()));
+                }
             }
         }
     }
+    out.imports = imports.values().cloned().collect();
     let frames: FxHashSet<&str> = imports
         .iter()
-        .filter(|(_, (source, imported))| source == PACKAGE && imported == "keyframes")
+        .filter(|(_, (source, imported))| {
+            (source == EMOTION.react || source == STYLED_COMPONENTS.react) && imported == "keyframes"
+        })
         .map(|(local, _)| *local)
         .collect();
     let export = |exported: &str, local: &str, out: &mut Module| {
@@ -311,6 +352,36 @@ pub fn resolve_kind(
     resolve_site(modules, paths, importer, specifier, name).map(|(_, shape)| shape)
 }
 
+fn resolve_file(modules: &FxHashMap<String, Module>, paths: Option<&Paths>, importer: &str, specifier: &str) -> Option<String> {
+    let find = |candidate: &str| {
+        SUFFIXES.iter().map(|suffix| format!("{candidate}{suffix}")).find(|path| modules.contains_key(path))
+    };
+    resolve(specifier, importer, paths, |c| find(c).is_some()).and_then(|c| find(&c))
+}
+
+fn frame_sites(
+    modules: &FxHashMap<String, Module>,
+    paths: Option<&Paths>,
+    importer: &str,
+    specifier: &str,
+    name: &str,
+) -> Vec<String> {
+    let names: Vec<String> = if name == "*" {
+        let Some(file) = resolve_file(modules, paths, importer, specifier) else { return Vec::new() };
+        let module = &modules[&file];
+        module.kinds.keys().chain(module.forwards.keys()).cloned().collect()
+    } else {
+        vec![name.to_string()]
+    };
+    names
+        .iter()
+        .filter_map(|name| match resolve_site(modules, paths, importer, specifier, name)? {
+            (site, Shape::Frames) => Some(site),
+            _ => None,
+        })
+        .collect()
+}
+
 fn resolve_site(
     modules: &FxHashMap<String, Module>,
     paths: Option<&Paths>,
@@ -318,13 +389,10 @@ fn resolve_site(
     specifier: &str,
     name: &str,
 ) -> Option<(String, Shape)> {
-    let find = |candidate: &str| {
-        SUFFIXES.iter().map(|suffix| format!("{candidate}{suffix}")).find(|path| modules.contains_key(path))
-    };
     let mut visited: Vec<(String, String)> = Vec::new();
     let (mut importer, mut specifier, mut name) = (importer.to_string(), specifier.to_string(), name.to_string());
     loop {
-        let file = resolve(&specifier, &importer, paths, |c| find(c).is_some()).and_then(|c| find(&c))?;
+        let file = resolve_file(modules, paths, &importer, &specifier)?;
         if visited.contains(&(file.clone(), name.clone())) {
             return None;
         }
@@ -446,6 +514,36 @@ struct Scan<'s> {
     styles: Vec<(String, String)>,
     edits: Vec<(u32, u32, String)>,
     holds: Vec<Hold>,
+}
+
+struct FrameRead<'s, 'scan> {
+    scan: &'scan Scan<'s>,
+    found: bool,
+}
+
+impl<'a> Visit<'a> for FrameRead<'_, '_> {
+    fn visit_expression(&mut self, expression: &Expression<'a>) {
+        let member = match expression {
+            Expression::StaticMemberExpression(member) => Some((&member.object, member.property.name.as_str())),
+            Expression::ComputedMemberExpression(member) => match member.expression.get_inner_expression() {
+                Expression::StringLiteral(key) => key.value.as_str().map(|name| (&member.object, name)),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some((object, name)) = member
+            && let Expression::Identifier(identifier) = object.get_inner_expression()
+            && let Some(symbol) = self.scan.reference(identifier)
+            && let Some((source, imported)) = self.scan.imported.get(&symbol)
+            && imported == "*"
+            && (self.scan.exports)(source, name) == Some(Shape::Frames)
+        {
+            self.found = true;
+        }
+        if !self.found {
+            walk::walk_expression(self, expression);
+        }
+    }
 }
 
 impl<'s> Scan<'s> {
@@ -882,6 +980,11 @@ impl<'s> Scan<'s> {
     }
 
     fn param(&mut self, expression: &Expression) -> Option<String> {
+        let mut frames = FrameRead { scan: self, found: false };
+        frames.visit_expression(expression);
+        if frames.found {
+            return None;
+        }
         let source = self.source(expression.span()).to_string();
         let key = expression.span().start.to_string();
         let taken = &self.taken;
@@ -1169,9 +1272,15 @@ fn through_newline(text: &str, span: Span) -> (u32, u32) {
     (span.start, end)
 }
 
-pub fn scan_file(file: &str, text: &str, style_prop: &str, exports: &dyn Fn(&str, &str) -> Option<Shape>) -> Outcome {
+pub fn scan_file(
+    file: &str,
+    text: &str,
+    style_prop: &str,
+    lib: &Library,
+    exports: &dyn Fn(&str, &str) -> Option<Shape>,
+) -> Outcome {
     let mut out = Outcome::default();
-    if !text.contains("emotion") && !text.contains("css=") {
+    if ![lib.react, lib.styled, lib.scope, "css="].iter().any(|hint| text.contains(hint)) {
         return out;
     }
     let Ok(source_type) = SourceType::from_path(file) else { return out };
@@ -1233,45 +1342,42 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str, exports: &dyn Fn(&str
             let (local, imported) = match specifier {
                 ImportDeclarationSpecifier::ImportSpecifier(named) => (&named.local, named.imported.name().to_string()),
                 ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => (&default.local, "default".to_string()),
-                ImportDeclarationSpecifier::ImportNamespaceSpecifier(_) => continue,
+                ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => (&namespace.local, "*".to_string()),
             };
             if let Some(symbol) = local.symbol_id.get() {
                 scan.imported.insert(symbol, (source.to_string(), imported));
             }
         }
-        if source.starts_with("@plumeria/") {
+        if lib.foreign.is_some_and(|foreign| source.starts_with(foreign)) {
+            return Outcome::default();
+        } else if source.starts_with("@plumeria/") {
             scan.hold("plumeria-import", source, declaration.span.start);
-        } else if source == STYLED {
+        } else if source == lib.styled || source == lib.react {
             imports.push(declaration.span);
+            let (styled, react) = (source == lib.styled, source == lib.react);
             for specifier in declaration.specifiers.iter().flatten() {
                 match specifier {
-                    ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => {
+                    ImportDeclarationSpecifier::ImportDefaultSpecifier(default) if styled => {
                         scan.styled.extend(default.local.symbol_id.get())
                     }
-                    _ => scan.hold("unsupported-api", source, specifier.span().start),
-                }
-            }
-        } else if source.starts_with("@emotion/") && source != PACKAGE {
-            scan.hold("unsupported-import", source, declaration.span.start);
-        } else if source == PACKAGE {
-            imports.push(declaration.span);
-            for specifier in declaration.specifiers.iter().flatten() {
-                match specifier {
-                    ImportDeclarationSpecifier::ImportSpecifier(named) => match named.imported.name().as_str() {
+                    ImportDeclarationSpecifier::ImportSpecifier(named) if react => match named.imported.name().as_str() {
                         "css" => scan.css.extend(named.local.symbol_id.get()),
-                        "jsx" => scan.jsx.extend(named.local.symbol_id.get()),
+                        "jsx" if lib.pragma.is_some() => scan.jsx.extend(named.local.symbol_id.get()),
                         "keyframes" => scan.keyframes.extend(named.local.symbol_id.get()),
                         other => scan.hold("unsupported-api", other, named.span.start),
                     },
-                    _ => scan.hold("namespace-import", source, specifier.span().start),
+                    _ if react => scan.hold("namespace-import", source, specifier.span().start),
+                    _ => scan.hold("unsupported-api", source, specifier.span().start),
                 }
             }
+        } else if source.starts_with(lib.scope) {
+            scan.hold("unsupported-import", source, declaration.span.start);
         }
     }
 
     for comment in &program.comments {
         let body = &text[comment.span.start as usize..comment.span.end as usize];
-        let foreign = pragma(body, "@jsxImportSource").is_some_and(|source| source != PACKAGE)
+        let foreign = pragma(body, "@jsxImportSource").is_some_and(|source| Some(source) != lib.pragma)
             || pragma(body, "@jsx").is_some_and(|factory| factory != "jsx" || scan.jsx.is_empty());
         if foreign {
             return Outcome::default();
@@ -1454,7 +1560,7 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str, exports: &dyn Fn(&str
     }
     edits.extend(scan.edits);
     edits.extend(scan.animations);
-    for comment in &program.comments {
+    for comment in program.comments.iter().filter(|_| lib.pragma.is_some()) {
         let body = &text[comment.span.start as usize..comment.span.end as usize];
         if body.contains("@jsxImportSource @emotion/react") || body.contains("@jsx jsx") || body.contains("@jsxRuntime classic") {
             let (start, end) = through_newline(text, comment.span);
@@ -1483,7 +1589,7 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str, exports: &dyn Fn(&str
     out
 }
 
-fn configs() -> Vec<String> {
+fn configs(lib: &Library) -> Vec<String> {
     let Ok(read) = fs::read_dir(".") else { return Vec::new() };
     let mut names: Vec<String> = read
         .filter_map(|e| e.ok()?.file_name().into_string().ok())
@@ -1494,13 +1600,13 @@ fn configs() -> Vec<String> {
                 || (name.starts_with("tsconfig") && name.ends_with(".json"))
                 || (name.starts_with("next.config.") || name.starts_with("vite.config."))
         })
-        .filter(|name| fs::read_to_string(name).is_ok_and(|text| text.contains("@emotion/")))
+        .filter(|name| fs::read_to_string(name).is_ok_and(|text| lib.configs.iter().any(|c| text.contains(c))))
         .collect();
     names.sort();
     names
 }
 
-pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &str) -> Vec<Outcome> {
+pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &str, lib: &Library) -> Vec<Outcome> {
     let modules: FxHashMap<String, Module> =
         sources.iter().map(|(file, text)| (file.clone(), module(file, text))).collect();
     let index: FxHashMap<&str, usize> = sources.iter().enumerate().map(|(i, (file, _))| (file.as_str(), i)).collect();
@@ -1508,7 +1614,7 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
         .iter()
         .map(|(file, text)| {
             let exports = |specifier: &str, name: &str| resolve_kind(&modules, paths, file, specifier, name);
-            scan_file(file, text, style_prop, &exports)
+            scan_file(file, text, style_prop, lib, &exports)
         })
         .collect();
     loop {
@@ -1527,13 +1633,28 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
                 fresh = true;
             }
         }
+        for i in 0..outcomes.len() {
+            if outcomes[i].rewritten.is_some() {
+                continue;
+            }
+            for (specifier, name) in &modules[&sources[i].0].imports {
+                for site in frame_sites(&modules, paths, &sources[i].0, specifier, name) {
+                    let j = index[site.as_str()];
+                    if outcomes[j].rewritten.is_some() {
+                        outcomes[j].rewritten = None;
+                        outcomes[j].holds.push(Hold { kind: "linked-to-held", detail: sources[i].0.clone(), at: 0 });
+                        fresh = true;
+                    }
+                }
+            }
+        }
         if !fresh {
             return outcomes;
         }
     }
 }
 
-pub fn run(options: &Options) -> ExitCode {
+pub fn run(options: &Options, lib: &Library) -> ExitCode {
     let mut project = Vec::new();
     walk_files("", &mut project);
     let sources: Vec<(String, String)> = project
@@ -1541,16 +1662,16 @@ pub fn run(options: &Options) -> ExitCode {
         .filter(|p| SOURCES.contains(&extension(p)))
         .filter_map(|p| Some((p.clone(), fs::read_to_string(p).ok()?)))
         .collect();
-    let configs = configs();
-    if configs.is_empty() && !sources.iter().any(|(_, text)| text.contains(PACKAGE) || text.contains(STYLED)) {
-        println!("No {PACKAGE} or {STYLED} import found.");
+    let configs = configs(lib);
+    if configs.is_empty() && !sources.iter().any(|(_, text)| text.contains(lib.react) || text.contains(lib.styled)) {
+        println!("{}", lib.missing);
         return ExitCode::SUCCESS;
     }
 
     let paths = Paths::load(|path| fs::read_to_string(path).ok());
     let mut converted = Vec::new();
     let mut held = Vec::new();
-    for (i, outcome) in plan(&sources, paths.as_ref(), &options.style_prop).into_iter().enumerate() {
+    for (i, outcome) in plan(&sources, paths.as_ref(), &options.style_prop, lib).into_iter().enumerate() {
         let (file, text) = &sources[i];
         if let Some(rewritten) = outcome.rewritten {
             converted.push((file, rewritten));
@@ -1573,7 +1694,7 @@ pub fn run(options: &Options) -> ExitCode {
         println!("\n✔ converted {} file(s).", converted.len());
     }
     if !configs.is_empty() {
-        println!("\nThese configs still name @emotion. Remove the jsxImportSource and the Emotion Babel plugin once nothing is left:");
+        println!("\n{}", lib.leftover);
         for config in &configs {
             println!("  {config}");
         }
