@@ -1,0 +1,172 @@
+---
+title: "AI に渡す資料"
+description: "AI に Plumeria のコードを頼むときに使う資料です。"
+---
+
+Plumeria の資料は、Claude、Codex、Gemini、ChatGPT などが読める Markdown 形式でも公開しています。まずインストール手順を渡し、その後で作業に必要な資料を足してください。
+
+<Callout type="info" title="最初にインストール手順を読む">
+  エージェントにコードを頼む前に、必ずインストール手順を読ませてください。Plumeria のコードがどう動くかを理解するには、コンパイラとバンドラーの設定も必要です。
+</Callout>
+
+## 最初に渡す資料
+
+次の文章をプロンプトに貼り付けてください。読む順番を指定し、コードを編集する前に一通りのルールを伝えられます。
+
+```text title="Prompt for your coding agent"
+コードを変更する前に、次の資料を順に読んでください。
+
+1. インストール — https://plumeria.dev/docs/installation.md
+2. AI 向けのルール — https://plumeria.dev/docs/ai.md
+3. はじめにと基本の使い方 — https://plumeria.dev/docs.md
+
+AI.md のルールに従ってください。設定を変える前に、プロジェクトで使っているバンドラーと
+フレームワークを調べ、対応する手順を読んでください。Plumeria はビルド時にスタイルを CSS に変換します。
+```
+
+インストール手順ではパッケージ、スタイル用 prop の型宣言、ESLint、Next.js と Vite のコンパイラ設定を説明しています。それ以外のバンドラーを使う場合は、[バンドラーとの連携](#バンドラーとの連携)から該当する資料を足してください。
+
+```text title="Minimum context"
+https://plumeria.dev/docs/installation.md
+https://plumeria.dev/docs/ai.md
+https://plumeria.dev/docs.md
+```
+
+## Claude Code のプラグイン
+
+Claude Code では、次のコマンドで GitHub リポジトリから Plumeria プラグインをインストールできます。
+
+```text title="Claude Code"
+/plugin marketplace add zss-labs/plumeria
+/plugin install plumeria@plumeria
+```
+
+スキルは [AI.md](/ja/docs/ai) から生成されるので、ルールと内容がそろいます。Plumeria のスタイルを扱うときに Claude が読み込みます。
+
+## 作業に合わせて資料を足す
+
+上の三つの資料に、作業に合う組み合わせを足してください。
+
+### コンポーネントとスタイルを書く
+
+コンポーネントを書くときに使います。セレクター、スタイルの組み合わせ、動的な値、テーマ、アニメーション、スタイル用 prop を扱います。
+
+```text title="Authoring context"
+https://plumeria.dev/docs/selector-rules.md
+https://plumeria.dev/docs/specificity.md
+https://plumeria.dev/docs/thinking-in-plumeria.md
+https://plumeria.dev/docs/api/packages/wind.md
+https://plumeria.dev/docs/api/javascript/create.md
+https://plumeria.dev/docs/api/javascript/createStatic.md
+https://plumeria.dev/docs/api/javascript/createTheme.md
+https://plumeria.dev/docs/api/javascript/keyframes.md
+https://plumeria.dev/docs/api/javascript/marker.md
+https://plumeria.dev/docs/api/javascript/positionTry.md
+https://plumeria.dev/docs/api/javascript/use.md
+https://plumeria.dev/docs/api/javascript/varType.md
+https://plumeria.dev/docs/api/javascript/viewTransitionClass.md
+```
+
+### ツール、テスト、移行
+
+lint の設定、コンパイル結果のテスト、既存のコードの移行に使います。
+
+```text title="Tooling context"
+https://plumeria.dev/docs/editor-integration.md
+https://plumeria.dev/docs/testing.md
+https://plumeria.dev/docs/testing/vitest.md
+https://plumeria.dev/docs/testing/jest.md
+https://plumeria.dev/docs/api/plugins/eslint-plugin.md
+https://plumeria.dev/docs/api/plugins/eslint-plugin/optional-rules.md
+https://plumeria.dev/docs/api/migrate/init.md
+https://plumeria.dev/docs/api/migrate/migrate.md
+https://plumeria.dev/docs/api/migrate/codemod.md
+```
+
+### 部品とパッケージの配布
+
+コンポーネントライブラリを作るとき、フレームワークの部品を使うとき、開発中に要素のスタイルを調べるときに使います。
+
+```text title="Component context"
+https://plumeria.dev/docs/integration/frameworks.md
+https://plumeria.dev/docs/creating-packages.md
+https://plumeria.dev/docs/api/packages/headlessui.md
+https://plumeria.dev/docs/api/packages/inspector.md
+```
+
+## バンドラーとの連携
+
+プロジェクトに合う手順を選んでください。各ページにインストール方法と、動作する設定例があります。
+
+```text title="Bundler and framework integrations"
+Next.js     https://plumeria.dev/docs/integration/next.md
+Vite        https://plumeria.dev/docs/integration/vite.md
+Bun         https://plumeria.dev/docs/integration/bun.md
+esbuild     https://plumeria.dev/docs/integration/esbuild.md
+Farm        https://plumeria.dev/docs/integration/farm.md
+Rollup      https://plumeria.dev/docs/integration/rollup.md
+Rolldown    https://plumeria.dev/docs/integration/rolldown.md
+Rspack      https://plumeria.dev/docs/integration/rspack.md
+webpack     https://plumeria.dev/docs/integration/webpack.md
+
+Frameworks  https://plumeria.dev/docs/integration/frameworks.md
+```
+
+設定項目をすべて調べるには、プラグインごとのリファレンスを使います。
+
+```text title="Plugin references"
+Next.js plugin  https://plumeria.dev/docs/api/plugins/next-plugin.md
+Unplugin        https://plumeria.dev/docs/api/plugins/unplugin.md
+ESLint plugin   https://plumeria.dev/docs/api/plugins/eslint-plugin.md
+```
+
+## 資料の一覧
+
+上の組み合わせに含まれない資料を探すときは、次の一覧を使います。基本の考え方から API リファレンスまで、各分野への入口をまとめています。
+
+| 分野 | 内容 | Markdown |
+| :-- | :-- | :-- |
+| はじめに | インストール、セレクターの規則、エディターと ESLint の設定 | [ページを開く](/ja/docs/installation) · [Markdown](/docs/installation.md) |
+| 基本の考え方 | Plumeria を使う理由、ビルド時の動き、モジュール、スタイルの組み合わせ | [Introduction](/docs.md) · [Plumeria を使う理由](/docs/why-plumeria.md) · [スタイルの組み立て方](/docs/thinking-in-plumeria.md) · [スタイルを重ねる規則](/docs/composition-laws.md) |
+| JavaScript API | `create`、静的なスタイル、テーマ、キーフレーム、マーカー、画面遷移、型付き CSS 変数、配置の代替候補、`use` | [ページを開く](/ja/docs/api#javascript-api) · [Markdown](/docs/api.md) |
+| 型 | `Style` と、受け付けるスタイルを絞ったり、プロパティを読んだりする型 | [ページを開く](/ja/docs/api#型) · [Markdown](/docs/api.md) |
+| コンポーネント | ヘッドレス UI と、開発時にスタイルを確認するインスペクター | [ページを開く](/ja/docs/api/packages) · [Markdown](/docs/api/packages.md) |
+| Wind | Tailwind CSS のデザイン値を静的なトークンとして使う方法 | [ページを開く](/ja/docs/api/packages/wind) · [Markdown](/docs/api/packages/wind.md) |
+| プラグインとツール | Next.js、unplugin、Jest、ESLint、`init`、コードを書き換えるツール | [ページを開く](/ja/docs/api#プラグイン) · [Markdown](/docs/api.md) |
+| バンドラーとの連携 | 九つのバンドラー、フレームワーク、パッケージの配布 | [ページを開く](/ja/docs/integration) · [Markdown](/docs/integration.md) |
+| テスト | Vitest と Jest でのコンポーネントテスト、jsdom、型のテスト | [ページを開く](/ja/docs/testing) · [Markdown](/docs/testing.md) |
+| スタイルの優先順位 | スタイルが競合したときに、どのクラスの指定が優先されるか | [ページを開く](/ja/docs/specificity) · [Markdown](/docs/specificity.md) |
+
+## マークダウン
+
+英語版の各ドキュメントは、URL の末尾に `.md` を付けると Markdown で取得できます。応答にはタイトルと正規 URL も含まれます。
+
+```text title="Any page as Markdown"
+https://plumeria.dev/docs/testing.md
+https://plumeria.dev/docs/api/javascript/create.md
+https://plumeria.dev/docs/integration/webpack.md
+```
+
+複数のページをまとめて調べるときは、機械処理用に生成された次の索引を使えます。
+
+<Cards>
+  <Card
+    title="llms.txt"
+    href="https://plumeria.dev/llms.txt"
+    description="全ページのタイトル、URL、説明"
+  />
+  <Card
+    title="llms-full.txt"
+    href="https://plumeria.dev/llms-full.txt"
+    description="すべての資料をまとめたファイル"
+  />
+  <Card
+    title="AI.md"
+    href="/ja/docs/ai"
+    description="AI が従うルールと基本の考え方"
+  />
+</Cards>
+
+## Markdown で読む
+
+[examples ディレクトリ](https://github.com/zss-labs/plumeria/tree/main/examples)には、Next.js、Vite、Rollup、Rspack、webpack、esbuild、Bun、Farm、Rolldown のビルド例があります。React Router、Waku、Vue、Svelte、Solid、Qwik、Preact、Astro、Storybook の例もあります。設定全体を見せたいときは、エージェントに対応するプロジェクトを渡してください。
