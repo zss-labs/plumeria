@@ -1514,7 +1514,8 @@ pub fn scan_file(file: &str, text: &str, style_prop: &str, theme: &Theme) -> Out
     let mut inserted = if insert_at == 0 { format!("{header}\n\n{create}\n\n") } else { format!("\n{header}\n\n{create}") };
     if scan.cn_converted == scan.cn_seen {
         for span in cn_imports {
-            let end = if text[span.end as usize..].starts_with('\n') { span.end + 1 } else { span.end };
+            let rest = &text[span.end as usize..];
+            let end = span.end + if rest.starts_with("\r\n") { 2 } else { u32::from(rest.starts_with('\n')) };
             if insert_at == span.end {
                 insert_at = span.start;
                 inserted = format!("{header}\n\n{create}\n");
