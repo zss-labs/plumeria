@@ -187,13 +187,15 @@ export const Parent = ({
   const elementsOf = (code: string): Rendered[] =>
     [
       ...code.matchAll(
-        /className=\{([\s\S]*?)\}(?: style=\{\{([\s\S]*?)\}\})?\s*\/>/g,
+        /className=(?:\{([\s\S]*?)\}|"([^"]*)")(?: style=\{\{([\s\S]*?)\}\})?\s*\/>/g,
       ),
     ].map((match) => ({
       className: norm(
-        new Function('color', 'n', `return (${match[1]});`)('red', 8),
+        match[1]
+          ? new Function('color', 'n', `return (${match[1]});`)('red', 8)
+          : match[2],
       ),
-      style: new Function('color', 'n', `return ({${match[2] ?? ''}});`)(
+      style: new Function('color', 'n', `return ({${match[3] ?? ''}});`)(
         'red',
         8,
       ),
@@ -202,17 +204,19 @@ export const Parent = ({
   /** The child's element, applied to one value of the style prop. */
   const renderOf = (code: string) => {
     const match = code.match(
-      /className=\{([\s\S]*?)\}(?: style=\{\{([\s\S]*?)\}\})?\s*\/>/,
+      /className=(?:\{([\s\S]*?)\}|"([^"]*)")(?: style=\{\{([\s\S]*?)\}\})?\s*\/>/,
     );
     if (!match) throw new Error(`no styled element in:\n${code}`);
     return (styleArray: unknown, on = true): Rendered => ({
       className: norm(
-        new Function('styleArray', 'on', `return (${match[1]});`)(
-          styleArray,
-          on,
-        ),
+        match[1]
+          ? new Function('styleArray', 'on', `return (${match[1]});`)(
+              styleArray,
+              on,
+            )
+          : match[2],
       ),
-      style: new Function('styleArray', 'on', `return ({${match[2] ?? ''}});`)(
+      style: new Function('styleArray', 'on', `return ({${match[3] ?? ''}});`)(
         styleArray,
         on,
       ),
