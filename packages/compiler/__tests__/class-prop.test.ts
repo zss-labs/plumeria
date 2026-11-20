@@ -36,7 +36,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   it('writes className when no class prop is configured', async () => {
     const code = await run(`export const A = () => <div sx={styles.a} />;`);
 
-    expect(code).toContain('className={');
+    expect(code).toContain('className="');
     expect(code).not.toContain('<div class=');
   });
 
@@ -46,8 +46,8 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       'class',
     );
 
-    expect(code).toContain('class={');
-    expect(code).not.toContain('className={');
+    expect(code).toContain('class="');
+    expect(code).not.toContain('className=');
   });
 
   it('keeps the style attribute for a dynamic function key', async () => {
@@ -56,9 +56,9 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       'class',
     );
 
-    expect(code).toContain('class={');
+    expect(code).toContain('class="');
     expect(code).toContain('style={{');
-    expect(code).not.toContain('className={');
+    expect(code).not.toContain('className=');
   });
 
   it('merges an existing attribute written under the configured name', async () => {
