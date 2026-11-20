@@ -1,0 +1,97 @@
+---
+title: 'セレクターのルール'
+description: '疑似クラス、疑似要素、クエリをどう入れ子にできるか、そしてその理由。'
+---
+
+## ネスト [#nesting]
+スタイルの中では、次の向きに一段だけセレクターを入れ子にできます。
+
+- `@media` や `@container` の中に疑似セレクターを書けます。
+- 疑似セレクターの中にクエリーは書けません。クエリーの中に別のクエリーを置くこともできません。
+- 疑似セレクターの中に別の疑似セレクターを置く場合は、`':hover::before'` のように一つのキーにまとめます。
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  list: {
+    '@media (max-width: 768px)': { // [!code ++]
+      ':hover': { // [!code ++]
+        listStyleType: 'none', // [!code ++]
+      }, // [!code ++]
+    }, // [!code ++]
+  },
+});
+```
+
+StyleX は各プロパティの値の中に疑似クラスのキーを書きます。Plumeria では疑似セレクターをキーにして、その中にプロパティと値を書きます。
+
+```ts title="StyleX"
+import * as stylex from '@stylexjs/stylex';
+
+const styles = stylex.create({
+  button: {
+    backgroundColor: {
+      default: 'lightblue',
+      ':hover': 'blue',
+    },
+  },
+});
+```
+
+```ts title="Plumeria"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  button: {
+    backgroundColor: 'lightblue',
+    ':hover': {
+      backgroundColor: 'blue',
+    },
+  },
+});
+```
+
+次の書き方はビルドエラーになります。
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  list: {
+    ':hover': {
+      '@media (max-width: 768px)': { // [!code --]
+        background: 'skyblue', // [!code --]
+      }, // [!code --]
+    },
+  },
+});
+```
+
+## 結合子 [#combinators]
+`:has()` などの関数形式の疑似クラスの引数以外では、キーに結合子（`>`、`+`、`~`、空白）を使えません。親の状態に合わせて子を変えるには [marker と extended](/ja/docs/api/javascript/marker) を使います。
+
+[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) の `no-invalid-selector` と `no-combinator` がこれらの問題を報告します。
+
+## 関数形式の疑似クラス [#functional-pseudo-classes]
+関数形式の疑似クラスの内側に、同じ名前の疑似クラスは書けません。間に別の疑似クラスがあっても同じです。名前が違えば `':is(:where(:not(:has(.a))))'` のように入れ子にできます。例外は `:not()` です。`':not(:not(.a), .b)'` のように平らに書き換えられない場合があるため、同じ名前でも使えます。
+
+```ts
+':where(:where(.a, .b), .c)' // [!code --]
+':where(.a, .b, .c)' // [!code ++]
+':is(:where(:is(.a)))' // [!code --]
+```
+
+この規則に反するキーがあるとビルドは止まります。例の一行目のように内側の呼び出しが引数一つを占める場合は、`no-invalid-selector` が入れ子を外す修正を提案します。ほかの形では一致する要素が変わるため、手で直します。
+
+キー内のかっこは最大16段です。引用符は角括弧か丸括弧の中で文字列を囲むために使います。深すぎるかっこや `':hover":is(.x)'` のように余った引用符は、ビルドエラーになり、`no-invalid-selector` でも報告されます。
+
+## 向きを 1 つにする理由 [#why-one-direction]
+同じ CSS ルールに対する書き方を一つにそろえるためです。CSS では `@media (…) { .a:hover { … } }` のようにクエリーの中にセレクターを置くので、スタイルのキーもその順に書きます。
+
+逆順も許すと、同じルールに二つの書き方ができ、型もすべての疑似セレクターとクエリーを再帰的に調べる必要が出ます。一方向に一段だけにすると、型が単純になり、補完の候補が正確になり、プロジェクト内の書き方もそろいます。
+
+
+<Cards>
+  <Card title="css.create" href="/ja/docs/api/javascript/create" />
+</Cards>
