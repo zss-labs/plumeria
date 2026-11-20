@@ -39,9 +39,12 @@ declare module '@napi-rs/wasm-runtime' {
 
 declare module '@napi-rs/wasm-runtime/fs' {
   export function memfs(json?: Record<string, string | null>): {
-    fs: {
+    fs: import('@tybys/wasm-util').IFs & {
       writeFileSync: (path: string, data: string) => void;
       existsSync: (path: string) => boolean;
+    };
+    vol: {
+      toJSON: () => Record<string, string | null>;
     };
   };
 }
