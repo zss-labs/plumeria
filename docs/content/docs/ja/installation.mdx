@@ -1,61 +1,58 @@
 ---
-title: 'Installation'
-description: 'Plumeria をインストールし、コンパイラ、ESLint、バンドラーとの連携をセットアップします。'
+title: 'インストール'
+description: 'プロジェクトに Plumeria を追加し、JSX で sx を使えるようにします。'
 ---
 
 import { Step, Steps } from "component/Steps";
 
-このドキュメントのインストールコマンドは pnpm を使っています。Plumeria は他のどのパッケージマネージャーでも同じように動きます。
+この資料のコマンドでは pnpm を使います。ほかのパッケージマネージャーでも Plumeria は同じように使えます。
 
 <Steps>
 <Step>
-## コマンド 1 つで
+## 自動で設定する
 
-`npx @plumeria/init` はプロジェクトを読み取り、読み取れないことだけを質問して、残りを書き込みます。
-対象はパッケージ、バンドラープラグイン、`plumeria.d.ts`、ESLint の設定です。
+`npx @plumeria/init` はプロジェクトを調べ、自動で分からないことだけを質問します。その結果をもとにパッケージを追加し、バンドラープラグイン、`plumeria.d.ts`、ESLint を設定します。
 
 ```sh title="Terminal"
 npx @plumeria/init
 ```
 
-何かを書き込む前に計画を表示し、`--dry-run` を付けると計画の表示で止まります。
-質問の一覧と変更するファイルの一覧は [@plumeria/init](/ja/docs/api/migrate/init) を参照してください。
-このページの残りでは、手作業でのセットアップを説明します。
+変更前に作業予定が表示されます。予定だけ確認するには `--dry-run` を付けます。質問と変更対象のファイルは [@plumeria/init](/ja/docs/api/migrate/init) にすべて載っています。以下では、同じ設定を手動で行う方法も紹介します。
 
-既存のプロジェクトを移行するなら、init の後に [@plumeria/migrate](/ja/docs/api/migrate/migrate) を実行してください。
+既存のプロジェクトを別のスタイルライブラリから移す場合は、初期設定の後に [@plumeria/migrate](/ja/docs/api/migrate/migrate) を実行してください。
 
 </Step>
 
 <Step>
-## core のインストール
-core パッケージは型定義だけを持つので、バンドルにランタイムを追加しません。
+## 手動でパッケージを追加する
+core パッケージに入っているのは型定義だけです。ブラウザーで実行するコードはバンドルに追加されません。
 
 ```sh title="Terminal"
 pnpm i -D @plumeria/core
 ```
 
-### plumeria.d.ts
-`@plumeria/core` は独自の prop 宣言を持っていません。プロジェクトに `src/` があればその中に、なければアプリケーションのルートに置き、デフォルトの `sx` prop の宣言を参照します。
+### sx の型を読み込む
+`@plumeria/core` を入れただけでは、スタイル用 prop の型は追加されません。標準の `sx` を使う場合は、`src/plumeria.d.ts` から付属の型宣言を参照します。`src/` がなければ、プロジェクトのルートにファイルを置いてください。
 ```ts title="plumeria.d.ts"
 /// <reference types="@plumeria/core/sx" />
 ```
-別の名前を使う場合は [Declaring the styling prop](/ja/docs/api/types/Style#declaring-the-styling-prop) を参照してください。
+ほかの名前を使う場合は、[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)を参照してください。
 
-ESLint は任意です。バンドラーの設定に進む場合はこちら: [Next.js](/ja/docs/installation#nextjs) / [Vite](/ja/docs/installation#vite)
+エディターでの ESLint の設定は任意です。[Next.js](#nextjs) または [Vite](#vite) の設定に進んでも構いません。
 
 </Step>
 
 <Step>
 
-## ESLint のセットアップ
+## ESLint を設定する
 
-プラグインをインストールします。
+まずプラグインをインストールします。
 
 ```sh title="Terminal"
 pnpm i -D @plumeria/eslint-plugin
 ```
 
-[`@plumeria/eslint-plugin`](/ja/docs/api/plugins/eslint-plugin) はスタイルのプロパティを並べ替えて整形し、無効な値やセレクターを報告します。すべてのルールはリファレンスページに載っています。
+[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) はスタイルのプロパティを並べ替えて整形し、無効な値やセレクターを報告します。リンク先にルールの一覧があります。
 
 ```ts title="eslint.config.ts"
 import eslint from '@eslint/js';
@@ -70,16 +67,14 @@ export default defineConfig(
 );
 ```
 
-バンドラープラグインはデフォルトでこれらのルールを使ってビルドを lint するので、設定なしでもスタイルのエラーや警告でビルドが止まります。
-esbuild と Bun では、代わりにビルドコマンドの前に `plumeria-lint --` を付けてください。
-スタイリング prop の名前を `classStyle` に変えている場合は、ビルドコマンドの前に `plumeria-lint --style-prop classStyle --` を付けます。
+バンドラープラグインは、標準でビルド時にこれらのルールをチェックします。追加設定なしでも、スタイルに警告やエラーがあればビルドが止まります。esbuild と Bun では、ビルドコマンドの前に `plumeria-lint --` を付けてください。prop 名を `classStyle` に変えた場合は `plumeria-lint --style-prop classStyle --` を使います。
 
 </Step>
 
 <Step>
-## 連携
+## バンドラーを設定する
 
-使っているバンドラーのプラグインを追加します。
+使っているバンドラーに合うプラグインを追加します。
 
 ### Next.js
 
@@ -87,10 +82,9 @@ esbuild と Bun では、代わりにビルドコマンドの前に `plumeria-li
 pnpm i -D @plumeria/next-plugin
 ```
 
-Turbopack と Webpack のどちらでも動きます。
+Turbopack と Webpack の両方に対応しています。
 
-ソースファイルが変わると、Next.js がビルドキャッシュを再利用する場合も含めて、プラグインがスタイルシートを更新します。
-`dev` や `build` の前に `rimraf` を入れたり `.next` を削除したりする必要はありません。
+ソースを変更すると、Next.js がビルドキャッシュを再利用した場合も、プラグインが CSS を更新します。`dev` や `build` の前に `rimraf` を入れたり、`.next` を削除したりする必要はありません。
 
 ```ts title="next.config.ts"
 import type { NextConfig } from "next";
@@ -119,19 +113,19 @@ export default defineConfig({
 
 ```
 <Cards>
-  <Card title="Next.js integration" href="/ja/docs/integration/next" />
-  <Card title="Vite integration" href="/ja/docs/integration/vite" />
+  <Card title="Next.js の設定" href="/ja/docs/integration/next" />
+  <Card title="Vite の設定" href="/ja/docs/integration/vite" />
 </Cards>
 
 </Step>
 </Steps>
 
-## 最初のステップ
+## 次に読むページ
 
-最初の項目が満たされればセットアップは完了です。残りの項目で、考え方をひととおり確かめられます。
+最初の項目ができていれば設定は完了です。続けて、基本の使い方も試してみてください。
 
-- [ ] バンドラーの設定に Plumeria が登録され、`plumeria.d.ts` が置かれている
-- [ ] 右側からスタイルを上書きする — [Why Plumeria](/ja/docs/why-plumeria)
-- [ ] function key で実行時の値を渡す — [Thinking in Plumeria](/ja/docs/thinking-in-plumeria#pass-a-runtime-value-through-a-function)
-- [ ] `createTheme` でテーマを切り替える — [Thinking in Plumeria](/ja/docs/thinking-in-plumeria#keep-values-apart-from-styles)
-- [ ] ビルドが止まったら、[Troubleshooting](/ja/docs/troubleshooting) でメッセージを探す
+- [ ] バンドラーに Plumeria を登録し、`plumeria.d.ts` を置く
+- [ ] 配列の右側のスタイルで上書きする。[Plumeria を使う理由](/ja/docs/why-plumeria)
+- [ ] 関数で定義したスタイルに実行時の値を渡す。[スタイルの組み立て方](/ja/docs/thinking-in-plumeria#実行時の値を渡す)
+- [ ] `createTheme` でテーマを切り替える。[値を共有する](/ja/docs/thinking-in-plumeria#値を共有する)
+- [ ] ビルドが止まったら、[困ったときは](/ja/docs/troubleshooting)でメッセージを探す
