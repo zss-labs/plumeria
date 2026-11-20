@@ -59,7 +59,7 @@
     <text class="code" x="48" y="104">const styles = css.create({</text>
     <text class="code" x="64" y="126">notice: { … },</text>
     <text class="code" x="48" y="148">});</text>
-    <text class="code" x="48" y="196">&lt;div classStyle={styles.notice} /&gt;</text>
+    <text class="code" x="48" y="196">&lt;div sx={styles.notice} /&gt;</text>
 
     <text class="title" x="418" y="38">Notice/</text>
     <text class="title" x="444" y="96">styles.ts</text>
@@ -71,7 +71,7 @@
     <text class="title" x="732" y="96">index.tsx</text>
     <text class="code" x="732" y="130">import { <tspan class="hl">styles</tspan> }</text>
     <text class="code" x="748" y="152">from './styles';</text>
-    <text class="code" x="732" y="196">&lt;div classStyle=</text>
+    <text class="code" x="732" y="196">&lt;div sx=</text>
     <text class="code" x="748" y="218">{styles.notice} /&gt;</text>
 
     <text class="code dim" x="420" y="292">app/  styles.ts <tspan class="hl">→</tspan> page.tsx</text>
