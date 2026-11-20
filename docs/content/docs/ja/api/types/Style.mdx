@@ -1,0 +1,118 @@
+---
+title: 'Style'
+description: 'スタイリング prop と、css.use() のすべての引数の型。'
+---
+
+```ts
+type Style = StyleList<StyleNamespace>;
+export type { Style };
+```
+
+`Style` は `sx` と [css.use()](/ja/docs/api/javascript/use) の各引数の型です。[css.create](/ja/docs/api/javascript/create) で定義したスタイル、`false`、`null`、`undefined`、これらを含む配列を渡せます。配列は入れ子にもできます。
+
+## 例 [#example]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    color: 'red',
+  },
+  active: {
+    fontWeight: 'bold',
+  },
+});
+
+export function Component({ active }: { active: boolean }) {
+  return <div sx={[styles.base, active && styles.active]} />;
+}
+```
+
+## 受け付けるのは作成したスタイルだけ [#only-created-styles-are-accepted]
+
+コンパイラが読み取れるのは `css.create` で作ったスタイルです。オブジェクトをその場で書いて渡すと型エラーになります。
+
+```tsx
+<div sx={styles.base} />       // ok
+<div sx={{ color: 'red' }} />  // Type error
+```
+
+`css.create` の戻り値は複数のスタイルをまとめたオブジェクトです。そのまま渡すと型エラーになるので、中から使うスタイルを選んでください。
+
+```tsx
+<div sx={styles} />  // Type error
+```
+
+## スタイリング prop を宣言する [#declaring-the-styling-prop]
+
+`@plumeria/core` を入れただけでは prop の型は追加されません。`plumeria.d.ts` からパッケージ付属の宣言を参照すると `sx` が使えます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+別の名前を使うこともできます。ビルド設定の `styleProp` に名前を指定し、パッケージが公開する `Style` 型を使って、React に同じ名前の prop を宣言します。
+
+```ts title="plumeria.d.ts"
+import type { Style } from '@plumeria/core';
+
+declare global {
+  namespace React {
+    interface HTMLAttributes<T> {
+      classStyle?: Style;
+    }
+    interface SVGAttributes<T> {
+      classStyle?: Style;
+    }
+  }
+}
+```
+
+その prop は `sx` と同じように使えます。配列や条件が偽のときの値も渡せます。
+
+```tsx
+<div classStyle={[styles.text, cond && styles.cond]} />
+```
+
+ビルド設定の `styleProp` と `plumeria.d.ts` の名前をそろえてください。一致しないと型チェックは通っても、ビルド時に prop が変換されません。設定例は [Next.js](/ja/docs/integration/next) と [Vite](/ja/docs/integration/vite) にあります。
+
+## どの prop でもスタイルを運べる [#any-prop-can-carry-a-style]
+
+`Style` は自作コンポーネントの任意の prop にも使えます。コンパイラはスタイルを受け取る場所をコンポーネントごとに記録するので、prop 名にかかわらず呼び出し元から定義をたどれます。
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+type CardProps = {
+  boxStyle?: css.Style;
+};
+
+function Card({ boxStyle }: CardProps) {
+  return <div sx={[styles.base, boxStyle]} />;
+}
+
+export function Example() {
+  return <Card boxStyle={styles.active} />;
+}
+```
+
+受け取ったスタイルは、自分が描画する要素に適用してください。別のコンポーネントに転送するだけの場合は `no-style-prop-relay` が報告し、ビルドが止まります。
+
+## リストではなく 1 つのスタイル [#one-style-rather-than-a-list]
+
+`Style` はリストなので、配列、条件付きの値、省略した値も扱えます。一つのスタイルを受け取り、中のプロパティを読む場合は [AtomicStyle](/ja/docs/api/types/AtomicStyle) を使います。
+
+```tsx
+function Glyph({ glyphStyle }: { glyphStyle: css.AtomicStyle<{ color: string }> }) {
+  return <svg fill="currentColor" className={glyphStyle.color} />;
+}
+```
+
+`Style` はスタイル用の prop に渡せる値を表し、`AtomicStyle` は中身を読める一つのスタイルを表します。
+
+TypeScript は export したスタイルの型宣言にもこの型を書き出します。スタイルをパッケージで配る場合は `declaration: true` を指定します。
+
+<Callout title="補足">
+`Style` ではすべてのプロパティを受け取れます。受け付ける範囲を絞るには [StyleProps](/ja/docs/api/types/StyleProps)、[WithoutProperties](/ja/docs/api/types/WithoutProperties)、[StaticStyles](/ja/docs/api/types/StaticStyles) を使います。
+</Callout>
