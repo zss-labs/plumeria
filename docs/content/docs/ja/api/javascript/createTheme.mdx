@@ -1,0 +1,136 @@
+---
+title: css.createTheme
+description: 'ライトやダークなどのテーマを、クラス、属性、メディアクエリで切り替えます。'
+stability: Frozen
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+```ts
+type CreateTheme = {
+  [key: string]: {
+    default: string;
+    theme: string;
+  };
+};
+
+export type createTheme = <const T extends CreateTheme>(themeSelector: CreateThemeSelector, rule: T) => CreateThemeReturnType<T>;
+export const createTheme: createTheme;
+```
+
+`createTheme`はカスタムテーマ用のスコープ付きCSS変数を定義します。生成される各変数の名はユニークなハッシュで始まりますので、他のテーマやグローバルなCSS変数と衝突することはできません。
+
+Plumeriaテーマ間の参照はサポートされていません：`default`と`theme`は文字列を受け取り、別のテーマメンバーを受け取るものではなく、生成されたCSS変数の名前はコンテンツハッシュであり、テーマが変わると変更される可能性があります。
+
+## 例 [#example]
+
+ルート要素にクラスを追加することでテーマを切り替えます。
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
+
+    export const theme = css.createTheme('.dark', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xvgqnxo9-text: #333;
+    }
+
+    .dark {
+      --xvgqnxo9-text: #eaeaea;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 使い方 [#usage]
+
+```ts
+import * as css from '@plumeria/core';
+import { theme } from 'lib/theme';
+
+const styles = css.create({
+  title: {
+    color: theme.text,
+  },
+});
+```
+
+## セレクター [#selectors]
+
+最初の引数には属性セレクターのほか、入れ子にできる条件付きアットルール（`@media`、`@container`、`@supports` など）も使えます。
+
+### 属性 [#attribute]
+
+次回のテーマなどの属性ベースの設定に使用されます。
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
+
+    export const theme = css.createTheme('[data-theme="dark"]', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xipw25nr-text: #333;
+    }
+
+    [data-theme="dark"] {
+      --xipw25nr-text: #eaeaea;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### メディアクエリ [#media-query]
+
+JavaScriptなしでシステム設定に従います。
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core';
+
+    export const theme = css.createTheme('@media (prefers-color-scheme: dark)', {
+      text: {
+        default: '#333',
+        theme: '#eaeaea',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    :where(:root) {
+      --xnof3ra0-text: #333;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :where(:root) {
+        --xnof3ra0-text: #eaeaea;
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Callout title="補足">
+他のすべての定義と同様に、テーマは、その変数の一つがスタイルで使用されるまでCSSを送信しません。
+</Callout>
