@@ -237,7 +237,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
   describe('the call site', () => {
     it('resolves a style on an element where it stands', async () => {
       expect(declarationOf(await compile(APP), 'OnElement')).toContain(
-        'className={"',
+        'className="',
       );
     });
 
@@ -245,7 +245,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
     // one forwarding `className` to its own element needs.
     it('resolves a style on a component it does not know', async () => {
       expect(declarationOf(await compile(APP), 'OnForwarder')).toContain(
-        'className={"',
+        'className="',
       );
     });
 
@@ -289,7 +289,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
     // Plain, which does not apply it.
     it('reads a style passed through memo(Plain) as one passed to Plain', async () => {
       expect(declarationOf(await compile(APP), 'OnPassesClassName')).toContain(
-        'className={"',
+        'className="',
       );
       await expect(compile(PLAIN)).rejects.toThrow(
         /"sx" is a style received through a prop but is never applied/,
@@ -369,7 +369,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
 
     it('resolves a dynamic style on an element where it stands', async () => {
       const code = declarationOf(await compile(APP), 'DynamicOnElement');
-      expect(code).toContain('className={"');
+      expect(code).toContain('className="');
       expect(code).toMatch(/style=\{\{ "--[\w-]+": /);
     });
 
@@ -388,7 +388,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
         isDev: false,
         addDependency: () => {},
       });
-      expect(declarationOf(result.code, 'Unseen')).toContain('className={"');
+      expect(declarationOf(result.code, 'Unseen')).toContain('className="');
     });
   });
 });
