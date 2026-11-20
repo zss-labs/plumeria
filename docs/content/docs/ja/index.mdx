@@ -1,0 +1,146 @@
+---
+title: "はじめに"
+description: "TypeScript で書いたスタイルが、どのように CSS になるかを紹介します。"
+---
+
+<img src="/compile-process.svg" width={1000} height={440} alt="css.create と sx をクラス名とプロパティごとの CSS に変換する流れ" />
+
+Plumeria は React のスタイルを書くためのライブラリです。TypeScript でスタイルオブジェクトを書くと、コンパイラがプロパティごとの CSS とクラス名に変換し、使う場所も書き換えます。ライブラリ本体は JavaScript バンドルに入らず、ブラウザーでスタイルを計算する処理も残りません。
+
+指定が重なると、プロパティごとに配列の右側の値を使います。同じファイル内でも、別のモジュールから読み込んでも、親から prop で渡しても同じです。ファイルを分けたり移したりしても、CSS の読み込み順で表示が変わることはありません。書き間違いがあれば、その行を示してビルドが止まります。
+
+## スタイルを書く
+
+`css.create()` でスタイルを定義し、要素の `sx` に渡します。
+
+```tsx title="Footer.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: {
+    padding: 16,
+    color: 'gray',
+  },
+});
+
+export const Footer = () => <p sx={styles.text}>MyText</p>;
+```
+
+ビルドすると import と `css.create()` の呼び出しが消え、スタイルの宣言は生成された CSS ファイルに移ります。
+
+```tsx title="Output"
+export const Footer = () => <p className={"xqqbxt1d xuifcaas"}>MyText</p>;
+```
+
+```css title="Generated CSS"
+.xqqbxt1d { padding: 16px; }
+.xuifcaas { color: gray; }
+```
+
+## スタイルを重ねる
+
+`sx` には配列、三項演算子、条件式を渡せます。同じプロパティを指定した場合は、右側のスタイルが優先されます。
+
+```tsx title="Item.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    padding: 16,
+    color: 'gray',
+  },
+  active: {
+    color: 'teal',
+  },
+});
+
+export const Item = ({ isActive }: { isActive: boolean }) => (
+  <p sx={[styles.base, isActive && styles.active]}>MyText</p>
+);
+```
+
+上書きされた値のクラスは要素に付きません。
+
+```html title="Output"
+<p class="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
+<p class="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
+```
+
+一括指定と個別指定が重なる場合は例外です。どちらを先に書いても、重なった部分には個別指定が効きます。各組み合わせは[スタイルの優先順位](/ja/docs/specificity)、重ね合わせの数学的な規則は[スタイルを重ねる規則](/ja/docs/composition-laws)を参照してください。
+
+[プレイグラウンドで上書きの順番を試す](/playground?example=merge)
+
+## 別のファイルで使う
+
+別ファイルのスタイルもビルド時に変換され、実行時のライブラリコードは残りません。プロジェクトに合わせ、コンポーネントと同じファイルに書くことも、複数のファイルで共有することもできます。
+
+```ts title="styles.ts"
+import * as css from '@plumeria/core';
+
+export const styles = css.create({
+  common: {
+    color: 'gray',
+  },
+});
+```
+
+```tsx title="Component.tsx"
+import { styles } from './styles';
+
+export const Component = () => {
+  return <p sx={styles.common}>Shared style</p>;
+};
+```
+
+`sx` で適用するだけのファイルには追加設定は不要です。ほかの prop でコンポーネントに渡すファイルでは、コンパイラがそのファイルを見つけられるように `@plumeria/core` を import します。スタイルを使うすべてのファイルで import しても問題なく、コンパイラが最も速く対象を判断できます。
+
+## 型で確かめる
+
+Plumeria はスタイルを**型で表した定義**として扱います。パッケージの各入口はすべて `.d.ts` なので、ブラウザーで読み込む JavaScript 本体はありません。
+
+```json title="package.json"
+{
+  "name": "@plumeria/core",
+  "exports": {
+    ".": {
+      "types": "./lib/css.d.ts"
+    },
+    "./sx": {
+      "types": "./lib/sx.d.ts"
+    }
+  }
+}
+```
+
+固定のスタイルはビルド時にクラス名へ変わります。動的な部分にもライブラリは残りません。関数で作るスタイルの値は CSS 変数になり、候補から選ぶ式は、計算済みのクラス名を表から引くコードになります。ブラウザーに届くのはクラス名、CSS、自分で書いた式です。
+
+- ライブラリの実行用バンドルが不要
+- 実行時のスタイル定義の評価が不要
+- 実行時のスタイルの解析が不要
+- 実行時の依存パッケージが不要
+
+ゼロランタイムとは、必要な計算をビルド時に済ませるという意味です。ブラウザーにはクラス名と CSS を渡します。
+
+## AI にコードを頼む
+
+次の文章をコーディングエージェントのプロンプトに貼り付けてください。
+
+```text
+Build this with Plumeria for all styling. First read https://plumeria.dev/docs/installation and https://plumeria.dev/docs/ai in full, and follow every rule in the ai doc exactly — including the property order and the border shorthand expansion. If the project is not set up yet, set it up the way the installation doc describes. Task: <describe what to build>. Build with `npm run build` and lint with `npm run lint`; both must pass.
+```
+
+2026年11月の計測では、このプロンプトを使ったエージェントは100回すべて（20課題を各5回）で、最初の試行でビルドと lint を通過しました。[計測手順と各回の結果](https://github.com/zss-labs/plumeria/blob/main/benchmarks/agent-bench.md)
+
+## 次に読むページ
+
+<Cards>
+  <Card title="インストール" href="/ja/docs/installation" />
+  <Card title="移行" href="/ja/docs/api/migrate/migrate" />
+  <Card title="Plumeria を使う理由" href="/ja/docs/why-plumeria" />
+  <Card title="スタイルの組み立て方" href="/ja/docs/thinking-in-plumeria" />
+  <Card title="API" href="/ja/docs/api" />
+</Cards>
+
+---
+
+このサイトも Plumeria で作っています。ドキュメント用のアプリは同じリポジトリのワークスペース内のパッケージを使うので、リリースや実験的な変更は公開前にここで動かします。
