@@ -1,0 +1,18 @@
+---
+title: 'How Plumeria Compiles'
+description: 'Follow an imported style from its definition to the class name and CSS rule that reach the browser.'
+---
+
+When `Card.tsx` uses `btn.base` in its `sx` prop, the padding is defined in another file. Plumeria connects the two at build time.
+
+<img src="/compiler-architecture.svg" width={960} height={456} alt="The compiler looks up btn in button.ts, selects its base style, and emits the same class name in JSX and CSS." />
+
+## Register the definition
+
+The scanner finds the `css.create` call in `button.ts` and hashes the entire style object. It records two entries. The first maps the file path and binding name (`…/button.ts-btn`) to the object hash (`x2vyv31m`). The second maps that hash to the definition, including its `base` member.
+
+## Resolve the use
+
+When transforming `Card.tsx`, the compiler follows the import of `btn` back to `button.ts`. It retrieves the definition and selects `base`, which contains one declaration, `padding: 16`.
+
+That declaration produces the atomic class `xqqbxt1d`. The compiler places the class name on the element and emits the matching rule, `.xqqbxt1d { padding: 16px; }`. By the time the component renders, the lookup is complete.
