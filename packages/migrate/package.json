@@ -1,0 +1,40 @@
+{
+  "name": "@plumeria/migrate",
+  "version": "22.1.2",
+  "description": "Migrate between CSS Modules and Plumeria",
+  "author": "zss-labs",
+  "license": "MIT",
+  "homepage": "https://plumeria.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zss-labs/plumeria.git",
+    "directory": "packages/migrate"
+  },
+  "bugs": {
+    "url": "https://github.com/zss-labs/plumeria/issues"
+  },
+  "keywords": [
+    "plumeria",
+    "migration",
+    "css-modules",
+    "css-in-js"
+  ],
+  "sideEffects": false,
+  "bin": {
+    "plumeria-migrate": "bin/migrate.js"
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "cargo build --release --target wasm32-wasip1 && mkdir -p dist && cp target/wasm32-wasip1/release/plumeria-migrate.wasm dist/migrate.wasm"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
