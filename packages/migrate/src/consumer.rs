@@ -8,7 +8,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::cascade::unrepresentable;
 use crate::resolve::{basename, dirname, relative, resolve, Paths};
-use crate::stylesheet::{quote, Converted};
+use crate::stylesheet::Converted;
 
 const CORE: &str = "@plumeria/core";
 
@@ -46,7 +46,7 @@ struct Read {
 enum Item {
     Read { guard: Option<Span>, read: Read },
     Cond { span: Span, reads: Vec<Read> },
-    Other { span: Span },
+    Other,
     Unknown { span: Span },
     Word(String),
 }
@@ -187,7 +187,7 @@ impl<'s> Scan<'s> {
                 return Item::Cond { span: inner.span(), reads: reads.into_iter().flatten().collect() };
             }
         }
-        Item::Other { span: inner.span() }
+        Item::Other
     }
 
     fn list_of(&self, expression: &Expression) -> Vec<Item> {
@@ -203,7 +203,7 @@ impl<'s> Scan<'s> {
                     return elements
                         .iter()
                         .map(|element| match element {
-                            ArrayExpressionElement::SpreadElement(spread) => Item::Other { span: spread.span },
+                            ArrayExpressionElement::SpreadElement(_) => Item::Other,
                             ArrayExpressionElement::Elision(_) => Item::Word(String::new()),
                             _ => self.item_of(element.to_expression()),
                         })
@@ -732,7 +732,7 @@ impl Scan<'_> {
             self.settle(&own.items);
             let mut consumed = FxHashSet::default();
             let mut styles: Vec<(Option<(usize, usize)>, String)> = Vec::new();
-            let mut others: Vec<(bool, String)> = Vec::new();
+            let mut mixed = false;
             for item in &own.items {
                 match item {
                     Item::Read { guard, read } => {
@@ -764,11 +764,7 @@ impl Scan<'_> {
                         let text = self.render(*span);
                         styles.push((None, text));
                     }
-                    Item::Other { span } => {
-                        let text = self.render(*span);
-                        others.push((false, text));
-                    }
-                    Item::Word(word) => others.push((true, word.clone())),
+                    Item::Other | Item::Word(_) => mixed = true,
                     Item::Unknown { span } => {
                         for (_, read) in Self::reads_of(&own.items) {
                             self.hold(read.sheet, "style-prop-present", self.style_prop.to_string(), span.start);
@@ -794,27 +790,13 @@ impl Scan<'_> {
             let mut list: Vec<String> = tags;
             list.extend(styles.into_iter().map(|(_, text)| text));
             let expression = if list.len() == 1 { list[0].clone() } else { format!("[{}]", list.join(", ")) };
-            let class_text = if others.is_empty() {
-                None
-            } else if others.iter().all(|(word, _)| *word) {
-                Some(format!(
-                    "\"{}\"",
-                    others.iter().map(|(_, w)| w.as_str()).collect::<Vec<_>>().join(" ")
-                ))
-            } else {
-                let parts = others
-                    .iter()
-                    .map(|(word, text)| if *word { quote(text) } else { text.clone() })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                Some(format!("{{[{parts}].filter(Boolean).join(' ')}}"))
-            };
-
-            let text = match class_text {
-                Some(class_text) => format!("className={class_text} {prop}={{{expression}}}"),
-                None => format!("{prop}={{{expression}}}"),
-            };
-            self.edits.push((own.span, text));
+            if mixed {
+                for (_, read) in Self::reads_of(&own.items) {
+                    self.hold(read.sheet, "class-name-mixed", "className".to_string(), own.span.start);
+                }
+                continue;
+            }
+            self.edits.push((own.span, format!("{prop}={{{expression}}}")));
 
             if consumed.is_empty() {
                 continue;
