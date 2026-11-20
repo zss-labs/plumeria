@@ -1,0 +1,72 @@
+---
+title: 'トラブルシューティング'
+description: 'Plumeria のビルドエラーを読み、スタイルがコンパイルされなかった理由を見つけ、よくある原因を直します。'
+---
+
+Plumeria はビルド時にスタイルを処理します。問題は多くの場合、ビルドエラーか、スタイルがページに届かないという形で現れます。コードを変える前に、まずメッセージと次の項目を確認してください。
+
+## ビルドエラーの読み方 [#reading-a-build-error]
+
+コンパイラのエラーには、解決できなかった式とファイル名が表示されます。
+
+```text
+[plumeria] Cannot resolve static value: theme.spacing.md. It must be a const holding a string or number, declared in this file or imported from a module plumeria can read. (Component.tsx)
+```
+
+メッセージを手掛かりに、次の順に原因を絞ります。
+
+- 引用された式が、コンパイラの止まった場所です。最初に、そのスタイルを使う要素ではなく、式の定義を確認します。
+- メッセージが示す `const`、`css.createStatic`、関数形式などは、コンパイラが読める書き方です。多くの場合、その形に直せば解決します。
+- メッセージの先頭の語でこのページを検索してください。どのバンドラーも同じコンパイラを使うので、文言は共通です。
+
+## ビルドエラー [#build-errors]
+
+| メッセージの先頭 | 原因 | 直し方 |
+| :-- | :-- | :-- |
+| `Dynamic or unresolvable style object` | スタイルオブジェクトかその中の値が、ビルド時に読めない方法で計算されています。 | 値を直接書くか `const` で定義し、必要なら読めるモジュールから import します。実行時の値は `css.create({ name: (value) => ({ ... }) })` のように関数の引数で渡します。 |
+| `Cannot resolve static value` | このファイルや読み込めるモジュール内に、値を文字列や数値として保持する `const` がありません。 | `const` で宣言するか、定義をこのファイルや読み込めるモジュールに移します。`let`、関数の引数、呼び出しの結果は静的な値として解決できません。 |
+| `Cannot resolve static member expression` | `tokens.color.brand` のような参照元が `const` オブジェクト、`css.createStatic`、`css.createTheme` のいずれでもありません。 | オブジェクトを `const` に入れるか、`css.createStatic` または `css.createTheme` で定義します。 |
+| `Cannot inline the computed key` | `[breakpoints.md]` などの計算したキーをビルド時に展開できません。 | たとえば `const breakpoints = css.createStatic({ sm: '...' })` と定義して `[breakpoints.sm]` と読みます。別パッケージで定義する場合は `plumeria` の export 条件が必要です。 |
+| `Cannot spread ... at build time` | 展開しようとした値が `const` オブジェクトではありません。 | `const` オブジェクトを展開します。実行時に決まる値は関数形式で渡します。 |
+| `Unknown style member` | `styles.contianer` など、`css.create` にないキーを読もうとしています。 | キーのつづりを直します。片方のファイルだけで名前を変更していないかも確認してください。 |
+| `Unsupported expression type` / `Unsupported binary operator` / `Unsupported unary operand` | コンパイラが評価できない式が含まれています。使えるのはリテラル、`const`、それらを使った算術式やテンプレート式です。 | コンパイラが読める `const` に計算を分けます。実行時にしか分からない値には関数形式を使います。 |
+| `Template value cannot be resolved to a primitive` | テンプレートの `${}` 内の式が、ビルド時に文字列か数値になりません。 | 埋め込む値には、直接書いた文字列・数値か、それらを保持する `const` を使います。 |
+| `Spread elements in a style array are not supported` | スタイル用 prop の配列の中で別の配列を展開しています。 | `sx={[styles.base, styles.active]}` のように、各スタイルを個別に書きます。 |
+| `Style prop fallbacks using \|\| or ?? cannot be resolved` | スタイル用 prop に `a \|\| b` または `a ?? b` を渡しています。 | `sx={[cond ? styles.a : styles.b]}` のように、定義済みのスタイルを条件式で選びます。 |
+| `A style prop array contains an unsupported style expression` | 配列に、定義済みのスタイル、`null`、`false`、`undefined`、定義済みスタイルの条件分岐以外の値が含まれています。 | 定義したスタイルと条件だけを渡します。クラス名の文字列はスタイルとして使えません。[css.use の扱い](#スタイルは当たるが違うほうが勝つ-a-style-applies-but-the-wrong-one-wins) |
+| `Selector nests deeper than ...` / `Unexpected quote in selector` / `Unsupported at-rule` | セレクターの入れ子が深すぎる、引用符が余っている、または未対応のアットルールがあります。使えるのは `@media`、`@container`、`@supports`、`@starting-style` です。 | [セレクターの書き方](/ja/docs/selector-rules)に合わせます。親の状態に応じて変えたい場合は、結合子の代わりに [css.marker と css.extended](/ja/docs/api/javascript/marker) を使います。 |
+
+これらの問題の多くはビルド前に lint でも見つかります。[ルール一覧](/ja/docs/api/plugins/eslint-plugin)で各ルールの内容を確認できます。
+
+## スタイルがまったく当たらない [#a-style-is-not-applied-at-all]
+
+次の四点を順に確認してください。
+
+1. **スタイル用 prop の名前が違う。**
+   バンドラーの設定（`withPlumeria` または unplugin の `styleProp`）と `plumeria.d.ts` の名前をそろえます。違っていると、型チェックは通っても prop が変換されず、DOM に `sx` が残ってクラスが付きません。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+2. **ファイルがコンパイル対象から外れている。**
+   狭すぎる `include` や、ファイルに一致する `exclude` がないか確認します。標準では js、jsx、ts、tsx が対象で、`node_modules`、`dist`、`.next` は除外されます。
+3. **独自の prop で渡すファイルに import がない。**
+   スタイル用 prop 以外でコンポーネントに渡すファイルには、`@plumeria/core` の import が必要です。コンパイラはそれを目印にファイルを見つけます。`custom-props-require-import` でも検出できます。
+4. **単一ファイルコンポーネントの中に css.create がある。**
+   変換が読めるのは TypeScript と TSX です。定義を別の `.ts` ファイルに移してコンポーネントから読み込みます。[フレームワークとの連携](/ja/docs/integration/frameworks#単一ファイルコンポーネント)
+
+## スタイルは当たるが、違うほうが勝つ [#a-style-applies-but-the-wrong-one-wins]
+
+一度の呼び出しで全体を読める場合は、プロパティごとに右側の指定が優先されます。別々の `css.use()` の結果や外部のクラス名を連結すると、勝ち負けは CSS の順番で決まります。`css.use(styles.base, active && styles.active)` のように一度に渡してください。推奨ルールの `@plumeria/no-unresolved-composition` は連結を警告します。[css.use と sx の使用例](/ja/docs/api/javascript/use)
+
+一括指定と個別指定が重なる部分では、順番にかかわらず個別指定が優先されます。[スタイルの優先順位](/ja/docs/specificity)で各組み合わせを確認できます。
+
+## それでも解決しない場合 [#still-stuck]
+
+問題を報告するときは次の情報があると原因を調べられます。
+
+- かっこ内のファイル名を含む、エラーメッセージの全文。
+- インストールした Plumeria のパッケージとバージョン、バンドラー名。Next.js の場合は Turbopack と Webpack のどちらかも書いてください。
+- 問題を再現できる最小のファイル。`css.create` の定義と、それを使う要素の両方を含めます。
+
+<Cards>
+  <Card title="インストール" href="/ja/docs/installation" />
+  <Card title="ESLint プラグインのルール" href="/ja/docs/api/plugins/eslint-plugin" />
+  <Card title="セレクターの書き方" href="/ja/docs/selector-rules" />
+</Cards>
