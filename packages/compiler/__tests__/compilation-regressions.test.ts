@@ -48,7 +48,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
         'export const el = <div sx={styles.a} />;',
     );
     expect(result).toContain('/* 日本語 */');
-    expect(result).toContain(`className={"${classHash({ color: 'red' })}"}`);
+    expect(result).toContain(`className="${classHash({ color: 'red' })}"`);
     expect(() => checkSyntax(result)).not.toThrow();
   });
 
