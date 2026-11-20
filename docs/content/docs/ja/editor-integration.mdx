@@ -1,0 +1,45 @@
+---
+title: "エディターの設定"
+description: "VS Code で sx の入力、エラーの確認、定義への移動を楽にします。"
+---
+import { Step, Steps } from "component/Steps";
+
+<Steps>
+<Step>
+## sx のスニペット
+VS Code で `s` を `sx={}` に展開できるスニペットを追加します。
+
+1. macOS は `Shift + Cmd + P`、Windows と Linux は `Shift + Ctrl + P` でコマンドパレットを開きます。
+2. **Snippets: Configure Snippets** を実行します。
+3. TypeScript JSX なら `typescriptreact.json`、JavaScript JSX なら `javascriptreact.json` を選びます。
+
+```json title="typescriptreact.json"
+{
+  "sx": {
+    "prefix": "s",
+    "body": "sx={$1}",
+    "description": "sx",
+  }
+}
+```
+
+### 入力する
+```jsx
+<div s /> -> Enter -> <div sx={|} />
+```
+</Step>
+<Step>
+## ESLint
+
+エディターの ESLint 拡張機能を有効にすると、[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) が入力中にスタイルの問題を知らせます。[インストール手順](/ja/docs/installation#eslint-を設定する)の設定を追加してください。対象のルールは[プラグインのリファレンス](/ja/docs/api/plugins/eslint-plugin)にあります。
+</Step>
+<Step>
+## 定義に移動する
+
+macOS では `Cmd` を、Windows と Linux では `Ctrl` を押しながらスタイル名をクリックすると、定義に移動できます。JSX の外でも使えます。
+</Step>
+</Steps>
+
+<Cards>
+  <Card title="インストール手順に戻る" href="/ja/docs/installation" />
+</Cards>
