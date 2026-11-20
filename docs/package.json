@@ -32,6 +32,7 @@
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "shiki": "^4.1.0",
+    "sucrase": "^3.35.1",
     "waku": "1.0.0-rc.4",
     "zod": "^4.4.3",
     "zss-engine": "catalog:"
@@ -42,6 +43,7 @@
     "@plumeria/core": "workspace:^",
     "@plumeria/eslint-plugin": "workspace:^",
     "@plumeria/headlessui": "workspace:^",
+    "@plumeria/migrate": "workspace:^",
     "@plumeria/unplugin": "workspace:^",
     "@plumeria/wind": "workspace:^",
     "@rolldown/plugin-babel": "^0.2.3",
