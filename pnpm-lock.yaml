@@ -961,8 +961,8 @@ importers:
   packages/core:
     dependencies:
       cssdefs:
-        specifier: 1.0.1
-        version: 1.0.1
+        specifier: 1.0.2
+        version: 1.0.2
 
   packages/eslint-plugin:
     dependencies:
@@ -7304,8 +7304,8 @@ packages:
   css.escape@1.5.1:
     resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
 
-  cssdefs@1.0.1:
-    resolution: {integrity: sha512-P0eRqmzit9GjhiwiorvEnMA09qmVoLWnHjg6/ZyBpSL4i1SdaTnPBzf/c1Ovna6sPt1gOEy9kn2tE++EzjU9Yw==}
+  cssdefs@1.0.2:
+    resolution: {integrity: sha512-dNGsGic7h4q5KuKg1QBXskEJCIFA7Ghf6XxnF5WqA+Ieg7Fe3yFb8TVlPMJQt9yB9blSBsBjvBqau1hcQF3JuA==}
 
   cssesc@3.0.0:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
@@ -17839,7 +17839,7 @@ snapshots:
 
   css.escape@1.5.1: {}
 
-  cssdefs@1.0.1: {}
+  cssdefs@1.0.2: {}
 
   cssesc@3.0.0: {}
 
