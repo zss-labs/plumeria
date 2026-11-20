@@ -8,7 +8,9 @@ import type { getConfig as File_DocsDocsSlug_getConfig } from './pages/(docs)/do
 // prettier-ignore
 import type { getConfig as File_DocsDocsIndex_getConfig } from './pages/(docs)/docs/index';
 // prettier-ignore
-import type { getConfig as File_DocsPlayground_getConfig } from './pages/(docs)/playground';
+import type { getConfig as File_DocsPlaygroundIndex_getConfig } from './pages/(docs)/playground/index';
+// prettier-ignore
+import type { getConfig as File_DocsPlaygroundMigrate_getConfig } from './pages/(docs)/playground/migrate';
 // prettier-ignore
 import type { getConfig as File_404_getConfig } from './pages/404';
 // prettier-ignore
@@ -26,7 +28,8 @@ import type { getConfig as File_Index_getConfig } from './pages/index';
 type Page =
 | ({ path: '/docs/[...slug]' } & GetConfigResponse<typeof File_DocsDocsSlug_getConfig>)
 | ({ path: '/docs' } & GetConfigResponse<typeof File_DocsDocsIndex_getConfig>)
-| ({ path: '/playground' } & GetConfigResponse<typeof File_DocsPlayground_getConfig>)
+| ({ path: '/playground' } & GetConfigResponse<typeof File_DocsPlaygroundIndex_getConfig>)
+| ({ path: '/playground/migrate' } & GetConfigResponse<typeof File_DocsPlaygroundMigrate_getConfig>)
 | ({ path: '/404' } & GetConfigResponse<typeof File_404_getConfig>)
 | ({ path: '/_api/ogp/[...slug]' } & GetConfigResponse<typeof File_ApiOgpSlug_getConfig>)
 | ({ path: '/_root' } & GetConfigResponse<typeof File_Root_getConfig>)
