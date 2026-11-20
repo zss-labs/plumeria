@@ -696,3 +696,107 @@ fn stylex_gives_a_file_that_carries_styles_the_core_import() {
     let app = &rewrites.iter().find(|(f, _)| f == "src/App.tsx").unwrap().1;
     assert!(app.starts_with("'use client';\nimport '@plumeria/core';\nimport { styles }"), "{app}");
 }
+
+fn tailwind_with(code: &str, css: &str) -> crate::tailwind::Outcome {
+    let mut theme = crate::tailwind::Theme::default();
+    theme.read(css);
+    crate::tailwind::scan_file("src/App.tsx", code, "sx", &theme)
+}
+
+fn tailwind_one(code: &str) -> String {
+    let outcome = tailwind_with(code, "");
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    outcome.rewritten.unwrap()
+}
+
+fn tailwind_holds(code: &str, css: &str) -> Vec<&'static str> {
+    tailwind_with(code, css).holds.iter().map(|h| h.kind).collect()
+}
+
+#[test]
+fn tailwind_names_the_key_by_the_class_hash() {
+    let code = "export const A = () => <div className=\"flex p-4 md:p-8 hover:bg-blue-500\" />;\n";
+    let key = crate::tailwind::class_hash(&["flex", "p-4", "md:p-8", "hover:bg-blue-500"]);
+    let expected = format!(
+        "import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+
+const styles = css.create({{
+  {key}: {{
+    display: 'flex',
+    padding: t.spacing[4],
+    ':hover': {{
+      backgroundColor: t.blue[500],
+    }},
+    [`@media (width >= ${{t.breakpoint.md}})`]: {{
+      padding: t.spacing[8],
+    }},
+  }},
+}});
+
+export const A = () => <div sx={{styles.{key}}} />;
+"
+    );
+    assert_eq!(tailwind_one(code), expected);
+    assert_eq!(key, crate::tailwind::class_hash(&["hover:bg-blue-500", "md:p-8", "flex", "p-4", "flex"]));
+    assert!(key.starts_with("t_") && key.len() == 9, "{key}");
+}
+
+#[test]
+fn tailwind_turns_cn_into_a_right_wins_array() {
+    let code = "import { cn } from 'cn';\n\nexport const A = ({ active }) => <p className={cn('text-sm', active && 'text-white')} />;\n";
+    let out = tailwind_one(code);
+    let sm = crate::tailwind::class_hash(&["text-sm"]);
+    let white = crate::tailwind::class_hash(&["text-white"]);
+    assert!(!out.contains("from 'cn'"), "{out}");
+    assert!(out.contains(&format!("sx={{[styles.{sm}, active && styles.{white}]}}")), "{out}");
+    assert!(out.contains("fontSize: t.text.sm,\n    lineHeight: t.textLineHeight.sm,"), "{out}");
+    assert!(out.contains("color: t.color.white,"), "{out}");
+}
+
+#[test]
+fn tailwind_keeps_a_nested_condition_grouped() {
+    let out = tailwind_one("import { cn } from 'cn';\n<p className={cn(a && (b ? 'flex' : 'grid'))} />;\n");
+    let flex = crate::tailwind::class_hash(&["flex"]);
+    let grid = crate::tailwind::class_hash(&["grid"]);
+    assert!(out.contains(&format!("sx={{a && (b ? styles.{flex} : styles.{grid})}}")), "{out}");
+}
+
+#[test]
+fn tailwind_declares_the_styles_before_a_later_import() {
+    let out = tailwind_one("import a from 'a';\nexport const view = <div className=\"flex\" />;\nimport b from 'b';\n");
+    assert!(out.find("const styles").unwrap() < out.find("export const view").unwrap(), "{out}");
+}
+
+#[test]
+fn tailwind_declares_the_compound_state() {
+    let out = tailwind_one("<a className=\"hover:bg-red-500 focus:bg-blue-500\" />;\n");
+    assert!(out.contains("':hover:focus': {\n      backgroundColor: t.blue[500],\n    },"), "{out}");
+}
+
+#[test]
+fn tailwind_resolves_border_and_transition_defaults() {
+    let out = tailwind_one("<a className=\"border-t-2 border-dashed transition duration-200\" />;\n");
+    assert!(out.contains("borderTopStyle: 'dashed',"), "{out}");
+    assert!(out.contains("transitionDuration: '200ms',"), "{out}");
+    assert!(!out.contains("t.transition.duration"), "{out}");
+    let out = tailwind_one("<a className=\"-translate-x-1/2 bg-black/50\" />;\n");
+    assert!(out.contains("translate: '-50% 0',"), "{out}");
+    assert!(out.contains("backgroundColor: `color-mix(in oklab, ${t.color.black} 50%, transparent)`,"), "{out}");
+}
+
+#[test]
+fn tailwind_holds_what_it_cannot_settle() {
+    let one = |code: &str| tailwind_holds(code, "");
+    assert_eq!(one("<div className=\"prose\" />"), ["unknown-class"]);
+    assert_eq!(one("<div className=\"p-2 p-4\" />"), ["conflicting-classes"]);
+    assert_eq!(one("<div className=\"group-hover:flex\" />"), ["unknown-variant"]);
+    assert_eq!(one("<Button className=\"flex\" />"), ["component-class"]);
+    assert_eq!(one("<div className={`flex ${x}`} />"), ["dynamic-class"]);
+    assert_eq!(one("import clsx from 'clsx';\n<div className={clsx('flex')} />"), ["clsx"]);
+    assert_eq!(one("import { cn } from 'cn';\n<div className={cn('flex', className)} />"), ["dynamic-class"]);
+    assert_eq!(one("import { cn } from '@/lib/utils';\n<div className={cn('flex')} />"), ["use-cn"]);
+    assert_eq!(one("import { twMerge } from 'tailwind-merge';\n<div className={twMerge('flex')} />"), ["use-cn"]);
+    assert_eq!(tailwind_holds("<div className=\"p-4\" />", "@theme { --spacing: 0.3rem; }"), ["theme-override"]);
+    assert_eq!(tailwind_holds("<div className=\"dark:flex\" />", "@custom-variant dark (&:where(.dark, .dark *));"), ["custom-variant"]);
+}
