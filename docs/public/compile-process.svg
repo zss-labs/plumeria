@@ -78,7 +78,7 @@
   <text class="code" x="56" y="114">base: { padding: 16 },</text>
   <text class="code" x="56" y="136">active: { color: <tspan class="hl">'teal'</tspan> },</text>
   <text class="code" x="40" y="158">});</text>
-  <text class="code" x="40" y="196">&lt;p classStyle={[</text>
+  <text class="code" x="40" y="196">&lt;p sx={[</text>
   <text class="code" x="56" y="218">styles.base,</text>
   <text class="code" x="56" y="240">on &amp;&amp; styles.active,</text>
   <text class="code" x="40" y="262">]} /&gt;</text>
