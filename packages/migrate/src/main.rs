@@ -3,6 +3,13 @@ mod consumer;
 mod css;
 mod resolve;
 mod stylesheet;
+mod stylex;
+#[path = "../../compiler/src/js/number.rs"]
+#[allow(dead_code)]
+mod number;
+mod js {
+    pub(crate) use super::number;
+}
 #[cfg(test)]
 mod tests;
 
@@ -30,6 +37,7 @@ const USAGE: &str = "Usage:
 
 Sources:
   css-modules
+  stylex
 
 Options:
       --dry-run     report what would change without writing
@@ -37,6 +45,7 @@ Options:
   -h, --help        show this help";
 
 struct Options {
+    stylex: bool,
     dry_run: bool,
     style_prop: String,
 }
@@ -55,16 +64,17 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
             name => from.push(name),
         }
     }
-    match from.as_slice() {
-        ["from", "css-modules"] => {}
+    let stylex = match from.as_slice() {
+        ["from", "css-modules"] => false,
+        ["from", "stylex"] => true,
         ["from", other] => return Err(format!("Cannot migrate from {other}.")),
         _ => return Err("Write the source after from, as in `from css-modules`.".to_string()),
-    }
+    };
     let style_prop = match style_prop {
         Some(name) => name,
         None => configured_style_prop()?.unwrap_or_else(|| DEFAULT_STYLE_PROP.to_string()),
     };
-    Ok(Some(Options { dry_run, style_prop }))
+    Ok(Some(Options { stylex, dry_run, style_prop }))
 }
 
 struct StyleProps(Vec<String>);
@@ -174,7 +184,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    run(&options)
+    if options.stylex { stylex::run(&options) } else { run(&options) }
 }
 
 fn run(options: &Options) -> ExitCode {
