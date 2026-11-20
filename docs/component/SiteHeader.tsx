@@ -3,6 +3,7 @@ import { Link } from 'waku';
 import { HomeSearchIcon, HomeSearchTrigger } from 'component/HomeSearchTrigger';
 import { HomeThemeToggle } from 'component/HomeThemeToggle';
 import { LanguageToggle } from 'component/LanguageToggle';
+import { LocalizedLink } from 'component/LocalizedLink';
 import { MenuAutoClose } from 'component/MenuAutoClose';
 import { coreVersion } from 'lib/coreVersion';
 import { latestBlogUrl } from 'lib/latestBlogUrl';
@@ -221,10 +222,10 @@ const styles = css.create({
 export const SiteHeader = () => (
   <header sx={styles.header}>
     <nav sx={styles.nav}>
-      <Link to="/" unstable_prefetchOnView={{}} sx={styles.brand}>
+      <LocalizedLink to="/" sx={styles.brand}>
         <img src="/icon.svg" alt="" width="20" height="20" sx={styles.brandMark} />
         Plumeria
-      </Link>
+      </LocalizedLink>
       <Link to={latestBlogUrl} unstable_prefetchOnView={{}} sx={styles.version}>
         v{coreVersion}
       </Link>
@@ -240,9 +241,9 @@ export const SiteHeader = () => (
         <MenuAutoClose id="home-menu" />
         <div sx={styles.menuBody}>
           <HomeSearchTrigger />
-          <Link to="/docs" unstable_prefetchOnView={{}} sx={styles.menuLink}>
+          <LocalizedLink to="/docs" sx={styles.menuLink}>
             Docs
-          </Link>
+          </LocalizedLink>
           <Link to="/blog" unstable_prefetchOnView={{}} sx={styles.menuLink}>
             Blog
           </Link>
