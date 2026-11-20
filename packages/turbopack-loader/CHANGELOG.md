@@ -1,5 +1,13 @@
 # @plumeria/turbopack-loader
 
+## 22.2.1
+
+### Patch Changes
+
+- 001350b: Bump version to 22.2.1
+- Updated dependencies [001350b]
+  - @plumeria/compiler@22.2.1
+
 ## 22.2.0
 
 ### Minor Changes
