@@ -800,3 +800,365 @@ fn tailwind_holds_what_it_cannot_settle() {
     assert_eq!(tailwind_holds("<div className=\"p-4\" />", "@theme { --spacing: 0.3rem; }"), ["theme-override"]);
     assert_eq!(tailwind_holds("<div className=\"dark:flex\" />", "@custom-variant dark (&:where(.dark, .dark *));"), ["custom-variant"]);
 }
+
+fn emotion_scan(code: &str) -> crate::emotion::Outcome {
+    let files = [
+        (
+            "src/tokens.ts",
+            "export const gap = 8;\nexport const theme = { gap, spacing: { small: 4 } };\nexport const live = readFromWindow();
+export const flag = +(2 > 1);\nexport const none = null;\nexport const label = 'x' + true;\nexport const anim = player.keyframes();\n",
+        ),
+        ("src/anim.ts", "import { keyframes } from '@emotion/react';\nexport const fade = keyframes`from { opacity: 0; }`;\n"),
+        ("src/index.ts", "export { gap as space, live } from './tokens';\n"),
+    ];
+    let modules: FxHashMap<String, crate::emotion::Module> =
+        files.iter().map(|(file, text)| (file.to_string(), crate::emotion::module(file, text))).collect();
+    let exports = |specifier: &str, name: &str| crate::emotion::resolve_kind(&modules, None, "src/App.tsx", specifier, name);
+    crate::emotion::scan_file("src/App.tsx", code, "sx", &exports)
+}
+
+fn emotion_one(code: &str) -> String {
+    let outcome = emotion_scan(code);
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    outcome.rewritten.unwrap()
+}
+
+fn emotion_holds(code: &str) -> Vec<&'static str> {
+    emotion_scan(code).holds.iter().map(|h| h.kind).collect()
+}
+
+#[test]
+fn emotion_moves_named_styles_into_create() {
+    let code = "/** @jsxImportSource @emotion/react */
+import { css } from '@emotion/react';
+
+const base = css({
+  label: 'base',
+  color: 'red',
+  'font-size': 14,
+  '&:hover, &:focus-visible': { color: 'blue' },
+  '&::before': { content: '\"\"' },
+  '@media (min-width: 640px)': { color: 'green', '&:hover': { color: 'black' } },
+});
+const loud = css(base, { fontWeight: 700 });
+
+export const A = ({ on }) => <div css={[base, on && loud]} />;
+";
+    let expected = "import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    color: 'red',
+    fontSize: 14,
+    ':hover': {
+      color: 'blue',
+    },
+    ':focus-visible': {
+      color: 'blue',
+    },
+    '::before': {
+      content: '\"\"',
+    },
+    '@media (min-width: 640px)': {
+      color: 'green',
+      ':hover': {
+        color: 'black',
+      },
+    },
+  },
+  loud: {
+    fontWeight: 700,
+  },
+});
+
+export const A = ({ on }) => <div sx={[styles.base, on && [styles.base, styles.loud]]} />;
+";
+    assert_eq!(emotion_one(code), expected);
+}
+
+#[test]
+fn emotion_hoists_inline_objects_by_hash() {
+    let code = "import { css } from '@emotion/react';
+export const A = () => <><p css={{ padding: 8 }} /><p css={{ padding: 8 }} /></>;
+";
+    let out = emotion_one(code);
+    let key = out.split("sx={styles.").nth(1).unwrap().split('}').next().unwrap();
+    assert!(key.starts_with("e_") && key.len() == 9, "{key}");
+    assert_eq!(out.matches(&format!("{key}: {{")).count(), 1, "{out}");
+    assert_eq!(out.matches(&format!("sx={{styles.{key}}}")).count(), 2, "{out}");
+}
+
+#[test]
+fn emotion_turns_local_values_into_function_keys() {
+    let code = "const gap = 4;
+export const A = ({ color, open }) => <div css={{ color, margin: gap, padding: open ? 16 : 8, ':hover': { color } }} />;
+";
+    let out = emotion_one(code);
+    assert!(out.starts_with("import * as css from '@plumeria/core';\n\nconst gap = 4;\nconst styles = css.create({"), "{out}");
+    assert!(out.contains(": (a, b, c) => ({\n    color: a,\n    margin: gap,\n    padding: b,\n    ':hover': {\n      color: c,\n    },\n  }),"), "{out}");
+    assert!(out.contains("(color, open ? 16 : 8, color)} />"), "{out}");
+}
+
+#[test]
+fn emotion_reads_template_literals() {
+    let code = "import { css } from '@emotion/react';
+const gap = 4;
+const base = css`
+  label: base;
+  color: red;
+  margin: ${gap}px;
+  &:hover, &:focus { color: blue; }
+  @media (min-width: 640px) {
+    padding: 16px;
+  }
+`;
+const loud = css`
+  ${base};
+  font-weight: 700;
+`;
+export const A = () => <div css={loud} />;
+";
+    let expected = "import * as css from '@plumeria/core';
+const gap = 4;
+const styles = css.create({
+  base: {
+    color: 'red',
+    margin: `${gap}px`,
+    ':hover': {
+      color: 'blue',
+    },
+    ':focus': {
+      color: 'blue',
+    },
+    '@media (min-width: 640px)': {
+      padding: '16px',
+    },
+  },
+  loud: {
+    fontWeight: '700',
+  },
+});
+export const A = () => <div sx={[styles.base, styles.loud]} />;
+";
+    assert_eq!(emotion_one(code), expected);
+}
+
+#[test]
+fn emotion_passes_local_interpolations_as_arguments() {
+    let code = "export const A = ({ size, tone }) => <div css={css`width: ${size}px; color: ${tone};`} />;\n";
+    let out = emotion_one(&format!("import {{ css }} from '@emotion/react';\n{code}"));
+    assert!(out.contains(": (a, b) => ({\n    width: `${a}px`,\n    color: b,\n  }),"), "{out}");
+    assert!(out.contains("(size, tone)} />"), "{out}");
+}
+
+#[test]
+fn emotion_rewrites_styled_elements() {
+    let code = "import { css } from '@emotion/react';
+import styled from '@emotion/styled';
+
+const base = css({ color: 'red' });
+const Button = styled.button`
+  ${base};
+  padding: 8px;
+`;
+const Box = styled('section')({ display: 'grid' });
+
+export const A = () => (
+  <Box>
+    <Button type=\"submit\">go</Button>
+    <Button as=\"a\" href=\"/\" />
+  </Box>
+);
+";
+    let expected = "import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    color: 'red',
+  },
+  Button: {
+    padding: '8px',
+  },
+  Box: {
+    display: 'grid',
+  },
+});
+
+export const A = () => (
+  <section sx={styles.Box}>
+    <button sx={[styles.base, styles.Button]} type=\"submit\">go</button>
+    <a sx={[styles.base, styles.Button]} href=\"/\" />
+  </section>
+);
+";
+    assert_eq!(emotion_one(code), expected);
+}
+
+#[test]
+fn emotion_converts_keyframes_in_place() {
+    let code = "import { css, keyframes } from '@emotion/react';
+export const bounce = keyframes`
+  from, 50% { transform: translateY(0); opacity: 0; }
+  50% { opacity: 1; }
+  to { transform: translateY(-8px); }
+`;
+const fade = keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
+export const A = () => <div css={css`animation: ${bounce} 1s ease infinite;`}><p css={{ animationName: fade }} /></div>;
+";
+    let out = emotion_one(code);
+    let expected_head = "import * as css from '@plumeria/core';
+export const bounce = css.keyframes({
+  from: {
+    transform: 'translateY(0)',
+    opacity: '0',
+  },
+  '50%': {
+    transform: 'translateY(0)',
+    opacity: '1',
+  },
+  to: {
+    transform: 'translateY(-8px)',
+  },
+});
+const fade = css.keyframes({
+  from: {
+    opacity: 0,
+  },
+  to: {
+    opacity: 1,
+  },
+});
+const styles = css.create({
+";
+    assert!(out.starts_with(expected_head), "{out}");
+    assert!(out.contains("    animation: `${bounce} 1s ease infinite`,\n"), "{out}");
+    assert!(out.contains("    animationName: fade,\n"), "{out}");
+}
+
+#[test]
+fn emotion_places_create_after_what_it_reads() {
+    let code = "import { css } from '@emotion/react';
+const base = css({ color: 'red' });
+const gap = 8;
+export const A = () => <div css={[base, { margin: gap }]} />;
+";
+    let out = emotion_one(code);
+    assert!(out.starts_with("import * as css from '@plumeria/core';\nconst gap = 8;\nconst styles = css.create({\n  base: {"), "{out}");
+    let early = "import { css } from '@emotion/react';
+export const A = () => <div css={{ margin: gap }} />;
+const gap = 8;
+";
+    assert_eq!(emotion_holds(early), ["hoist-order"]);
+    let live = "let gap = 8;\nexport const A = () => <div css={{ margin: gap }} />;\n";
+    assert!(emotion_one(live).contains("(gap)} />"), "{}", emotion_one(live));
+    let member = "const theme = { gap: 8 };\nexport const A = () => <div css={{ margin: theme.gap, padding: theme.gap }} />;\n";
+    let out = emotion_one(member);
+    assert!(out.contains("margin: a,\n    padding: b,") && out.contains("(theme.gap, theme.gap)} />"), "{out}");
+    let calls = "export const A = () => <div css={{ marginTop: next(), marginBottom: next() }} />;\n";
+    let out = emotion_one(calls);
+    assert!(out.contains("marginTop: a,\n    marginBottom: b,") && out.contains("(next(), next())} />"), "{out}");
+    let comma = "export const A = () => <div css={{ '&:hover, &:focus': { color: next() } }} />;\n";
+    assert!(emotion_one(comma).contains("(next())} />"), "{}", emotion_one(comma));
+}
+
+#[test]
+fn emotion_holds_users_of_held_keyframes() {
+    let user = "import { css } from '@emotion/react';
+import { bounce } from './animations';
+export const A = () => <div css={{ animationName: bounce }} />;
+";
+    let plan = |animations: &str| {
+        let sources = vec![
+            ("src/animations.ts".to_string(), animations.to_string()),
+            ("src/App.tsx".to_string(), user.to_string()),
+        ];
+        crate::emotion::plan(&sources, None, "sx")
+    };
+    let both = plan("import { keyframes } from '@emotion/react';\nexport const bounce = keyframes`from { opacity: 0; }`;\n");
+    assert!(both[0].rewritten.is_some() && both[1].rewritten.is_some());
+    let held = plan(
+        "import { keyframes, Global } from '@emotion/react';\nexport const bounce = keyframes`from { opacity: 0; }`;\nexport const G = Global;\n",
+    );
+    assert!(held[0].rewritten.is_none() && held[1].rewritten.is_none());
+    assert_eq!(held[1].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["linked-to-held"]);
+    assert_eq!(held[1].holds[0].detail, "src/animations.ts");
+}
+
+#[test]
+fn emotion_holds_what_it_cannot_carry() {
+    let one = |code: &str| emotion_holds(&format!("import {{ css }} from '@emotion/react';\n{code}"));
+    assert_eq!(one("<div css={{ '& > span': { color: 'red' } }} />"), ["selector"]);
+    assert_eq!(one("<div css={{ '.title &': { color: 'red' } }} />"), ["selector"]);
+    assert_eq!(one("<div css={{ background: ['red', 'blue'] }} />"), ["fallback-value"]);
+    assert_eq!(one("<div css={{ ':hover': { '@media (x)': { color: 'red' } } }} />"), ["at-rule-in-pseudo"]);
+    assert_eq!(one("<div css={{ ':hover': { color: 'red' }, ':focus': { color: 'blue' } }} />"), ["overlapping-states"]);
+    assert_eq!(
+        one("<div css={{ '@media (min-width: 900px)': { color: 'red' }, '@media (min-width: 600px)': { color: 'blue' } }} />"),
+        ["media-order"]
+    );
+    assert_eq!(one("<Button css={{ color: 'red' }} />"), ["component-css"]);
+    assert_eq!(one("<div className=\"x\" css={{ color: 'red' }} />"), ["css-beside-attribute"]);
+    assert_eq!(one("<div {...props} css={{ color: 'red' }} />"), ["spread-props"]);
+    assert_eq!(one("<div css={theme => ({ color: theme.c })} />"), ["theme-function"]);
+    assert_eq!(one("<div css={css`${mq} { color: red; }`} />"), ["selector-interpolation"]);
+    assert_eq!(one("<div css={css`color: red; ${x};`} />"), ["interpolation-position"]);
+    assert_eq!(one("<div css={css`a { color: red; }`} />"), ["selector"]);
+    assert_eq!(one("const a = css({ color: 'red' });\nfoo(a);"), ["style-used-elsewhere"]);
+    assert_eq!(one("export const a = css({ color: 'red' });"), ["exported-style"]);
+    assert_eq!(one("const A = () => { const a = css({ color: 'red' }); return null; };"), ["css-not-top-level"]);
+    assert_eq!(one("const a = css({ color: darken('red') });\n<div css={a} />"), ["dynamic-value"]);
+    assert_eq!(emotion_holds("import { Global } from '@emotion/react';\n<div css={{}} />"), ["unsupported-api"]);
+    assert_eq!(emotion_holds("import { jsx } from '@emotion/react';\njsx('div', {});"), ["jsx-call"]);
+    assert_eq!(one("let gap = 8;\nconst a = css({ margin: gap });\n<div css={a} />"), ["dynamic-value"]);
+    let skipped = emotion_scan("/** @jsxImportSource other-lib */\n<div css={{ color: 'red' }} />");
+    assert!(skipped.rewritten.is_none() && skipped.holds.is_empty());
+    let skipped = emotion_scan("/** @jsx h */\nimport { h } from 'x';\n<div css={{ color: 'red' }} />");
+    assert!(skipped.rewritten.is_none() && skipped.holds.is_empty());
+    assert_eq!(one("const gap = read();\nconst a = css({ margin: gap });\n<div css={a} />"), ["dynamic-value"]);
+    assert_eq!(one("import { live } from './tokens';\nconst a = css({ margin: live });\n<div css={a} />"), ["dynamic-value"]);
+    assert_eq!(one("import { live } from './index';\nconst a = css({ margin: live });\n<div css={a} />"), ["dynamic-value"]);
+    assert_eq!(one("import { gap } from 'pkg';\nconst a = css({ margin: gap });\n<div css={a} />"), ["dynamic-value"]);
+    for name in ["flag", "none", "label"] {
+        let code = format!("import {{ {name} }} from './tokens';\nconst a = css({{ margin: {name} }});\n<div css={{a}} />");
+        assert_eq!(one(&code), ["dynamic-value"], "{name}");
+    }
+    assert_eq!(one("import { theme } from './tokens';\nconst a = css({ margin: theme.missing });\n<div css={a} />"), ["dynamic-value"]);
+    assert_eq!(one("import { theme } from './tokens';\nconst a = css({ margin: theme.spacing });\n<div css={a} />"), ["dynamic-value"]);
+    assert!(one("import { theme } from './tokens';\nconst a = css({ margin: theme.spacing.small });\n<div css={a} />").is_empty());
+    let frames = "import { css } from '@emotion/react';
+import { anim } from './tokens';
+import { fade } from './anim';
+const local = player.keyframes();
+export const A = () => <div css={{ animationName: fade, transitionProperty: anim, animation: local }} />;
+";
+    let out = emotion_one(frames);
+    assert!(out.contains("animationName: fade,") && out.contains("(anim, local)} />"), "{out}");
+    let resolved = "import { css } from '@emotion/react';
+import { space } from './index';
+import { theme } from './tokens';
+const a = css({ margin: space, padding: theme.gap });
+export const A = () => <div css={[a, { gap: space }]} />;
+";
+    let out = emotion_one(resolved);
+    assert!(out.contains("    margin: space,\n    padding: theme.gap,\n"), "{out}");
+    assert!(out.contains("    gap: space,\n"), "{out}");
+    assert!(emotion_holds("/** @jsx jsx */\nimport { jsx } from '@emotion/react';\n<div css={{ color: 'red' }} />").is_empty());
+    let frames = |code: &str| emotion_holds(&format!("import {{ keyframes }} from '@emotion/react';\n{code}"));
+    assert_eq!(frames("const a = keyframes`from { opacity: ${x}; }`;"), ["keyframes-interpolation"]);
+    assert_eq!(frames("const a = keyframes`half { opacity: 0; }`;"), ["keyframes-selector"]);
+    assert_eq!(frames("const a = keyframes({ from: { opacity: o } });"), ["dynamic-value"]);
+    assert_eq!(frames("const A = () => { const a = keyframes`from { opacity: 0; }`; };"), ["unsupported-use"]);
+    assert_eq!(emotion_holds("import { cx } from '@emotion/css';\n<div css={{}} />"), ["unsupported-import"]);
+    let styled = |code: &str| emotion_holds(&format!("import styled from '@emotion/styled';\n{code}"));
+    assert_eq!(styled("const A = styled(Link)`color: red;`;\n<A />"), ["styled-component"]);
+    assert_eq!(styled("const A = styled('div', { label: 'a' })`color: red;`;\n<A />"), ["styled-options"]);
+    assert_eq!(styled("const A = styled.div`color: ${p => p.c};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled("const A = styled.div`color: red;`;\n<A className=\"x\" />"), ["styled-beside-attribute"]);
+    assert_eq!(styled("const A = styled.div`color: red;`;\n<A {...props} />"), ["spread-props"]);
+    assert_eq!(styled("const A = styled.div`color: red;`;\n<A as={Link} />"), ["styled-as"]);
+    assert_eq!(styled("const A = styled.div({ color: 'red' });\n<A tone=\"quiet\" />"), ["custom-prop"]);
+    assert!(styled("const A = styled.div({ color: 'red' });\n<A data-x=\"1\" aria-label=\"a\" onClick={f} id=\"a\" />").is_empty());
+    assert_eq!(styled("const A = styled.div`color: red;`;\nfoo(A);"), ["style-used-elsewhere"]);
+    assert_eq!(styled("export const A = styled.div`color: red;`;"), ["exported-style"]);
+    assert_eq!(emotion_holds("const styles = 1;\n<div css={{ color: 'red' }} />"), ["binding-taken"]);
+}
