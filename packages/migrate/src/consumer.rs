@@ -8,7 +8,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::cascade::unrepresentable;
 use crate::resolve::{basename, dirname, relative, resolve, Paths};
-use crate::stylesheet::Converted;
+use crate::stylesheet::{to_key, Converted};
+use crate::vanilla_extract::is_sheet;
 
 const CORE: &str = "@plumeria/core";
 
@@ -41,6 +42,13 @@ struct Read {
     sheet: usize,
     local: String,
     key: String,
+    raw: Option<String>,
+}
+
+impl Read {
+    fn text(&self) -> String {
+        self.raw.clone().unwrap_or_else(|| format!("{}.{}", self.local, self.key))
+    }
 }
 
 enum Item {
@@ -71,9 +79,17 @@ struct Element {
     style: Option<StyleObject>,
 }
 
+enum Bound {
+    Sheet,
+    Namespace,
+    Style(String),
+    Variant(String),
+}
+
 struct Binding {
     sheet: usize,
     local: String,
+    bound: Bound,
 }
 
 struct Scan<'s> {
@@ -145,19 +161,68 @@ impl<'s> Scan<'s> {
     }
 
     fn read_parts(&self, object: &Expression, name: Option<String>, span: Span) -> Option<Option<Read>> {
+        if let Expression::StaticMemberExpression(group) = object.get_inner_expression()
+            && let Some(symbol) = self.binding_of(&group.object)
+        {
+            let binding = &self.bindings[&symbol];
+            let key = property_name(group).to_string();
+            if matches!(binding.bound, Bound::Namespace) && self.sheets[binding.sheet].converted.variants.contains(&key) {
+                return Some(Some(Read {
+                    span,
+                    sheet: binding.sheet,
+                    local: binding.local.clone(),
+                    key,
+                    raw: Some(self.text[span.start as usize..span.end as usize].to_string()),
+                }));
+            }
+        }
         let symbol = self.binding_of(object)?;
         let binding = &self.bindings[&symbol];
         let sheet = binding.sheet;
-        Some(name.map(|name| Read {
-            span,
-            sheet,
+        let local = binding.local.clone();
+        match &binding.bound {
+            Bound::Namespace => Some(name.and_then(|name| {
+                let converted = &self.sheets[sheet].converted;
+                if converted.variants.contains(&name) {
+                    return None;
+                }
+                let key = converted.names.get(&name).cloned().unwrap_or(name);
+                Some(Read { span, sheet, local: format!("{local}.styles"), key, raw: None })
+            })),
+            Bound::Sheet => Some(name.map(|name| Read {
+                span,
+                sheet,
+                local,
+                key: self.sheets[sheet].converted.names.get(&name).cloned().unwrap_or(name),
+                raw: None,
+            })),
+            Bound::Variant(group) => Some(Some(Read {
+                span,
+                sheet,
+                local,
+                key: group.clone(),
+                raw: Some(self.text[span.start as usize..span.end as usize].to_string()),
+            })),
+            Bound::Style(_) => Some(None),
+        }
+    }
+
+    fn style_read(&self, expression: &Expression) -> Option<Read> {
+        let symbol = self.binding_of(expression)?;
+        let binding = &self.bindings[&symbol];
+        let Bound::Style(key) = &binding.bound else { return None };
+        Some(Read {
+            span: expression.get_inner_expression().span(),
+            sheet: binding.sheet,
             local: binding.local.clone(),
-            key: self.sheets[sheet].converted.names.get(&name).cloned().unwrap_or(name),
-        }))
+            key: key.clone(),
+            raw: None,
+        })
     }
 
     fn read_of(&self, expression: &Expression) -> Option<Read> {
         match expression.get_inner_expression() {
+            Expression::Identifier(_) => self.style_read(expression),
             Expression::StaticMemberExpression(member) => {
                 self.read_parts(&member.object, Some(property_name(member).to_string()), member.span)?
             }
@@ -258,7 +323,7 @@ impl<'s> Scan<'s> {
                 }
                 Item::Cond { reads, .. } => {
                     for read in reads {
-                        self.claimed.insert(read.span.start, Some(format!("{}.{}", read.local, read.key)));
+                        self.claimed.insert(read.span.start, Some(read.text()));
                     }
                 }
                 _ => {}
@@ -336,12 +401,15 @@ impl<'s> Scan<'s> {
                 self.hold(read.sheet, "composes-in-use", read.key.clone(), read.span.start);
                 return;
             }
-            self.edits.push((read.span, format!("{local}.{}", read.key)));
+            self.edits.push((read.span, read.text()));
             return;
         }
         self.uses_css = true;
         let css = self.css_local.clone().unwrap_or_else(|| "css".to_string());
-        let list = keys.iter().map(|k| format!("{local}.{k}")).collect::<Vec<_>>().join(", ");
+        let list = match &read.raw {
+            Some(raw) => raw.clone(),
+            None => keys.iter().map(|k| format!("{local}.{k}")).collect::<Vec<_>>().join(", "),
+        };
         self.edits.push((read.span, format!("{css}.use({list})")));
     }
 
@@ -512,7 +580,11 @@ impl<'a> Visit<'a> for Scan<'_> {
                     self.value_read(read);
                 }
             }
-            Some(None) => {}
+            Some(None) => {
+                let sheet = self.bindings[&self.binding_of(&member.object).unwrap()].sheet;
+                let written = self.text[member.span.start as usize..member.span.end as usize].to_string();
+                self.hold(sheet, "dynamic-access", written, member.span.start);
+            }
             None => walk::walk_static_member_expression(self, member),
         }
     }
@@ -534,25 +606,47 @@ impl<'a> Visit<'a> for Scan<'_> {
         }
     }
 
+    fn visit_object_property(&mut self, property: &ObjectProperty<'a>) {
+        if property.shorthand
+            && let Some(read) = self.style_read(&property.value)
+        {
+            let name = self.text[read.span.start as usize..read.span.end as usize].to_string();
+            self.edits.push((Span::new(read.span.start, read.span.start), format!("{name}: ")));
+        }
+        walk::walk_object_property(self, property);
+    }
+
     fn visit_identifier_reference(&mut self, identifier: &IdentifierReference<'a>) {
         let Some(reference) = identifier.reference_id.get() else { return };
         let Some(symbol) = self.scoping.get_reference(reference).symbol_id() else { return };
-        if let Some(binding) = self.bindings.get(&symbol) {
-            let sheet = binding.sheet;
-            self.hold(sheet, "dynamic-access", identifier.name.as_str().to_string(), identifier.span.start);
+        let Some(binding) = self.bindings.get(&symbol) else { return };
+        if let Bound::Style(key) = &binding.bound {
+            let read = Read { span: identifier.span, sheet: binding.sheet, local: binding.local.clone(), key: key.clone(), raw: None };
+            if self.check_read(&read) {
+                self.value_read(read);
+            }
+            return;
         }
+        let sheet = binding.sheet;
+        self.hold(sheet, "dynamic-access", identifier.name.as_str().to_string(), identifier.span.start);
     }
 }
 
 impl Scan<'_> {
     fn sheet_for(&self, specifier: &str, paths: Option<&Paths>) -> Result<Option<usize>, ()> {
         let specifier = without_query(specifier);
-        let resolved = resolve(specifier, self.file, paths, self.exists);
-        match resolved {
-            Some(path) => Ok(self.sheets.iter().position(|sheet| sheet.path == path)),
-            None if specifier.ends_with(".module.css") => Err(()),
-            None => Ok(None),
+        let candidates = [specifier.to_string(), format!("{specifier}.ts"), format!("{specifier}.js")];
+        let count = if specifier.ends_with(".css") { 3 } else { 1 };
+        let mut resolved = false;
+        for candidate in &candidates[..count] {
+            if let Some(path) = resolve(candidate, self.file, paths, self.exists) {
+                resolved = true;
+                if let Some(sheet) = self.sheets.iter().position(|sheet| sheet.path == path) {
+                    return Ok(Some(sheet));
+                }
+            }
         }
+        if !resolved && specifier.ends_with(".module.css") { Err(()) } else { Ok(None) }
     }
 
     fn foreign_specifier(&mut self, specifier: &str, at: u32, kind: &'static str) {
@@ -674,7 +768,7 @@ impl Scan<'_> {
     fn call_text(&mut self, element: usize, read: &Read, consumed: &mut FxHashSet<usize>) -> Option<String> {
         let local = read.local.clone();
         let Some(variables) = self.sheets[read.sheet].converted.functions.get(&read.key).cloned() else {
-            return Some(format!("{local}.{}", read.key));
+            return Some(read.text());
         };
         let Some(style) = &self.elements[element].style else {
             self.hold(read.sheet, "function-arguments", read.key.clone(), read.span.start);
@@ -823,9 +917,19 @@ impl Scan<'_> {
     }
 }
 
+fn bare(name: &str) -> &str {
+    name.strip_suffix(".ts").or_else(|| name.strip_suffix(".js")).unwrap_or(name)
+}
+
 pub fn mentions(sheet: &Sheet, paths: Option<&Paths>, text: &str) -> bool {
-    text.contains(basename(&sheet.path))
-        || paths.is_some_and(|paths| paths.aliases(&sheet.path).iter().any(|alias| text.contains(alias.as_str())))
+    text.contains(bare(basename(&sheet.path)))
+        || paths.is_some_and(|paths| paths.aliases(&sheet.path).iter().any(|alias| text.contains(bare(alias))))
+}
+
+fn styles_name(target: &str) -> String {
+    let name = basename(target);
+    let stem = name.split_once(".styles.").map_or(name, |(stem, _)| stem);
+    format!("{}Styles", to_key(stem))
 }
 
 pub fn scan(
@@ -882,7 +986,7 @@ pub fn scan(
     };
 
     let mut has_core = false;
-    let mut imports: Vec<(Span, SymbolId)> = Vec::new();
+    let mut imports: Vec<(Span, usize, Vec<SymbolId>)> = Vec::new();
     for statement in &program.body {
         match statement {
             Statement::ImportDeclaration(declaration) => {
@@ -911,16 +1015,47 @@ pub fn scan(
                     }
                 };
                 let items: &[ImportDeclarationSpecifier] = declaration.specifiers.as_ref().map_or(&[], |s| s.as_slice());
-                match items {
-                    [ImportDeclarationSpecifier::ImportDefaultSpecifier(default)]
-                        if !declaration.import_kind.is_type() && without_query(specifier) == specifier =>
-                    {
-                        let Some(symbol) = default.local.symbol_id.get() else { continue };
-                        scan.bindings.insert(symbol, Binding { sheet, local: default.local.name.as_str().to_string() });
-                        imports.push((declaration.span, symbol));
+                let plain = !declaration.import_kind.is_type() && without_query(specifier) == specifier;
+                let converted = &sheets[sheet].converted;
+                let vanilla = is_sheet(&sheets[sheet].path);
+                let whole = match items {
+                    [ImportDeclarationSpecifier::ImportDefaultSpecifier(default)] => Some((&default.local, Bound::Sheet)),
+                    [ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace)] if vanilla => {
+                        let bound = if converted.variants.is_empty() { Bound::Sheet } else { Bound::Namespace };
+                        Some((&namespace.local, bound))
                     }
-                    _ => scan.hold(sheet, "import-shape", specifier.to_string(), declaration.span.start),
+                    _ => None,
+                };
+                let named: Option<Vec<(&BindingIdentifier, Bound)>> = items
+                    .iter()
+                    .map(|item| {
+                        let ImportDeclarationSpecifier::ImportSpecifier(item) = item else { return None };
+                        let imported = item.imported.name().as_str().to_string();
+                        let bound = if item.import_kind.is_type() {
+                            return None;
+                        } else if converted.variants.contains(&imported) {
+                            Bound::Variant(imported)
+                        } else {
+                            Bound::Style(converted.names.get(&imported)?.clone())
+                        };
+                        Some((&item.local, bound))
+                    })
+                    .collect();
+                let found: Vec<(&BindingIdentifier, Bound)> = match (whole, named) {
+                    (Some(binding), _) if plain => vec![binding],
+                    (None, Some(named)) if plain && vanilla && !named.is_empty() => named,
+                    _ => {
+                        scan.hold(sheet, "import-shape", specifier.to_string(), declaration.span.start);
+                        continue;
+                    }
+                };
+                let mut symbols = Vec::new();
+                for (local, bound) in found {
+                    let Some(symbol) = local.symbol_id.get() else { continue };
+                    scan.bindings.insert(symbol, Binding { sheet, local: local.name.as_str().to_string(), bound });
+                    symbols.push(symbol);
                 }
+                imports.push((declaration.span, sheet, symbols));
             }
             Statement::ExportFromDeclaration(declaration) => {
                 scan.foreign_specifier(declaration.source.value.as_str().unwrap_or_default(), declaration.span.start, "re-export");
@@ -937,9 +1072,24 @@ pub fn scan(
         return Outcome { holds: scan.holds, ..Outcome::default() };
     }
 
-    if imports.len() == 1 && !scoping.symbol_names().any(|name| name == "styles") {
-        for binding in scan.bindings.values_mut() {
-            binding.local = "styles".to_string();
+    let single = imports.len() == 1 && !scoping.symbol_names().any(|name| name == "styles");
+    let mut invented: Vec<String> = Vec::new();
+    for (span, sheet, symbols) in &imports {
+        let name = if single { "styles".to_string() } else { styles_name(&sheets[*sheet].target) };
+        let styled = symbols.iter().any(|s| matches!(scan.bindings[s].bound, Bound::Style(_)));
+        if styled && !single {
+            if invented.contains(&name) || scoping.symbol_names().any(|taken| taken == name) {
+                scan.hold(*sheet, "styles-binding-taken", name.clone(), span.start);
+            }
+            invented.push(name.clone());
+        }
+        for symbol in symbols {
+            let binding = scan.bindings.get_mut(symbol).unwrap();
+            match binding.bound {
+                Bound::Sheet if single => binding.local = name.clone(),
+                Bound::Style(_) => binding.local = name.clone(),
+                _ => {}
+            }
         }
     }
 
@@ -954,19 +1104,32 @@ pub fn scan(
 
     let need_namespace = scan.uses_css && scan.css_local.is_none();
     if need_namespace && scoping.symbol_names().any(|name| name == "css") {
-        for &(span, symbol) in &imports {
-            let sheet = scan.bindings[&symbol].sheet;
+        for &(span, sheet, _) in &imports {
             scan.hold(sheet, "css-binding-taken", "css".to_string(), span.start);
         }
     }
-    for (position, &(span, symbol)) in imports.iter().enumerate() {
-        let binding = &scan.bindings[&symbol];
-        let target = &sheets[binding.sheet].target;
+    for (position, (span, sheet, symbols)) in imports.iter().enumerate() {
+        let span = *span;
+        let target = &sheets[*sheet].target;
         let specifier = relative(dirname(file), target.strip_suffix(".ts").unwrap_or(target));
-        let imported = if binding.local == "styles" {
-            format!("import {{ styles }} from '{specifier}';")
-        } else {
-            format!("import {{ styles as {} }} from '{specifier}';", binding.local)
+        let mut names: Vec<String> = Vec::new();
+        for symbol in symbols {
+            let binding = &scan.bindings[symbol];
+            let name = match &binding.bound {
+                Bound::Variant(group) if *group == binding.local => group.clone(),
+                Bound::Variant(group) => format!("{group} as {}", binding.local),
+                _ if binding.local == "styles" => "styles".to_string(),
+                _ => format!("styles as {}", binding.local),
+            };
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+        let imported = match symbols.as_slice() {
+            [symbol] if matches!(scan.bindings[symbol].bound, Bound::Namespace) => {
+                format!("import * as {} from '{specifier}';", scan.bindings[symbol].local)
+            }
+            _ => format!("import {{ {} }} from '{specifier}';", names.join(", ")),
         };
         let prefix = if position > 0 {
             ""
@@ -987,10 +1150,9 @@ pub fn scan(
     let mut failed = None;
     if overlapping {
         failed = Some(format!("{file}: two rewrites overlap"));
-        for &(span, symbol) in &imports {
-            let _ = span;
+        for &(_, sheet, _) in &imports {
             holds.push(Hold {
-                sheet: Scan::sheet_of(&scan.bindings, symbol),
+                sheet,
                 kind: "overlap",
                 name: file.to_string(),
                 file: file.to_string(),
@@ -1001,10 +1163,4 @@ pub fn scan(
         }
     }
     Outcome { edits, holds, failed }
-}
-
-impl Scan<'_> {
-    fn sheet_of(bindings: &FxHashMap<SymbolId, Binding>, symbol: SymbolId) -> usize {
-        bindings[&symbol].sheet
-    }
 }
