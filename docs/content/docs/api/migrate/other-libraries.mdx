@@ -1,11 +1,13 @@
 ---
 title: 'Other libraries'
-description: 'Move from StyleX, Tailwind CSS, CSS Modules, styled-components, Emotion, vanilla-extract or Panda CSS to Plumeria.'
+description: 'Move from StyleX, Tailwind CSS, CSS Modules, styled-components, Emotion or vanilla-extract to Plumeria.'
 ---
 
-Set Plumeria up first with [`@plumeria/init`](/docs/api/migrate/init), then move styles file by file.
+Set Plumeria up with [`@plumeria/init`](/docs/api/migrate/init), then run [`@plumeria/migrate`](/docs/api/migrate/migrate). This page maps what the CLI leaves as a hold.
 
 ## StyleX
+
+`npx @plumeria/migrate from stylex` converts `stylex.create`, `stylex.props` in JSX, `keyframes`, `defineConsts`, `viewTransitionClass` and `positionTry`.
 
 The APIs keep their names and shapes. Most files change only at the import and at the call site.
 
@@ -35,7 +37,7 @@ A style relayed through wrappers that the compiler cannot follow stops the build
 
 ## Tailwind CSS
 
-The [Claude Code plugin](/docs/ai-agent-resources#claude-code-plugin) converts classes, `tv()` and `twMerge()` to Plumeria styles. [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens.
+`npx @plumeria/migrate from tailwindcss` converts `className` strings and `cn()` from the `cn` package. The [Claude Code plugin](/docs/ai-agent-resources#claude-code-plugin) converts `tv()` and `twMerge()`, which the CLI holds. [`@plumeria/wind`](/docs/api/packages/wind) keeps Tailwind's design values as tokens.
 
 ```tsx title="Before"
 <button className="rounded-md bg-blue-600 px-4 text-sm text-slate-50" />
@@ -59,6 +61,8 @@ const styles = css.create({
 ```
 
 ## CSS Modules
+
+`npx @plumeria/migrate from css-modules` writes each `*.module.css` as a `.styles.ts` and rewrites the files that import it.
 
 Each class becomes a key, and its rules move into the key as camelCase properties.
 
@@ -111,6 +115,8 @@ const styles = css.create({
 [Selector rules](/docs/selector-rules) lists which selectors a key can hold.
 
 ## styled-components
+
+`npx @plumeria/migrate from styled-components` converts styled HTML elements, the props their styles read, and `keyframes`.
 
 A styled component becomes a plain element with the `sx` prop. A prop that changes a value becomes a function key, and a prop that picks a style becomes a lookup.
 
@@ -167,6 +173,8 @@ Styles are compiled at build time, so nothing is injected into the page while it
 
 ## Emotion
 
+`npx @plumeria/migrate from emotion` converts the `css` prop, `css` styles, `@emotion/styled` elements and `keyframes`.
+
 Object styles are already close to Plumeria styles: the properties stay camelCase, and `'&:hover'` drops the `&`. `@emotion/styled` follows the [styled-components](#styled-components) table.
 
 | Emotion | Plumeria |
@@ -213,20 +221,23 @@ Remove the `@jsxImportSource @emotion/react` pragma, or `jsxImportSource` from t
 
 ## vanilla-extract
 
-Styles move out of `.css.ts` files and next to the component that uses them.
+`npx @plumeria/migrate from vanilla-extract` converts supported `.css.ts` and `.css.js` stylesheets to `.styles.ts` and `.styles.js` beside them: every `style` becomes a key of one `styles`, each `styleVariants` a lookup of its own, and `keyframes` stay where they are. From `recipe` down, the table is by hand.
 
 | vanilla-extract | Plumeria |
 | :-- | :-- |
 | `style({ … })` | A key in [`css.create`](/docs/api/javascript/create) |
-| `styleVariants`, `recipe` | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
+| `styleVariants` | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
 | `'@media': { '(…)': { … } }` | `'@media (…)': { … }` |
 | `selectors: { '&:hover': { … } }` | `':hover': { … }` |
+| `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
+| `recipe` | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
 | `` selectors: { [`${parent}:hover &`]: { … } } `` | [`css.marker` and `css.extended`](/docs/api/javascript/marker) |
 | `createTheme`, `createThemeContract` | [`css.createTheme`](/docs/api/javascript/createTheme) |
 | `createVar` + `assignInlineVars` | A [function key](/docs/api/javascript/create#dynamic-values) |
-| `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
 | `globalStyle` | A plain `.css` file |
 | `sprinkles` | [`@plumeria/wind`](/docs/api/packages/wind) tokens in `css.create` |
+
+Manual migration after a `recipe` hold:
 
 ```ts title="Before"
 // button.css.ts
@@ -293,66 +304,3 @@ export const theme = css.createTheme('.dark', {
 
 <div>{children}</div>
 ```
-
-## Panda CSS
-
-The style objects keep their shape. Conditions become selector keys, and token names become values.
-
-| Panda CSS | Plumeria |
-| :-- | :-- |
-| `css({ … })` | A key in [`css.create`](/docs/api/javascript/create) |
-| `cva`, config recipes | A [lookup](/docs/api/javascript/create#variants-bracket-notation), `sizes[size]` |
-| `cx()` | `sx={[styles.base, active && styles.active]}` |
-| `_hover: { … }` | `':hover': { … }` |
-| `md: { … }` | A `'@media (…)'` key from [`css.createStatic`](/docs/api/javascript/createStatic) |
-| `tokens` | [`css.createStatic`](/docs/api/javascript/createStatic), or [`@plumeria/wind`](/docs/api/packages/wind) |
-| `semanticTokens` with `_dark` | [`css.createTheme`](/docs/api/javascript/createTheme) |
-| `stack`, `flex` and other patterns | The properties they stand for |
-| `globalCss` | A plain `.css` file |
-
-```tsx title="Before"
-import { css } from '../styled-system/css';
-
-<button
-  className={css({
-    padding: '4',
-    color: 'white',
-    _hover: {
-      opacity: 0.8,
-    },
-    md: {
-      padding: '8',
-    },
-  })}
-/>
-```
-
-```tsx title="After"
-import * as css from '@plumeria/core';
-import { breakpoints } from './breakpoints';
-
-const styles = css.create({
-  button: {
-    padding: 16,
-    color: 'white',
-    ':hover': {
-      opacity: 0.8,
-    },
-    [breakpoints.md]: {
-      padding: 32,
-    },
-  },
-});
-
-<button sx={styles.button} />
-```
-
-```ts title="breakpoints.ts"
-import * as css from '@plumeria/core';
-
-export const breakpoints = css.createStatic({
-  md: '@media (min-width: 768px)',
-});
-```
-
-Once no file imports from `styled-system`, remove `panda.config.ts`, the generated `styled-system` directory and the PostCSS plugin.
