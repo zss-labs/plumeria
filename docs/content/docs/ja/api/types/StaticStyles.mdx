@@ -1,0 +1,58 @@
+---
+title: 'StaticStyles'
+description: '動的なスタイルを拒否するスタイルのリスト。css.use() でスタイルを当てるコンポーネント向けです。'
+---
+
+```ts
+type StaticStyles<K extends StyleKey = StyleKey> = StyleList<StaticNamespace<K>>;
+export type { StaticStyles };
+```
+
+`StaticStyles` は[関数で作った動的なスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values)を除外します。動的な値は CSS 変数で要素に渡すため、[css.use()](/ja/docs/api/javascript/use) でクラス名だけを作るコンポーネントには渡せません。
+
+## 型引数なし [#without-a-type-argument]
+
+型引数を省くと、どのプロパティでも使えます。動的なスタイルだけが型エラーになります。
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    padding: '8px',
+  },
+  tinted: {
+    color: 'gold',
+  },
+  sized: (width: number) => ({
+    width,
+  }),
+});
+
+type ChipProps = {
+  sx?: css.StaticStyles;
+};
+
+export function Chip({ sx }: ChipProps) {
+  return <span className={css.use(styles.base, sx)} />;
+}
+```
+
+```tsx
+<Chip sx={styles.tinted} />      // ok
+<Chip sx={styles.sized(120)} />  // Type error
+```
+
+## 型引数あり [#with-a-type-argument]
+
+型引数を指定するとプロパティも絞れます。`StaticStyles<'color'>` は [StyleProps](/ja/docs/api/types/StyleProps)`<'color'>` から動的なスタイルを除いた型です。
+
+```tsx
+type BadgeProps = {
+  sx?: css.StaticStyles<'color' | 'backgroundColor'>;
+};
+```
+
+<Callout title="補足">
+要素の `sx` に渡すコンポーネントなら、動的なスタイルも扱えます。その場合は [StyleProps](/ja/docs/api/types/StyleProps) や [WithoutProperties](/ja/docs/api/types/WithoutProperties) でプロパティを絞れます。
+</Callout>
