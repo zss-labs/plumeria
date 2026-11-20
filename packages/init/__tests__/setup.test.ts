@@ -387,6 +387,21 @@ describe('plan', () => {
     });
   });
 
+  it('skips a build script that already runs plumeria-lint', () => {
+    project(
+      {
+        name: 'app',
+        scripts: { build: 'plumeria-lint -- node build.mjs' },
+        devDependencies: { esbuild: '^0.28.0' },
+      },
+      { 'tsconfig.json': '{}' },
+    );
+    expect(on(plan(detect(dir), answers()), 'package.json')).toMatchObject({
+      kind: 'skip',
+      note: 'the scripts already carry it',
+    });
+  });
+
   it('renames plumerialint to plumeria-lint in the build script', () => {
     project(
       {
