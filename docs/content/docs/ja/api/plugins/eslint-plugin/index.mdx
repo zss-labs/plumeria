@@ -1,0 +1,102 @@
+---
+title: '推奨ルール'
+description: 'recommended のルール、セレクターのキーの解決方法、スタイリング prop の設定。'
+stability: Stable
+---
+
+[@plumeria/eslint-plugin](https://www.npmjs.com/package/@plumeria/eslint-plugin) は Plumeria 用の ESLint プラグインです。
+
+## インストール [#installation]
+
+```sh title="Terminal"
+pnpm i -D @plumeria/eslint-plugin
+```
+
+## 使い方 [#usage]
+```js
+import plumeria from '@plumeria/eslint-plugin';
+
+export default [plumeria.configs.recommended];
+```
+
+`no-invalid-selector`、`validate-pseudos`、`validate-at-rules` は、文字列を直接書いたセレクター以外もチェックします。計算したキーは、ESLint と oxlint のどちらでも定義元までたどります。
+
+```ts
+import * as css from '@plumeria/core';
+import { breakpoints } from './tokens';
+
+const hover = ':hover' as const;
+
+export const styles = css.create({
+  link: {
+    [hover]: { color: 'teal' },
+    [breakpoints.md]: { fontSize: 18 },
+  },
+});
+```
+
+キーには文字列の `const`、`const` オブジェクトや `css.createStatic` のプロパティ、それらを import した値を使えます。`as const`、`satisfies`、型注釈の有無は影響しません。値を確定できないキーはチェックを省きます。
+
+`sort-properties` も同じ方法でキーを読み、アットルールなら疑似クラスの後に並べます。`no-combinator` は `css.createStatic` の値がセレクターとして使われる形の場合にチェックします。
+
+## ルール [#rules]
+`recommended` は次のルールをすべて有効にします。各ルール名の先頭に `@plumeria/` が付きます。
+
+| ルール | レベル | 検出する内容 |
+| :-- | :-- | :-- |
+| `custom-props-require-import` | エラー | 独自の prop でスタイルを渡すファイルに `@plumeria/core` の import がない |
+| `expand-border-shorthands` | 警告 | 太さ、種類、色をまとめた枠線の一括指定。自動修正可 |
+| `no-combinator` | エラー | 関数形式の疑似クラスの外で使った `>`、`+`、`~`、子孫を表す空白 |
+| `no-destructure` | エラー | Plumeria API の分割代入 |
+| `no-inline-object` | エラー | スタイル用 prop や `css.use()` に直接書いたオブジェクト |
+| `no-inner-call` | エラー | 関数の中での API 呼び出し |
+| `no-invalid-selector` | エラー | コンパイラが扱えないセレクターや入れ子の順序 |
+| `no-mixed-styling-props` | エラー | 同じ要素でのスタイル用 prop と `className` または `style` の併用 |
+| `no-mutable-binding` | 警告 | スタイル定義の中の `let` や `var` |
+| `no-order-dependent-overlap` | 警告 | 一つのスタイルの中で、記述順だけで結果が決まる二つの指定 |
+| `no-style-prop-relay` | エラー | 受け取って別のコンポーネントに渡すだけのスタイル用 prop |
+| `no-unknown-css-properties` | エラー | CSS に存在しないプロパティ |
+| `no-unused-keys` | 警告 | 同じコンポーネントファイルのどこからも読まれていないキー |
+| `no-unresolved-composition` | 警告 | `css.use()` の結果と別のクラス名の連結 |
+| `sort-properties` | 警告 | 推奨順と異なるプロパティの並び。自動修正可 |
+| `format-properties` | 警告 | 一行にまとめたスタイル、またはプロパティ間の空行。自動修正可 |
+| `validate-values` | 警告 | プロパティが受け付けない値 |
+| `validate-pseudos` | 警告 | 疑似クラスや疑似要素の名前・書式の誤り |
+| `validate-at-rules` | 警告 | `@media`、`@container`、`@supports`、`@starting-style` 以外のアットルール |
+
+ほかに三つの任意のルールがあります。初期状態では無効です。書き方を絞って問題を未然に防ぐためのルールです。[追加できるルール](/ja/docs/api/plugins/eslint-plugin/optional-rules)
+
+## スタイリング prop の設定 [#configuring-the-styling-prop]
+
+`custom-props-require-import`、`no-inline-object`、`no-mixed-styling-props`、`no-style-prop-relay`、`no-unresolved-composition` はスタイル用 prop の名前を参照します。標準の `sx` を使う場合、追加設定は不要です。
+
+`withPlumeria` や unplugin の `styleProp` で名前を変えた場合は、ESLint にも同じ名前を指定します。バンドラーが実行する lint には自動で名前が渡ります。`plumeria-lint` では `--style-prop` で指定できます。
+
+```js
+import plumeria from '@plumeria/eslint-plugin';
+
+export default [
+  plumeria.configs.recommended,
+  {
+    settings: {
+      plumeria: { styleProp: 'classStyle' },
+    },
+  },
+];
+```
+
+必要なら一つのルールだけ設定を上書きできます。
+
+```js
+{
+  rules: {
+    '@plumeria/no-mixed-styling-props': ['error', { styleProp: 'classStyle' }],
+  },
+}
+```
+
+ローダーまたは unplugin に渡した名前とそろえてください。違っていると、コンパイラが変換しない prop を lint がチェックしてしまいます。
+
+<Cards>
+  <Card title="エディターの設定" href="/ja/docs/editor-integration" />
+</Cards>
