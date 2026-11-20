@@ -1,0 +1,130 @@
+---
+title: 'オプションのルール'
+description: 'スタイルの書き方を絞り込み、順番に左右される組み合わせや、スタイルを当てる 2 つ目の方法が生じないようにするルール。'
+---
+
+`recommended` はコードの問題を報告します。プロパティ名をそろえる二つのルールと `no-use-in-jsx` は、書き方を限定して問題を予防します。この三つは標準では無効です。枠線の一括指定を分ける `expand-border-shorthands` は推奨設定に含まれます。
+
+任意のルールは ESLint の設定で有効にします。バンドラー内の lint と `plumeria-lint` は専用の oxlint 設定を使います。バンドラーは `withoutLogicalProperties` または `withoutPhysicalProperties` に合わせて、対応する書き方のルールを追加します。
+
+## ルールの目的 [#what-they-are-for]
+
+詳細度で優先順位を決められるのは、一括指定と個別指定、軸と辺のように、一方がもう一方を含む場合です。次の二種類のプロパティでは、それだけで決まりません。
+
+| | 例 | 結果を決めるもの |
+| :-- | :-- | :-- |
+| 同じプロパティの別名 | `paddingTop` と `paddingBlockStart` | 記述順 |
+| 二つの一括指定の交差 | `borderTop` と `borderBlockWidth` | 記述順 |
+
+推奨設定の `no-order-dependent-overlap` は、一つの要素でこの組み合わせを見つけると警告します。以下のルールは、その組み合わせ自体をなくします。
+
+一つのスタイル内で `:hover` と `:focus`、または同じ疑似要素の `:hover::before` と `:focus::before` が同じプロパティを変える場合にも警告します。プロパティ名の統一では防げません。別のスタイルに分けて重ねると、右側のクラスに `:not(#\#)` が一つ付きます。どちらのモジュールを先に読んでも、両方の状態に当てはまるときは右側が優先されます。[スタイルの優先順位](/ja/docs/specificity)
+
+## 大きなコードベースに推奨する設定 [#recommended-for-a-large-codebase]
+
+```js
+import plumeria from '@plumeria/eslint-plugin';
+
+export default [
+  plumeria.configs.recommended,
+  {
+    rules: {
+      '@plumeria/no-logical-properties': 'warn',
+    },
+  },
+];
+```
+
+優先順位を決められないプロパティの組は86組です。うち30組は枠線の一括指定を含む交差、56組は同じプロパティの別名です。推奨設定の `expand-border-shorthands` で30組をなくし、名前をそろえる任意ルールで残りをなくせます。
+
+## expand-border-shorthands [#expand-border-shorthands]
+
+`border`、`borderBlock`、`borderInline` と八種類の辺別の一括指定は、太さ・種類・色を一度に設定します。順位を決められない交差には必ずこの11種類のいずれかがあるため、三つの個別指定に分ければ交差を避けられます。
+
+```js
+borderTop: '1px solid red'
+// fixes to
+borderTopColor: 'red',
+borderTopStyle: 'solid',
+borderTopWidth: '1px'
+```
+
+`borderTop` は上辺の三つの値、`borderBlockWidth` は二辺の太さを変えます。`border-top-width` だけが重なり、どちらも他方を含みません。`borderTopWidth` に分ければ `borderBlockWidth` の範囲に含まれるため、詳細度で決まります。
+
+一括指定は、省略した値も初期値に戻します。展開時には、省略した各プロパティの初期値も書き出します。
+
+```js
+borderBlock: 'solid'
+// fixes to
+borderBlockWidth: 'medium',
+borderBlockStyle: 'solid',
+borderBlockColor: 'currentColor'
+```
+
+`var()` や埋め込んだ変数が一つの値を表す場合は、ほかの値でまだ埋まっていないプロパティに割り当てます。
+
+```js
+borderLeft: `1px solid ${edge}`
+// fixes to
+borderLeftColor: edge,
+borderLeftStyle: 'solid',
+borderLeftWidth: '1px'
+```
+
+`var(--edge)` だけの値、`inherit`、参照など、分解できないものは警告だけを出します。別の箇所で展開された個別指定は一括指定より優先されるので、この場合は三つの宣言を手で書いてください。
+
+## no-physical-properties / no-logical-properties [#no-physical-properties--no-logical-properties]
+
+物理名と論理名の両方を持つプロパティは、同じ箇所を二つの名前で指定できます。書き方を一方にそろえると、この競合を防げます。
+
+```js
+'@plumeria/no-physical-properties': 'warn'
+// paddingLeft → rename to paddingInlineStart
+
+'@plumeria/no-logical-properties': 'warn'
+// paddingInlineStart → rename to paddingLeft
+```
+
+両方のルールを有効にすると矛盾します。物理名で統一済みのプロジェクトには `no-logical-properties` が向いています。書字方向や文字の向きが変わってもレイアウトが合うようにする場合は、`no-physical-properties` で論理名にそろえます。
+
+どちらにも `{ sizes }` を指定できます。初期値は `false` です。
+
+```js
+'@plumeria/no-physical-properties': ['warn', { sizes: true }]
+```
+
+標準では `paddingLeft`、`marginTop`、`top`、`borderTopColor` などの辺を確認します。有効にすると幅と高さ、その min・max、両軸の overflow、overscroll-behavior、contain-intrinsic-size も対象です。辺は方向によって反転しますが、サイズを変更する効果は限られ、影響するコードも多いため、別設定になっています。
+
+名前の変更は自動修正ではなく候補として表示します。縦書きでは二つの名前が異なる辺を指すことがあるので、意図を確認して適用してください。
+
+### 数をゼロに保つ [#holding-the-count-at-zero]
+
+lint は無効にでき、実行しない環境もあります。56組の違反を解消した後は、[Next.js](/ja/docs/api/plugins/next-plugin) や[ほかのバンドラー](/ja/docs/api/plugins/unplugin)の `withoutLogicalProperties` または `withoutPhysicalProperties` で維持できます。同じ `{ sizes }` が使えます。`include` と `exclude` で選んだコンパイル対象の全ファイルに効き、対象外のファイルはチェックされません。
+
+まず lint で違反をまとめて確認し、名前の変更を適用します。その後で同じ方向のビルド設定を有効にしてください。相反する二つのビルド設定を同時に使うと設定エラーです。
+
+## 残るもの [#what-is-left]
+
+`borderBlockWidth` のように一つの対応名がない一括指定は、物理名・論理名の変更対象に入りません。枠線の一括指定を `expand-border-shorthands` で分ければ、交差する相手もなくなります。
+
+二つの条件が重なり、一方が他方の部分集合だと判定できる場合、最適化で狭い条件を後に置きます。条件の包含関係は常に判定できるわけではなく、交差するだけの条件は記述順で決まります。`no-order-dependent-overlap` は、CSS では修正できてもコード上は優先順を誤解しやすい逆順の入れ子を報告します。
+
+## no-use-in-jsx [#no-use-in-jsx]
+
+`.jsx` と `.tsx` ではスタイル用 prop でどのスタイルも適用できます。このルールは、これらのファイルのどこに書いても `@plumeria/core` から import した `use` の呼び出しを報告します。
+
+```jsx
+<div className={css.use(styles.base)} />
+
+const className = css.use(styles.base);
+```
+
+ほかの拡張子のファイルでは `css.use()` を使えます。Vue、Svelte、Astro のテンプレートにはこれが必要です。別ファイルからその結果を読み込む場合も対象外です。
+
+`Style` 型の prop がない外部コンポーネントや `overlayClassName` のような prop には `css.use()` が必要なので、標準では無効です。そのようなコンポーネントを使わない場合に有効にしてください。[@plumeria/init](/ja/docs/api/migrate/init) は `--allow-use` を指定しない限り有効にします。
+
+```js
+'@plumeria/no-use-in-jsx': 'error'
+```
+
+`{ styleProp }` でメッセージに出す prop 名を指定できます。[prop 名の設定](/ja/docs/api/plugins/eslint-plugin#スタイリング-prop-の設定-configuring-the-styling-prop)
