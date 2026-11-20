@@ -63,7 +63,7 @@
     <text class="code" x="94" y="164">padding: 16,</text>
     <text class="code" x="94" y="186">borderRadius: 8,</text>
     <text class="code" x="78" y="208">},</text>
-    <text class="code" x="78" y="236">&lt;div classStyle={styles.notice} /&gt;</text>
+    <text class="code" x="78" y="236">&lt;div sx={styles.notice} /&gt;</text>
 
     <text class="title" x="66" y="286">styles/layout.ts</text>
     <text class="code" x="78" y="330">stack: {</text>
@@ -77,7 +77,7 @@
     <text class="code" x="386" y="352">padding: 16,</text>
     <text class="code" x="386" y="374">borderRadius: 8,</text>
     <text class="code" x="370" y="396">},</text>
-    <text class="code" x="370" y="424">&lt;div classStyle={[</text>
+    <text class="code" x="370" y="424">&lt;div sx={[</text>
     <text class="code" x="386" y="446"><tspan class="hl">layout.stack</tspan>, styles.notice]} /&gt;</text>
 
     <text class="code" x="716" y="206">&lt;div className={</text>
