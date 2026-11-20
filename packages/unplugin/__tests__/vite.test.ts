@@ -391,6 +391,11 @@ it('links the single CSS bundle to entry chunks in a non-RSC build', () => {
   ]);
   expect([...build['lazy.js'].viteMetadata.importedCss]).toEqual([]);
 
+  const withoutSheet = bundle();
+  withoutSheet['assets/style-x.css'].originalFileNames = ['other.css'];
+  cssBundlePlugin.generateBundle({}, withoutSheet);
+  expect([...withoutSheet['entry.js'].viteMetadata.importedCss]).toEqual([]);
+
   const rsc = bundle();
   plugin.config({ plugins: [{ name: 'rsc' }] }, { command: 'build' });
   cssBundlePlugin.generateBundle({}, rsc);
