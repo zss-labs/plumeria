@@ -50,7 +50,7 @@ export const App = () => <Alone sx={styles.a} />;`,
 
     const { code } = await transform(receiver, 'sx');
 
-    expect(code).not.toContain('className={""}');
+    expect(code).not.toContain('className=""');
     expect(
       compileCSS({ include: ['**/*.{ts,tsx}'], exclude: [], cwd: DIR }),
     ).toContain('teal');
@@ -72,7 +72,7 @@ export const Uses = () => <Boxed classStyle={styles.a} />;`,
     await transform(receiver, 'sx');
     const { code } = await transform(receiver, 'classStyle');
 
-    expect(code).not.toContain('className={""}');
+    expect(code).not.toContain('className=""');
     expect(code).toContain('[classStyle]');
   });
 });
