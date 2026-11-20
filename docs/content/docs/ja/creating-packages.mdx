@@ -1,0 +1,153 @@
+---
+title: "パッケージの作り方"
+description: "コンポーネントをソースのまま配る方法と、ビルドして配る方法を説明します。"
+---
+
+Plumeria で作ったコンポーネントライブラリには、二つの配布方法があります。
+
+|                                  | ソース | ビルド済み |
+| -------------------------------- | ------------------------------- | ----------------------- |
+| 配布するもの | `src`                           | `dist` と CSS ファイル |
+| 利用側にバンドラープラグインが必要か | 必要 | 不要 |
+| 利用側で `sx` による上書きができるか | できる。ビルド時に解決する | 不要 |
+| 実行時のスタイル処理 | なし | なし |
+
+利用するアプリも Plumeria でビルドするならソースを配ります。Plumeria を使わないアプリでも利用できるようにするには、ビルド済みのファイルを配ります。
+
+## ソースを配る
+
+[トークンを配る場合](/ja/docs/thinking-in-plumeria#パッケージ間で共有する)と同じように、パッケージの exports の `plumeria` 条件に TypeScript ソースを指定します。利用側のアプリが自分のファイルと一緒にコンポーネントをビルドします。
+
+```json title="package.json"
+{
+  "name": "ui-kit",
+  "type": "module",
+  "files": ["src"],
+  "exports": {
+    ".": { "plumeria": "./src/index.ts", "types": "./src/index.ts" },
+    "./*": { "plumeria": "./src/*.tsx", "types": "./src/*.tsx" }
+  },
+  "peerDependencies": {
+    "@plumeria/core": "*",
+    "react": ">=18"
+  }
+}
+```
+
+コンポーネントは prop でスタイルを受け取り、配列の最後に置きます。これで呼び出し側の指定が優先されます。
+
+```tsx title="src/Button.tsx"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    paddingBlock: 8,
+    paddingInline: 16,
+    color: 'white',
+    backgroundColor: 'gray',
+    borderRadius: 6,
+  },
+});
+
+export const Button = ({
+  children,
+  sx,
+}: {
+  children: React.ReactNode;
+  sx?: css.Style;
+}) => <button sx={[styles.base, sx]}>{children}</button>;
+```
+
+利用側はパッケージを依存関係に加え、自分で定義したスタイルを渡します。
+
+```tsx title="app.tsx"
+import * as css from '@plumeria/core';
+import { Button } from 'ui-kit';
+
+const styles = css.create({
+  primary: { backgroundColor: 'royalblue' },
+  danger: { backgroundColor: 'crimson' },
+});
+
+export const App = () => (
+  <>
+    <Button>Default</Button>
+    <Button sx={styles.primary}>Primary</Button>
+    <Button sx={styles.danger}>Danger</Button>
+  </>
+);
+```
+
+アプリをビルドすると、`Button` と、アプリがそこに渡す各スタイルが一緒にコンパイルされます。
+
+```js title="dist/assets/index.js"
+var Button = ({ children, sx }) =>
+  jsx('button', {
+    className:
+      'xnuwkl3w xgxw0ba0 xf882boo x1b4ohri ' +
+      ({ x9ct19gt: 'xbpntsfg', x409xipj: 'x5iwg3of' }[sx] ||
+        'xc4k1q4z'),
+    children,
+  });
+```
+
+上書きの結果はビルド時に表にまとまります。パッケージをまたいでも描画中に重ね合わせる処理は残りません。開発中にアプリ側のスタイルを編集すると、コンポーネントにも反映されます。
+
+バンドラープラグインに追加設定は不要です。パッケージのソースを見つけ、Vite では依存関係の事前バンドルから外し、Next.js では `transpilePackages` に加えます。exports が指すディレクトリ内は全ファイルがコンパイルされるので、配布するファイルだけを置き、テストや Storybook のストーリーは別に置きます。
+
+<Callout title="受け取ったスタイルを自分の要素に適用する">
+  受け取ったスタイルは、自分が描画する要素に適用してください。アプリ内のコンポーネントと同じく、別のコンポーネントに転送するとビルドが止まります。[スタイルを prop で受け取る](/ja/docs/thinking-in-plumeria#スタイルを-prop-で受け取る)
+
+  Plumeria を使わないアプリのために、ビルド済みファイルを指す `default` 条件を併設できます。その場合、それらのアプリにはビルド済み版が渡り、アプリからのスタイルの上書きは適用されません。
+</Callout>
+
+## ビルドして配る
+
+ライブラリ側でビルドします。クラス名は JavaScript に、ルールは CSS ファイルに入るので、利用側にはバンドラープラグインも Plumeria への依存も必要ありません。アプリから渡した `sx` は読み取られません。
+
+```js title="build.js"
+import esbuild from 'esbuild';
+import fs from 'node:fs';
+import plumeria from '@plumeria/unplugin';
+
+await esbuild.build({
+  entryPoints: ['src/index.tsx'],
+  bundle: true,
+  outfile: 'dist/index.js',
+  external: ['react', 'react/jsx-runtime'],
+  plugins: [plumeria.esbuild({ include: /\.[jt]sx?$/ })],
+  loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  format: 'esm',
+  jsx: 'automatic',
+});
+
+fs.writeFileSync(
+  'dist/index.js',
+  `import './index.css';\n${fs.readFileSync('dist/index.js', 'utf-8')}`,
+);
+```
+
+最後の行で JavaScript から CSS を読み込みます。esbuild、Bun、Rollup、Rolldown は抽出した CSS への参照を自動では追加せず、ライブラリにはリンクを置く HTML もありません。この一行があると、利用側がコンポーネントを import したときに CSS も読み込まれます。
+
+```json title="package.json"
+{
+  "name": "your-lib",
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@plumeria/core": "latest",
+    "@plumeria/unplugin": "latest"
+  }
+}
+```
+
+<Cards>
+  <Card title="パッケージ間で共有する" href="/ja/docs/thinking-in-plumeria#パッケージ間で共有する" />
+  <Card title="@plumeria/wind" href="/ja/docs/api/packages/wind" />
+</Cards>
