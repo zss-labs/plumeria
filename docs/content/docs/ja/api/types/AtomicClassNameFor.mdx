@@ -1,0 +1,47 @@
+---
+title: 'AtomicClassNameFor'
+description: '1 つの atomic クラス名の型。生成元のプロパティの印が付いています。'
+---
+
+```ts
+type AtomicClassNameFor<P extends string, V>;
+export type { AtomicClassNameFor };
+```
+
+`AtomicClassNameFor` は、作成したスタイルから一つのプロパティを読むと得られるクラス名の型です。値は文字列ですが、どのプロパティ用かを型が覚えています。たとえば、色用のクラス名を幅用のクラス名に代入すると型エラーになります。
+
+## 例 [#example]
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: {
+    color: 'red',
+    fontSize: '12px',
+  },
+});
+
+const color: css.AtomicClassNameFor<'color', 'red'> = styles.text.color; // ok
+const wrong: css.AtomicClassNameFor<'color', 'red'> = styles.text.fontSize; // Type error
+```
+
+文字列なので、クラス名を受け取る場所にそのまま渡せます。
+
+```tsx
+<ExternalComponent className={styles.text.color} />
+```
+
+動的なスタイルの各項目は [AtomicClassStyleFor](/ja/docs/api/types/AtomicClassStyleFor) です。この型には、値を `sx` で要素に渡すという印が付きます。`AtomicClassNameFor` の条件も満たすので、次の prop はどちらのクラス名も受け取れます。
+
+```tsx
+const styles = css.create({
+  sized: (width: number) => ({ width }),
+});
+
+const width: css.AtomicClassNameFor<'width', number> = styles.sized(120).width; // ok
+```
+
+<Callout title="補足">
+通常は `string` で十分です。一つのプロパティ用のクラス名だけを受け取りたい場合に `AtomicClassNameFor` を使います。スタイル全体を受け取る場合は [Style](/ja/docs/api/types/Style) や、受け取れる範囲を絞った型を使います。
+</Callout>
