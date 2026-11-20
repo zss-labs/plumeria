@@ -19,6 +19,8 @@ use crate::{apply, finish, walk as walk_files, Options};
 const PACKAGE: &str = "@vanilla-extract/css";
 const HEADER: &str = "import * as css from '@plumeria/core';";
 
+const UNREAD: &[&str] = &[".css.tsx", ".css.jsx", ".css.mjs", ".css.cjs"];
+
 pub fn is_sheet(path: &str) -> bool {
     path.ends_with(".css.ts") || path.ends_with(".css.js")
 }
@@ -44,6 +46,7 @@ fn hint(kind: &str) -> &'static str {
         }
         "rank-order" => "Plumeria ranks this property above the one written after it. Write the higher-ranked one last.",
         "css-binding-taken" | "styles-binding-taken" => "The name is taken in this file. Rename it, then run again.",
+        "unsupported-extension" => "Only .css.ts and .css.js are read. Rename the file to one of them, then run again.",
         _ => "This is not carried over. Rewrite it by hand, then run again.",
     }
 }
@@ -434,6 +437,17 @@ fn through_newline(text: &str, span: Span) -> (u32, u32, String) {
 
 pub fn convert(file: &str, text: &str) -> Converted {
     let mut out = Converted::default();
+    if !is_sheet(file) {
+        out.reports.push(Report {
+            line: 0,
+            column: 0,
+            kind: "unsupported-extension",
+            source: file.to_string(),
+            hint: hint("unsupported-extension").to_string(),
+            blocking: true,
+        });
+        return out;
+    }
     let Ok(source_type) = SourceType::from_path(file) else { return out };
     let allocator = Allocator::default();
     let parsed = Parser::new(&allocator, text, source_type).parse();
@@ -574,19 +588,20 @@ pub fn convert(file: &str, text: &str) -> Converted {
     out
 }
 
-pub fn run(options: &Options) -> ExitCode {
-    let mut project = Vec::new();
-    walk_files("", &mut project);
+fn is_candidate(path: &str) -> bool {
+    is_sheet(path) || UNREAD.iter().any(|extension| path.ends_with(extension))
+}
+
+pub fn collect(files: &[(String, String)], paths: Option<&Paths>, exists: impl Fn(&str) -> bool) -> Vec<Sheet> {
     let mut sheets: Vec<Sheet> = Vec::new();
-    let mut texts: Vec<String> = Vec::new();
-    for path in project.iter().filter(|p| is_sheet(p)) {
-        let Ok(text) = fs::read_to_string(path) else { continue };
-        if !text.contains(PACKAGE) {
+    let mut texts: Vec<&str> = Vec::new();
+    for (path, text) in files {
+        if !is_candidate(path) || (is_sheet(path) && !text.contains("@vanilla-extract/")) {
             continue;
         }
-        let mut converted = convert(path, &text);
+        let mut converted = convert(path, text);
         let target = target_of(path);
-        if fs::metadata(&target).is_ok() {
+        if exists(&target) {
             converted.reports.push(Report {
                 line: 0,
                 column: 0,
@@ -599,18 +614,13 @@ pub fn run(options: &Options) -> ExitCode {
         sheets.push(Sheet { path: path.clone(), target, converted });
         texts.push(text);
     }
-    if sheets.is_empty() {
-        println!("No {PACKAGE} stylesheet found.");
-        return ExitCode::SUCCESS;
-    }
-    let paths = Paths::load(|path| fs::read_to_string(path).ok());
     let mut linked = Vec::new();
     for (i, text) in texts.iter().enumerate() {
-        if !sheets[i].converted.reports.iter().any(|r| r.kind == "sheet-import") {
+        if !sheets[i].converted.blocked() {
             continue;
         }
         for (j, sheet) in sheets.iter().enumerate() {
-            if j != i && mentions(sheet, paths.as_ref(), text) {
+            if j != i && mentions(sheet, paths, text) {
                 linked.push((j, sheets[i].path.clone()));
             }
         }
@@ -624,6 +634,23 @@ pub fn run(options: &Options) -> ExitCode {
             hint: hint("imported-by-sheet").to_string(),
             blocking: true,
         });
+    }
+    sheets
+}
+
+pub fn run(options: &Options) -> ExitCode {
+    let mut project = Vec::new();
+    walk_files("", &mut project);
+    let files: Vec<(String, String)> = project
+        .iter()
+        .filter(|p| is_candidate(p))
+        .filter_map(|p| Some((p.clone(), fs::read_to_string(p).ok()?)))
+        .collect();
+    let paths = Paths::load(|path| fs::read_to_string(path).ok());
+    let sheets = collect(&files, paths.as_ref(), |target| fs::metadata(target).is_ok());
+    if sheets.is_empty() {
+        println!("No vanilla-extract stylesheet found.");
+        return ExitCode::SUCCESS;
     }
     finish(options, &project, sheets)
 }
