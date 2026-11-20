@@ -1,0 +1,5 @@
+{
+  "defaultOpen": false,
+  "title": "パッケージ",
+  "pages": ["wind", "headlessui", "inspector"]
+}
