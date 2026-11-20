@@ -1,16 +1,15 @@
 ---
 title: '@plumeria/codemod'
-description: 'Rename the styling prop or an API, or migrate Plumeria imports and dependencies to TypedCSS.'
+description: 'Rename the styling prop or a Plumeria API across your source.'
 stability: Candidate
 ---
 
-`@plumeria/codemod` rewrites Plumeria source files and package dependencies.
+`@plumeria/codemod` rewrites Plumeria source files.
 
 | Transform | What it does |
 | --- | --- |
 | `rename-prop` | renames JSX styling attributes and matching `Style` property signatures |
 | `rename-api` | renames a Plumeria API and references to its imports |
-| `migrate-to-typedcss` | rewrites supported package imports, plugin calls and dependencies to TypedCSS |
 
 Every transform supports `--dry-run`. Commit your changes before applying a rewrite so you can review and revert it separately.
 
@@ -179,60 +178,3 @@ It rewrites calls through the namespace or default import of `@plumeria/core`, a
 ```
 
 `<to>` has to be an API `@plumeria/core` exports, so a typo is reported instead of written. `--dry-run` lists the files it would change.
-
-## Migrating to TypedCSS
-
-Preview the migration from the project root, then apply it:
-
-```sh title="Terminal"
-npx @plumeria/codemod migrate-to-typedcss --dry-run
-npx @plumeria/codemod migrate-to-typedcss
-```
-
-You can pass paths after the command. Source files and `package.json` files are processed only under those paths, so passing just `src` does not update a manifest in the project root.
-
-### Package imports
-
-The transform rewrites imports, re-exports, `import()` and `require()` for these packages, preserving their subpaths:
-
-| Plumeria | TypedCSS |
-| --- | --- |
-| `@plumeria/core` | `@typedcss/css` |
-| `@plumeria/unplugin` | `@typedcss/unplugin` |
-| `@plumeria/next-plugin` | `@typedcss/next-plugin` |
-| `@plumeria/eslint-plugin` | `@typedcss/eslint-plugin` |
-
-```diff
-- import * as css from '@plumeria/core';
-- import plumeria from '@plumeria/unplugin/vite';
-+ import * as css from '@typedcss/css';
-+ import plumeria from '@typedcss/unplugin/vite';
-```
-
-Local names are preserved. A named import of `withPlumeria` from the Next.js plugin becomes `withTypedCSS`, along with its references:
-
-```diff
-- import { withPlumeria } from '@plumeria/next-plugin';
-- export default withPlumeria(nextConfig);
-+ import { withTypedCSS } from '@typedcss/next-plugin';
-+ export default withTypedCSS(nextConfig);
-```
-
-An explicitly aliased import keeps its local name. Named re-exports and destructured `require()` bindings are handled too.
-
-### Dependencies
-
-The same four packages are replaced in `package.json` dependency sections, preserving their version ranges. Because `@typedcss/css` includes a runtime, it is placed in `dependencies` even when `@plumeria/core` was a dev dependency.
-
-The codemod does not install packages or update lockfiles. After applying the manifest changes, run the install command it prints, such as `pnpm install`.
-
-### What to update manually
-
-This transform changes package references and named plugin bindings; it does not convert every Plumeria API or configuration value. Review these separately:
-
-- Rename an older styling prop to `sx` with `rename-prop` before migrating.
-- Replace `css.use(...)` with the appropriate `css.props(...)` spread. The return values differ, so this is not an API rename.
-- Update triple-slash type references, namespace plugin calls such as `plugin.withPlumeria(...)`, and ESLint plugin keys and settings where needed.
-- Review dependencies outside the four supported packages.
-
-Run your formatter, type checker and build, then check the affected UI. See [TypedCSS](/docs/typedcss) for the authoring model and the difference between `css.use` and `css.props`.
