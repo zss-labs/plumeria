@@ -1,0 +1,262 @@
+---
+title: '詳細度'
+description: 'スタイルが競合したとき、どの atomic クラスが勝つかを Plumeria がどう決めるか。'
+---
+import { Step, Steps } from "component/Steps";
+
+<img src="/specificity-steps.svg" width={1000} height={420} alt="個別指定や条件が加わるたびに :not(#\#) を足し、同じ段では配列の右側を優先する" />
+
+個別指定は一括指定より優先されます。条件付きの指定や入れ子のセレクターは基本の指定より優先され、`sx` 配列では右側の指定を使います。これだけでは順位が付かない四つの組み合わせは、[CSS の順番が効く場合](#ソースの順番がまだ決めるもの-what-source-order-still-decides)で説明します。
+
+<Steps>
+<Step>
+## プロパティの優先順位 [#property-priority]
+
+Plumeria は、一括指定から個別指定までの包含関係をもとに詳細度を決めます。一段細かいプロパティに進むたび、生成されるクラスに `:not(#\#)` を一つ足します。以下の例ではハッシュによるクラス名 `hash(xxxxxxxx)` を `xatom` と略します。
+
+### その値だけを上書きする [#override-only-that-value]
+
+個別指定は一括指定の値を**部分的に上書き**します。スタイルを重ねる順番を変えても同じです。
+```js
+const styles = css.create({
+  base: { margin: 10 },
+  custom: { marginTop: 20 },
+});
+
+// Both produce the same result
+sx={[styles.base, styles.custom]}
+sx={[styles.custom, styles.base]}
+
+// Result: margin 10px on all sides, except top is 20px
+```
+
+通常の CSS では、後に書いた一括指定が前の個別指定をリセットします。Plumeria は個別指定の詳細度を上げてこのリセットを防ぎます。次の CSS と、
+```css
+xatom1 {
+  padding: 20px;
+}
+
+xatom2:not(#\#):not(#\#) {
+  padding-top: 10px;
+}
+```
+
+順番を入れ替えたこちらの CSS は、同じ表示になります。
+
+```css
+xatom2:not(#\#):not(#\#) {
+  padding-top: 10px;
+}
+
+xatom1 {
+  padding: 20px;
+}
+```
+
+論理プロパティが一括指定と個別指定の中間に当たる場合は、その段数を使います。
+
+```sh
+padding:             0 - :not(#\#) x 0
+padding-block:       1 - :not(#\#) x 1
+padding-block-start: 2 - :not(#\#) x 2
+padding-top:         2 - :not(#\#) x 2
+```
+
+足すのは包含関係の段数だけです。CSS の記述順をまねるために、一括指定の詳細度まで上げることはありません。
+</Step>
+
+<Step>
+### 同じスタイルの中の宣言 [#declarations-in-the-same-style]
+
+同じスタイル内でも、一括指定と個別指定には別々のクラスを作ります。後に一括指定を書いても、前に書いた個別指定のクラスは残ります。
+
+```js
+const styles = css.create({
+  base: {
+    paddingTop: '20px',
+    padding: '10px',
+  },
+});
+```
+
+上辺には詳細度の高い個別指定が効き、残りの辺には一括指定が効きます。
+
+```css
+xatom1:not(#\#):not(#\#) {
+  padding-top: 20px;
+}
+
+xatom2 {
+  padding: 10px;
+}
+```
+
+<Callout title="ESLint でチェックする">
+通常の CSS でもこの関係は複雑です。ESLint のルールは個別指定を一括指定の後に並べ、コードを一定の順番で読めるようにします。
+</Callout>
+</Step>
+
+<Step>
+## `sx` でのマージ [#merging-in-sx]
+
+`sx` 配列で二つのスタイルが同じプロパティを指定すると、右側が優先されます。左側の値は取り除かれ、この組み合わせには負けた値のクラスが出力されません。
+
+```js
+const styles = css.create({
+  base: { 
+    fontSize: 10,
+  },
+  custom: { 
+    fontSize: 16,
+  },
+});
+
+// The right always wins
+sx={[styles.base, styles.custom]} // 16px
+sx={[styles.custom, styles.base]} // 10px
+```
+
+一つ目の配列の出力です。
+
+```css
+xatom {
+  font-size: 16px;
+}
+```
+
+二つ目では順番が逆になります。
+
+
+```css
+xatom {
+  font-size: 10px;
+}
+```
+</Step>
+
+<Step>
+## 条件付きのルールとネストしたルール [#conditional-and-nested-rules]
+
+`@media`、`@container`、`@supports`、`@starting-style`、入れ子のセレクターには、それぞれ `:not(#\#)` を一つ足します。これにより、生成される CSS の位置に関係なく、条件付きの指定が基本の指定を上書きできます。条件の中にセレクターを置いた場合は、両方の分が付きます。
+
+```sh
+base shorthand:                property depth 0
+base longhand:                 property depth
+shorthand in condition:        property depth 0 + condition depth 1
+longhand in condition:         property depth + condition depth 1
+nested selector:               property depth + nested depth 1
+nested selector in condition:  property depth + nested depth 1 + condition depth 1
+```
+
+CSS 変数は例外です。条件や入れ子による詳細度は加えません。
+
+最適化では同じセレクターやアットルールを内側まで順にまとめ、CSS を小さくします。対応する条件付きルールは基本ルールの後に置きます。これで、詳細度が並んだ場合は条件付きの一括指定が基本の個別指定を上書きできます。ある条件が別の条件に含まれる場合は、狭いほうを後に置きます。包含関係を判定できるのは、同じメディアタイプか同じコンテナーに対し、`width`、`height`、`inline-size`、`block-size` の `min-`、`max-`、範囲比較を使う条件です。`and` でつないだ比較も対象です。ほかの条件は、この並べ替えと両立する限り、元の順番を保ちます。
+</Step>
+
+<Step>
+## ソースの順番がまだ決めるもの [#what-source-order-still-decides]
+
+一方がもう一方を含む指定では詳細度で結果が決まるため、別々のモジュールのスタイルを重ねても、バンドラーが先に読んだモジュールには左右されません。包含関係のない組み合わせは四種類あります。三つは CSS の順番が関わり、残りの一つはスタイルを重ねる順序で決められます。
+
+### 同じプロパティの 2 つの名前 [#the-same-property-under-two-names]
+
+横書きでは `paddingTop` と `paddingBlockStart` は同じ辺の余白を表します。詳細度は同じなので、一方を優先できません。これは通常の CSS と同じです。
+
+縦書きでは二つの指定は別の辺に効きます。書字方向は実行時に決まり、親からも引き継ぐため、ビルド時の設定だけでは各要素の方向を判断できません。`no-order-dependent-overlap` はこの二つを同じプロパティとして報告します。横書きや方向が混在する文書には適切ですが、常に縦書きと分かっている要素では実際には競合しません。`no-logical-properties` または `no-physical-properties` で一方の書き方にそろえると、この問題を避けられます。
+
+```js
+const styles = css.create({
+  physical: { paddingTop: 4 },
+  logical: { paddingBlockStart: 10 },
+});
+```
+
+lint ルールは違反をまとめて報告し、名前の変更を提案します。ただし、開発者がルールをオフにしたり、lint が動かない環境でビルドしたりすることもあります。[Next.js](/ja/docs/api/plugins/next-plugin) や[ほかのバンドラー](/ja/docs/api/plugins/unplugin)でも一方にそろえるには、`withoutLogicalProperties` または `withoutPhysicalProperties` を使います。既存のコードでは、まずルールで全箇所を見つけて直し、違反がゼロになったらビルド設定を有効にしてください。コンパイラが処理するすべてのファイルがチェックされます。
+
+どちらも `{ sizes: true }` を指定すると、辺に加えて、縦横の軸に対応する12組も対象になります。両方を同時に有効にすると設定エラーです。縦書きでは名前を変えると意味も変わるので、ビルド時にはどちらの設定も自動で書き換えません。
+
+### 交差する 2 つのショートハンド [#two-shorthands-that-cross]
+
+`borderTop` は一つの辺の太さ・種類・色を、`borderBlockWidth` は二つの辺の太さを指定します。`border-top-width` が重なりますが、一方が他方を含む関係ではないので順位を付けられません。`borderTop` を三つの個別指定に分ければ、重なる部分は一括指定と個別指定の関係になり、詳細度で決まります。`expand-border-shorthands` がこの書き換えを行います。
+
+```js
+const styles = css.create({
+  edge: { borderTop: '1px solid red' },
+  axis: { borderBlockWidth: 5 },
+});
+```
+
+### 重なる 2 つの条件 [#two-conditions-that-overlap]
+
+同時に当てはまる二つの条件は同じ詳細度です。一方の範囲がもう一方に含まれる場合、最適化で狭いほうを後に置きます。この場合、ソースに書いた順番やコンパイラが先に読んだモジュールは結果に影響しません。
+
+```js
+const styles = css.create({
+  medium: { '@media (min-width: 600px)': { color: 'red' } },
+  wide: { '@media (min-width: 900px)': { color: 'blue' } },
+});
+```
+
+幅が 1000px なら両方の条件に当てはまり、どちらを先に書いても `blue` が効きます。逆順に書くと、コード上では `red` が優先されるように見えるので、`no-order-dependent-overlap` が報告します。
+
+600〜900px と 700〜1000px のように、交差しても一方がもう一方に含まれない範囲は記述順で決まります。最適化で比較できない条件も同じです。比較できる範囲が交差し、同じプロパティを指定すると `no-order-dependent-overlap` が報告します。範囲を分けるか、重なりに専用の条件を設けてください。
+
+### 同時に一致する 2 つの状態 [#two-states-that-match-at-once]
+
+入れ子のセレクターに足す詳細度は同じです。`:hover` と `:focus` の両方に当てはまる場合は、これだけでは順位が付きません。`:hover::before` と `:focus::before` も同じ疑似要素を対象にするため、同様です。一方、要素自身の状態と単独の `::before` は対象が別です。異なる疑似要素や、`::part(icon)` と `::part(label)` のように引数が違う疑似要素も競合しません。
+
+```js
+const styles = css.create({
+  hovered: { ':hover': { color: 'red' } },
+  focused: { ':focus': { color: 'blue' } },
+});
+```
+
+プロパティの包含関係とは違い、`:hover` は `:focus` より対象を細かく限定する条件ではありません。両方に当てはまるときにどちらを選ぶかは、スタイルを重ねる順番で伝えます。
+
+```js
+sx={[styles.hovered, styles.focused]} // blue where both hold
+sx={[styles.focused, styles.hovered]} // red where both hold
+```
+
+配列の右側に置いたスタイルのクラスには、`:not(#\#)` がもう一つ付きます。片方の状態だけなら結果は変わらず、両方なら右側が優先されます。詳細度を上げたクラスは別のクラスとして生成するので、同じアプリで逆順の組み合わせも共存できます。配列を逆にすれば結果も逆になり、バンドラーがモジュールを読む順番に依存しません。
+
+この調整は、条件、疑似要素、プロパティ、元のセレクターの詳細度がすべて同じ場合だけです。異なる `@media`、一括指定と個別指定、`:host(.active)` と `:hover` など、すでに優先順位が付く組には適用しません。明示した `:hover:focus` は、調整後のクラスよりも優先されます。
+
+二つの状態を一つのスタイルの中に書くと、配列の順番からは判断できません。両方に当てはまる場合は記述順で決まります。
+
+```js
+const styles = css.create({
+  button: {
+    ':hover': { color: 'red' },
+    ':focus': { color: 'blue' },
+  },
+});
+```
+
+`no-order-dependent-overlap` はこの組を報告します。両方に当てはまるときの値を `:hover:focus` に書くか、二つのスタイルに分けて優先したい順に重ねてください。
+
+<Callout title="一つのスタイルにまとめる">
+一つのスタイルオブジェクトの中では順番は安定し、ESLint が一定の書き方を保ちます。最初の三種類を二つの `css.create` に分けると、バンドラーの読込順が問題になります。二つの状態だけは、分けて重ねることで意図を示せます。`no-order-dependent-overlap` は、一つのスタイル内で四種類の競合を検出します。条件については、包含関係を判定できる場合と、比較できる範囲が交差する場合が対象です。
+</Callout>
+
+### 最初の 2 つをなくす [#removing-the-first-two-entirely]
+
+二つのルールを使えば、最初の二種類の重なりを避けられます。`expand-border-shorthands` は枠線の一括指定を三つに分け、一括指定と個別指定の関係に直します。推奨設定に警告として含まれます。次の任意のルールは、同じプロパティを論理名と物理名の両方で書くことを防ぎます。
+
+```js
+import plumeria from '@plumeria/eslint-plugin';
+
+export default [
+  plumeria.configs.recommended,
+  {
+    rules: {
+      '@plumeria/no-logical-properties': 'warn',
+    },
+  },
+];
+```
+
+書き方をそろえるルールも有効にすると、このページで扱った競合のうち残るのは、重なる条件と、同時に当てはまる二つの状態だけです。[追加できるルール](/ja/docs/api/plugins/eslint-plugin/optional-rules)
+</Step>
+</Steps>
