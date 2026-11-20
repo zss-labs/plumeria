@@ -1,0 +1,108 @@
+---
+title: '@plumeria/next-plugin'
+description: 'Next.js の設定を withPlumeria で包み、コンパイラのオプションを指定します。'
+stability: Stable
+---
+
+[@plumeria/next-plugin](https://www.npmjs.com/package/@plumeria/next-plugin) は Next.js 用のプラグインです。Turbopack と Webpack の両方で、ビルド時にスタイルを変換し、開発時は HMR で変更を反映します。
+
+## インストール [#installation]
+
+```sh title="Terminal"
+pnpm i -D @plumeria/next-plugin
+```
+
+## 使い方 [#usage]
+
+`next.config.ts` または `next.config.js` の設定を `withPlumeria` で囲みます。
+
+```ts title="next.config.ts"
+import type { NextConfig } from "next";
+import { withPlumeria } from "@plumeria/next-plugin";
+
+const nextConfig: NextConfig = {
+  // Existing configuration
+};
+
+export default withPlumeria(nextConfig);
+```
+
+## API [#api]
+### `withPlumeria(nextConfig, options)` [#withplumerianextconfig-options]
+
+Next.js の設定を受け取り、Plumeria に必要な Turbopack または Webpack の設定を加えて返します。
+
+- `nextConfig` は Next.js の設定オブジェクトです。
+- `options` にはローダーに渡すコンパイラ設定と `lint` を指定します。
+
+```ts
+function withPlumeria(nextConfig: NextConfig, options?: PlumeriaOptions): NextConfig;
+```
+
+### オプション [#options]
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, {
+  include: ['./src/**/*.{ts,tsx}'],
+  exclude: ['**/node_modules/**', '**/.next/**'],
+  styleProp: 'classStyle',
+});
+```
+
+- `include` は CSS の生成元を指定する glob です。標準ではすべての js、jsx、ts、tsx ファイルが対象です。
+- `exclude` は対象から外す glob です。標準では `node_modules`、`dist`、`.next` を除きます。
+- `styleProp` は JSX のスタイル用 prop 名です。標準は `'sx'` です。
+- `withoutLogicalProperties` は物理名もあるプロパティの論理名を禁止します。初期値は `false` です。
+- `withoutPhysicalProperties` は論理名もあるプロパティの物理名を禁止します。初期値は `false` です。
+- `lint` は `next build` 時に [@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) でチェックします。初期値は `true` です。
+
+```ts
+interface PlumeriaOptions {
+  include?: string[];
+  exclude?: string[];
+  styleProp?: string;
+  withoutLogicalProperties?: boolean | { sizes?: boolean };
+  withoutPhysicalProperties?: boolean | { sizes?: boolean };
+  lint?: boolean;
+}
+```
+
+### styleProp [#styleprop]
+
+prop 名を変えるには、次の二か所の名前をそろえます。まずプラグインに指定します。
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, { styleProp: 'classStyle' });
+```
+
+次に TypeScript に同じ名前を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+名前が違うと型チェックは通っても prop が変換されません。[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) は `settings.plumeria.styleProp` から名前を読みます。
+
+### withoutLogicalProperties と withoutPhysicalProperties [#withoutlogicalproperties-and-withoutphysicalproperties]
+
+論理名と物理名があるプロパティを一方の書き方にそろえます。挙動は [@plumeria/unplugin](/ja/docs/api/plugins/unplugin#withoutlogicalproperties-と-withoutphysicalproperties-withoutlogicalproperties-and-withoutphysicalproperties) と同じです。
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, { withoutPhysicalProperties: true });
+```
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, {
+  withoutPhysicalProperties: { sizes: true },
+});
+```
+
+### lint [#lint]
+
+本番ビルドでは設定なしで lint が動きます。`next build` と並行して oxlint が [@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) を実行し、警告やエラーがあれば失敗します。コンパイルのほうが先に終わっても lint の完了を待ちます。`next dev` では実行しません。
+
+推奨ルールを実行し、`withoutLogicalProperties` または `withoutPhysicalProperties` に対応する[名前のルール](/ja/docs/api/plugins/eslint-plugin/optional-rules)も追加します。`{ sizes }` と `styleProp` の設定も引き継ぎます。`eslint.config.*` は読みません。
+
+oxlint は `.gitignore` の対象を除外し、Plumeria のルールだけを実行します。
+
+`plumeria-lint -- next build` でも lint は一回だけです。無効にするには次のように設定します。
+
+```ts title="next.config.ts"
+export default withPlumeria(nextConfig, { lint: false });
+```
