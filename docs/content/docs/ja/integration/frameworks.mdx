@@ -1,0 +1,137 @@
+---
+title: "フレームワークとの連携"
+description: "Vite を使う Vue、Svelte、Astro、Qwik などの設定を紹介します。"
+---
+
+Plumeria が変換するのはコンポーネント内の `css` の呼び出しです。Vite がビルドできるフレームワークなら、同じ [@plumeria/unplugin の Vite プラグイン](/ja/docs/integration/vite)を使えます。`plugins` にフレームワークのプラグインと `plumeria.vite()` を並べます。
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import plumeria from '@plumeria/unplugin';
+
+export default defineConfig({
+  plugins: [vue(), plumeria.vite()],
+});
+```
+
+連携に必要なのはこの設定ファイルだけです。次の各サンプルではフレームワーク用プラグインを入れ替えています。[`examples/example-vite-vue-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-vue-ts)、[`examples/example-vite-svelte-ts`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-svelte-ts)、[`examples/example-vite-solid`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-solid)、[`examples/example-vite-preact`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-preact)、[`examples/example-vite-qwik`](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-qwik)、[`examples/example-react-router`](https://github.com/zss-labs/plumeria/tree/main/examples/example-react-router)、[`examples/example-storybook`](https://github.com/zss-labs/plumeria/tree/main/examples/example-storybook)。
+
+## sx の型
+
+`@plumeria/core/sx` は React の `HTMLAttributes` と `SVGAttributes` に `sx` を追加します。React の名前空間を使う場合、必要な宣言は次の一行です。`src/` があればその中に、なければプロジェクトのルートに置きます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+独自のモジュールに JSX 型を定義するフレームワークには、その宣言は届きません。モジュールの型を拡張するときは、宣言を書いたファイルからパッケージを探します。`@plumeria/core` は各フレームワークに依存しないので、型宣言はプロジェクトに置いてください。
+
+```ts title="types.d.ts"
+import 'preact';
+import type { Style } from '@plumeria/core';
+
+declare module 'preact' {
+  namespace JSX {
+    interface HTMLAttributes {
+      sx?: Style;
+    }
+    interface SVGAttributes {
+      sx?: Style;
+    }
+  }
+}
+```
+
+```ts title="types.d.ts"
+import '@builder.io/qwik';
+import type { Style } from '@plumeria/core';
+
+declare module '@builder.io/qwik' {
+  interface HTMLAttributes extends JSX.HTMLAttributes {
+    sx?: Style;
+  }
+  interface SVGAttributes extends JSX.SVGAttributes {
+    sx?: Style;
+  }
+}
+```
+
+`SVGAttributes` が `HTMLAttributes` を継承するフレームワークでも、両方を宣言しておくと確実です。たとえば Qwik の SVG は `AriaAttributes` を継承するので、HTML だけの宣言では `<svg sx={...}>` が型エラーになります。
+
+型名は `Style` です。ここではパッケージが公開していない型名を書いてもエラーにならず、古い名前のままだと `sx` がどんな値でも受け取れてしまいます。
+
+## 単一ファイルコンポーネント
+
+コンパイラが読めるのは TypeScript と TSX です。`.vue`、`.svelte`、`.astro` の場合は、別の `.ts` ファイルに `css.create` を書き、コンポーネントから読み込みます。テンプレートは JSX ではないので、そのファイル内で `css.use` を使ってクラス名を作り、文字列を export します。
+
+```ts title="src/components/style.ts"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  main: { color: 'teal' },
+});
+
+export const mainClass = css.use(styles.main);
+```
+
+```html title="src/components/Card.vue"
+<script setup lang="ts">
+import { mainClass } from './style';
+</script>
+
+<template>
+  <div :class="mainClass">card</div>
+</template>
+```
+
+lint のルールも同じ TypeScript を読むので、このスタイルファイルをチェックできます。
+
+プラグインには、フレームワークが script 部分を取り出す前のファイル全体が届きます。単一ファイルコンポーネントの中に `css.create` を書くと、周囲のマークアップを解析できずビルドが止まります。
+
+```
+[plugin @plumeria/unplugin:vite] src/components/HelloWorld.vue
+Error:   x Expected '</', got ':'
+```
+
+Qwik、Preact、Solid、React Router のように TSX でコンポーネントを書く場合は、そのファイルに定義を置けます。別のモジュールに分ける必要はありません。
+
+## Qwik
+
+`plumeria.vite()` は `qwikVite()` より前に置きます。Qwik の optimizer はコンポーネントを書き換えて定義を再 export するので、その前にスタイルの変換を終えておきます。
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite';
+import { qwikVite } from '@builder.io/qwik/optimizer';
+import plumeria from '@plumeria/unplugin';
+
+export default defineConfig({
+  plugins: [plumeria.vite(), qwikVite({ csr: true })],
+});
+```
+
+逆の順番にすると `Export 'styles' is not defined` でビルドが止まります。
+
+## Astro
+
+Astro では、設定の `vite` の下に Vite プラグインを追加します。
+
+```js title="astro.config.mjs"
+import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
+import plumeria from '@plumeria/unplugin';
+
+export default defineConfig({
+  vite: {
+    plugins: [plumeria.vite()],
+  },
+  integrations: [react()],
+});
+```
+
+動作する例は [examples/example-vite-astro-ts](https://github.com/zss-labs/plumeria/tree/main/examples/example-vite-astro-ts) にあります。
+
+<Cards>
+  <Card title="Vite" href="/ja/docs/integration/vite" />
+  <Card title="@plumeria/unplugin の設定" href="/ja/docs/api/plugins/unplugin" />
+</Cards>
