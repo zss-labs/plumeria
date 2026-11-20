@@ -1840,10 +1840,31 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'outlineWidth' has an invalid value '50%'. Valid values: thin, medium, thick",
+            "'outlineWidth' has an invalid value '50%'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
+
+    ...[
+      [
+        `fieldSizing: 'contennnt'`,
+        "'fieldSizing' has an invalid value 'contennnt'. Did you mean 'content'?",
+      ],
+      [
+        `position: 'fixd'`,
+        "'position' has an invalid value 'fixd'. Did you mean 'fixed'?",
+      ],
+      [
+        `WebkitLineClamp: 2.5`,
+        "'WebkitLineClamp' has an invalid value '2.5'. Use a positive integer.",
+      ],
+      [`zIndex: '1.5'`, "'zIndex' has an invalid value '1.5'. Use an integer."],
+      [`cx: 'none'`, "'cx' has an invalid value 'none'."],
+      [`fontVariantEastAsian: 'jis73'`, /^(?!.*Did you mean).*$/],
+    ].map(([style, message]) => ({
+      code: `import * as css from '@plumeria/core'; css.create({ s: { ${style} } });`,
+      errors: [{ message }],
+    })),
 
     // Inline object at second level
     {
@@ -1862,7 +1883,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'position' has an invalid value 'center'. Valid values: static, relative, absolute, fixed, sticky",
+            "'position' has an invalid value 'center'. Property keywords: static, relative, absolute, fixed, sticky.",
         },
       ],
     },
@@ -1872,7 +1893,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { zIndex: 'high' } });`,
       errors: [
         {
-          message: "'zIndex' has an invalid value 'high'. Valid values: auto",
+          message:
+            "'zIndex' has an invalid value 'high'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -1883,7 +1905,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'display' has an invalid value 'foo'. Valid values: block, inline, run-in, flow, flow-root, table, flex, grid, ruby, math, table-header-group, table-footer-group, table-row, table-row-group, table-cell, table-column-group, table-column, table-caption, ruby-base, ruby-text, ruby-base-container, ruby-text-container, contents, none, inline-block, inline-table, inline-flex, inline-grid, inline-list-item",
+            "'display' has an invalid value 'foo'. Keyword examples include 'block', 'inline', 'run-in'.",
         },
       ],
     },
@@ -1893,7 +1915,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { flex: '' } });`,
       errors: [
         {
-          message: "'flex' has an invalid value ''. Valid values: none",
+          message:
+            "'flex' has an invalid value ''. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1901,7 +1924,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { flex: 'auto 2' } });`,
       errors: [
         {
-          message: "'flex' has an invalid value 'auto 2'. Valid values: none",
+          message:
+            "'flex' has an invalid value 'auto 2'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1909,7 +1933,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { flex: '10px 1' } });`,
       errors: [
         {
-          message: "'flex' has an invalid value '10px 1'. Valid values: none",
+          message:
+            "'flex' has an invalid value '10px 1'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1918,7 +1943,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flex' has an invalid value 'auto 2 10px'. Valid values: none",
+            "'flex' has an invalid value 'auto 2 10px'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1927,7 +1952,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flex' has an invalid value '1 auto 10px'. Valid values: none",
+            "'flex' has an invalid value '1 auto 10px'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1936,7 +1961,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flex' has an invalid value 'auto auto 10px'. Valid values: none",
+            "'flex' has an invalid value 'auto auto 10px'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1945,7 +1970,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flex' has an invalid value '1 2 invalid'. Valid values: none",
+            "'flex' has an invalid value '1 2 invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -1955,8 +1980,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { color: 'invalid-color' } });`,
       errors: [
         {
-          message:
-            "'color' has an invalid value 'invalid-color'. Valid values: ",
+          message: "'color' has an invalid value 'invalid-color'.",
         },
       ],
     },
@@ -1967,7 +1991,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'margin' has an invalid value '10px 20px 30px 40px 50px'. Valid values: auto",
+            "'margin' has an invalid value '10px 20px 30px 40px 50px'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -1978,7 +2002,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value '1px solid red blue'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value '1px solid red blue'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -1988,7 +2012,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value '1px 2em solid'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value '1px 2em solid'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -1998,7 +2022,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value 'solid dashed 1px'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value 'solid dashed 1px'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -2009,7 +2033,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value 'red blue solid'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value 'red blue solid'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -2018,7 +2042,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value 'var(--custom) invalid-value'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value 'var(--custom) invalid-value'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -2027,7 +2051,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'border' has an invalid value 'invalid-value'. Valid values: thin, medium, thick, none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'border' has an invalid value 'invalid-value'. Keyword examples include 'thin', 'medium', 'thick'.",
         },
       ],
     },
@@ -2038,7 +2062,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'background' has an invalid value 'url(/foo.png) no-repeat extra'. Valid values: none",
+            "'background' has an invalid value 'url(/foo.png) no-repeat extra'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2049,7 +2073,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flex' has an invalid value '1 1 auto 0'. Valid values: none",
+            "'flex' has an invalid value '1 1 auto 0'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2059,8 +2083,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import { create } from '@plumeria/core'; create({ s: { animationIterationCount: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'animationIterationCount' has an invalid value 'invalid'. Valid values: ",
+          message: "'animationIterationCount' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2071,7 +2094,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'animationName' has an invalid value ''. Valid values: none, slide, bounce",
+            "'animationName' has an invalid value ''. Keyword examples include 'none', 'slide', 'bounce'.",
         },
       ],
     },
@@ -2082,7 +2105,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'transform' has an invalid value 'translateX(10px) wrong'. Valid values: none",
+            "'transform' has an invalid value 'translateX(10px) wrong'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2091,7 +2114,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'transform' has an invalid value 'scaleX(var(--progress)'. Valid values: none",
+            "'transform' has an invalid value 'scaleX(var(--progress)'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2100,7 +2123,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'transform' has an invalid value 'scaleX(var(progress))'. Valid values: none",
+            "'transform' has an invalid value 'scaleX(var(progress))'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2185,7 +2208,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'width' has an invalid value 'myvar(--size)'. Valid values: auto, max-content, min-content, fit-content, stretch, contain",
+            "'width' has an invalid value 'myvar(--size)'. Keyword examples include 'auto', 'max-content', 'min-content'.",
         },
       ],
     },
@@ -2204,7 +2227,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'cursor' has an invalid value 'url(hand.cur), auto, pointer'. Valid values: auto",
+            "'cursor' has an invalid value 'url(hand.cur), auto, pointer'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -2215,7 +2238,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'borderStyle' has an invalid value 'nones'. Valid values: none, hidden, dotted, dashed, solid, double, groove, ridge, inset, outset",
+            "'borderStyle' has an invalid value 'nones'. Did you mean 'none'?",
         },
       ],
     },
@@ -2225,8 +2248,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { borderRadius: 'nones' } });`,
       errors: [
         {
-          message:
-            "'borderRadius' has an invalid value 'nones'. Valid values: ",
+          message: "'borderRadius' has an invalid value 'nones'.",
         },
       ],
     },
@@ -2237,7 +2259,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'width' has an invalid value 'none'. Valid values: auto, max-content, min-content, fit-content, stretch, contain",
+            "'width' has an invalid value 'none'. Keyword examples include 'auto', 'max-content', 'min-content'.",
         },
       ],
     },
@@ -2245,9 +2267,7 @@ ruleTester.run('validate-values', validateValues, {
     // Opacity
     {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { opacity: 'none' } });`,
-      errors: [
-        { message: "'opacity' has an invalid value 'none'. Valid values: " },
-      ],
+      errors: [{ message: "'opacity' has an invalid value 'none'." }],
     },
 
     // BorderColor
@@ -2256,7 +2276,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'borderColor' has an invalid value 'red green white blue orange'. Valid values: currentColor",
+            "'borderColor' has an invalid value 'red green white blue orange'. Keyword examples include 'currentColor'.",
         },
       ],
     },
@@ -2267,7 +2287,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskImage' has an invalid value 'nones'. Valid values: none",
+            "'maskImage' has an invalid value 'nones'. Did you mean 'none'?",
         },
       ],
     },
@@ -2278,7 +2298,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'borderImageSlice' has an invalid value 'inherits'. Valid values: fill",
+            "'borderImageSlice' has an invalid value 'inherits'. Keyword examples include 'fill'.",
         },
       ],
     },
@@ -2289,7 +2309,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'borderImage' has an invalid value 'nones'. Valid values: none",
+            "'borderImage' has an invalid value 'nones'. Did you mean 'none'?",
         },
       ],
     },
@@ -2300,7 +2320,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'aspectRatio' has an invalid value 'autos'. Valid values: auto",
+            "'aspectRatio' has an invalid value 'autos'. Did you mean 'auto'?",
         },
       ],
     },
@@ -2310,8 +2330,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { transitionDuration: 'none' } });`,
       errors: [
         {
-          message:
-            "'transitionDuration' has an invalid value 'none'. Valid values: ",
+          message: "'transitionDuration' has an invalid value 'none'.",
         },
       ],
     },
@@ -2321,8 +2340,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { animationDirection: 'normals' } });`,
       errors: [
         {
-          message:
-            "'animationDirection' has an invalid value 'normals'. Valid values: ",
+          message: "'animationDirection' has an invalid value 'normals'.",
         },
       ],
     },
@@ -2332,8 +2350,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { animationFillMode: 'nones' } });`,
       errors: [
         {
-          message:
-            "'animationFillMode' has an invalid value 'nones'. Valid values: ",
+          message: "'animationFillMode' has an invalid value 'nones'.",
         },
       ],
     },
@@ -2343,8 +2360,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { animationPlayState: 'pauseds' } });`,
       errors: [
         {
-          message:
-            "'animationPlayState' has an invalid value 'pauseds'. Valid values: ",
+          message: "'animationPlayState' has an invalid value 'pauseds'.",
         },
       ],
     },
@@ -2355,7 +2371,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'animationRangeStart' has an invalid value 'covor 20%'. Valid values: normal, cover, contain, entry, exit, entry-crossing, exit-crossing, scroll",
+            "'animationRangeStart' has an invalid value 'covor 20%'. Keyword examples include 'normal', 'cover', 'contain'.",
         },
       ],
     },
@@ -2364,7 +2380,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'animationRangeStart' has an invalid value 'cover 20'. Valid values: normal, cover, contain, entry, exit, entry-crossing, exit-crossing, scroll",
+            "'animationRangeStart' has an invalid value 'cover 20'. Keyword examples include 'normal', 'cover', 'contain'.",
         },
       ],
     },
@@ -2373,7 +2389,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'animationRange' has an invalid value 'entry 0% exit 100% cover 50%'. Valid values: normal, cover, contain, entry, exit, entry-crossing, exit-crossing, scroll",
+            "'animationRange' has an invalid value 'entry 0% exit 100% cover 50%'. Keyword examples include 'normal', 'cover', 'contain'.",
         },
       ],
     },
@@ -2413,7 +2429,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'animationTimingFunction' has an invalid value 'inherits'. Valid values: ease, linear, ease-in, ease-out, ease-in-out, step-start, step-end",
+            "'animationTimingFunction' has an invalid value 'inherits'. Keyword examples include 'ease', 'linear', 'ease-in'.",
         },
       ],
     },
@@ -2424,7 +2440,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'backgroundSize' has an invalid value 'none'. Valid values: auto, cover, contain",
+            "'backgroundSize' has an invalid value 'none'. Keyword examples include 'auto', 'cover', 'contain'.",
         },
       ],
     },
@@ -2435,7 +2451,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'backgroundClip' has an invalid value 'initials'. Valid values: text, border-area",
+            "'backgroundClip' has an invalid value 'initials'. Keyword examples include 'text', 'border-area'.",
         },
       ],
     },
@@ -2445,7 +2461,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { filter: 'nones' } });`,
       errors: [
         {
-          message: "'filter' has an invalid value 'nones'. Valid values: none",
+          message:
+            "'filter' has an invalid value 'nones'. Did you mean 'none'?",
         },
       ],
     },
@@ -2455,8 +2472,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { backgroundPosition: 'tops' } });`,
       errors: [
         {
-          message:
-            "'backgroundPosition' has an invalid value 'tops'. Valid values: ",
+          message: "'backgroundPosition' has an invalid value 'tops'.",
         },
       ],
     },
@@ -2467,7 +2483,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'backgroundImage' has an invalid value 'nones'. Valid values: none",
+            "'backgroundImage' has an invalid value 'nones'. Did you mean 'none'?",
         },
       ],
     },
@@ -2477,8 +2493,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { backgroundBlendMode: 'colors' } });`,
       errors: [
         {
-          message:
-            "'backgroundBlendMode' has an invalid value 'colors'. Valid values: ",
+          message: "'backgroundBlendMode' has an invalid value 'colors'.",
         },
       ],
     },
@@ -2489,7 +2504,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'touchAction' has an invalid value 'invalid-action'. Valid values: auto, none",
+            "'touchAction' has an invalid value 'invalid-action'. Keyword examples include 'auto', 'none'.",
         },
       ],
     },
@@ -2498,7 +2513,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'touchAction' has an invalid value 'pan-x pan-x'. Valid values: auto, none",
+            "'touchAction' has an invalid value 'pan-x pan-x'. Keyword examples include 'auto', 'none'.",
         },
       ],
     },
@@ -2509,7 +2524,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'alignContent' has an invalid value 'invalid-align'. Valid values: normal, start, center, end, flex-start, flex-end, baseline, space-between, space-around, space-evenly, stretch",
+            "'alignContent' has an invalid value 'invalid-align'. Keyword examples include 'normal', 'start', 'center'.",
         },
       ],
     },
@@ -2520,7 +2535,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'alignItems' has an invalid value 'invalid-item'. Valid values: normal, stretch, center, start, end, flex-start, flex-end, self-start, self-end, anchor-center, baseline",
+            "'alignItems' has an invalid value 'invalid-item'. Keyword examples include 'normal', 'stretch', 'center'.",
         },
       ],
     },
@@ -2531,7 +2546,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'alignSelf' has an invalid value 'invalid-self'. Valid values: auto, normal, stretch, center, start, end, flex-start, flex-end, self-start, self-end, anchor-center, baseline",
+            "'alignSelf' has an invalid value 'invalid-self'. Keyword examples include 'auto', 'normal', 'stretch'.",
         },
       ],
     },
@@ -2542,7 +2557,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'display' has an invalid value 'invalid-display'. Valid values: block, inline, run-in, flow, flow-root, table, flex, grid, ruby, math, table-header-group, table-footer-group, table-row, table-row-group, table-cell, table-column-group, table-column, table-caption, ruby-base, ruby-text, ruby-base-container, ruby-text-container, contents, none, inline-block, inline-table, inline-flex, inline-grid, inline-list-item",
+            "'display' has an invalid value 'invalid-display'. Keyword examples include 'block', 'inline', 'run-in'.",
         },
       ],
     },
@@ -2553,7 +2568,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'flexFlow' has an invalid value 'invalid-flow'. Valid values: row, row-reverse, column, column-reverse, nowrap, wrap, wrap-reverse",
+            "'flexFlow' has an invalid value 'invalid-flow'. Keyword examples include 'row', 'row-reverse', 'column'.",
         },
       ],
     },
@@ -2564,7 +2579,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'hangingPunctuation' has an invalid value 'invalid-punctuation'. Valid values: none, first, last, allow-end, force-end",
+            "'hangingPunctuation' has an invalid value 'invalid-punctuation'. Keyword examples include 'none', 'first', 'last'.",
         },
       ],
     },
@@ -2575,7 +2590,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'justifyContent' has an invalid value 'invalid-justify'. Valid values: normal, stretch, start, end, flex-start, flex-end, center, left, right, space-between, space-around, space-evenly, safe start, safe end, safe center, safe flex-start, safe flex-end, unsafe start, unsafe end, unsafe center, unsafe flex-start, unsafe flex-end, safe left, safe right, unsafe left, unsafe right",
+            "'justifyContent' has an invalid value 'invalid-justify'. Keyword examples include 'normal', 'stretch', 'start'.",
         },
       ],
     },
@@ -2586,7 +2601,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'justifySelf' has an invalid value 'invalid-justify-self'. Valid values: auto, normal, stretch, start, end, flex-start, flex-end, center, left, right, anchor-center, baseline, first baseline, last baseline",
+            "'justifySelf' has an invalid value 'invalid-justify-self'. Keyword examples include 'auto', 'normal', 'stretch'.",
         },
       ],
     },
@@ -2597,7 +2612,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'scrollSnapAlign' has an invalid value 'invalid-snap'. Valid values: none, start, end, center",
+            "'scrollSnapAlign' has an invalid value 'invalid-snap'. Keyword examples include 'none', 'start', 'end'.",
         },
       ],
     },
@@ -2608,7 +2623,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'translate' has an invalid value 'invalid-translate'. Valid values: none",
+            "'translate' has an invalid value 'invalid-translate'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2619,7 +2634,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'transform' has an invalid value 'invalid-transform'. Valid values: none",
+            "'transform' has an invalid value 'invalid-transform'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2629,8 +2644,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { transformOrigin: 'invalid-origin' } });`,
       errors: [
         {
-          message:
-            "'transformOrigin' has an invalid value 'invalid-origin'. Valid values: ",
+          message: "'transformOrigin' has an invalid value 'invalid-origin'.",
         },
       ],
     },
@@ -2641,7 +2655,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textEmphasis' has an invalid value 'invalid-emphasis'. Valid values: none, filled, open, dot, circle, double-circle, triangle, sesame",
+            "'textEmphasis' has an invalid value 'invalid-emphasis'. Keyword examples include 'none', 'filled', 'open'.",
         },
       ],
     },
@@ -2652,7 +2666,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textEmphasisStyle' has an invalid value 'invalid-style'. Valid values: none, filled, open, dot, circle, double-circle, triangle, sesame",
+            "'textEmphasisStyle' has an invalid value 'invalid-style'. Keyword examples include 'none', 'filled', 'open'.",
         },
       ],
     },
@@ -2663,7 +2677,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textEmphasisPosition' has an invalid value 'invalid-position'. Valid values: auto, over, under",
+            "'textEmphasisPosition' has an invalid value 'invalid-position'. Keyword examples include 'auto', 'over', 'under'.",
         },
       ],
     },
@@ -2674,7 +2688,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'scrollSnapType' has an invalid value 'invalid-type'. Valid values: none, x, y, block, inline, both",
+            "'scrollSnapType' has an invalid value 'invalid-type'. Keyword examples include 'none', 'x', 'y'.",
         },
       ],
     },
@@ -2685,7 +2699,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskBorderRepeat' has an invalid value 'invalid-repeat'. Valid values: stretch, repeat, round, space",
+            "'maskBorderRepeat' has an invalid value 'invalid-repeat'. Keyword examples include 'stretch', 'repeat', 'round'.",
         },
       ],
     },
@@ -2696,7 +2710,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'justifyItems' has an invalid value 'invalid-justify-items'. Valid values: normal, stretch, start, end, flex-start, flex-end, center, left, right, anchor-center, baseline",
+            "'justifyItems' has an invalid value 'invalid-justify-items'. Keyword examples include 'normal', 'stretch', 'start'.",
         },
       ],
     },
@@ -2707,7 +2721,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'backgroundRepeat' has an invalid value 'invalid-repeat'. Valid values: repeat, repeat-x, repeat-y, space, round, no-repeat",
+            "'backgroundRepeat' has an invalid value 'invalid-repeat'. Keyword examples include 'repeat', 'repeat-x', 'repeat-y'.",
         },
       ],
     },
@@ -2718,7 +2732,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'placeSelf' has an invalid value 'invalid invalid invalid'. Valid values: ",
+            "'placeSelf' has an invalid value 'invalid invalid invalid'.",
         },
       ],
     },
@@ -2729,7 +2743,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'placeItems' has an invalid value 'invalid invalid invalid'. Valid values: ",
+            "'placeItems' has an invalid value 'invalid invalid invalid'.",
         },
       ],
     },
@@ -2740,7 +2754,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'placeContent' has an invalid value 'invalid invalid invalid'. Valid values: ",
+            "'placeContent' has an invalid value 'invalid invalid invalid'.",
         },
       ],
     },
@@ -2751,7 +2765,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textShadow' has an invalid value 'invalid'. Valid values: none",
+            "'textShadow' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2761,8 +2775,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { textIndent: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'textIndent' has an invalid value 'invalid'. Valid values: ",
+          message: "'textIndent' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2773,7 +2786,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value 'underline underline'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value 'underline underline'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2782,7 +2795,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value ' underline'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value ' underline'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2791,7 +2804,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value 'underline '. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value 'underline '. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2801,7 +2814,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value 'underline invalid'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value 'underline invalid'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2810,7 +2823,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value 'xyz'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value 'xyz'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2819,7 +2832,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value ':'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value ':'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2828,7 +2841,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textDecorationLine' has an invalid value 'underline var'. Valid values: none, underline, overline, line-through, blink",
+            "'textDecorationLine' has an invalid value 'underline var'. Keyword examples include 'none', 'underline', 'overline'.",
         },
       ],
     },
@@ -2838,8 +2851,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { strokeMiterlimit: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'strokeMiterlimit' has an invalid value 'invalid'. Valid values: ",
+          message: "'strokeMiterlimit' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2850,7 +2862,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'strokeDasharray' has an invalid value 'invalid'. Valid values: none",
+            "'strokeDasharray' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2861,7 +2873,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'stroke' has an invalid value 'invalid'. Valid values: context-stroke",
+            "'stroke' has an invalid value 'invalid'. Keyword examples include 'context-stroke'.",
         },
       ],
     },
@@ -2872,7 +2884,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'shapeOutside' has an invalid value 'invalid'. Valid values: none",
+            "'shapeOutside' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2882,8 +2894,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { shapeImageThreshold: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'shapeImageThreshold' has an invalid value 'invalid'. Valid values: ",
+          message: "'shapeImageThreshold' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2894,7 +2905,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'scrollbarColor' has an invalid value 'invalid'. Valid values: auto",
+            "'scrollbarColor' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -2904,8 +2915,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { scrollPadding: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'scrollPadding' has an invalid value 'invalid'. Valid values: ",
+          message: "'scrollPadding' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2915,8 +2925,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { scrollMargin: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'scrollMargin' has an invalid value 'invalid'. Valid values: ",
+          message: "'scrollMargin' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -2926,7 +2935,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { scale: 'invalid' } });`,
       errors: [
         {
-          message: "'scale' has an invalid value 'invalid'. Valid values: none",
+          message:
+            "'scale' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2937,7 +2947,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'rotate' has an invalid value 'invalid'. Valid values: none",
+            "'rotate' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -2948,7 +2958,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'quotes' has an invalid value 'invalid'. Valid values: none, auto, match-parent",
+            "'quotes' has an invalid value 'invalid'. Keyword examples include 'none', 'auto', 'match-parent'.",
         },
       ],
     },
@@ -2959,7 +2969,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'paintOrder' has an invalid value 'invalid'. Valid values: normal",
+            "'paintOrder' has an invalid value 'invalid'. Keyword examples include 'normal'.",
         },
       ],
     },
@@ -2970,7 +2980,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'overscrollBehavior' has an invalid value 'invalid'. Valid values: none, auto, contain",
+            "'overscrollBehavior' has an invalid value 'invalid'. Keyword examples include 'none', 'auto', 'contain'.",
         },
       ],
     },
@@ -2981,7 +2991,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'overflowClipMargin' has an invalid value 'invalid'. Valid values: content-box, padding-box, border-box",
+            "'overflowClipMargin' has an invalid value 'invalid'. Keyword examples include 'content-box', 'padding-box', 'border-box'.",
         },
       ],
     },
@@ -2992,7 +3002,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'overflow' has an invalid value 'invalid'. Valid values: visible, hidden, clip, scroll, auto",
+            "'overflow' has an invalid value 'invalid'. Keyword examples include 'visible', 'hidden', 'clip'.",
         },
       ],
     },
@@ -3002,7 +3012,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { offset: 'invalid' } });`,
       errors: [
         {
-          message: "'offset' has an invalid value 'invalid'. Valid values: ",
+          message: "'offset' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3012,8 +3022,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { offsetPath: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'offsetPath' has an invalid value 'invalid'. Valid values: ",
+          message: "'offsetPath' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3024,7 +3033,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'offsetRotate' has an invalid value 'invalid'. Valid values: auto, reverse",
+            "'offsetRotate' has an invalid value 'invalid'. Keyword examples include 'auto', 'reverse'.",
         },
       ],
     },
@@ -3035,7 +3044,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'objectPosition' has an invalid value 'invalid'. Valid values: top, bottom, left, right, center",
+            "'objectPosition' has an invalid value 'invalid'. Keyword examples include 'top', 'bottom', 'left'.",
         },
       ],
     },
@@ -3046,7 +3055,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'mathDepth' has an invalid value 'invalid'. Valid values: auto-add",
+            "'mathDepth' has an invalid value 'invalid'. Keyword examples include 'auto-add'.",
         },
       ],
     },
@@ -3056,7 +3065,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { mask: 'invalid' } });`,
       errors: [
         {
-          message: "'mask' has an invalid value 'invalid'. Valid values: none",
+          message:
+            "'mask' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3067,7 +3077,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskBorder' has an invalid value 'invalid'. Valid values: none",
+            "'maskBorder' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3078,7 +3088,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskSize' has an invalid value 'invalid'. Valid values: cover, contain",
+            "'maskSize' has an invalid value 'invalid'. Keyword examples include 'cover', 'contain'.",
         },
       ],
     },
@@ -3089,7 +3099,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskRepeat' has an invalid value 'invalid'. Valid values: repeat-x, repeat-y, repeat, space, round, no-repeat",
+            "'maskRepeat' has an invalid value 'invalid'. Keyword examples include 'repeat-x', 'repeat-y', 'repeat'.",
         },
       ],
     },
@@ -3100,7 +3110,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskPosition' has an invalid value 'invalid'. Valid values: top, bottom, left, right, center",
+            "'maskPosition' has an invalid value 'invalid'. Keyword examples include 'top', 'bottom', 'left'.",
         },
       ],
     },
@@ -3110,8 +3120,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { maskOrigin: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'maskOrigin' has an invalid value 'invalid'. Valid values: ",
+          message: "'maskOrigin' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3122,7 +3131,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskMode' has an invalid value 'invalid'. Valid values: alpha, luminance, match-source",
+            "'maskMode' has an invalid value 'invalid'. Keyword examples include 'alpha', 'luminance', 'match-source'.",
         },
       ],
     },
@@ -3133,7 +3142,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskComposite' has an invalid value 'invalid'. Valid values: add, subtract, intersect, exclude",
+            "'maskComposite' has an invalid value 'invalid'. Keyword examples include 'add', 'subtract', 'intersect'.",
         },
       ],
     },
@@ -3144,7 +3153,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskClip' has an invalid value 'invalid'. Valid values: no-clip",
+            "'maskClip' has an invalid value 'invalid'. Keyword examples include 'no-clip'.",
         },
       ],
     },
@@ -3155,7 +3164,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskBorderWidth' has an invalid value 'invalid'. Valid values: auto",
+            "'maskBorderWidth' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3166,7 +3175,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'maskBorderSlice' has an invalid value 'invalid'. Valid values: fill",
+            "'maskBorderSlice' has an invalid value 'invalid'. Keyword examples include 'fill'.",
         },
       ],
     },
@@ -3176,8 +3185,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { maskBorderOutset: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'maskBorderOutset' has an invalid value 'invalid'. Valid values: ",
+          message: "'maskBorderOutset' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3188,7 +3196,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'marker' has an invalid value 'invalid'. Valid values: none",
+            "'marker' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3199,7 +3207,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'marginBlock' has an invalid value 'invalid'. Valid values: auto",
+            "'marginBlock' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3210,7 +3218,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'insetBlock' has an invalid value 'invalid'. Valid values: auto",
+            "'insetBlock' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3221,7 +3229,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'initialLetter' has an invalid value 'invalid'. Valid values: normal",
+            "'initialLetter' has an invalid value 'invalid'. Keyword examples include 'normal'.",
         },
       ],
     },
@@ -3232,7 +3240,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'imageOrientation' has an invalid value 'invalid'. Valid values: none, from-image",
+            "'imageOrientation' has an invalid value 'invalid'. Keyword examples include 'none', 'from-image'.",
         },
       ],
     },
@@ -3243,7 +3251,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'hyphenateLimitChars' has an invalid value 'invalid'. Valid values: auto",
+            "'hyphenateLimitChars' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3254,7 +3262,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'grid' has an invalid value 'invalid invalid invalid'. Valid values: none",
+            "'grid' has an invalid value 'invalid invalid invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3265,7 +3273,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'gridTemplate' has an invalid value 'invalid invalid'. Valid values: none",
+            "'gridTemplate' has an invalid value 'invalid invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3276,7 +3284,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'gridTemplateColumns' has an invalid value 'invalid'. Valid values: none",
+            "'gridTemplateColumns' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3287,7 +3295,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'gridTemplateAreas' has an invalid value 'invalid'. Valid values: none",
+            "'gridTemplateAreas' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3298,7 +3306,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'gridAutoColumns' has an invalid value 'invalid'. Valid values: auto",
+            "'gridAutoColumns' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3308,8 +3316,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { fontFeatureSettings: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'fontFeatureSettings' has an invalid value 'invalid'. Valid values: ",
+          message: "'fontFeatureSettings' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3320,7 +3327,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariant' has an invalid value 'invalid'. Valid values: normal, none",
+            "'fontVariant' has an invalid value 'invalid'. Keyword examples include 'normal', 'none'.",
         },
       ],
     },
@@ -3331,7 +3338,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            '\'fontVariationSettings\' has an invalid value \'invalid\'. Valid values: normal, "wght", "wdth", "slnt", "ital", "opsz"',
+            "'fontVariationSettings' has an invalid value 'invalid'. Keyword examples include 'normal', '\"wght\"', '\"wdth\"'.",
         },
       ],
     },
@@ -3342,7 +3349,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariantNumeric' has an invalid value 'invalid'. Valid values: normal",
+            "'fontVariantNumeric' has an invalid value 'invalid'. Keyword examples include 'normal'.",
         },
       ],
     },
@@ -3353,7 +3360,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariantLigatures' has an invalid value 'invalid'. Valid values: none, normal",
+            "'fontVariantLigatures' has an invalid value 'invalid'. Keyword examples include 'none', 'normal'.",
         },
       ],
     },
@@ -3364,7 +3371,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariantEastAsian' has an invalid value 'jis78 jis83'. Valid values: normal, ruby, jis78, jis83, jis90, jis04, simplified, traditional, full-width, proportional-width",
+            "'fontVariantEastAsian' has an invalid value 'jis78 jis83'. Keyword examples include 'normal', 'ruby', 'jis78'.",
         },
       ],
     },
@@ -3373,7 +3380,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariantEastAsian' has an invalid value 'invalid-value'. Valid values: normal, ruby, jis78, jis83, jis90, jis04, simplified, traditional, full-width, proportional-width",
+            "'fontVariantEastAsian' has an invalid value 'invalid-value'. Keyword examples include 'normal', 'ruby', 'jis78'.",
         },
       ],
     },
@@ -3384,7 +3391,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontVariantAlternates' has an invalid value 'invalid'. Valid values: normal, historical-forms",
+            "'fontVariantAlternates' has an invalid value 'invalid'. Keyword examples include 'normal', 'historical-forms'.",
         },
       ],
     },
@@ -3395,7 +3402,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSynthesis' has an invalid value 'invalid'. Valid values: none, weight, style, small-caps, position",
+            "'fontSynthesis' has an invalid value 'invalid'. Keyword examples include 'none', 'weight', 'style'.",
         },
       ],
     },
@@ -3406,7 +3413,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontStyle' has an invalid value 'invalid'. Valid values: normal, italic, oblique",
+            "'fontStyle' has an invalid value 'invalid'. Keyword examples include 'normal', 'italic', 'oblique'.",
         },
       ],
     },
@@ -3417,7 +3424,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontPalette' has an invalid value 'invalid'. Valid values: normal, light, dark",
+            "'fontPalette' has an invalid value 'invalid'. Keyword examples include 'normal', 'light', 'dark'.",
         },
       ],
     },
@@ -3428,7 +3435,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSizeAdjust' has an invalid value 'invalid invalid invalid'. Valid values: none",
+            "'fontSizeAdjust' has an invalid value 'invalid invalid invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3437,7 +3444,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSizeAdjust' has an invalid value 'ex-height invalid'. Valid values: none",
+            "'fontSizeAdjust' has an invalid value 'ex-height invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3446,7 +3453,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSizeAdjust' has an invalid value 'invalid 0.5'. Valid values: none",
+            "'fontSizeAdjust' has an invalid value 'invalid 0.5'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3455,7 +3462,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSizeAdjust' has an invalid value ''. Valid values: none",
+            "'fontSizeAdjust' has an invalid value ''. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3464,7 +3471,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontSizeAdjust' has an invalid value 'ex-height cap-height 0.5'. Valid values: none",
+            "'fontSizeAdjust' has an invalid value 'ex-height cap-height 0.5'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3475,7 +3482,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontStretch' has an invalid value 'invalid'. Valid values: normal, ultra-condensed, extra-condensed, condensed, semi-condensed, semi-expanded, expanded, extra-expanded, ultra-expanded",
+            "'fontStretch' has an invalid value 'invalid'. Keyword examples include 'normal', 'ultra-condensed', 'extra-condensed'.",
         },
       ],
     },
@@ -3485,7 +3492,8 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { flex: 'invalid' } });`,
       errors: [
         {
-          message: "'flex' has an invalid value 'invalid'. Valid values: none",
+          message:
+            "'flex' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3496,7 +3504,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'cursor' has an invalid value 'invalid'. Valid values: auto",
+            "'cursor' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3507,7 +3515,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'content' has an invalid value 'invalid'. Valid values: open-quote, close-quote, no-open-quote, no-close-quote, normal, none",
+            "'content' has an invalid value 'invalid'. Keyword examples include 'open-quote', 'close-quote', 'no-open-quote'.",
         },
       ],
     },
@@ -3517,8 +3525,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { columns: 'invalid invalid invalid' } });`,
       errors: [
         {
-          message:
-            "'columns' has an invalid value 'invalid invalid invalid'. Valid values: ",
+          message: "'columns' has an invalid value 'invalid invalid invalid'.",
         },
       ],
     },
@@ -3529,7 +3536,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'clipPath' has an invalid value 'invalid'. Valid values: none",
+            "'clipPath' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3540,7 +3547,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'boxShadow' has an invalid value 'invalid'. Valid values: none",
+            "'boxShadow' has an invalid value 'invalid'. Keyword examples include 'none'.",
         },
       ],
     },
@@ -3550,8 +3557,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { backgroundAttachment: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'backgroundAttachment' has an invalid value 'invalid'. Valid values: ",
+          message: "'backgroundAttachment' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3561,8 +3567,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { backgroundOrigin: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'backgroundOrigin' has an invalid value 'invalid'. Valid values: ",
+          message: "'backgroundOrigin' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3572,8 +3577,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { backgroundPositionY: 'invalid' } });`,
       errors: [
         {
-          message:
-            "'backgroundPositionY' has an invalid value 'invalid'. Valid values: ",
+          message: "'backgroundPositionY' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3584,7 +3588,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'columnCount' has an invalid value 'invalid'. Valid values: auto",
+            "'columnCount' has an invalid value 'invalid'. Keyword examples include 'auto'.",
         },
       ],
     },
@@ -3594,7 +3598,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { flexGrow: 'invalid' } });`,
       errors: [
         {
-          message: "'flexGrow' has an invalid value 'invalid'. Valid values: ",
+          message: "'flexGrow' has an invalid value 'invalid'.",
         },
       ],
     },
@@ -3604,8 +3608,7 @@ ruleTester.run('validate-values', validateValues, {
       code: `import * as css from '@plumeria/core'; const styles = css.create({ s: { padding: '10px 20px 30px 40px 50px' } });`,
       errors: [
         {
-          message:
-            "'padding' has an invalid value '10px 20px 30px 40px 50px'. Valid values: ",
+          message: "'padding' has an invalid value '10px 20px 30px 40px 50px'.",
         },
       ],
     },
@@ -3616,7 +3619,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fontLanguageOverride' has an invalid value 'invalid'. Valid values: normal",
+            "'fontLanguageOverride' has an invalid value 'invalid'. Keyword examples include 'normal'.",
         },
       ],
     },
@@ -3631,7 +3634,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'alignmentBaseline' has an invalid value 'invalid'. Valid values: auto, baseline, before-edge, text-before-edge, middle, central, after-edge, text-after-edge, ideographic, alphabetic, hanging, mathematical",
+            "'alignmentBaseline' has an invalid value 'invalid'. Property keywords: auto, baseline, before-edge, text-before-edge, middle, central, after-edge, text-after-edge, ideographic, alphabetic, hanging, mathematical.",
         },
       ],
     },
@@ -3642,7 +3645,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'dominantBaseline' has an invalid value 'invalid'. Valid values: auto, use-script, no-change, reset-size, ideographic, alphabetic, hanging, mathematical, central, middle, text-after-edge, text-before-edge",
+            "'dominantBaseline' has an invalid value 'invalid'. Property keywords: auto, use-script, no-change, reset-size, ideographic, alphabetic, hanging, mathematical, central, middle, text-after-edge, text-before-edge.",
         },
       ],
     },
@@ -3653,7 +3656,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'fillRule' has an invalid value 'invalid'. Valid values: nonzero, evenodd",
+            "'fillRule' has an invalid value 'invalid'. Property keywords: nonzero, evenodd.",
         },
       ],
     },
@@ -3664,7 +3667,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'containerType' has an invalid value 'invalid'. Valid values: size, inline-size, normal",
+            "'containerType' has an invalid value 'invalid'. Property keywords: size, inline-size, normal.",
         },
       ],
     },
@@ -3675,7 +3678,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contentVisibility' has an invalid value 'invalid'. Valid values: visible, hidden, auto",
+            "'contentVisibility' has an invalid value 'invalid'. Property keywords: visible, hidden, auto.",
         },
       ],
     },
@@ -3686,7 +3689,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'direction' has an invalid value 'invalid'. Valid values: ltr, rtl",
+            "'direction' has an invalid value 'invalid'. Property keywords: ltr, rtl.",
         },
       ],
     },
@@ -3697,7 +3700,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'forcedColorAdjust' has an invalid value 'invalid'. Valid values: auto, none",
+            "'forcedColorAdjust' has an invalid value 'invalid'. Property keywords: auto, none.",
         },
       ],
     },
@@ -3708,7 +3711,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contain' has an invalid value 'invalid'. Valid values: none, strict, content, size, inline-size, layout, style, paint",
+            "'contain' has an invalid value 'invalid'. Keyword examples include 'none', 'strict', 'content'.",
         },
       ],
     },
@@ -3717,7 +3720,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contain' has an invalid value 'strict paint'. Valid values: none, strict, content, size, inline-size, layout, style, paint",
+            "'contain' has an invalid value 'strict paint'. Keyword examples include 'none', 'strict', 'content'.",
         },
       ],
     },
@@ -3726,7 +3729,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contain' has an invalid value 'size inline-size'. Valid values: none, strict, content, size, inline-size, layout, style, paint",
+            "'contain' has an invalid value 'size inline-size'. Keyword examples include 'none', 'strict', 'content'.",
         },
       ],
     },
@@ -3735,7 +3738,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contain' has an invalid value 'layout layout'. Valid values: none, strict, content, size, inline-size, layout, style, paint",
+            "'contain' has an invalid value 'layout layout'. Keyword examples include 'none', 'strict', 'content'.",
         },
       ],
     },
@@ -3744,7 +3747,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'contain' has an invalid value ' strict'. Valid values: none, strict, content, size, inline-size, layout, style, paint",
+            "'contain' has an invalid value ' strict'. Keyword examples include 'none', 'strict', 'content'.",
         },
       ],
     },
@@ -3755,7 +3758,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'textSizeAdjust' has an invalid value 'invalid'. Valid values: none, auto",
+            "'textSizeAdjust' has an invalid value 'invalid'. Property keywords: none, auto.",
         },
       ],
     },
@@ -3766,7 +3769,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'colorInterpolation' has an invalid value 'invalid'. Valid values: auto, sRGB, linearRGB",
+            "'colorInterpolation' has an invalid value 'invalid'. Property keywords: auto, sRGB, linearRGB.",
         },
       ],
     },
@@ -3777,7 +3780,7 @@ ruleTester.run('validate-values', validateValues, {
       errors: [
         {
           message:
-            "'colorInterpolationFilters' has an invalid value 'invalid'. Valid values: auto, sRGB, linearRGB",
+            "'colorInterpolationFilters' has an invalid value 'invalid'. Property keywords: auto, sRGB, linearRGB.",
         },
       ],
     },
