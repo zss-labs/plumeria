@@ -1839,10 +1839,18 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             } else {
                 built.class_parts.join(" + \" \" + ")
             };
+            let value = if built.class_parts.len() <= 1
+                && replacement.starts_with('"')
+                && !replacement.contains(['\\', '&'])
+            {
+                replacement
+            } else {
+                format!("{{{replacement}}}")
+            };
             self.replacements.push(Replacement {
                 start: node.span.start,
                 end: node.span.end,
-                content: format!("{class_prop}={{{replacement}}}{style_attr_text}"),
+                content: format!("{class_prop}={value}{style_attr_text}"),
             });
         } else {
             let kept = if existing_class.is_empty() {
