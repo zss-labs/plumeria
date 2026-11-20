@@ -1,0 +1,55 @@
+---
+title: 'テスト'
+description: 'スタイルを、コンポーネント、ブラウザ、型チェッカーの 3 か所でテストします。'
+---
+
+スタイルのテストでは、三つのことを別々に確かめます。コンポーネントが意図どおり動くか、画面が正しく表示されるか、型チェックが正しい呼び出しを許可し、誤った呼び出しを検出するかです。
+
+## コンポーネント [#components]
+
+`@plumeria/core` が配るのは型定義だけです。コンポーネントをテストする前にスタイル用 prop を変換するため、テストランナーがモジュールを読み込む段階にプラグインを追加します。
+
+- [Vitest](/ja/docs/testing/vitest) では設定に `@plumeria/unplugin` を追加します。
+- [Jest](/ja/docs/testing/jest) では `@plumeria/swc-jest` を変換器に指定します。
+
+どちらも DOM に付くクラス名は、アプリのビルドで生成されるものと同じです。
+
+## jsdom で分からないこと [#what-jsdom-does-not-give-you]
+
+クラス名は実際に生成されますが、テストの文書には CSS が読み込まれません。`document.styleSheets` は空で、スタイルで指定したプロパティを `getComputedStyle` で読んでも初期値が返ります。正しいクラスが付いたかは確認できますが、そのクラスの見た目までは確認できません。
+
+スタイル間の詳細度、`@media` の分岐、`marker` に連動する `extended` など、CSS のカスケードに関わる動作は、実際のブラウザーで確認します。ビルド結果に対して E2E テストを実行すれば、生成した CSS も適用されます。
+
+## 型 [#types]
+
+パッケージは型定義だけなので、API の型のテストは `tsc` でできます。正しい呼び出しと、型エラーを期待する呼び出しを書いて、そのファイルを型チェックします。
+
+```ts title="styles.test-d.ts"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: { fontSize: '12px', color: 'red' },
+  variant: (size: number) => ({ width: `${size}px` }),
+});
+
+export const atomic: string = styles.text.color;
+export const fromVariant: string = styles.variant(8).width;
+
+// @ts-expect-error atomic class names are branded per property
+export const crossed: css.AtomicClassNameFor<'color', 'red'> = styles.text.fontSize;
+
+// @ts-expect-error the key was never defined
+export const missing: string = styles.nope.color;
+```
+
+```sh title="Terminal"
+tsc --noEmit
+```
+
+エラーを期待する行に `@ts-expect-error` を付けると、誤ってその行が通るようになった場合に `TS2578: Unused '@ts-expect-error' directive` が出ます。これで型の制限が失われたことも検出できます。
+
+入力を助けるのは TypeScript の補完です。つづり、値、疑似クラス、セレクター、記述順に左右される重なりは [lint ルール](/ja/docs/api/plugins/eslint-plugin)で確認します。型のテストでは、戻り値の型を確かめます。たとえば、あるプロパティ用のクラス名を別のプロパティ用として渡せないことや、存在しないキーを読めないことを確認します。
+
+<Cards>
+  <Card title="lint のルール" href="/ja/docs/api/plugins/eslint-plugin" />
+</Cards>
