@@ -22,11 +22,12 @@ export const LanguageToggle = () => {
   const { path } = useRouter();
   const isJa = path === '/ja' || path.startsWith('/ja/');
   const base = isJa ? path.slice(3) || '/' : path;
-  if (base !== '/docs' && !base.startsWith('/docs/')) return null;
+  if (base !== '/' && base !== '/docs' && !base.startsWith('/docs/')) return null;
 
   return (
     <Link
-      to={isJa ? base : `/ja${base}`}
+      to={isJa ? base : base === '/' ? '/ja' : `/ja${base}`}
+      title={isJa ? 'English' : '日本語'}
       hrefLang={isJa ? 'en' : 'ja'}
       aria-label={isJa ? 'English' : '日本語'}
       translate="no"
