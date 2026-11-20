@@ -38,7 +38,7 @@ fn converted(code: &str, css: &str) -> String {
 }
 
 const IMPORT: &str = "import s from './Card.module.css';\n";
-const HEAD: &str = "import '@plumeria/core';\nimport { styles } from './Card.styles';\n";
+const HEAD: &str = "import { styles } from './Card.styles';\n";
 
 #[test]
 fn converts_a_flat_class() {
@@ -319,7 +319,7 @@ fn keeps_names_when_two_stylesheets_meet() {
     assert!(result.holds.is_empty(), "{:?}", result.holds);
     assert_eq!(
         result.output,
-        "import '@plumeria/core';\nimport { styles as a } from './A.styles';\nimport { styles as b } from './B.styles';\n<div sx={[a.x, b.y]} />;"
+        "import { styles as a } from './A.styles';\nimport { styles as b } from './B.styles';\n<div sx={[a.x, b.y]} />;"
     );
 }
 
@@ -454,6 +454,13 @@ fn stylex_holds(code: &str) -> Vec<&'static str> {
 }
 
 const STYLEX: &str = "import * as stylex from '@stylexjs/stylex';\n";
+
+#[test]
+fn stylex_omits_the_core_import_when_props_becomes_sx() {
+    let component = "import { styles } from './Card.styles';\nexport const Card = () => <div";
+    let code = format!("{STYLEX}{component} {{...stylex.props(styles.card)}} />;");
+    assert_eq!(stylex_one(&code), format!("{component} sx={{styles.card}} />;"));
+}
 
 #[test]
 fn stylex_moves_conditions_out_of_values() {
@@ -697,6 +704,16 @@ fn stylex_gives_a_file_that_carries_styles_the_core_import() {
     assert!(app.starts_with("'use client';\nimport '@plumeria/core';\nimport { styles }"), "{app}");
 }
 
+#[test]
+fn stylex_leaves_a_file_that_already_writes_sx_without_the_core_import() {
+    let sheet = "import * as stylex from '@stylexjs/stylex';\nexport const styles = stylex.create({ card: { padding: 24 } });\n";
+    let card = "import { styles } from './Card.styles';\nexport const Card = () => <article sx={styles.card} />;\n";
+    let (rewrites, held) = stylex(&[("src/Card.styles.ts", sheet), ("src/Card.tsx", card)]);
+    assert!(held.is_empty(), "{held:?}");
+    assert!(rewrites.iter().any(|(f, _)| f == "src/Card.styles.ts"));
+    assert!(!rewrites.iter().any(|(f, t)| f == "src/Card.tsx" && t.contains("@plumeria/core")), "{rewrites:?}");
+}
+
 fn tailwind_with(code: &str, css: &str) -> crate::tailwind::Outcome {
     let mut theme = crate::tailwind::Theme::default();
     theme.read(css);
@@ -818,7 +835,7 @@ export const flag = +(2 > 1);\nexport const none = null;\nexport const label = '
     let modules: FxHashMap<String, crate::emotion::Module> =
         files.iter().map(|(file, text)| (file.to_string(), crate::emotion::module(file, text))).collect();
     let exports = |specifier: &str, name: &str| crate::emotion::resolve_kind(&modules, None, "src/App.tsx", specifier, name);
-    crate::emotion::scan_file("src/App.tsx", code, "sx", lib, &exports)
+    crate::emotion::scan_file("src/App.tsx", code, "sx", lib, &exports, &crate::emotion::Links::none())
 }
 
 fn emotion_one(code: &str) -> String {
@@ -1111,6 +1128,81 @@ export const A = () => <div css={{ animationName: bounce }} />;
 }
 
 #[test]
+fn emotion_shares_styles_exported_from_another_file() {
+    let plan = |lib: &crate::emotion::Library, sheet: &str, user: &str| {
+        let sources = vec![("src/Card.styles.ts".to_string(), sheet.to_string()), ("src/Card.tsx".to_string(), user.to_string())];
+        crate::emotion::plan(&sources, None, "sx", lib)
+    };
+    let sheet = "import { css } from '@emotion/react';\n\nexport const card = css`\n  padding: 24px;\n`;\n\nexport const title = css`\n  font-weight: 600;\n`;\n";
+    let user = "/** @jsxImportSource @emotion/react */\nimport { card, title } from './Card.styles';\n\nexport const Card = () => <article css={card}><h2 css={title}>Card</h2></article>;\n";
+    let out = plan(&crate::emotion::EMOTION, sheet, user);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
+    let sheet_out = out[0].rewritten.as_deref().unwrap();
+    assert!(sheet_out.starts_with("import * as css from '@plumeria/core';\n\nexport const styles = css.create({\n  card: {"), "{sheet_out}");
+    assert_eq!(
+        out[1].rewritten.as_deref().unwrap(),
+        "import { styles } from './Card.styles';\n\nexport const Card = () => <article sx={styles.card}><h2 sx={styles.title}>Card</h2></article>;\n"
+    );
+
+    let styled_sheet = "import styled from 'styled-components';\n\nexport const Article = styled.article`\n  padding: 24px;\n`;\n";
+    let styled_user = "import { Article } from './Card.styles';\n\nexport const Card = () => <Article>Card</Article>;\n";
+    let out = plan(&crate::emotion::STYLED_COMPONENTS, styled_sheet, styled_user);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
+    assert!(out[0].rewritten.as_deref().unwrap().contains("export const styles = css.create({"));
+    assert_eq!(
+        out[1].rewritten.as_deref().unwrap(),
+        "import { styles } from './Card.styles';\n\nexport const Card = () => <article sx={styles.Article}>Card</article>;\n"
+    );
+
+    let held_user = format!("{user}export const B = () => <div css={{{{ color: 'red' }}}} className=\"x\" />;\n");
+    let out = plan(&crate::emotion::EMOTION, sheet, &held_user);
+    assert!(out.iter().all(|file| file.rewritten.is_none()));
+    assert_eq!(out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["linked-to-held"]);
+
+    let namespace = "/** @jsxImportSource @emotion/react */\nimport * as s from './Card.styles';\n\nexport const Card = () => <article css={s.card} />;\n";
+    let out = plan(&crate::emotion::EMOTION, sheet, namespace);
+    assert!(out[0].holds.iter().any(|h| h.kind == "exported-style"), "{:?}", out[0].holds);
+
+    let lonely = plan(&crate::emotion::EMOTION, sheet, "export const Card = () => null;\n");
+    assert!(lonely[0].holds.iter().any(|h| h.kind == "exported-style"), "{:?}", lonely[0].holds);
+
+    let split = "/** @jsxImportSource @emotion/react */\nimport { card } from './Card.styles';\nimport { title } from './Card.styles';\n\nexport const Card = () => <article css={card}><h2 css={title}>Card</h2></article>;\n";
+    let out = plan(&crate::emotion::EMOTION, sheet, split);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
+    assert_eq!(
+        out[1].rewritten.as_deref().unwrap(),
+        "import { styles } from './Card.styles';\n\nexport const Card = () => <article sx={styles.card}><h2 sx={styles.title}>Card</h2></article>;\n"
+    );
+
+    let out = plan(&crate::emotion::EMOTION, &sheet.replace('\n', "\r\n"), &split.replace('\n', "\r\n"));
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
+    assert_eq!(
+        out[1].rewritten.as_deref().unwrap(),
+        "import { styles } from './Card.styles';\r\n\r\nexport const Card = () => <article sx={styles.card}><h2 sx={styles.title}>Card</h2></article>;\r\n"
+    );
+
+    for barrel in [
+        "export { card } from './Card.styles';\n",
+        "export * from './Card.styles';\n",
+        "import { card } from './Card.styles';\nexport { card };\n",
+        "import { card } from './Card.styles';\nexport default card;\n",
+        "export const load = async () => (await import('./Card.styles')).card;\n",
+        "export const load = async () => (await import(`./Card.styles`)).card;\n",
+        "export const card = require('./Card.styles').card;\n",
+    ] {
+        let sources = vec![
+            ("src/Card.styles.ts".to_string(), sheet.to_string()),
+            ("src/Card.tsx".to_string(), user.to_string()),
+            ("src/index.ts".to_string(), barrel.to_string()),
+        ];
+        let out = crate::emotion::plan(&sources, None, "sx", &crate::emotion::EMOTION);
+        assert!(out[0].rewritten.is_none(), "{barrel}");
+        assert!(out[0].holds.iter().any(|h| h.kind == "exported-style"), "{barrel} {:?}", out[0].holds);
+        assert!(out[1].rewritten.is_none(), "{barrel}");
+    }
+}
+
+#[test]
 fn emotion_holds_what_it_cannot_carry() {
     let one = |code: &str| emotion_holds(&format!("import {{ css }} from '@emotion/react';\n{code}"));
     assert_eq!(one("<div css={{ '& > span': { color: 'red' } }} />"), ["selector"]);
@@ -1348,6 +1440,18 @@ export const size = css.create({
 }
 
 #[test]
+fn vanilla_leaves_no_gap_where_merged_styles_stood() {
+    let code = "import { style } from '@vanilla-extract/css';\n\nexport const card = style({ padding: 24 });\n\nexport const title = style({ fontSize: 18 });\n";
+    let out = vanilla(code);
+    assert!(out.reports.is_empty(), "{:?}", kinds(&out));
+    assert!(out.code.starts_with("import * as css from '@plumeria/core';\n\nexport const styles = css.create({\n"), "{}", out.code);
+
+    let crlf = vanilla(&code.replace('\n', "\r\n"));
+    assert!(crlf.reports.is_empty(), "{:?}", kinds(&crlf));
+    assert!(crlf.code.starts_with("import * as css from '@plumeria/core';\r\n\r\nexport const styles = css.create({"), "{:?}", crlf.code);
+}
+
+#[test]
 fn vanilla_holds_what_it_does_not_carry() {
     let held = |code: &str| kinds(&vanilla(&format!("import {{ style, globalStyle, createVar }} from '@vanilla-extract/css';\n{code}")));
     assert_eq!(held("globalStyle('a', { color: 'red' });"), ["unsupported-api"]);
@@ -1377,8 +1481,7 @@ export const A = ({ s, on }) => <button className={on ? sz.small : undefined}><i
 ";
     let result = run_with(code, &[sheet], None);
     assert!(result.holds.is_empty(), "{:?}", result.holds);
-    let expected = "import '@plumeria/core';
-import { styles, size as sz } from './Button.styles';
+    let expected = "import { styles, size as sz } from './Button.styles';
 export const A = ({ s, on }) => <button sx={on ? sz.small : undefined}><i sx={sz[s]} /><b sx={[styles.base, styles.button]} /></button>;
 ";
     assert_eq!(result.output, expected);
@@ -1408,7 +1511,7 @@ fn vanilla_preserves_namespace_variant_reads() {
     let code = "import * as s from './Button.css';\nconst view = <b className={s.button}><i className={s.background[props.variant]} /></b>;";
     let result = run_with(code, std::slice::from_ref(&sheet), None);
     assert!(result.holds.is_empty(), "{:?}", result.holds);
-    assert_eq!(result.output, "import '@plumeria/core';\nimport * as s from './Button.styles';\nconst view = <b sx={[s.styles.base, s.styles.button]}><i sx={s.background[props.variant]} /></b>;");
+    assert_eq!(result.output, "import * as s from './Button.styles';\nconst view = <b sx={[s.styles.base, s.styles.button]}><i sx={s.background[props.variant]} /></b>;");
     for (access, kind) in [("s.fade", "missing"), ("s.buton", "missing"), ("s[key]", "dynamic-access")] {
         let code = format!("import * as s from './Button.css';\nconst value = {access};");
         assert_eq!(run_with(&code, std::slice::from_ref(&sheet), None).holds, [kind], "{access}");
