@@ -181,6 +181,17 @@ const findTrail = (nodes: Node[], url: string, parents: string[] = []): string[]
   }
 };
 
+const SECTIONS: Record<string, string> = { blog: 'Blog', playground: 'Playground' };
+
+const trailOf = (nodes: Node[], url: string): string[] => {
+  const found = findTrail(nodes, url);
+  const [first, second] = url.split('/').filter(Boolean);
+  const section = first ? SECTIONS[first] : undefined;
+  if (!section) return found ?? [];
+  if (found) return [section, ...found];
+  return second ? [section, second[0].toUpperCase() + second.slice(1)] : [section];
+};
+
 function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?: number }) {
   return nodes.map((node, index) => {
     if (node.type === 'separator') {
@@ -252,7 +263,7 @@ function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?
 
 export function DocsSidebar({ tree }: { tree: Root }) {
   const path = useRouter().path.replace(/\/$/, '') || '/';
-  const crumbs = findTrail(tree.children, path) ?? [];
+  const crumbs = trailOf(tree.children, path);
 
   return (
     <>
