@@ -7,6 +7,7 @@ export function GET(): Response {
 
   const entries: Entry[] = [
     { path: '/', changeFrequency: 'monthly', priority: 1 },
+    { path: '/ja', changeFrequency: 'monthly', priority: 1 },
     { path: '/blog', changeFrequency: 'weekly', priority: 0.5 },
     ...source.getPages().map((page) => ({ path: page.url, changeFrequency: 'weekly', priority: 0.5 })),
     ...blog.getPages().map((page) => ({ path: page.url, changeFrequency: 'weekly', priority: 0.5 })),
