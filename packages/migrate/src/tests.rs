@@ -802,6 +802,10 @@ fn tailwind_holds_what_it_cannot_settle() {
 }
 
 fn emotion_scan(code: &str) -> crate::emotion::Outcome {
+    library_scan(code, &crate::emotion::EMOTION)
+}
+
+fn library_scan(code: &str, lib: &crate::emotion::Library) -> crate::emotion::Outcome {
     let files = [
         (
             "src/tokens.ts",
@@ -814,7 +818,7 @@ export const flag = +(2 > 1);\nexport const none = null;\nexport const label = '
     let modules: FxHashMap<String, crate::emotion::Module> =
         files.iter().map(|(file, text)| (file.to_string(), crate::emotion::module(file, text))).collect();
     let exports = |specifier: &str, name: &str| crate::emotion::resolve_kind(&modules, None, "src/App.tsx", specifier, name);
-    crate::emotion::scan_file("src/App.tsx", code, "sx", &exports)
+    crate::emotion::scan_file("src/App.tsx", code, "sx", lib, &exports)
 }
 
 fn emotion_one(code: &str) -> String {
@@ -1067,21 +1071,43 @@ fn emotion_holds_users_of_held_keyframes() {
 import { bounce } from './animations';
 export const A = () => <div css={{ animationName: bounce }} />;
 ";
-    let plan = |animations: &str| {
+    let plan = |animations: &str, user: &str| {
         let sources = vec![
             ("src/animations.ts".to_string(), animations.to_string()),
             ("src/App.tsx".to_string(), user.to_string()),
         ];
-        crate::emotion::plan(&sources, None, "sx")
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::EMOTION)
     };
-    let both = plan("import { keyframes } from '@emotion/react';\nexport const bounce = keyframes`from { opacity: 0; }`;\n");
+    let clean = "import { keyframes } from '@emotion/react';\nexport const bounce = keyframes`from { opacity: 0; }`;\n";
+    let both = plan(clean, user);
     assert!(both[0].rewritten.is_some() && both[1].rewritten.is_some());
     let held = plan(
         "import { keyframes, Global } from '@emotion/react';\nexport const bounce = keyframes`from { opacity: 0; }`;\nexport const G = Global;\n",
+        user,
     );
     assert!(held[0].rewritten.is_none() && held[1].rewritten.is_none());
     assert_eq!(held[1].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["linked-to-held"]);
     assert_eq!(held[1].holds[0].detail, "src/animations.ts");
+    let held_user = format!("{user}export const B = () => <div css={{{{ color: 'red' }}}} className=\"x\" />;\n");
+    let reverse = plan(clean, &held_user);
+    assert!(reverse[0].rewritten.is_none() && reverse[1].rewritten.is_none());
+    assert_eq!(reverse[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["linked-to-held"]);
+    assert_eq!(reverse[0].holds[0].detail, "src/App.tsx");
+    let held_tail = "export const B = () => <div css={{ color: 'red' }} className=\"x\" />;\n";
+    let namespace = format!("import {{ css }} from '@emotion/react';\nimport * as animations from './animations';\nexport const C = animations.bounce;\n{held_tail}");
+    let reverse = plan(clean, &namespace);
+    assert!(reverse[0].rewritten.is_none(), "{:?}", reverse[0].holds);
+    for value in ["animations.bounce", "animations['bounce']", "active ? animations.bounce : 'none'"] {
+        let code = format!("import * as animations from './animations';\nexport const A = () => <div css={{{{ animationName: {value} }}}} />;");
+        let held = plan(clean, &code);
+        assert!(held.iter().all(|file| file.rewritten.is_none()), "{value}");
+        assert!(held[1].holds.iter().any(|hold| hold.kind == "dynamic-value"), "{value}");
+    }
+    for types in ["import type { bounce } from './animations';", "import { type bounce } from './animations';"] {
+        let code = format!("import {{ css }} from '@emotion/react';\n{types}\nexport type T = typeof bounce;\n{held_tail}");
+        let typed = plan(clean, &code);
+        assert!(typed[0].rewritten.is_some() && typed[1].rewritten.is_none(), "{types}");
+    }
 }
 
 #[test]
@@ -1161,4 +1187,68 @@ export const A = () => <div css={[a, { gap: space }]} />;
     assert_eq!(styled("const A = styled.div`color: red;`;\nfoo(A);"), ["style-used-elsewhere"]);
     assert_eq!(styled("export const A = styled.div`color: red;`;"), ["exported-style"]);
     assert_eq!(emotion_holds("const styles = 1;\n<div css={{ color: 'red' }} />"), ["binding-taken"]);
+}
+
+fn styled_scan(code: &str) -> crate::emotion::Outcome {
+    library_scan(&format!("import styled, {{ css, keyframes }} from 'styled-components';\n{code}"), &crate::emotion::STYLED_COMPONENTS)
+}
+
+fn styled_holds(code: &str) -> Vec<&'static str> {
+    styled_scan(code).holds.iter().map(|h| h.kind).collect()
+}
+
+#[test]
+fn styled_components_rewrites_templates_and_keyframes() {
+    let outcome = styled_scan(
+        "const fade = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+const base = css`color: red;`;
+const Box = styled.div`
+  ${base};
+  animation-name: ${fade};
+  &:hover { color: blue; }
+`;
+export const A = () => <Box id=\"a\">hi</Box>;
+",
+    );
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    let expected = "import * as css from '@plumeria/core';
+const fade = css.keyframes({
+  from: {
+    opacity: '0',
+  },
+  to: {
+    opacity: '1',
+  },
+});
+const styles = css.create({
+  base: {
+    color: 'red',
+  },
+  Box: {
+    animationName: fade,
+    ':hover': {
+      color: 'blue',
+    },
+  },
+});
+export const A = () => <div sx={[styles.base, styles.Box]} id=\"a\">hi</div>;
+";
+    assert_eq!(outcome.rewritten.unwrap(), expected);
+}
+
+#[test]
+fn styled_components_holds_runtime_forms() {
+    assert_eq!(styled_holds("const A = styled.div`color: ${p => p.c};`;\n<A />"), ["dynamic-value"]);
+    assert_eq!(styled_holds("const A = styled.div.attrs({ id: 'a' })`color: red;`;\n<A />"), ["unsupported-use"]);
+    assert_eq!(styled_holds("const A = styled(Link)`color: red;`;\n<A />"), ["styled-component"]);
+    assert_eq!(styled_holds("const A = styled.div`color: red;`;\n<A $tone=\"quiet\" />"), ["custom-prop"]);
+    let one = |code: &str| {
+        let outcome = library_scan(code, &crate::emotion::STYLED_COMPONENTS);
+        outcome.holds.iter().map(|h| h.kind).collect::<Vec<_>>()
+    };
+    assert_eq!(one("import { createGlobalStyle } from 'styled-components';"), ["unsupported-api"]);
+    assert_eq!(one("import * as sc from 'styled-components';"), ["namespace-import"]);
+    assert_eq!(one("import styled from 'styled-components/native';"), ["unsupported-import"]);
+    assert!(one("/** @jsxImportSource @emotion/react */\nimport { css } from 'styled-components';\n<div css={{}} />").is_empty());
+    assert!(one("import { css } from '@emotion/react';\n<div css={{ color: 'red' }} />").is_empty());
 }
