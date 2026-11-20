@@ -1,5 +1,15 @@
 # Release Notes
 
+## 22.2.1 (Nov 20, 2026)
+
+- Feat: Migrate named styles and styled components imported from Emotion and styled-components files. Keep shared definitions intact when consumers re-export them or load them dynamically from a fixed path.
+
+- Update: Skip the side-effect core import when CSS Modules, vanilla-extract, or StyleX consumers use the configured style prop.
+
+- Fix: Remove leftover blank lines when merging vanilla-extract styles and handle CRLF line endings when removing imports.
+
+- Fix: Mark the migrate CLI executable.
+
 ## 22.2.0 (Nov 20, 2026)
 
 - Feat: Add `@plumeria/migrate` for CSS Modules, vanilla-extract, Emotion, styled-components, StyleX, and Tailwind CSS. Preview changes with `--dry-run` and review holds for styles that need manual migration.

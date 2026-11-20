@@ -1,5 +1,11 @@
 # @plumeria/core
 
+## 22.2.1
+
+### Patch Changes
+
+- 001350b: Bump version to 22.2.1
+
 ## 22.2.0
 
 ### Minor Changes

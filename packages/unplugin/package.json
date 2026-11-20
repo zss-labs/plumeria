@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/unplugin",
-  "version": "22.2.0",
+  "version": "22.2.1",
   "description": "Universal Plumeria plugin for various build tools",
   "author": "zss-labs",
   "license": "MIT",
