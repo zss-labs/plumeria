@@ -233,7 +233,7 @@ export const noInvalidSelector: Rule.RuleModule = {
     messages: {
       invalidKeySelector: 'Invalid key selector.',
       noQueryInsidePseudo:
-        'Media/Container queries cannot be nested inside pseudo-selectors.',
+        "Move the {{query}} query outside '{{pseudo}}', then nest '{{pseudo}}' inside the query.",
       noQueryInsideQuery:
         'Media/Container queries cannot be nested inside other queries.',
       noPseudoInsidePseudo:
@@ -333,11 +333,15 @@ export const noInvalidSelector: Rule.RuleModule = {
     function checkNesting(
       node: TSESTree.ObjectExpression,
       parentType: SelectorType,
+      parentKey = '',
     ) {
       for (const prop of node.properties) {
         if (prop.type !== 'Property') continue;
 
         const currentType = getSelectorType(prop.key);
+        const keyValue =
+          prop.key.type === 'Literal' ? prop.key.value : staticValue(prop.key);
+        const currentKey = typeof keyValue === 'string' ? keyValue : '';
 
         if (currentType === 'SKIP') continue;
 
@@ -359,6 +363,10 @@ export const noInvalidSelector: Rule.RuleModule = {
           context.report({
             node: prop.key,
             messageId: 'noQueryInsidePseudo',
+            data: {
+              query: currentKey.split(/[\s(]/)[0],
+              pseudo: parentKey,
+            },
           });
         } else if (parentType === 'QUERY' && currentType === 'QUERY') {
           context.report({ node: prop.key, messageId: 'noQueryInsideQuery' });
@@ -373,6 +381,7 @@ export const noInvalidSelector: Rule.RuleModule = {
           checkNesting(
             prop.value,
             currentType === 'PROPERTY' ? parentType : currentType,
+            currentType === 'PROPERTY' ? parentKey : currentKey,
           );
         }
       }
