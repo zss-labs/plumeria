@@ -16,8 +16,13 @@
   "keywords": [
     "plumeria",
     "migration",
+    "css-in-js",
     "css-modules",
-    "css-in-js"
+    "vanilla-extract",
+    "emotion",
+    "styled-components",
+    "stylex",
+    "tailwindcss"
   ],
   "sideEffects": false,
   "bin": {
