@@ -163,7 +163,7 @@ export const App = () => <div sx={${form.use ?? 'card.base'}} />;
     it('compiles the quoted key the others are held to', async () => {
       for (const compile of [inOneFile, acrossFiles]) {
         const { element, css } = await compile(form, `['500']`);
-        expect(element).toMatch(/className=\{"x/);
+        expect(element).toMatch(/className="x/);
         expect(css).toMatch(form.expected);
       }
     });
