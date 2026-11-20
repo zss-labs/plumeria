@@ -12,22 +12,11 @@ process.emitWarning = (warning, ...rest) => {
 };
 const { WASI } = require('node:wasi');
 
-const cwd = process.cwd();
-const args = process.argv.slice(2).map((arg) => {
-  if (arg.startsWith('-') || !path.isAbsolute(arg)) return arg;
-  const relative = path.relative(cwd, arg);
-  if (relative.startsWith('..')) {
-    console.error(`✖ ${arg} is outside the current directory.`);
-    process.exit(1);
-  }
-  return relative || '.';
-});
-
 const wasi = new WASI({
   version: 'preview1',
-  args: ['plumeria-migrate', ...args],
+  args: ['plumeria-migrate', ...process.argv.slice(2)],
   env: {},
-  preopens: { '.': cwd },
+  preopens: { '.': process.cwd() },
   returnOnExit: true,
 });
 
