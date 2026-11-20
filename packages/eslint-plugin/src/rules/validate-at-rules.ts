@@ -9,6 +9,12 @@ import { staticValueResolver } from '../util/staticValue';
 
 const VALID_AT_RULES = ['@media', '@container', '@supports'];
 
+const conditionExamples: { [name: string]: string } = {
+  '@media': '@media (width >= 40rem)',
+  '@container': '@container (inline-size >= 40rem)',
+  '@supports': '@supports (display: grid)',
+};
+
 export function isValidAtRule(rule: string): boolean {
   if (rule === '@starting-style') return true;
   return VALID_AT_RULES.some((keyword) => {
@@ -26,7 +32,12 @@ export const validateAtRules: Rule.RuleModule = {
       description: 'Validate at-rules inside css.create.',
     },
     messages: {
-      invalidAtRule: 'Invalid at-rule: "{{ rule }}".',
+      missingCondition:
+        "'{{ name }}' needs a condition, for example '{{ example }}'.",
+      unexpectedCondition:
+        "'@starting-style' takes no condition. Use '@starting-style' alone.",
+      unsupportedAtRule:
+        "'{{ name }}' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
     },
     schema: [],
   },
@@ -47,11 +58,25 @@ export const validateAtRules: Rule.RuleModule = {
         if (prop.type !== 'Property') continue;
         const key = getKeyString(prop.key);
         if (key?.startsWith('@') && !isValidAtRule(key)) {
-          context.report({
-            node: prop.key,
-            messageId: 'invalidAtRule',
-            data: { rule: key },
-          });
+          const name = key.match(/^@[\w-]*/)![0];
+          if (name in conditionExamples) {
+            context.report({
+              node: prop.key,
+              messageId: 'missingCondition',
+              data: { name, example: conditionExamples[name] },
+            });
+          } else if (name === '@starting-style') {
+            context.report({
+              node: prop.key,
+              messageId: 'unexpectedCondition',
+            });
+          } else {
+            context.report({
+              node: prop.key,
+              messageId: 'unsupportedAtRule',
+              data: { name },
+            });
+          }
         }
         if (prop.value.type === 'ObjectExpression') {
           checkProperties(prop.value);
