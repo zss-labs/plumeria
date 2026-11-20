@@ -1,0 +1,52 @@
+---
+title: '@plumeria/swc-jest'
+description: 'Jest の中で Plumeria のスタイルをコンパイルし、その結果を @swc/jest に渡します。'
+stability: Stable
+---
+
+[@plumeria/swc-jest](https://www.npmjs.com/package/@plumeria/swc-jest) は Jest の変換器です。スタイル用 prop を変換してから [@swc/jest](https://www.npmjs.com/package/@swc/jest) に渡すので、テストでもビルドと同じクラス名になります。
+
+## インストール [#installation]
+
+```sh title="Terminal"
+pnpm i -D @plumeria/swc-jest @swc/core
+```
+
+## 使い方 [#usage]
+
+Jest が一つのファイルパターンに使う変換器は一つです。`@swc/jest` と並べず、同じ欄を次の設定に置き換えます。
+
+```js title="jest.config.js"
+module.exports = {
+  testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.(t|j)sx?$': '@plumeria/swc-jest',
+  },
+};
+```
+
+SWC の設定は従来どおり `.swcrc` か変換器のオプションに書きます。`ts-jest`、`babel-jest`、`next/jest` の設定はこの変換器で置き換えます。型チェックには別途 `tsc` を使います。
+
+CSS ファイルは書き出されず、jsdom にも適用されません。確認できるのは付いたクラス名です。[ブラウザーで確認すること](/ja/docs/testing#jsdom-で分からないこと-what-jsdom-does-not-give-you)
+
+## オプション [#options]
+
+```js title="jest.config.js"
+module.exports = {
+  transform: {
+    '^.+\\.(t|j)sx?$': [
+      '@plumeria/swc-jest',
+      {
+        styleProp: 'classStyle',
+        jsc: { transform: { react: { runtime: 'automatic' } } },
+      },
+    ],
+  },
+};
+```
+
+- `styleProp` は JSX のスタイル用 prop 名です。標準は `'sx'` です。
+- `withoutLogicalProperties` は物理名もあるプロパティの論理名を禁止します。初期値は `false` です。
+- `withoutPhysicalProperties` は論理名もあるプロパティの物理名を禁止します。初期値は `false` です。
+
+ほかの項目はそのまま `@swc/jest` に渡ります。上の三項目はバンドラーと同じ設定にしてください。[unplugin の設定](/ja/docs/api/plugins/unplugin#withoutlogicalproperties-と-withoutphysicalproperties-withoutlogicalproperties-and-withoutphysicalproperties)と同じように動きます。
