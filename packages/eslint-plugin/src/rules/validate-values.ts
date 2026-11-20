@@ -17,6 +17,7 @@ import {
 } from '../util/place';
 import type {
   ImportSpecifier,
+  Literal,
   ObjectExpression,
   Property,
   SpreadElement,
@@ -114,6 +115,15 @@ const lengthValueProperties = [
   'x',
   'y',
   'zoom',
+  'cx',
+  'cy',
+  'columnHeight',
+  'lineHeightStep',
+  'ruleWidth',
+  'rowRuleWidth',
+  'WebkitTextStrokeWidth',
+  'gridColumnGap',
+  'gridRowGap',
 ];
 
 const lengthPercentage = [
@@ -204,6 +214,17 @@ const lengthPercentage = [
   'textUnderlineOffset',
   'transformOrigin',
   'verticalAlign',
+  'cx',
+  'cy',
+  'gridColumnGap',
+  'gridRowGap',
+  'gridGap',
+  'timelineTriggerActivationRange',
+  'timelineTriggerActivationRangeEnd',
+  'timelineTriggerActivationRangeStart',
+  'timelineTriggerActiveRange',
+  'timelineTriggerActiveRangeEnd',
+  'timelineTriggerActiveRangeStart',
 ];
 
 const insetProperties = [
@@ -256,7 +277,10 @@ const fitContentString = `fit-content\\(${mathContentsString}\\)`;
 const minString = `min\\(${mathContentsString}\\)`;
 const maxString = `max\\(${mathContentsString}\\)`;
 const minmaxString = `minmax\\(${mathContentsString}\\)`;
-const dashedIdentString = '--[a-zA-Z_][a-zA-Z0-9_-]*';
+const identStartString = '(?:[a-zA-Z_]|[^\\x00-\\x7F]|\\\\.)';
+const identCharString = '(?:[a-zA-Z0-9_-]|[^\\x00-\\x7F]|\\\\.)';
+const dashedIdentString = `--${identCharString}+`;
+const customIdentString = `-?${identStartString}${identCharString}*`;
 const cssVariablePlaceholder = '\u0001';
 const canonicalCssVariable = (index: number) => `var(--x${index})`;
 const varString = `(?:var\\(${dashedIdentString}(,\\s*[^\\)]+)?\\)|${cssVariablePlaceholder})`;
@@ -423,6 +447,8 @@ const otherGroupProperties = [
   'strokeOpacity',
   'flexGrow',
   'flexShrink',
+  'boxFlex',
+  'floodOpacity',
 ];
 const integerGroupProperties = [
   'columnCount',
@@ -430,6 +456,22 @@ const integerGroupProperties = [
   'order',
   'orphans',
   'widows',
+  'boxFlexGroup',
+  'boxOrdinalGroup',
+  'flexLineCount',
+  'readingOrder',
+  'lineClamp',
+  'WebkitLineClamp',
+  'maxLines',
+  'hyphenateLimitLines',
+];
+const positiveIntegerProperties = [
+  'columnCount',
+  'orphans',
+  'widows',
+  'lineClamp',
+  'WebkitLineClamp',
+  'maxLines',
 ];
 const multipleValueProperties = [
   'borderSpacing',
@@ -451,6 +493,7 @@ const multipleValueProperties = [
   'borderWidth',
   'borderImageWidth',
   'borderImageOutset',
+  'gridGap',
 ];
 const gridItemProperties = [
   'gridColumn',
@@ -473,6 +516,86 @@ const initialLetterProperties = ['initialLetter'];
 const hyphenateLimitCharsProperties = ['hyphenateLimitChars'];
 const shapeImageThresholdProperties = ['shapeImageThreshold'];
 const columnsProperties = ['columns'];
+const ruleInsetProperties = [
+  'columnRuleInset',
+  'columnRuleInsetCap',
+  'columnRuleInsetCapEnd',
+  'columnRuleInsetCapStart',
+  'columnRuleInsetEnd',
+  'columnRuleInsetJunction',
+  'columnRuleInsetJunctionEnd',
+  'columnRuleInsetJunctionStart',
+  'columnRuleInsetStart',
+  'rowRuleInset',
+  'rowRuleInsetCap',
+  'rowRuleInsetCapEnd',
+  'rowRuleInsetCapStart',
+  'rowRuleInsetEnd',
+  'rowRuleInsetJunction',
+  'rowRuleInsetJunctionEnd',
+  'rowRuleInsetJunctionStart',
+  'rowRuleInsetStart',
+  'ruleInset',
+  'ruleInsetCap',
+  'ruleInsetEnd',
+  'ruleInsetJunction',
+  'ruleInsetStart',
+];
+const containIntrinsicProperties = [
+  'containIntrinsicBlockSize',
+  'containIntrinsicHeight',
+  'containIntrinsicInlineSize',
+  'containIntrinsicSize',
+  'containIntrinsicWidth',
+];
+const cornerShapeProperties = [
+  'cornerShape',
+  'cornerTopShape',
+  'cornerRightShape',
+  'cornerBottomShape',
+  'cornerLeftShape',
+  'cornerBlockStartShape',
+  'cornerBlockEndShape',
+  'cornerInlineStartShape',
+  'cornerInlineEndShape',
+  'cornerTopLeftShape',
+  'cornerTopRightShape',
+  'cornerBottomLeftShape',
+  'cornerBottomRightShape',
+  'cornerStartStartShape',
+  'cornerStartEndShape',
+  'cornerEndStartShape',
+  'cornerEndEndShape',
+];
+const numberValueProperties = [
+  ...ruleInsetProperties,
+  ...containIntrinsicProperties,
+  'animation',
+  'fitTolerance',
+  'fontSmooth',
+  'perspectiveOrigin',
+  'rule',
+  'rowRule',
+  'scrollSnapCoordinate',
+  'scrollSnapDestination',
+  'textDecoration',
+  'textDecorationInset',
+  'viewTimelineInset',
+];
+const dashedIdentListProperties = [
+  'anchorName',
+  'anchorScope',
+  'scrollTimelineName',
+  'timelineScope',
+  'timelineTriggerName',
+  'triggerScope',
+  'viewTimelineName',
+];
+const keywordListProperties = [
+  'animationComposition',
+  'scrollTimelineAxis',
+  'viewTimelineAxis',
+];
 
 function getParenthesisDepth(value: string, end: number): number {
   let depth = 0;
@@ -597,6 +720,7 @@ function normalizeCssVariables(value: string): NormalizedCssVariables | null {
 const valueCountMap: { [key: string]: number } = {
   inset: 4,
   gap: 2,
+  gridGap: 2,
   padding: 4,
   margin: 4,
   borderSpacing: 2,
@@ -636,6 +760,14 @@ const singleColorProperties = [
   'fill',
   'stopColor',
   'textEmphasisColor',
+  'floodColor',
+  'lightingColor',
+  'strokeColor',
+  'ruleColor',
+  'rowRuleColor',
+  'WebkitTextFillColor',
+  'WebkitTextStrokeColor',
+  'WebkitTapHighlightColor',
 ];
 const borderColorProperties = ['borderColor'];
 const borderWidthProperties = [
@@ -644,17 +776,23 @@ const borderWidthProperties = [
   'borderInlineWidth',
   'columnRuleWidth',
   'outlineWidth',
+  'ruleWidth',
+  'rowRuleWidth',
+  'WebkitTextStrokeWidth',
 ];
 const ImageSourceProperties = [
   'borderImageSource',
   'listStyleImage',
   'maskBorderSource',
   'maskImage',
+  'WebkitMaskImage',
 ];
 const borderProperties = [
   'border',
   'outline',
   'columnRule',
+  'rule',
+  'rowRule',
   'borderTop',
   'borderBottom',
   'borderLeft',
@@ -765,6 +903,7 @@ const allowsNumberSet = new Set([
   ...hyphenateLimitCharsProperties,
   ...shapeImageThresholdProperties,
   ...columnsProperties,
+  ...numberValueProperties,
 ]);
 
 // --- Static Functions ---
@@ -794,6 +933,40 @@ function splitColorValues(value: string) {
 }
 function isValidColorValue(value: string) {
   return colorRegex.test(value);
+}
+
+const textDecorationLines = ['underline', 'overline', 'line-through', 'blink'];
+const textDecorationSingleLines = ['none', 'spelling-error', 'grammar-error'];
+const textDecorationStyles = ['solid', 'double', 'dotted', 'dashed', 'wavy'];
+const textDecorationThicknessRegex = new RegExp(
+  `^(?:auto|from-font|${lengthPattern}|${percentagePattern}|${calcString})$`,
+);
+
+function isValidTextDecoration(value: string) {
+  const seen = new Set<string>();
+  let lineCount = 0;
+  for (const part of splitColorValues(value)) {
+    if (varRegex.test(part)) continue;
+    const lower = part.toLowerCase();
+    let group: string;
+    if (textDecorationLines.includes(lower)) {
+      group = lower;
+      lineCount++;
+    } else if (textDecorationSingleLines.includes(lower)) {
+      group = 'line';
+    } else if (textDecorationStyles.includes(lower)) {
+      group = 'style';
+    } else if (textDecorationThicknessRegex.test(lower)) {
+      group = 'thickness';
+    } else if (isValidColorValue(part)) {
+      group = 'color';
+    } else {
+      return false;
+    }
+    if (seen.has(group)) return false;
+    seen.add(group);
+  }
+  return !(seen.has('line') && lineCount > 0);
 }
 
 function isValidCursor(value: string) {
@@ -958,6 +1131,163 @@ function getFoldedValues(key: string): Set<string> {
   const folded = new Set(validData[key].map((v) => v.toLowerCase()));
   foldedValueCache.set(key, folded);
   return folded;
+}
+
+type KeywordTokenRule = {
+  max: number;
+  repeat?: boolean;
+  standalone?: string[];
+  exclusive?: string[][];
+  keywords?: string[];
+  pattern?: string;
+  check?: (tokens: string[]) => boolean;
+};
+
+const positionAreaAxes: [RegExp, string][] = [
+  [/^(?:span-)?(?:self-)?block-(?:start|end)$/, 'block'],
+  [/^(?:span-)?(?:self-)?inline-(?:start|end)$/, 'inline'],
+  [/^(?:span-)?(?:x-(?:self-)?(?:start|end)|left|right)$/, 'x'],
+  [/^(?:span-)?(?:y-(?:self-)?(?:start|end)|top|bottom)$/, 'y'],
+  [/^(?:span-)?(?:self-)?(?:start|end)$/, 'generic'],
+];
+
+function isPositionArea(tokens: string[]): boolean {
+  const axes = tokens.map(
+    (token) => positionAreaAxes.find(([r]) => r.test(token))?.[1] ?? 'any',
+  );
+  if (axes.includes('any')) return true;
+  const pair = axes.sort().join(' ');
+  return (
+    pair === 'x y' || pair === 'block inline' || pair === 'generic generic'
+  );
+}
+
+const textEdgeOver = ['text', 'cap', 'ex', 'ideographic', 'ideographic-ink'];
+const textEdgeUnder = ['text', 'alphabetic', 'ideographic', 'ideographic-ink'];
+const textBoxTrims = ['none', 'trim-start', 'trim-end', 'trim-both'];
+
+function isTextEdge(tokens: string[]): boolean {
+  if (tokens.length === 1) {
+    return tokens[0] === 'auto' || textEdgeOver.includes(tokens[0]);
+  }
+  return (
+    tokens.length === 2 &&
+    textEdgeOver.includes(tokens[0]) &&
+    textEdgeUnder.includes(tokens[1])
+  );
+}
+
+function isTextBox(tokens: string[]): boolean {
+  const trims = tokens.filter((token) => textBoxTrims.includes(token));
+  if (trims.length > 1) return false;
+  if (trims.length === 0) return isTextEdge(tokens);
+  const index = tokens.indexOf(trims[0]);
+  if (index !== 0 && index !== tokens.length - 1) return false;
+  return isTextEdge(tokens.filter((_, i) => i !== index));
+}
+
+const keywordTokenRules: { [key: string]: KeywordTokenRule } = {
+  imageResolution: {
+    max: 3,
+    keywords: ['snap'],
+    pattern: `${pureNumber}(?:dpi|dpcm|dppx|x)`,
+    check: (tokens) => tokens.some((token) => token !== 'snap'),
+  },
+  masonryAutoFlow: {
+    max: 2,
+    exclusive: [
+      ['pack', 'next'],
+      ['definite-first', 'ordered'],
+    ],
+  },
+  positionArea: {
+    max: 2,
+    repeat: true,
+    standalone: ['none'],
+    check: isPositionArea,
+  },
+  positionVisibility: { max: 3, standalone: ['always'] },
+  speakAs: {
+    max: 3,
+    standalone: ['normal'],
+    exclusive: [['literal-punctuation', 'no-punctuation']],
+  },
+  textAutospace: {
+    max: 4,
+    standalone: ['normal', 'no-autospace', 'auto'],
+    exclusive: [['insert', 'replace']],
+  },
+  textBox: {
+    max: 3,
+    repeat: true,
+    standalone: ['normal'],
+    keywords: ['alphabetic'],
+    check: isTextBox,
+  },
+  textBoxEdge: {
+    max: 2,
+    repeat: true,
+    keywords: ['alphabetic'],
+    check: isTextEdge,
+  },
+  textDecorationSkip: {
+    max: 5,
+    standalone: ['none'],
+    exclusive: [
+      ['spaces', 'leading-spaces'],
+      ['spaces', 'trailing-spaces'],
+    ],
+  },
+  textDecorationSkipSpaces: { max: 2, standalone: ['none', 'all'] },
+  textFit: {
+    max: 3,
+    standalone: ['none'],
+    keywords: ['consistent', 'per-line', 'per-line-all'],
+    exclusive: [
+      ['grow', 'shrink'],
+      ['consistent', 'per-line', 'per-line-all'],
+    ],
+    pattern: percentagePattern,
+  },
+  whiteSpaceTrim: { max: 3, standalone: ['none'] },
+};
+
+function keywordTokens(key: string, rule: KeywordTokenRule): ValidatorFn {
+  const keywords = new Set([...getFoldedValues(key), ...(rule.keywords ?? [])]);
+  const pattern = rule.pattern ? new RegExp(`^(?:${rule.pattern})$`) : null;
+  return (value) => {
+    const tokens = value.trim().toLowerCase().split(/\s+/);
+    if (tokens.length > rule.max) return false;
+    if (!rule.repeat && new Set(tokens).size !== tokens.length) return false;
+    let patternCount = 0;
+    let hasVar = false;
+    for (const token of tokens) {
+      if (keywords.has(token)) continue;
+      if (varRegex.test(token)) {
+        hasVar = true;
+      } else if (pattern?.test(token)) {
+        patternCount++;
+      } else {
+        return false;
+      }
+    }
+    if (hasVar) return true;
+    if (patternCount > 1) return false;
+    if (
+      tokens.length > 1 &&
+      tokens.some((token) => rule.standalone?.includes(token))
+    ) {
+      return false;
+    }
+    if (
+      rule.exclusive?.some(
+        (group) => tokens.filter((token) => group.includes(token)).length > 1,
+      )
+    ) {
+      return false;
+    }
+    return rule.check ? rule.check(tokens) : true;
+  };
 }
 
 const transformFunctionString = [
@@ -1205,6 +1535,7 @@ function getValidator(key: string): ValidatorFn | null {
       'offsetAnchor',
       'offsetPosition',
       'perspectiveOrigin',
+      'scrollSnapDestination',
     ].includes(key)
   ) {
     const r = new RegExp(
@@ -1453,6 +1784,19 @@ function getValidator(key: string): ValidatorFn | null {
       'transition',
       'viewTransitionName',
       'willChange',
+      'animation',
+      'animationTrigger',
+      'borderShape',
+      'caret',
+      'container',
+      'linkParameters',
+      'positionTry',
+      'positionTryFallbacks',
+      'scrollSnapPointsX',
+      'scrollSnapPointsY',
+      'scrollTimeline',
+      'timelineTrigger',
+      'viewTimeline',
     ].includes(key)
   ) {
     validator = (v) => /^.+$/.test(v);
@@ -1684,7 +2028,7 @@ function getValidator(key: string): ValidatorFn | null {
   } else if (['fontLanguageOverride', 'hyphenateCharacter'].includes(key)) {
     const r = new RegExp(`^${stringString}$`);
     validator = (v) => r.test(v);
-  } else if (['fontStretch'].includes(key)) {
+  } else if (['fontStretch', 'fontWidth'].includes(key)) {
     const r = new RegExp(`^${percentagePattern}$`);
     validator = (v) => r.test(v);
   } else if (['flex'].includes(key)) {
@@ -1851,7 +2195,17 @@ function getValidator(key: string): ValidatorFn | null {
     const r = new RegExp(`^(${dr})(,\\s*(${dr}))*$`);
     validator = (v) => r.test(v);
   } else if (
-    ['animationRange', 'animationRangeStart', 'animationRangeEnd'].includes(key)
+    [
+      'animationRange',
+      'animationRangeStart',
+      'animationRangeEnd',
+      'timelineTriggerActivationRange',
+      'timelineTriggerActivationRangeEnd',
+      'timelineTriggerActivationRangeStart',
+      'timelineTriggerActiveRange',
+      'timelineTriggerActiveRangeEnd',
+      'timelineTriggerActiveRangeStart',
+    ].includes(key)
   ) {
     const rangeName = [
       'entry-crossing',
@@ -1863,8 +2217,7 @@ function getValidator(key: string): ValidatorFn | null {
       'scroll',
     ].join('|');
     const bound = `(?:normal|(?:${lvp})|(?:${rangeName})(?:\\s+(?:${lvp}))?)`;
-    const segment =
-      key === 'animationRange' ? `${bound}(?:\\s+${bound})?` : bound;
+    const segment = key.endsWith('Range') ? `${bound}(?:\\s+${bound})?` : bound;
     const r = new RegExp(`^${segment}(?:\\s*,\\s*${segment})*$`);
     validator = (v) => r.test(v);
   } else if (
@@ -1894,6 +2247,101 @@ function getValidator(key: string): ValidatorFn | null {
     validator = (v) => r.test(v);
   } else if (['borderImageSlice'].includes(key)) {
     validator = (v) => sliceRegex.test(v);
+  } else if (key in keywordTokenRules) {
+    validator = keywordTokens(key, keywordTokenRules[key]);
+  } else if (dashedIdentListProperties.includes(key)) {
+    validator = exactly(
+      `(?:${dashedIdentString}|${varString})(?:\\s*,\\s*(?:${dashedIdentString}|${varString}))*`,
+    );
+  } else if (['containerName', 'viewTransitionClass'].includes(key)) {
+    const item = `${dashedIdentString}|${customIdentString}|${varString}`;
+    const r = new RegExp(`^(?:${item})(?:\\s+(?:${item}))*$`);
+    const reserved = new Set([
+      ...globalValues,
+      'default',
+      'none',
+      ...(key === 'containerName' ? ['and', 'or', 'not'] : []),
+    ]);
+    validator = (v) =>
+      r.test(v) &&
+      !v
+        .trim()
+        .split(/\s+/)
+        .some((token) => reserved.has(token.toLowerCase()));
+  } else if (['page', 'viewTransitionGroup'].includes(key)) {
+    validator = exactly(`${customIdentString}|${varString}`);
+  } else if (['positionAnchor', 'timelineTriggerSource'].includes(key)) {
+    validator = exactly(`${dashedIdentString}|${varString}`);
+  } else if (keywordListProperties.includes(key)) {
+    const item = `${validData[key].join('|')}|${varString}`;
+    validator = exactly(`(?:${item})(?:\\s*,\\s*(?:${item}))*`);
+  } else if (['alignTracks', 'justifyTracks'].includes(key)) {
+    const keywords = validData[key].map((v) => v.replace(' ', '\\s+'));
+    const item = `(?:unsafe|safe)\\s+(?:center|start|end|flex-start|flex-end|left|right)|${keywords.join('|')}|${varString}`;
+    validator = exactly(`(?:${item})(?:\\s*,\\s*(?:${item}))*`);
+  } else if (ruleInsetProperties.includes(key)) {
+    const item = `${lengthPattern}|${percentagePattern}|${calcString}|overlap-join|${varString}`;
+    const pair = `(?:${item})(?:\\s+(?:${item}))?`;
+    validator = exactly(`${pair}(?:\\s*\\/\\s*${pair})?`);
+  } else if (containIntrinsicProperties.includes(key)) {
+    const item = `(?:auto\\s+)?(?:none|${lengthPattern}|${calcString}|${varString})`;
+    validator = exactly(
+      key === 'containIntrinsicSize' ? `${item}(?:\\s+${item})?` : item,
+    );
+  } else if (cornerShapeProperties.includes(key)) {
+    const item = `${validData[key].join('|')}|superellipse\\(${mathContentsString}\\)|${varString}`;
+    const count =
+      key === 'cornerShape'
+        ? 4
+        : /^corner(?:(?:Top|Bottom)(?:Left|Right)|(?:Start|End)(?:Start|End))Shape$/.test(
+              key,
+            )
+          ? 1
+          : 2;
+    validator = exactly(`(?:${item})(?:\\s+(?:${item})){0,${count - 1}}`);
+  } else if (['textDecorationInset'].includes(key)) {
+    const item = `${lengthPattern}|${calcString}|${varString}`;
+    validator = exactly(`(?:${item})(?:\\s+(?:${item}))?`);
+  } else if (['viewTimelineInset'].includes(key)) {
+    const item = `auto|${lengthPattern}|${percentagePattern}|${calcString}|${varString}`;
+    const pair = `(?:${item})(?:\\s+(?:${item}))?`;
+    validator = exactly(`${pair}(?:\\s*,\\s*${pair})*`);
+  } else if (['scrollSnapCoordinate'].includes(key)) {
+    const item = `${lengthPattern}|${percentagePattern}|${calcString}|top|bottom|center|left|right|${varString}`;
+    const position = `(?:${item})(?:\\s+(?:${item})){0,3}`;
+    validator = exactly(`${position}(?:\\s*,\\s*${position})*`);
+  } else if (
+    ['interestDelay', 'interestDelayEnd', 'interestDelayStart'].includes(key)
+  ) {
+    const item = `normal|${timeString}|${varString}`;
+    validator = exactly(
+      key === 'interestDelay' ? `(?:${item})(?:\\s+(?:${item}))?` : item,
+    );
+  } else if (['fitTolerance'].includes(key)) {
+    validator = exactly(
+      `${lengthPattern}|${percentagePattern}|${calcString}|${varString}`,
+    );
+  } else if (['fontSmooth'].includes(key)) {
+    validator = exactly(`${lengthPattern}|${calcString}|${varString}`);
+  } else if (['pathLength'].includes(key)) {
+    validator = exactly(`${pureNumber}|${varString}`);
+  } else if (['d'].includes(key)) {
+    validator = exactly(`path\\(\\s*${stringString}\\s*\\)|${varString}`);
+  } else if (['clip'].includes(key)) {
+    const edge = `auto|${lengthPattern}|${calcString}|${varString}`;
+    const rect = (sep: string) =>
+      `rect\\(\\s*(?:${edge})${sep}(?:${edge})${sep}(?:${edge})${sep}(?:${edge})\\s*\\)`;
+    validator = exactly(`${rect('\\s*,\\s*')}|${rect('\\s+')}|${varString}`);
+  } else if (['textDecoration'].includes(key)) {
+    validator = isValidTextDecoration;
+  } else if (['objectViewBox'].includes(key)) {
+    validator = exactly(
+      `(?:inset|xywh|rect)\\(${mathContentsString}\\)|${varString}`,
+    );
+  } else if (['dynamicRangeLimit'].includes(key)) {
+    validator = exactly(
+      `dynamic-range-limit-mix\\(${mathContentsString}\\)|${varString}`,
+    );
   } else if (ImageSourceProperties.includes(key)) {
     validator = (v) => imageRegex.test(v);
   } else if (borderProperties.includes(key)) {
@@ -1931,12 +2379,17 @@ function getValidator(key: string): ValidatorFn | null {
   } else if (borderColorProperties.includes(key)) {
     validator = isValidMultipleColorValues;
   } else if (integerGroupProperties.includes(key)) {
-    const r = new RegExp(`^${integerPattern}$`);
+    const r = positiveIntegerProperties.includes(key)
+      ? new RegExp(`^(?:[1-9]\\d*|${varString})$`)
+      : new RegExp(`^${integerPattern}$`);
     validator = (v) => r.test(v);
   } else if (otherGroupProperties.includes(key)) {
-    const isOtherGroups = ['opacity', 'stopOpacity', 'strokeOpacity'].includes(
-      key,
-    );
+    const isOtherGroups = [
+      'opacity',
+      'stopOpacity',
+      'strokeOpacity',
+      'floodOpacity',
+    ].includes(key);
     const r = new RegExp(`^(${numberPattern}${isOtherGroups ? '%?' : ''}|0)$`);
     validator = (v) => r.test(v);
   } else if (lengthValueProperties.includes(key)) {
@@ -2135,9 +2588,23 @@ export const validateValues: Rule.RuleModule = {
         const key = property.key.name;
         if (!validData[key]) return;
 
-        if (property.value.type !== 'Literal') return;
-
-        const rawValue = property.value.value;
+        const valueNode = property.value;
+        let rawValue: Literal['value'];
+        if (valueNode.type === 'Literal') {
+          rawValue = valueNode.value;
+        } else if (
+          valueNode.type === 'UnaryExpression' &&
+          (valueNode.operator === '-' || valueNode.operator === '+') &&
+          valueNode.argument.type === 'Literal' &&
+          typeof valueNode.argument.value === 'number'
+        ) {
+          rawValue =
+            valueNode.operator === '-'
+              ? -valueNode.argument.value
+              : valueNode.argument.value;
+        } else {
+          return;
+        }
 
         // Boolean and null primitives
         if (typeof rawValue === 'boolean' || rawValue === null) {
@@ -2160,6 +2627,19 @@ export const validateValues: Rule.RuleModule = {
               node: property.value,
               messageId: 'invalidNumber',
               data: { key },
+            });
+          } else if (
+            integerGroupProperties.includes(key) &&
+            !getValidator(key)!(String(rawValue))
+          ) {
+            context.report({
+              node: property.value,
+              messageId: 'validateValue',
+              data: {
+                key,
+                value: String(rawValue),
+                validValues: validData[key].join(', '),
+              },
             });
           }
           return;
