@@ -486,7 +486,7 @@ namespace import, which cannot be compiled. Import it by name:
 import { breakpoints } from '...'.
 ```
 
-import した名前がすべてビルド時に置き換わると、import 自体も消え、バンドラーはそれを通じてモジュールを読み込みません。実行時にも値を読む、コンポーネントを描画する、再 export する場合の import は残ります。グローバル CSS の読み込みなど、モジュールを実行する必要がある場合は、そのための import を別に書きます。
+`import` した名前がすべてビルド時に置き換わると、import 自体も消え、バンドラーはそれを通じてモジュールを読み込みません。実行時にも値を読む、コンポーネントを描画する、再 export する場合の import は残ります。グローバル CSS の読み込みなど、モジュールを実行する必要がある場合は、そのための import を別に書きます。
 
 ```ts
 import './tokens';
