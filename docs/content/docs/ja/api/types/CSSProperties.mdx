@@ -1,0 +1,36 @@
+---
+title: 'CSSProperties'
+description: 'css.create に渡すスタイルオブジェクトの形。satisfies と一緒に使います。'
+---
+
+```ts
+type CSSProperties;
+export type { CSSProperties };
+```
+
+`CSSProperties` は [css.create](/ja/docs/api/javascript/create) に渡すスタイルオブジェクトの形です。`satisfies` と組み合わせると、推論された型を保ったまま内容を確認できます。
+
+## 例 [#example]
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+const flexBox = css.createStatic({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} satisfies css.CSSProperties);
+
+export const styles = css.create({
+  container: {
+    ...flexBox,
+    backgroundColor: 'red',
+  },
+});
+```
+
+展開したスタイルがどうコンパイルされるかは [createStatic](/ja/docs/api/javascript/createStatic) を参照してください。
+
+<Callout title="satisfies で型を確認する">
+変数に `css.CSSProperties` と型注釈を付けると、個々の値はプロパティに宣言された広い型になります。また、各プロパティが省略可能なので、生成したクラス名まで省略可能になります。具体的な値を型に残すには `satisfies css.CSSProperties` と書きます。
+</Callout>
