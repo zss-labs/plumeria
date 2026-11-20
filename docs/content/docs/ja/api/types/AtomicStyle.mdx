@@ -1,0 +1,140 @@
+---
+title: 'AtomicStyle'
+description: '作成した 1 つのスタイルの型。設定すべきプロパティを指定します。'
+---
+
+```ts
+type AtomicStyle<T>;
+export type { AtomicStyle };
+```
+
+`AtomicStyle` は [css.create](/ja/docs/api/javascript/create) で作った一つのスタイルの型です。型引数には元のスタイルのルールか、そこから生成された[クラス名](/ja/docs/api/types/AtomicClassNameFor)の組を書けます。どちらも同じ型になるので、prop の宣言では短いルールの形を使えます。
+
+[StyleProps](/ja/docs/api/types/StyleProps) と [WithoutProperties](/ja/docs/api/types/WithoutProperties) は「渡してよいプロパティ」を指定します。`AtomicStyle` は「必ず含むプロパティ」を指定し、その値まで決められます。
+
+## プロパティを必須にする [#requiring-a-property]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  tinted: { color: 'red' },
+  padded: { color: 'red', padding: 8 },
+  pinned: { position: 'absolute' },
+});
+
+type NeedsColor = css.AtomicStyle<{ color: string }>;
+
+const a: NeedsColor = styles.tinted; // ok
+const b: NeedsColor = styles.padded; // ok, setting more is allowed
+const c: NeedsColor = styles.pinned; // Type error, no color is set
+```
+
+型引数に指定したプロパティは必須です。ほかのプロパティが含まれていても使えます。
+
+## prop からクラス名を読む [#reading-a-class-name-off-the-prop]
+
+必須にしたプロパティは、受け取った側で読み出せます。`Style` はリストなので、特定のプロパティを直接指定して読めません。`AtomicStyle` なら、指定したプロパティの[クラス名](/ja/docs/api/types/AtomicClassNameFor)を取得できます。
+
+```tsx title="TypeScript"
+function Glyph({ glyphStyle }: { glyphStyle: css.AtomicStyle<{ color: string }> }) {
+  return <svg fill="currentColor" className={glyphStyle.color} />;
+}
+
+<Glyph glyphStyle={styles.tinted} />  // ok
+<Glyph glyphStyle={styles.padded} />  // Type error, there is no color to read
+```
+
+入れ子のブロックも同じように読み出せます。
+
+```tsx
+function Hover({ s }: { s: css.AtomicStyle<{ ':hover': { color: string } }> }) {
+  return <span className={s[':hover'].color} />;
+}
+```
+
+## 値を固定する [#pinning-a-value]
+
+クラス名の型には、元になった値の情報もあります。型引数に具体的な値を書くと、その値を使ったスタイルだけを受け取れます。
+
+```tsx
+const layouts = css.create({
+  flex: { display: 'flex' },
+  grid: { display: 'grid' },
+});
+
+type MustBeFlex = css.AtomicStyle<{ display: 'flex' }>;
+
+const a: MustBeFlex = layouts.flex; // ok
+const b: MustBeFlex = layouts.grid; // Type error, display is grid
+```
+
+## 作成したスタイルの中身 [#what-a-created-style-shows]
+
+作成したスタイルの中身は、プロパティとクラス名の対応です。エディターでも次のように表示されます。
+
+```ts title="TypeScript"
+const styles = css.create({
+  header: { padding: '6px 12px', color: 'red' },
+});
+
+// styles.header
+Readonly<{
+  padding: css.AtomicClassNameFor<'padding', '6px 12px'>;
+  color: css.AtomicClassNameFor<'color', 'red'>;
+}>
+```
+
+`styles.header.padding` を読むと、文字列 `'6px 12px'` ではなく、`padding: 6px 12px` 用のクラス名が得られます。エディターで型を見ると、この違いを確認できます。元のルールを使っても同じ型を書けます。
+
+```ts
+type Header = css.AtomicStyle<{ padding: '6px 12px'; color: 'red' }>;
+
+const a: Header = styles.header; // ok
+```
+
+入れ子のブロックも一つのスタイルなので、内側まで同じ方法で読めます。
+
+## どちらの種類のスタイルも [#either-kind-of-style]
+
+動的なスタイルも、指定したプロパティを含んでいれば `AtomicStyle` として渡せます。
+
+```tsx
+const styles = css.create({
+  sized: (width: number) => ({ width, color: 'red' }),
+});
+
+const a: NeedsColor = styles.sized(120); // ok
+```
+
+動的なスタイルだけを受け付けるには [AtomicClassStyle](/ja/docs/api/types/AtomicClassStyle)、静的なスタイルだけなら [StaticStyles](/ja/docs/api/types/StaticStyles) を使います。
+
+## リストではなく 1 つのスタイル [#one-style-not-a-list]
+
+`AtomicStyle` と `AtomicClassStyle` は一つのスタイルを表します。配列や条件が偽のときの値も渡したい場合は [Style](/ja/docs/api/types/Style) か、その範囲を絞った型を使います。
+
+```tsx
+const a: NeedsColor = [styles.tinted]; // Type error
+const b: NeedsColor = false;           // Type error
+```
+
+スタイルを受け取って適用する prop には `Style`、`StyleProps`、`WithoutProperties`、`StaticStyles` が適しています。一つのスタイルを受け取り、そのプロパティを読むときは `AtomicStyle` を使います。
+
+## 生成される宣言ファイルの中 [#in-a-generated-declaration-file]
+
+スタイルを export すると、プロパティとクラス名の対応が型宣言ファイルにも残ります。スタイルを配るパッケージでは `declaration: true` でコンパイルします。関数で作ったスタイルの各項目は [AtomicClassStyleFor](/ja/docs/api/types/AtomicClassStyleFor) として出力されます。この印を見て [StaticStyles](/ja/docs/api/types/StaticStyles) が動的なスタイルを除外します。
+
+```ts title="styles.d.ts"
+export declare const styles: Readonly<{
+  readonly base: Readonly<{
+    color: css.AtomicClassNameFor<'color', 'red'>;
+  }>;
+  readonly sized: (width: number) => Readonly<{
+    width: css.AtomicClassStyleFor<'width', number>;
+  }>;
+}>;
+```
+
+<Callout title="補足">
+型引数には必要な条件を書きます。作成したスタイルのクラス名がその条件を満たせば渡せます。一つのスタイルそのものの型を使うには、ルールやクラス名を列挙せず `typeof styles.base` と書けます。
+</Callout>
