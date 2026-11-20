@@ -1082,6 +1082,7 @@ function getLengthValuePattern(key: string): string {
   ];
   const isNumber = numberAndLengthValues.includes(key);
   const isBackgroundSize = key === 'backgroundSize';
+  const isGap = key === 'gap' || key === 'gridGap';
   const isBackgroundPositionX = key === 'backgroundPositionX';
   const isBackgroundPositionY = key === 'backgroundPositionY';
   const isBackgroundPosition = key === 'backgroundPosition';
@@ -1113,6 +1114,7 @@ function getLengthValuePattern(key: string): string {
     (isBackgroundPositionX ? '|left|center|right' : '') +
     (isBackgroundPosition ? '|top|bottom|center|left|right' : '') +
     (isBackgroundSize ? '|cover|contain' : '') +
+    (isGap ? '|normal' : '') +
     (isAnchor ? `|${anchorString}` : '') +
     (isAnchorSize ? `|${anchorSizeString}` : '') +
     `|${calcString}|${clampString}|${minString}|${maxString}|${steppedValueString}|${absString}|${varString}`
@@ -1168,7 +1170,9 @@ const textBoxTrims = ['none', 'trim-start', 'trim-end', 'trim-both'];
 
 function isTextEdge(tokens: string[]): boolean {
   if (tokens.length === 1) {
-    return tokens[0] === 'auto' || textEdgeOver.includes(tokens[0]);
+    return ['auto', 'text', 'ideographic', 'ideographic-ink'].includes(
+      tokens[0],
+    );
   }
   return (
     tokens.length === 2 &&
@@ -1221,13 +1225,13 @@ const keywordTokenRules: { [key: string]: KeywordTokenRule } = {
     max: 3,
     repeat: true,
     standalone: ['normal'],
-    keywords: ['alphabetic'],
+    keywords: ['cap', 'ex', 'alphabetic'],
     check: isTextBox,
   },
   textBoxEdge: {
     max: 2,
     repeat: true,
-    keywords: ['alphabetic'],
+    keywords: ['cap', 'ex', 'alphabetic'],
     check: isTextEdge,
   },
   textDecorationSkip: {
@@ -1340,8 +1344,11 @@ function getValidator(key: string): ValidatorFn | null {
     const r = new RegExp(`^(${tVal})(\\s(${tVal}))?(\\s(${tVal}))?$`);
     validator = (v) => r.test(v);
   } else if (['textEmphasis'].includes(key)) {
+    const fill = `filled|open|${varString}`;
+    const shape = `dot|circle|double-circle|triangle|sesame|${varString}`;
+    const style = `(?:${fill})(?:\\s+(?:${shape}))?|(?:${shape})(?:\\s+(?:${fill}))?|${stringString}`;
     const r = new RegExp(
-      `^(((?:filled|open|${varString})(?:\\s+(?:dot|circle|double-circle|triangle|sesame|${varString}|${colorSource})))?|${stringString}?)$`,
+      `^(?:(?:${style})(?:\\s+(?:${colorSource}))?|(?:${colorSource})(?:\\s+(?:${style}))?)?$`,
     );
     validator = (v) => r.test(v);
   } else if (['textEmphasisStyle'].includes(key)) {
@@ -1415,10 +1422,38 @@ function getValidator(key: string): ValidatorFn | null {
   } else if (['placeContent'].includes(key)) {
     validator = isValidPlaceContent;
   } else if (['display'].includes(key)) {
-    const r = new RegExp(
-      `^(((block|inline|${varString})\\s+(flex|flow|flow-root|table|grid|ruby|math|run-in|${varString}))|(list-item|${varString})\\s+(block|inline|flow|flow-root|run-in|${varString}))$`,
-    );
-    validator = (v) => r.test(v);
+    const outside = ['block', 'inline', 'run-in'];
+    const inside = [
+      'flow',
+      'flow-root',
+      'table',
+      'flex',
+      'grid',
+      'ruby',
+      'math',
+    ];
+    validator = (v) => {
+      const tokens = v.trim().split(/\s+/);
+      const isListItem = tokens.includes('list-item');
+      if (tokens.length > (isListItem ? 3 : 2)) return false;
+      const counts = { outside: 0, inside: 0, listItem: 0 };
+      for (const token of tokens) {
+        if (varRegex.test(token)) continue;
+        if (token === 'list-item') {
+          counts.listItem++;
+        } else if (outside.includes(token)) {
+          counts.outside++;
+        } else if (
+          inside.includes(token) &&
+          (!isListItem || token === 'flow' || token === 'flow-root')
+        ) {
+          counts.inside++;
+        } else {
+          return false;
+        }
+      }
+      return counts.outside <= 1 && counts.inside <= 1 && counts.listItem <= 1;
+    };
   } else if (['alignItems', 'alignSelf'].includes(key)) {
     const kw = `self-start|self-end|anchor-center|start|end|center|flex-start|flex-end|${varString}`;
     const r = new RegExp(
