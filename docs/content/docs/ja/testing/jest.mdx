@@ -1,0 +1,61 @@
+---
+title: 'Jest'
+description: '@plumeria/swc-jest を transformer にして、Jest で Plumeria のコンポーネントを描画します。'
+---
+
+Jest では [@plumeria/swc-jest](/ja/docs/api/plugins/swc-jest) でスタイル用 prop を変換してから、ファイルを `@swc/jest` に渡します。
+
+```sh title="Terminal"
+pnpm i -D @plumeria/swc-jest @swc/core
+```
+
+Jest が一つのファイルパターンに使う変換器は一つです。`@swc/jest` と並べず、同じ欄を次の設定に置き換えます。
+
+```js title="jest.config.js"
+module.exports = {
+  testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.(t|j)sx?$': '@plumeria/swc-jest',
+  },
+};
+```
+
+SWC の設定はこれまでどおり `.swcrc` または変換器のオプションに書きます。`ts-jest`、`babel-jest`、`next/jest` を使っていた場合も、該当する変換器を `@plumeria/swc-jest` に替えます。型チェックはテストとは別に `tsc` で行います。
+
+## すること [#do]
+
+コンポーネントの動きを確かめます。条件によって別のスタイルを選ぶと実際の `className` も変わるので、次のように比較できます。
+
+```tsx title="tabs.test.tsx"
+import { render, screen } from '@testing-library/react';
+import { Tabs } from './tabs';
+
+test('the active tab is styled apart from the rest', () => {
+  render(<Tabs active="b" />);
+
+  const a = screen.getByRole('tab', { name: 'A' });
+  const b = screen.getByRole('tab', { name: 'B' });
+
+  expect(b.getAttribute('aria-selected')).toBe('true');
+  expect(b.className).not.toBe(a.className);
+});
+```
+
+- 通常のコンポーネントと同じように、テキスト、ロール、状態、イベントを確認します。
+- 条件付きのスタイルが切り替わったかは、二回の描画結果や二つの要素のクラス名を比べて確認します。
+- 別ファイルのスタイルも通常のビルドと同じように import できます。Jest のキャッシュは依存関係を追うので、共有スタイルが変わると、それを使うファイルも再コンパイルされます。
+
+## しないこと [#dont]
+
+```tsx
+expect(button.className).toBe('xqqbxt1d xq96bg3w'); // don't
+expect(getComputedStyle(button).color).toBe('red'); // don't
+```
+
+- 生成されるクラス名を期待値に直接書くのは避けてください。クラス名はプロパティと値のハッシュなので、スタイルを一つ足すだけで、コンポーネントの動作が正しくてもテストが失敗します。
+- 計算後のスタイル値は検証できません。CSS は書き出されず、jsdom にも適用されないためです。[ブラウザーで確認すること](/ja/docs/testing#jsdom-で分からないこと-what-jsdom-does-not-give-you)
+- 同じファイルに `@swc/jest`、`ts-jest`、`babel-jest` を並べないでください。一つのパターンにつき実行される変換器は一つだけです。
+
+<Cards>
+  <Card title="@plumeria/swc-jest" href="/ja/docs/api/plugins/swc-jest" />
+</Cards>
