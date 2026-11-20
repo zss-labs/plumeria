@@ -9,6 +9,7 @@ const card = `data:image/png;base64,${readFileSync(join(process.cwd(), 'public/O
 const cards = new Map<string, { title: string; date?: string }>([
   [ogpImagePath('/'), { title: 'Plumeria - React styling library' }],
   [ogpImagePath('/playground'), { title: 'Playground' }],
+  [ogpImagePath('/playground/migrate'), { title: 'Migrate' }],
   ...source.getPages().map((page) => [ogpImagePath(page.url), { title: page.data.title }] as const),
   ...blog.getPages().map((page) => [ogpImagePath(page.url), { title: page.data.title, date: page.data.date }] as const),
 ]);
