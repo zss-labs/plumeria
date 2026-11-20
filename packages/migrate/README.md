@@ -2,6 +2,8 @@
 
 Migrate an existing project's styles to Plumeria. Run the CLI from the project root with Node.js 20 or later. Choose the library you are migrating from and preview the changes first.
 
+Set Plumeria up with `npx @plumeria/init` before migrating. Without `@plumeria/core` and a bundler plugin in `dependencies` or `devDependencies`, the CLI stops before writing; `--dry-run` still previews.
+
 ```sh
 npx @plumeria/migrate from vanilla-extract --dry-run
 npx @plumeria/migrate from vanilla-extract
