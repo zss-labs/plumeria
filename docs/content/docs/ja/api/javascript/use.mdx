@@ -1,0 +1,102 @@
+---
+title: 'css.use / sx'
+description: 'JSX では prop として、それ以外ではクラス名の文字列として、スタイルを当てます。'
+stability: Frozen
+---
+スタイルは、`sx`プロパティまたは、プロパティが利用できない`css.use()`を通じて要素に到達します。
+
+## sx [#sx]
+```ts
+type Style = StyleList<StyleNamespace>;
+
+declare global {
+  namespace React {
+    interface HTMLAttributes<T> {
+      sx?: Style;
+    }
+    interface SVGAttributes<T> {
+      sx?: Style;
+    }
+  }
+}
+
+export type { Style };
+```
+
+`sx`は、JSX要素にスタイルを適用するプロパティです。プラグインはビルド時にそれを`className`にコンパイルします。
+
+### 特徴 [#features]
+- 単一のスタイル、またはスタイルの一連を受け付けます。配列は入れ子構造で作成できます。
+- スタイルが受け入れられる場所で `false`、`null`、`undefined` を無視し、これがインライン条件分岐が機能する理由です。
+- 配列の中では、後者のスタイルが前のスタイルよりも優先されます。
+
+### 例 [#example-1]
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: { color: 'red' },
+  active: { fontWeight: 'bold' }
+});
+
+function Component({ active }) {
+  return (
+    <div sx={[styles.base, active && styles.active]}>
+      Hello
+    </div>
+  );
+}
+```
+
+## css.use() [#cssuse]
+```ts
+export type use = (...rules: Style[]) => string;
+export const use: use;
+```
+`css.use()` はスタイルをクラス名の文字列に変換します。`sx` プロパティが利用できない場合、例えば `className` を受け付ける外部コンポーネントにクラス名を渡す場合に使用してください。
+
+すべてのスタイルを1つの`css.use()`呼び出しに渡します。後者の引数が優先されます。
+
+各 `css.use()` の呼び出しは別々にコンパイルされます。結果が結合され、そのスタイルが同じプロパティを設定している場合、両方のクラスが要素に到達し、スタイルシートの順序が勝者を決定します：
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: { padding: 24, color: 'green' },
+  active: { padding: 8, color: 'teal' }
+});
+
+<ExternalComponent className={css.use(styles.base) + ' ' + css.use(styles.active)} />
+```
+
+すべてのPlumeriaスタイルを1回の電話で渡して、後で起こる議論が勝つようにしてください：
+
+```tsx
+<ExternalComponent className={css.use(styles.base, active && styles.active)} />
+```
+
+外部のクラス名は引き続き結合できますが、重複するプロパティはCSSカスケードに従います。推奨される[`@plumeria/no-unresolved-composition`](/ja/docs/api/plugins/eslint-plugin)ルールは、`css.use()`の結果が別のクラス名と結合された場合、または`clsx`などのヘルパーに渡された場合に警告します。
+
+[関数キー](/ja/docs/api/javascript/create#動的な値-dynamic-values)は`css.use()`を介して渡すことができず、ビルドはそこで停止します：その値は`style`のCSS変数として要素に到達しますが、クラス名文字列ではそれを受け入れることができません。`sx`で適用してください。`css.use()`に到達するプロパティは、[StaticStyles](/ja/docs/api/types/StaticStyles)を使用して呼び出し場所で1つを拒否できます。
+
+### 例 [#example-1]
+
+```ts
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: { fontSize: '16px' }
+});
+
+// Get the class name as a string
+const className = css.use(styles.text);
+
+// Apply to an external component
+<ExternalComponent className={css.use(styles.text)} />
+```
+
+<Callout title="ビルド時に変換">
+プラグインはビルド時に`sx`と`css.use()`の両方をコンパイルするため、バンドルにはクラス名文字列のみが含まれています。
+</Callout>
