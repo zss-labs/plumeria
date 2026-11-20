@@ -33,6 +33,7 @@ pub struct Converted {
     pub tags: Vec<TagRule>,
     pub writes: FxHashMap<String, Vec<Write>>,
     pub order: FxHashMap<String, usize>,
+    pub variants: FxHashSet<String>,
     pub reports: Vec<Report>,
 }
 
@@ -110,7 +111,7 @@ pub fn to_property(name: &str) -> String {
     camel(name)
 }
 
-fn kebab(name: &str) -> String {
+pub fn kebab(name: &str) -> String {
     let mut out = String::new();
     for c in name.chars() {
         if c.is_ascii_uppercase() {
