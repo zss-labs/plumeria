@@ -1,0 +1,71 @@
+---
+title: 'AtomicClassStyleFor'
+description: '動的なスタイルの 1 つのエントリの型。スタイリング prop を通して要素に届きます。'
+---
+
+```ts
+type AtomicClassStyleFor<P extends string, V>;
+export type { AtomicClassStyleFor };
+```
+
+`AtomicClassStyleFor` は、[関数で作ったスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values)の中の一つの項目の型です。[AtomicClassNameFor](/ja/docs/api/types/AtomicClassNameFor) と同じく、プロパティ名の情報を持つ文字列です。さらに、どの方法で値を要素に渡すかも区別できます。
+
+静的なクラス名は `className` に渡せます。動的なスタイルには、呼び出す側で計算した CSS 変数も含まれます。クラス名だけではこの値を渡せないので、要素の `sx` に渡します。
+
+## 例 [#example]
+
+```ts title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  sized: (width: number) => ({ width }),
+  fixed: { width: 120 },
+});
+
+const a: css.AtomicClassStyleFor<'width', number> = styles.sized(120).width; // ok
+const b: css.AtomicClassStyleFor<'width', number> = styles.fixed.width;      // Type error, no function produced it
+```
+
+## 代入できる向き [#which-way-the-assignment-goes]
+
+関数で作った項目はクラス名に印を加えたものなので、両方の型に代入できます。静的なクラス名には、この印がありません。
+
+| 型 | 静的なクラス名 | 関数で作った項目 |
+| --- | --- | --- |
+| [AtomicClassNameFor](/ja/docs/api/types/AtomicClassNameFor) | 使える | 使える |
+| `AtomicClassStyleFor` | 使えない | 使える |
+
+値を読むだけなら、prop の型を `AtomicClassNameFor` または `string` にして、どちらも受け取れます。関数で作った項目に限りたいときは `AtomicClassStyleFor` を指定します。
+
+## 呼び出したスタイルの中身 [#what-a-called-style-shows]
+
+関数を呼ぶと、設定したプロパティごとに一つの項目が返ります。
+
+```ts title="TypeScript"
+const styles = css.create({
+  palette: (color: string) => ({ padding: 4, background: color }),
+});
+
+// styles.palette('red')
+Readonly<{
+  padding: css.AtomicClassStyleFor<'padding', number>;
+  background: css.AtomicClassStyleFor<'background', string>;
+}>;
+```
+
+`padding` を含め、すべての項目に印が付きます。これは関数から返ったことを表す印です。関数内で直接書いた値も、引数で渡した値も、一緒に要素へ届きます。
+
+TypeScript は `css.create` に渡す前に関数の戻り値の型を推論します。そのため `4` のような値は通常 `number` になります。値をそのまま型に残すには、返すオブジェクトに `as const` を付けます。
+
+```ts
+const styles = css.create({
+  palette: (color: string) => ({ padding: 4, background: color }) as const,
+});
+
+// styles.palette('red').padding
+css.AtomicClassStyleFor<'padding', 4>;
+```
+
+<Callout title="補足">
+[AtomicClassStyle](/ja/docs/api/types/AtomicClassStyle) はスタイル全体を表し、通常の prop にはこちらを使います。一つの項目だけを受け取る prop には `AtomicClassStyleFor` を使います。
+</Callout>
