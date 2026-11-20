@@ -1,0 +1,73 @@
+---
+title: 'StyleProps'
+description: '指定したプロパティだけに限ったスタイルのリスト。'
+---
+
+```ts
+type StyleProps<K extends StyleKey> = StyleList<AllowedNamespace<K>>;
+export type { StyleProps };
+```
+
+`StyleProps` は、スタイル用の prop で受け付けるプロパティを列挙する型です。リストにないプロパティを一つでも含むスタイルは型エラーになります。
+
+## 例 [#example]
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  base: {
+    fontSize: '14px',
+  },
+});
+
+type TextProps = {
+  sx?: css.StyleProps<'color' | 'fontSize'>;
+};
+
+export function Text({ sx }: TextProps) {
+  return <span sx={[styles.base, sx]} />;
+}
+```
+
+```tsx
+<Text sx={styles.tinted} />  // ok when tinted only sets color
+<Text sx={styles.pinned} />  // Type error when pinned sets position
+```
+
+## ネストしたブロックも対象 [#nested-blocks-are-covered]
+
+疑似クラスやアットルールの中まで確認します。入れ子の中だけで使うプロパティにも同じ制限がかかります。
+
+```tsx
+// Type error, position is not enumerated
+<Text sx={styles.hoverPinned} />
+```
+
+```ts
+const styles = css.create({
+  hoverPinned: {
+    ':hover': {
+      position: 'fixed',
+    },
+  },
+});
+```
+
+## マーカーはプロパティを設定しない [#a-marker-sets-no-property]
+
+[css.marker()](/ja/docs/api/javascript/marker) は疑似クラスの中に目印となる CSS 変数を置きます。チェック対象の CSS プロパティを指定しないので、どのリストにも渡せます。
+
+```tsx
+const styles = css.create({
+  badge: css.marker('badge', ':hover'),
+});
+
+<Text sx={styles.badge} />  // ok under any enumeration
+```
+
+`css.extended()` の条件の中にあるプロパティは通常どおり確認されます。戻り値のアットルールは、ほかの入れ子のブロックと同じ扱いです。
+
+<Callout title="補足">
+一部のプロパティだけを保護したい場合は、[WithoutProperties](/ja/docs/api/types/WithoutProperties) を使うと短く書けます。
+</Callout>
