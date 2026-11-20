@@ -127,7 +127,11 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
     <main lang={lang} data-home sx={styles.home}>
       <Seo
         path={ja ? '/ja' : '/'}
-        title={ja ? 'Plumeria — React のスタイルをシンプルに' : 'Plumeria — Predictable style overrides for React'}
+        title={
+          ja
+            ? 'Plumeria — React のためのスタイルライブラリ'
+            : 'Plumeria — React styling library for reliable interfaces'
+        }
         subtitle={
           ja
             ? 'Plumeria は React のスタイルを書くためのライブラリです。同じプロパティを重ねると、配列の右側の値が使われます。'
