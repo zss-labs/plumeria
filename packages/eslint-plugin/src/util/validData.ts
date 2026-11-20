@@ -1125,6 +1125,95 @@ const validData: { [key: string]: readonly string[] } = {
     'sideways-lr',
   ], // 415
   zoom: ['normal', 'reset'], // 416
+  WebkitBackgroundClip: ['border-box', 'padding-box', 'content-box', 'text'], // 417
+  WebkitBoxOrient: ['horizontal', 'vertical', 'inline-axis', 'block-axis'], // 418
+  WebkitFontSmoothing: ['auto', 'none', 'antialiased', 'subpixel-antialiased'], // 419
+  baselineSource: ['auto', 'first', 'last'], // 420
+  boxAlign: ['start', 'center', 'end', 'baseline', 'stretch'], // 421
+  boxDirection: ['normal', 'reverse'], // 422
+  boxLines: ['single', 'multiple'], // 423
+  boxOrient: ['horizontal', 'vertical', 'inline-axis', 'block-axis'], // 424
+  boxPack: ['start', 'center', 'end', 'justify'], // 425
+  caretAnimation: ['auto', 'manual'], // 426
+  caretShape: ['auto', 'bar', 'block', 'underscore'], // 427
+  colorAdjust: ['economy', 'exact'], // 428
+  columnRuleBreak: ['none', 'normal', 'intersection'], // 429
+  columnRuleVisibilityItems: ['all', 'around', 'between', 'normal'], // 430
+  columnWrap: ['auto', 'nowrap', 'wrap'], // 431
+  fieldSizing: ['content', 'fixed'], // 432
+  fontSynthesisPosition: ['auto', 'none'], // 433
+  frameSizing: [
+    'auto',
+    'content-width',
+    'content-height',
+    'content-block-size',
+    'content-inline-size',
+  ], // 434
+  glyphOrientationVertical: ['auto', '0deg', '90deg', '0', '90'], // 435
+  imeMode: ['auto', 'normal', 'active', 'inactive', 'disabled'], // 436
+  initialLetterAlign: ['auto', 'alphabetic', 'hanging', 'ideographic'], // 437
+  interactivity: ['auto', 'inert'], // 438
+  interpolateSize: ['numeric-only', 'allow-keywords'], // 439
+  marginTrim: ['none', 'in-flow', 'all'], // 440
+  mathShift: ['normal', 'compact'], // 441
+  msOverflowStyle: ['auto', 'none', 'scrollbar', '-ms-autohiding-scrollbar'], // 442
+  overflowClipBox: ['padding-box', 'content-box'], // 443
+  overlay: ['none', 'auto'], // 444
+  pageBreakAfter: [
+    'auto',
+    'always',
+    'avoid',
+    'left',
+    'right',
+    'recto',
+    'verso',
+  ], // 445
+  pageBreakBefore: [
+    'auto',
+    'always',
+    'avoid',
+    'left',
+    'right',
+    'recto',
+    'verso',
+  ], // 446
+  pageBreakInside: ['auto', 'avoid'], // 447
+  positionTryOrder: [
+    'normal',
+    'most-width',
+    'most-height',
+    'most-block-size',
+    'most-inline-size',
+  ], // 448
+  readingFlow: [
+    'normal',
+    'source-order',
+    'flex-visual',
+    'flex-flow',
+    'grid-rows',
+    'grid-columns',
+    'grid-order',
+  ], // 449
+  rowRuleBreak: ['none', 'normal', 'intersection'], // 450
+  rowRuleVisibilityItems: ['all', 'around', 'between', 'normal'], // 451
+  rubyMerge: ['separate', 'collapse', 'auto'], // 452
+  rubyOverhang: ['auto', 'none'], // 453
+  ruleBreak: ['none', 'normal', 'intersection'], // 454
+  ruleOverlap: ['row-over-column', 'column-over-row'], // 455
+  ruleStyle: [...lineStyle], // 456
+  ruleVisibilityItems: ['all', 'around', 'between', 'normal'], // 457
+  scrollAxisLock: ['auto', 'none'], // 458
+  scrollInitialTarget: ['none', 'nearest'], // 459
+  scrollMarkerGroup: ['none', 'before', 'after'], // 460
+  scrollSnapTypeX: ['none', 'mandatory', 'proximity'], // 461
+  scrollSnapTypeY: ['none', 'mandatory', 'proximity'], // 462
+  scrollTargetGroup: ['none', 'auto'], // 463
+  textBoxTrim: ['none', 'trim-start', 'trim-end', 'trim-both'], // 464
+  textSpacingTrim: ['space-all', 'normal', 'space-first', 'trim-start'], // 465
+  viewTransitionScope: ['none', 'all'], // 466
+  windowDrag: ['none', 'move'], // 467
+  wordWrap: ['normal', 'break-word'], // 468
+  wrapInside: ['auto', 'avoid'], // 469
 };
 
 export { validData };
