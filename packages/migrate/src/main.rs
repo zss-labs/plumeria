@@ -27,7 +27,7 @@ use oxc_span::SourceType;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use consumer::{mentions, scan, Hold, Sheet};
-use resolve::{basename, Paths};
+use resolve::{basename, field, Paths};
 use stylesheet::{convert, Report};
 
 const IGNORED: &[&str] = &["node_modules", "dist", "build", "out", ".next", ".git", "coverage"];
@@ -182,6 +182,26 @@ fn target_of(sheet: &str) -> String {
     format!("{}.styles.ts", sheet.strip_suffix(".module.css").unwrap_or(sheet))
 }
 
+const PLUGINS: &[&str] = &["@plumeria/next-plugin", "@plumeria/unplugin", "@plumeria/turbopack-loader"];
+const SETUP: &str = "Plumeria is not set up here yet. Run `npx @plumeria/init` first, then migrate.";
+
+fn set_up(manifest: Option<&str>) -> bool {
+    let Some(text) = manifest else { return false };
+    let allocator = Allocator::default();
+    let source = format!("({text})");
+    let Ok(expression) = Parser::new(&allocator, &source, SourceType::mjs()).parse_expression() else { return false };
+    let manifest = match &expression {
+        Expression::ParenthesizedExpression(inner) => &inner.expression,
+        other => other,
+    };
+    let declared = |name: &str| {
+        ["dependencies", "devDependencies"]
+            .iter()
+            .any(|group| field(manifest, group).is_some_and(|deps| field(deps, name).is_some()))
+    };
+    declared("@plumeria/core") && PLUGINS.iter().any(|plugin| declared(plugin))
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let options = match parse_args(&args) {
@@ -195,6 +215,13 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    if !set_up(fs::read_to_string("package.json").ok().as_deref()) {
+        if !options.dry_run {
+            eprintln!("✖ {SETUP}");
+            return ExitCode::FAILURE;
+        }
+        println!("{SETUP}\n");
+    }
     match options.source {
         "emotion" => emotion::run(&options, &emotion::EMOTION),
         "styled-components" => emotion::run(&options, &emotion::STYLED_COMPONENTS),
