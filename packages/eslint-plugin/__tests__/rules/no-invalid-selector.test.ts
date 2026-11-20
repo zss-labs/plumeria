@@ -162,7 +162,10 @@ ruleTester.run('no-invalid-selector', noInvalidSelector, {
         })
       `,
       errors: [
-        { messageId: 'noQueryInsidePseudo' },
+        {
+          message:
+            "Move the @media query outside ':hover', then nest ':hover' inside the query.",
+        },
         { messageId: 'noPseudoInsidePseudo' },
         { messageId: 'noQueryInsideQuery' },
       ],
@@ -180,7 +183,10 @@ ruleTester.run('no-invalid-selector', noInvalidSelector, {
             });
         `,
       errors: [
-        { messageId: 'noQueryInsidePseudo' },
+        {
+          message:
+            "Move the @media query outside ':hover', then nest ':hover' inside the query.",
+        },
         { messageId: 'noPseudoInsidePseudo' },
       ],
     },
