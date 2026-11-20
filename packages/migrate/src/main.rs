@@ -26,9 +26,9 @@ const DEFAULT_STYLE_PROP: &str = "sx";
 const TEXTS:&[&str] = &["css", "scss", "sass", "less", "vue", "svelte", "astro", "mdx", "html"];
 
 const USAGE: &str = "Usage:
-  npx @plumeria/migrate <from>
+  npx @plumeria/migrate from <source>
 
-From:
+Sources:
   css-modules
 
 Options:
@@ -56,9 +56,9 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
         }
     }
     match from.as_slice() {
-        ["css-modules"] => {}
-        [other] => return Err(format!("Cannot migrate from {other}.")),
-        _ => return Err("Name one thing to migrate from.".to_string()),
+        ["from", "css-modules"] => {}
+        ["from", other] => return Err(format!("Cannot migrate from {other}.")),
+        _ => return Err("Write the source after from, as in `from css-modules`.".to_string()),
     }
     let style_prop = match style_prop {
         Some(name) => name,
