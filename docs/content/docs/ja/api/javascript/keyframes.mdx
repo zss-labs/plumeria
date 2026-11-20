@@ -1,0 +1,73 @@
+---
+title: 'css.keyframes'
+description: 'どのスタイルからでも、ホバーからでも再生できる CSS アニメーション。'
+stability: Frozen
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+```ts
+export type keyframes = <const T extends Keyframes>(rule: T) => string;
+export const keyframes: keyframes;
+```
+
+`keyframes()`は `@keyframes`ルールを定義し、その名前、ビルド時にインラインされたユニークなハッシュを返します。これは `animationName`として使用されます。
+
+## 例 [#example]
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core'
+
+    const fadeIn = css.keyframes({
+      from: {
+        opacity: 0,
+      },
+      to: {
+        opacity: 1,
+      },
+    });
+
+    const styles = css.create({
+      box: {
+        animationName: fadeIn,
+        animationDuration: '1s',
+        animationTimingFunction: 'ease-in-out',
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    @keyframes kf-x34h9adh {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .xhc714s1:not(#\#) { animation-name: kf-x34h9adh; }
+    .xdm4omap:not(#\#) { animation-duration: 1s; }
+    .xvct32ng:not(#\#) { animation-timing-function: ease-in-out; }
+    ```
+  </Tab>
+</Tabs>
+
+## 使い方 [#usage]
+
+アニメーションは、`:hover`のような擬似クラスから開始できます。
+
+```ts
+const styles = css.create({
+  card: {
+    transition: 'transform 0.3s ease',
+    ':hover': {
+      animationName: fadeIn,
+      animationDuration: '0.5s',
+    },
+  },
+});
+```
