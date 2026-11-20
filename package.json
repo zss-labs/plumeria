@@ -13,6 +13,7 @@
   "license": "MIT",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
+    "properties": "pnpm --filter @plumeria/eslint-plugin properties",
     "build": "turbo run build --filter=./packages/*",
     "build:examples": "turbo run build --filter=./examples/*",
     "typecheck": "tsc --noEmit --project tsconfig.test.json && node scripts/check-declaration-emit.js",
