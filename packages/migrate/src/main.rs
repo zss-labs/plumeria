@@ -40,6 +40,7 @@ const USAGE: &str = "Usage:
 Sources:
   css-modules
   emotion
+  styled-components
   stylex
   tailwindcss
 
@@ -71,6 +72,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     let source = match from.as_slice() {
         ["from", "css-modules"] => "css-modules",
         ["from", "emotion"] => "emotion",
+        ["from", "styled-components"] => "styled-components",
         ["from", "stylex"] => "stylex",
         ["from", "tailwindcss"] => "tailwindcss",
         ["from", other] => return Err(format!("Cannot migrate from {other}.")),
@@ -191,7 +193,8 @@ fn main() -> ExitCode {
         }
     };
     match options.source {
-        "emotion" => emotion::run(&options),
+        "emotion" => emotion::run(&options, &emotion::EMOTION),
+        "styled-components" => emotion::run(&options, &emotion::STYLED_COMPONENTS),
         "stylex" => stylex::run(&options),
         "tailwindcss" => tailwind::run(&options),
         _ => run(&options),
