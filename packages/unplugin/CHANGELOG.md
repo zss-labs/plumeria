@@ -1,5 +1,15 @@
 # @plumeria/unplugin
 
+## 22.2.2
+
+### Patch Changes
+
+- cafc969: Bump version to 22.2.2
+- Updated dependencies [cafc969]
+- Updated dependencies [cafc969]
+  - @plumeria/eslint-plugin@22.2.2
+  - @plumeria/compiler@22.2.2
+
 ## 22.2.1
 
 ### Patch Changes

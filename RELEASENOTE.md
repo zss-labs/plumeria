@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.2.2 (Nov 20, 2026)
+
+- Perf: Emit static class names as JSX string attributes.
+
 ## 22.2.1 (Nov 20, 2026)
 
 - Feat: Migrate named styles and styled components imported from Emotion and styled-components files. Keep shared definitions intact when consumers re-export them or load them dynamically from a fixed path.
