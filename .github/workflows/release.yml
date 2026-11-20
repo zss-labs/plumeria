@@ -168,14 +168,19 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/compiler -> target
+          workspaces: |
+            packages/compiler -> target
+            packages/migrate -> target
 
       - name: Build Packages
-        run: pnpm build --env-mode=loose
+        run: pnpm build --env-mode=loose --filter='!@plumeria/migrate'
         env:
           CARGO_PROFILE_RELEASE_OPT_LEVEL: 0
           CARGO_PROFILE_RELEASE_LTO: false
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 256
+
+      - name: Build migration CLI for npm
+        run: pnpm --filter @plumeria/migrate build
 
       - name: Download the binaries
         if: needs.check.outputs.publishing == 'true'
