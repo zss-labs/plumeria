@@ -33,6 +33,9 @@ const styles = css.create({
     alignItems: 'center',
     minHeight: 'calc(100svh - 56px)',
     paddingBlock: 32,
+    [breakpoints.md]: {
+      minHeight: 'calc(100lvh - 56px)',
+    },
   },
   title: {
     fontSize: 'clamp(48px, 10vw, 64px)',
