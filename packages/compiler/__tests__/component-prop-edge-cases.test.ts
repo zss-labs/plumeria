@@ -96,7 +96,7 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} /
       const { code, css } = await app(
         `export const A = ({ on, other, list }: any) => <Card cardStyle={${value}} />;`,
       );
-      expect(code).toContain('<div className={""} />');
+      expect(code).toContain('<div className="" />');
       expect(code).toContain(`<Card cardStyle={${value}} />`);
       expect(css).toBe('');
     });
@@ -192,7 +192,7 @@ const s = css.create({ a: { color: 'red' } });
 export const A = () => <div sx={s.a} data-b={barrel} />;`,
       });
       expect(code).toContain(`import * as barrel from './barrel';`);
-      expect(code).toContain(`<div className={"${RED}"} data-b={barrel} />`);
+      expect(code).toContain(`<div className="${RED}" data-b={barrel} />`);
     });
 
     it('leaves a namespace import of a file without definitions as written', async () => {
@@ -204,7 +204,7 @@ const s = css.create({ a: { color: 'red' } });
 export const A = () => <div sx={s.a} data-n={ns} />;`,
       });
       expect(code).toContain(`import * as ns from './styles';`);
-      expect(code).toContain(`<div className={"${RED}"} data-n={ns} />`);
+      expect(code).toContain(`<div className="${RED}" data-n={ns} />`);
     });
   });
 });
