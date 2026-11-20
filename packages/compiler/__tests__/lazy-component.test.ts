@@ -137,7 +137,7 @@ export const App = () => <Card sx={styles.big} />;`;
     ['a call that is not lazy', 'Untyped.tsx'],
   ])('reads %s as a component it cannot see', async (_label, caller) => {
     expect(await keyOf(caller)).toBeUndefined();
-    expect(await compile(caller)).toMatch(/<Card className=\{"\w+"\}/);
+    expect(await compile(caller)).toMatch(/<Card className="\w+"/);
   });
 
   it('follows the loaded module when it starts re-exporting another', async () => {
