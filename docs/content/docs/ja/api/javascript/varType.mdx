@@ -1,0 +1,91 @@
+---
+title: 'css.varType'
+description: '@property で登録した型付きのカスタムプロパティ。トランジションやアニメーションができます。'
+stability: Stable
+---
+
+import { Tab, Tabs } from 'component/Tabs';
+
+```ts
+export type varType = <const T extends VarType>(rule: T) => CSSVariableKey;
+export const varType: varType;
+```
+
+`varType()`は `@property` でカスタムプロパティを登録し、ビルド時に埋め込まれたユニークなハッシュであるその名前を返します。登録されたプロパティにはタイプが付けられているため、ブラウザはグラデーションの角度などのトランジションやアニメーションでそれを間接的に計算できます。
+
+[Typed Variablesのプレイグラウンドの例](/playground?example=var-type)を試してみてください。
+
+## 例 [#example]
+
+<Tabs items={["ts", "css"]}>
+  <Tab>
+    ```ts title="TypeScript"
+    import * as css from '@plumeria/core'
+
+    const angle = css.varType({
+      syntax: '<angle>',
+      initialValue: '0deg',
+    });
+
+    const styles = css.create({
+      ring: {
+        background: `conic-gradient(from var(${angle}), #d653bb, #2aa4f4, #d653bb)`,
+        transition: `${angle} 0.6s ease`,
+        ':hover': {
+          [angle]: '180deg',
+        },
+      },
+    });
+    ```
+  </Tab>
+  <Tab>
+    ```css title="CSS"
+    @property --pr-xy9ywt9x {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+
+    .x3387w0m { background: conic-gradient(from var(--pr-xy9ywt9x), #d653bb, #2aa4f4, #d653bb); }
+    .x5q2m834 { transition: --pr-xy9ywt9x 0.6s ease; }
+    .xblf4qye:hover { --pr-xy9ywt9x: 180deg; }
+    ```
+  </Tab>
+</Tabs>
+
+## オプション [#options]
+
+- `syntax` は値の型です。`'<length>'`、`'<color>'`、`'<angle>'` などを指定します。`'<length> | <percentage>'` のように `|` で複数の型を組み合わせられます。型の後ろの `+` は空白区切り、`#` はカンマ区切りのリストです。`'*'` はすべての値を受け付けます。
+- `initialValue`: プロパティが設定されるまで持つ値です。すべての構文で必要ですが、`'*'`を除くすべての構文で必要です。
+- `inherits`: プロパティが親から継承するかどうか。デフォルトは`false`です。
+
+## 使い方 [#usage]
+
+返された名前はカスタムプロパティ名です。値を設定するためにキーとして使用し、`var()` の内部で読み取ります：
+
+```ts
+const styles = css.create({
+  box: {
+    [angle]: '45deg',
+    transform: `rotate(var(${angle}))`,
+  },
+  rotate: (value: string) => ({
+    [angle]: value,
+  }),
+});
+```
+
+`@property`は`css.create`で使用される名前に対してのみエミットされるため、何も使用しない定義はスタイルシートに追加されません。定義は`keyframes`などの他のモジュールからエクスポートおよびインポートできます。
+
+## 検証 [#validation]
+
+ブラウザは、`initialValue`が`syntax`と一致しない`@property`を無視します。スタイルシートが解析できない定義（例：タイプ名が誤っている場合や、別のタイプの初期値など）は、定義の時点でビルドを停止します：
+
+```ts
+const size = css.varType({
+  syntax: '<length>',
+  initialValue: 'red',
+});
+```
+
+`validate-values`はエディタでも同じ不一致を報告します。また、使用場所によって依存する初期値も報告しますが、ブラウザは警告なしに捨てるため、`em`や`rem`などのフォント相対単位、`cqw`などのコンテナ単位、`var()`などを使用しないでください。代わりに`16px`などの絶対値を使用してください。
