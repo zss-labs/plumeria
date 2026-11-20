@@ -6,6 +6,7 @@ mod resolve;
 mod stylesheet;
 mod stylex;
 mod tailwind;
+mod vanilla_extract;
 #[path = "../../compiler/src/js/number.rs"]
 #[allow(dead_code)]
 mod number;
@@ -43,6 +44,7 @@ Sources:
   styled-components
   stylex
   tailwindcss
+  vanilla-extract
 
 Options:
       --dry-run     report what would change without writing
@@ -75,6 +77,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
         ["from", "styled-components"] => "styled-components",
         ["from", "stylex"] => "stylex",
         ["from", "tailwindcss"] => "tailwindcss",
+        ["from", "vanilla-extract"] => "vanilla-extract",
         ["from", other] => return Err(format!("Cannot migrate from {other}.")),
         _ => return Err("Write the source after from, as in `from css-modules`.".to_string()),
     };
@@ -197,6 +200,7 @@ fn main() -> ExitCode {
         "styled-components" => emotion::run(&options, &emotion::STYLED_COMPONENTS),
         "stylex" => stylex::run(&options),
         "tailwindcss" => tailwind::run(&options),
+        "vanilla-extract" => vanilla_extract::run(&options),
         _ => run(&options),
     }
 }
@@ -227,10 +231,13 @@ fn run(options: &Options) -> ExitCode {
         }
         sheets.push(Sheet { path, target, converted });
     }
+    finish(options, &project, sheets)
+}
 
+fn finish(options: &Options, project: &[String], sheets: Vec<Sheet>) -> ExitCode {
     let sources: Vec<(String, String)> = project
         .iter()
-        .filter(|p| SOURCES.contains(&extension(p)))
+        .filter(|p| SOURCES.contains(&extension(p)) && !sheets.iter().any(|sheet| sheet.path == **p))
         .filter_map(|p| Some((p.clone(), fs::read_to_string(p).ok()?)))
         .collect();
 
