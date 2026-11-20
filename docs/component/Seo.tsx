@@ -6,9 +6,13 @@ export const Seo = (props: SeoProps) => {
   const { title, description, metadataBase, alternates, openGraph, twitter } = generateSEOData(props);
   const url = (path: string) => new URL(path, metadataBase).toString();
   const path = alternates.canonical;
+  const enPath = path === '/ja' ? '/' : path.startsWith('/ja/') ? path.slice(3) : path;
+  const jaPath = enPath === '/' ? '/ja' : `/ja${enPath}`;
+  const localized = enPath === '/' || enPath === '/docs' || enPath.startsWith('/docs/');
+  const prefix = path === enPath ? '' : '/ja';
 
   const jsonLd =
-    path === '/'
+    enPath === '/'
       ? {
           '@context': 'https://schema.org',
           '@graph': [
@@ -33,15 +37,15 @@ export const Seo = (props: SeoProps) => {
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: url('/') },
-            ...path
+            { '@type': 'ListItem', position: 1, name: 'Home', item: url(prefix || '/') },
+            ...enPath
               .split('/')
               .filter(Boolean)
               .map((segment, i, segments) => ({
                 '@type': 'ListItem',
                 position: i + 2,
                 name: i === segments.length - 1 ? title : segment.charAt(0).toUpperCase() + segment.slice(1),
-                item: url(`/${segments.slice(0, i + 1).join('/')}`),
+                item: url(`${prefix}/${segments.slice(0, i + 1).join('/')}`),
               })),
           ],
         };
@@ -51,6 +55,13 @@ export const Seo = (props: SeoProps) => {
       <title>{title}</title>
       {description && <meta name="description" content={description} />}
       <link rel="canonical" href={url(alternates.canonical)} />
+      {localized && (
+        <>
+          <link rel="alternate" hrefLang="en" href={url(enPath)} />
+          <link rel="alternate" hrefLang="ja" href={url(jaPath)} />
+          <link rel="alternate" hrefLang="x-default" href={url(enPath)} />
+        </>
+      )}
       <meta property="og:title" content={openGraph.title} />
       {description && <meta property="og:description" content={description} />}
       <meta property="og:url" content={url(openGraph.url)} />
