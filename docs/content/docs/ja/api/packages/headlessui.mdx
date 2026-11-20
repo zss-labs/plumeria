@@ -1,0 +1,255 @@
+---
+title: '@plumeria/headlessui'
+description: "Radix UI をもとにしたコンポーネントにスタイルを付けます。"
+stability: Stable
+---
+
+import { HeadlessDemoLazy } from 'component/HeadlessDemoLazy';
+
+`@plumeria/headlessui` は [Radix UI](https://www.radix-ui.com/) を使ったヘッドレス UI 部品のセットです。
+
+## インストール
+
+先に `@plumeria/core` とバンドラーを設定します。[インストール手順](/ja/docs/installation)
+
+```sh title="Terminal"
+pnpm i @plumeria/headlessui
+```
+
+## sx の仕組み
+
+ビルドは依存パッケージである `@plumeria/headlessui` の中を解析しません。部品に渡す `sx` は、**部品が動く前に、呼び出し側で `className` と `style` に変換されます**。各部品は `sx` を処理せず、受け取った `...props` を内部の Radix UI の部品に渡します。
+
+```tsx
+import * as css from '@plumeria/core';
+import { Dialog } from '@plumeria/headlessui';
+
+const styles = css.create({
+  primary: {
+    padding: '10px',
+    backgroundColor: 'navy',
+    color: '#fff',
+  },
+});
+
+// sx is compiled to className="xxxxxxxx" at this call site
+<Dialog.Trigger sx={styles.primary}>Open</Dialog.Trigger>;
+```
+
+自作コンポーネントが受け取ったスタイルを、部品用のスタイルと重ねることもできます。
+
+```tsx
+export const OpenButton = ({ sx }: { sx?: css.Style }) => (
+  <Dialog.Trigger sx={[styles.primary, sx]}>Open</Dialog.Trigger>
+);
+```
+
+---
+
+## 試してみる
+
+全25グループのうち20グループを、Plumeria でスタイルを付けたデモで試せます。
+
+<HeadlessDemoLazy />
+
+---
+
+## 部品の一覧
+
+パッケージは25グループの部品を公開しています。すべての部品が `ref` を転送し、受け取った props を内部の要素に渡します。
+
+### Accordion
+
+- `Item`
+- `Header`
+- `Trigger`
+- `Content`
+
+### AlertDialog
+
+- `Trigger`
+- `Portal`
+- `Overlay`
+- `Content`
+- `Title`
+- `Description`
+- `Action`
+- `Cancel`
+
+### Avatar
+
+- `Image`
+- `Fallback`
+
+### Checkbox
+
+- `Indicator`
+
+### Collapsible
+
+- `Trigger`
+- `Content`
+
+### ContextMenu
+
+- `Trigger`
+- `Portal`
+- `Content`
+- `Group`
+- `Label`
+- `Item`
+- `CheckboxItem`
+- `RadioGroup`
+- `RadioItem`
+- `ItemIndicator`
+- `Separator`
+- `Arrow`
+- `Sub`
+- `SubTrigger`
+- `SubContent`
+
+### Dialog
+
+- `Trigger`
+- `Portal`
+- `Overlay`
+- `Content`
+- `Title`
+- `Description`
+- `Close`
+
+### DropdownMenu
+
+- `Trigger`
+- `Portal`
+- `Content`
+- `Group`
+- `Label`
+- `Item`
+- `CheckboxItem`
+- `RadioGroup`
+- `RadioItem`
+- `ItemIndicator`
+- `Separator`
+- `Arrow`
+- `Sub`
+- `SubTrigger`
+- `SubContent`
+
+### Label
+
+### Menubar
+
+- `Menu`
+- `Trigger`
+- `Portal`
+- `Content`
+- `Group`
+- `Label`
+- `Item`
+- `CheckboxItem`
+- `RadioGroup`
+- `RadioItem`
+- `ItemIndicator`
+- `Separator`
+- `Arrow`
+- `Sub`
+- `SubTrigger`
+- `SubContent`
+
+### NavigationMenu
+
+- `Sub`
+- `List`
+- `Item`
+- `Trigger`
+- `Link`
+- `Indicator`
+- `Content`
+- `Viewport`
+
+### Popover
+
+- `Trigger`
+- `Portal`
+- `Content`
+- `Close`
+- `Arrow`
+- `Anchor`
+
+### Progress
+
+- `Indicator`
+
+### RadioGroup
+
+- `Item`
+- `Indicator`
+
+### ScrollArea
+
+- `Viewport`
+- `Scrollbar`
+- `Thumb`
+- `Corner`
+
+### Select
+
+- `Trigger`
+- `Value`
+- `Icon`
+- `Portal`
+- `Content`
+- `Viewport`
+- `Group`
+- `Label`
+- `Item`
+- `ItemText`
+- `ItemIndicator`
+- `ScrollUpButton`
+- `ScrollDownButton`
+- `Separator`
+- `Arrow`
+
+### Separator
+
+### Slider
+
+- `Track`
+- `Range`
+- `Thumb`
+
+### Switch
+
+- `Thumb`
+
+### Tabs
+
+- `List`
+- `Trigger`
+- `Content`
+
+### Toast
+
+- `Provider`
+- `Viewport`
+- `Title`
+- `Description`
+- `Action`
+- `Close`
+
+### Toggle
+
+### ToggleGroup
+
+- `Item`
+
+### Tooltip
+
+- `Provider`
+- `Trigger`
+- `Portal`
+- `Content`
+- `Arrow`
+
+### VisuallyHidden
