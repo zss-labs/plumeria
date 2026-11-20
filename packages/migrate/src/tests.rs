@@ -1287,3 +1287,130 @@ export const A = ({ tone }) => <div sx={styles.Box(tone, true)} id=\"a\" />;
     assert_eq!(styled_holds("const A = styled.div`color: ${(p, t) => p.c};`;\n<A />"), ["dynamic-value"]);
     assert_eq!(styled_holds("const A = styled.div`color: ${p => p};`;\n<A />"), ["dynamic-value"]);
 }
+
+fn vanilla(code: &str) -> Converted {
+    crate::vanilla_extract::convert("src/Button.css.ts", code)
+}
+
+#[test]
+fn vanilla_moves_styles_into_create() {
+    let code = "import { style, styleVariants, keyframes } from '@vanilla-extract/css';
+
+export const fade = keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
+const base = style({ padding: 8 });
+export const button = style([base, {
+  color: 'red',
+  animationName: fade,
+  ':hover': { color: 'blue' },
+  selectors: { '&:focus-visible, &[data-on]': { color: 'green' } },
+  '@media': { '(min-width: 640px)': { padding: 16 } },
+}]);
+export const size = styleVariants({ small: { fontSize: 12 }, large: { fontSize: 20 } });
+";
+    let expected = "import * as css from '@plumeria/core';
+
+export const fade = css.keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
+export const styles = css.create({
+  base: {
+    padding: 8,
+  },
+  button: {
+    color: 'red',
+    animationName: fade,
+    ':hover': {
+      color: 'blue',
+    },
+    ':focus-visible': {
+      color: 'green',
+    },
+    '[data-on]': {
+      color: 'green',
+    },
+    '@media (min-width: 640px)': {
+      padding: 16,
+    },
+  },
+});
+export const size = css.create({
+  small: {
+    fontSize: 12,
+  },
+  large: {
+    fontSize: 20,
+  },
+});
+";
+    let out = vanilla(code);
+    assert!(out.reports.is_empty(), "{:?}", kinds(&out));
+    assert_eq!(out.code, expected);
+    assert_eq!(out.composes.get("button").cloned(), Some(vec!["base".to_string()]));
+    assert!(out.variants.contains("size"));
+}
+
+#[test]
+fn vanilla_holds_what_it_does_not_carry() {
+    let held = |code: &str| kinds(&vanilla(&format!("import {{ style, globalStyle, createVar }} from '@vanilla-extract/css';\n{code}")));
+    assert_eq!(held("globalStyle('a', { color: 'red' });"), ["unsupported-api"]);
+    assert_eq!(held("const v = createVar();"), ["unsupported-api"]);
+    assert_eq!(held("export const a = style({ selectors: { '& > p': { color: 'red' } } });"), ["unsupported-selector"]);
+    assert_eq!(held("export const a = style({ color: ['red', 'blue'] });"), ["fallback-value"]);
+    assert_eq!(held("export const a = style({ vars: {} });"), ["vars"]);
+    assert_eq!(held("export const a = style({ paddingTop: 1, padding: 2 });"), ["rank-order"]);
+    assert_eq!(held("import { t } from './theme.css';\nexport const a = style({ color: t });"), ["sheet-import"]);
+}
+
+#[test]
+fn vanilla_rewrites_named_imports() {
+    let sheet = Sheet {
+        path: "src/Button.css.ts".to_string(),
+        target: crate::vanilla_extract::target_of("src/Button.css.ts"),
+        converted: vanilla(
+            "import { style, styleVariants } from '@vanilla-extract/css';
+const base = style({ padding: 8 });
+export const button = style([base, { color: 'red' }]);
+export const size = styleVariants({ small: { fontSize: 12 } });
+",
+        ),
+    };
+    let code = "import { button, size as sz } from './Button.css';
+export const A = ({ s, on }) => <button className={on ? sz.small : undefined}><i className={sz[s]} /><b className={button} /></button>;
+";
+    let result = run_with(code, &[sheet], None);
+    assert!(result.holds.is_empty(), "{:?}", result.holds);
+    let expected = "import '@plumeria/core';
+import { styles, size as sz } from './Button.styles';
+export const A = ({ s, on }) => <button sx={on ? sz.small : undefined}><i sx={sz[s]} /><b sx={[styles.base, styles.button]} /></button>;
+";
+    assert_eq!(result.output, expected);
+}
+
+#[test]
+fn vanilla_expands_a_shorthand_style_property() {
+    let sheet = Sheet {
+        path: "src/Button.css.ts".to_string(),
+        target: crate::vanilla_extract::target_of("src/Button.css.ts"),
+        converted: vanilla("import { style } from '@vanilla-extract/css';\nexport const button = style({ color: 'red' });\n"),
+    };
+    let code = "import { button } from './Button.css';\nconst classes = { button };\n";
+    let result = run_with(code, &[sheet], None);
+    assert!(result.holds.is_empty(), "{:?}", result.holds);
+    let expected = "import * as css from '@plumeria/core';\nimport { styles } from './Button.styles';\nconst classes = { button: css.use(styles.button) };\n";
+    assert_eq!(result.output, expected);
+}
+
+#[test]
+fn vanilla_preserves_namespace_variant_reads() {
+    let sheet = Sheet {
+        path: "src/Button.css.ts".to_string(),
+        target: crate::vanilla_extract::target_of("src/Button.css.ts"),
+        converted: vanilla("import { style, styleVariants, keyframes } from '@vanilla-extract/css';\nexport const fade = keyframes({ to: { opacity: 1 } });\nconst base = style({ padding: 8 });\nexport const button = style([base, { color: 'red' }]);\nexport const background = styleVariants({ primary: { color: 'blue' } });"),
+    };
+    let code = "import * as s from './Button.css';\nconst view = <b className={s.button}><i className={s.background[props.variant]} /></b>;";
+    let result = run_with(code, std::slice::from_ref(&sheet), None);
+    assert!(result.holds.is_empty(), "{:?}", result.holds);
+    assert_eq!(result.output, "import '@plumeria/core';\nimport * as s from './Button.styles';\nconst view = <b sx={[s.styles.base, s.styles.button]}><i sx={s.background[props.variant]} /></b>;");
+    for (access, kind) in [("s.fade", "missing"), ("s.buton", "missing"), ("s[key]", "dynamic-access")] {
+        let code = format!("import * as s from './Button.css';\nconst value = {access};");
+        assert_eq!(run_with(&code, std::slice::from_ref(&sheet), None).holds, [kind], "{access}");
+    }
+}
