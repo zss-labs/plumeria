@@ -69,16 +69,44 @@ ruleTester.run('validate-at-rules', validateAtRules, {
             '@layer components': { color: 'blue' },
             '@scope (.card)': { color: 'green' },
             '@starting-style (.a)': { opacity: 0 },
+            '@media ()': { color: 'red' },
+            '@container': { color: 'red' },
           },
         });
       `,
       errors: [
-        { message: 'Invalid at-rule: "@unknown foo".' },
-        { message: 'Invalid at-rule: "@mediafoo".' },
-        { message: 'Invalid at-rule: "@supports".' },
-        { message: 'Invalid at-rule: "@layer components".' },
-        { message: 'Invalid at-rule: "@scope (.card)".' },
-        { message: 'Invalid at-rule: "@starting-style (.a)".' },
+        {
+          message:
+            "'@unknown' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+        },
+        {
+          message:
+            "'@mediafoo' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+        },
+        {
+          message:
+            "'@supports' needs a condition, for example '@supports (display: grid)'.",
+        },
+        {
+          message:
+            "'@layer' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+        },
+        {
+          message:
+            "'@scope' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+        },
+        {
+          message:
+            "'@starting-style' takes no condition. Use '@starting-style' alone.",
+        },
+        {
+          message:
+            "'@media' needs a condition, for example '@media (width >= 40rem)'.",
+        },
+        {
+          message:
+            "'@container' needs a condition, for example '@container (inline-size >= 40rem)'.",
+        },
       ],
     },
   ],
@@ -104,14 +132,14 @@ ruleTesterNoType.run(
         const unknown = '@unknown foo';
         css.create({ box: { [unknown]: { color: 'red' } } });
       `,
-        errors: [{ messageId: 'invalidAtRule' }],
+        errors: [{ messageId: 'unsupportedAtRule' }],
       },
       {
         code: `
         import * as css from '@plumeria/core';
         css.create({ box: { '@unknown foo': { color: 'red' } } });
       `,
-        errors: [{ messageId: 'invalidAtRule' }],
+        errors: [{ messageId: 'unsupportedAtRule' }],
       },
     ],
   },
