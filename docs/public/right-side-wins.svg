@@ -44,11 +44,11 @@
 
     <path class="line soft" d="M186 168 C206 196 300 206 362 222" />
     <path class="line soft" d="M348 214 L363 222 L349 230" />
-    <path class="line accent" d="M812 146 C800 190 720 204 660 222" />
-    <path class="line accent" d="M672 213 L659 222 L674 229" />
+    <path class="line accent" d="M812 146 C800 190 640 204 548 222" />
+    <path class="line accent" d="M560 213 L547 222 L562 229" />
 
-    <path class="strike" d="M368 262 L506 258" />
-    <path class="line accent" d="M560 268 C620 272 676 270 690 266" />
+    <path class="strike" d="M350 262 L490 258" />
+    <path class="line accent" d="M512 268 C524 271 536 270 546 266" />
 
     <path class="line" d="M40 330 L170 328 L171 356 L41 358 Z" />
     <path class="line" d="M174 328 L304 330 L303 358 L173 356 Z" />
@@ -78,10 +78,10 @@
   <text class="code" x="702" y="100">color: <tspan class="hl">'teal'</tspan>,</text>
   <text class="code" x="686" y="122">},</text>
 
-  <text class="big" x="120" y="252">&lt;span classStyle={[<tspan class="dim">styles.badge</tspan>, <tspan class="hl">classStyle</tspan>]} /&gt;</text>
+  <text class="big" x="216" y="252">&lt;span sx={[<tspan class="dim">styles.badge</tspan>, <tspan class="hl">sx</tspan>]} /&gt;</text>
 
   <text class="code dim" x="404" y="290">gray</text>
-  <text class="code hl" x="600" y="290">teal</text>
+  <text class="code hl" x="514" y="290">teal</text>
 
   <text class="chip" x="54" y="347">Badge.tsx</text>
   <text class="chip" x="188" y="347">accent.ts</text>
