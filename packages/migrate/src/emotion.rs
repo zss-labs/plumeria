@@ -89,6 +89,30 @@ pub struct Outcome {
     pub rewritten: Option<String>,
     pub holds: Vec<Hold>,
     depends: Vec<(String, String)>,
+    shared: FxHashMap<String, Shared>,
+}
+
+#[derive(Clone)]
+pub struct Shared {
+    tag: Option<String>,
+    alias: String,
+}
+
+fn nothing_shared(_: &str, _: &str) -> Option<Shared> {
+    None
+}
+
+pub struct Links<'l> {
+    share: bool,
+    linked: bool,
+    shared: &'l dyn Fn(&str, &str) -> Option<Shared>,
+}
+
+impl Links<'_> {
+    #[cfg(test)]
+    pub fn none() -> Links<'static> {
+        Links { share: false, linked: false, shared: &nothing_shared }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -257,11 +281,40 @@ fn frames_of(init: &Expression, names: &FxHashSet<&str>) -> bool {
     matches!(callee.get_inner_expression(), Expression::Identifier(identifier) if names.contains(identifier.name.as_str()))
 }
 
+struct DynamicImports(Vec<String>);
+
+fn fixed_string(expression: &Expression) -> Option<String> {
+    match expression.get_inner_expression() {
+        Expression::StringLiteral(literal) => Some(literal.value.as_str().unwrap_or_default().to_string()),
+        Expression::TemplateLiteral(template) if template.expressions.is_empty() => {
+            template.quasis.first().and_then(|q| q.value.cooked.as_ref()).and_then(|c| c.as_str()).map(str::to_string)
+        }
+        _ => None,
+    }
+}
+
+impl<'a> Visit<'a> for DynamicImports {
+    fn visit_import_expression(&mut self, expression: &ImportExpression<'a>) {
+        self.0.extend(fixed_string(&expression.source));
+        walk::walk_import_expression(self, expression);
+    }
+
+    fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
+        if matches!(&call.callee, Expression::Identifier(callee) if callee.name == "require")
+            && let Some(expression) = call.arguments.first().and_then(Argument::as_expression)
+        {
+            self.0.extend(fixed_string(expression));
+        }
+        walk::walk_call_expression(self, call);
+    }
+}
+
 #[derive(Default)]
 pub struct Module {
     kinds: FxHashMap<String, Shape>,
     forwards: FxHashMap<String, (String, String)>,
     imports: Vec<(String, String)>,
+    reexports: Vec<String>,
 }
 
 pub fn module(file: &str, text: &str) -> Module {
@@ -294,6 +347,9 @@ pub fn module(file: &str, text: &str) -> Module {
         }
     }
     out.imports = imports.values().cloned().collect();
+    let mut dynamic = DynamicImports(Vec::new());
+    dynamic.visit_program(program);
+    out.imports.extend(dynamic.0.into_iter().map(|source| (source, "*".to_string())));
     let frames: FxHashSet<&str> = imports
         .iter()
         .filter(|(_, (source, imported))| {
@@ -327,10 +383,24 @@ pub fn module(file: &str, text: &str) -> Module {
             Statement::ExportNamedDeclaration(declaration) => {
                 for specifier in &declaration.specifiers {
                     export(&specifier.exported.name(), &specifier.local.name(), &mut out);
+                    if let Some((source, _)) = imports.get(specifier.local.name().as_str()) {
+                        out.reexports.push(source.clone());
+                    }
                 }
+            }
+            Statement::ExportDefaultDeclaration(declaration) => {
+                if let ExportDefaultDeclarationKind::Identifier(identifier) = &declaration.declaration
+                    && let Some((source, _)) = imports.get(identifier.name.as_str())
+                {
+                    out.reexports.push(source.clone());
+                }
+            }
+            Statement::ExportAllDeclaration(declaration) => {
+                out.reexports.push(declaration.source.value.as_str().unwrap_or_default().to_string());
             }
             Statement::ExportFromDeclaration(declaration) => {
                 let source = declaration.source.value.as_str().unwrap_or_default();
+                out.reexports.push(source.to_string());
                 for specifier in &declaration.specifiers {
                     let forward = (source.to_string(), specifier.local.name().to_string());
                     out.forwards.insert(specifier.exported.name().to_string(), forward);
@@ -1423,8 +1493,9 @@ fn pragma<'t>(comment: &'t str, tag: &str) -> Option<&'t str> {
 }
 
 fn through_newline(text: &str, span: Span) -> (u32, u32) {
-    let end = if text[span.end as usize..].starts_with('\n') { span.end + 1 } else { span.end };
-    (span.start, end)
+    let rest = &text[span.end as usize..];
+    let newline = if rest.starts_with("\r\n") { 2 } else { u32::from(rest.starts_with('\n')) };
+    (span.start, span.end + newline)
 }
 
 pub fn scan_file(
@@ -1433,9 +1504,10 @@ pub fn scan_file(
     style_prop: &str,
     lib: &Library,
     exports: &dyn Fn(&str, &str) -> Option<Shape>,
+    links: &Links,
 ) -> Outcome {
     let mut out = Outcome::default();
-    if ![lib.react, lib.styled, lib.scope, "css="].iter().any(|hint| text.contains(hint)) {
+    if !links.linked && ![lib.react, lib.styled, lib.scope, "css="].iter().any(|hint| text.contains(hint)) {
         return out;
     }
     let Ok(source_type) = SourceType::from_path(file) else { return out };
@@ -1484,6 +1556,7 @@ pub fn scan_file(
 
     let mut insert_at = program.directives.last().map_or(0, |d| d.span.end);
     let mut imports: Vec<Span> = Vec::new();
+    let mut relinks: Vec<(Span, String, String, Vec<String>)> = Vec::new();
     let mut leading = true;
     for statement in &program.body {
         let Statement::ImportDeclaration(declaration) = statement else {
@@ -1494,6 +1567,38 @@ pub fn scan_file(
             insert_at = declaration.span.end;
         }
         let source = declaration.source.value.as_str().unwrap_or_default();
+        if !declaration.import_kind.is_type() {
+            let mut kept = Vec::new();
+            let mut found = false;
+            let mut named_only = true;
+            for specifier in declaration.specifiers.iter().flatten() {
+                let ImportDeclarationSpecifier::ImportSpecifier(named) = specifier else {
+                    named_only = false;
+                    continue;
+                };
+                let shared = (!named.import_kind.is_type()).then(|| (links.shared)(source, named.imported.name().as_str()));
+                let Some(shared) = shared.flatten() else {
+                    kept.push(text[named.span.start as usize..named.span.end as usize].to_string());
+                    continue;
+                };
+                found = true;
+                let Some(symbol) = named.local.symbol_id.get() else { continue };
+                match shared.tag {
+                    Some(tag) => {
+                        scan.components.insert(symbol, (tag, shared.alias, Vec::new()));
+                    }
+                    None => {
+                        scan.aliases.insert(symbol, shared.alias);
+                    }
+                }
+            }
+            if found && named_only {
+                let quoted = text[declaration.source.span.start as usize..declaration.source.span.end as usize].to_string();
+                relinks.push((declaration.span, source.to_string(), quoted, kept));
+            } else if found {
+                scan.hold("import-shape", source, declaration.span.start);
+            }
+        }
         for specifier in declaration.specifiers.iter().flatten() {
             let (local, imported) = match specifier {
                 ImportDeclarationSpecifier::ImportSpecifier(named) => (&named.local, named.imported.name().to_string()),
@@ -1586,7 +1691,7 @@ pub fn scan_file(
             continue;
         }
         scan.handled.extend(calls.iter().map(|(_, init)| init.span().start));
-        if exported {
+        if exported && !links.share {
             scan.hold("exported-style", "css", statement.span().start);
             continue;
         }
@@ -1626,6 +1731,14 @@ pub fn scan_file(
                 Some(items) => format!("[{}]", items.join(", ")),
                 None => String::new(),
             };
+            if exported {
+                if alias.is_empty() || alias.contains('\0') || alias.contains('(') {
+                    scan.hold("exported-style", identifier.name.as_str(), declarator.span.start);
+                } else {
+                    let shared = Shared { tag: tag.clone(), alias: alias.clone() };
+                    out.shared.insert(identifier.name.to_string(), shared);
+                }
+            }
             let Some(symbol) = identifier.symbol_id.get() else { continue };
             match tag {
                 Some(tag) => {
@@ -1641,7 +1754,7 @@ pub fn scan_file(
     }
 
     scan.visit_program(program);
-    if scan.styles.is_empty() && scan.edits.is_empty() && scan.holds.is_empty() && imports.is_empty() {
+    if scan.styles.is_empty() && scan.edits.is_empty() && scan.holds.is_empty() && imports.is_empty() && relinks.is_empty() {
         return out;
     }
     let taken: Vec<&str> = ["css", "styles"]
@@ -1687,12 +1800,17 @@ pub fn scan_file(
         .filter(|(source, name)| exports(source, name) == Some(Shape::Frames))
         .cloned()
         .collect();
+    let sources: FxHashSet<&str> = relinks.iter().map(|(_, source, _, _)| source.as_str()).collect();
+    if sources.len() > 1 || (!relinks.is_empty() && !scan.styles.is_empty()) {
+        scan.hold("binding-taken", "styles", 0);
+    }
     out.holds = scan.holds;
     if !out.holds.is_empty() {
         return out;
     }
 
-    let mut create = String::from("const styles = css.create({\n");
+    let export = if out.shared.is_empty() { "" } else { "export " };
+    let mut create = format!("{export}const styles = css.create({{\n");
     for (key, body) in &scan.styles {
         create.push_str(&format!("  {key}: {body},\n"));
     }
@@ -1717,6 +1835,15 @@ pub fn scan_file(
     }
     edits.extend(scan.edits);
     edits.extend(scan.animations);
+    for (index, (span, _, quoted, kept)) in relinks.into_iter().enumerate() {
+        let names = (index == 0).then(|| "styles".to_string()).into_iter().chain(kept).collect::<Vec<_>>();
+        if names.is_empty() {
+            let (start, end) = through_newline(text, span);
+            edits.push((start, end, String::new()));
+        } else {
+            edits.push((span.start, span.end, format!("import {{ {} }} from {quoted};", names.join(", "))));
+        }
+    }
     for comment in program.comments.iter().filter(|_| lib.pragma.is_some()) {
         let body = &text[comment.span.start as usize..comment.span.end as usize];
         if body.contains("@jsxImportSource @emotion/react") || body.contains("@jsx jsx") || body.contains("@jsxRuntime classic") {
@@ -1767,11 +1894,51 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
     let modules: FxHashMap<String, Module> =
         sources.iter().map(|(file, text)| (file.clone(), module(file, text))).collect();
     let index: FxHashMap<&str, usize> = sources.iter().enumerate().map(|(i, (file, _))| (file.as_str(), i)).collect();
-    let mut outcomes: Vec<Outcome> = sources
+    let probe = Links { share: true, linked: false, shared: &nothing_shared };
+    let tables: Vec<FxHashMap<String, Shared>> = sources
         .iter()
         .map(|(file, text)| {
             let exports = |specifier: &str, name: &str| resolve_kind(&modules, paths, file, specifier, name);
-            scan_file(file, text, style_prop, lib, &exports)
+            scan_file(file, text, style_prop, lib, &exports, &probe).shared
+        })
+        .collect();
+    let mut readers: Vec<Vec<usize>> = vec![Vec::new(); sources.len()];
+    let mut closed: FxHashSet<usize> = FxHashSet::default();
+    for (i, (file, _)) in sources.iter().enumerate() {
+        for (specifier, name) in &modules[file].imports {
+            let Some(sheet) = resolve_file(&modules, paths, file, specifier) else { continue };
+            let j = index[sheet.as_str()];
+            if tables[j].is_empty() {
+                continue;
+            }
+            if name == "*" || name == "default" {
+                closed.insert(j);
+            } else if tables[j].contains_key(name) && !readers[j].contains(&i) {
+                readers[j].push(i);
+            }
+        }
+        for specifier in &modules[file].reexports {
+            let Some(sheet) = resolve_file(&modules, paths, file, specifier) else { continue };
+            let j = index[sheet.as_str()];
+            if !tables[j].is_empty() {
+                closed.insert(j);
+            }
+        }
+    }
+    let open: FxHashSet<usize> = (0..sources.len()).filter(|j| !readers[*j].is_empty() && !closed.contains(j)).collect();
+    let mut outcomes: Vec<Outcome> = sources
+        .iter()
+        .enumerate()
+        .map(|(i, (file, text))| {
+            let exports = |specifier: &str, name: &str| resolve_kind(&modules, paths, file, specifier, name);
+            let shared = |specifier: &str, name: &str| {
+                let sheet = resolve_file(&modules, paths, file, specifier)?;
+                let j = index[sheet.as_str()];
+                if open.contains(&j) { tables[j].get(name).cloned() } else { None }
+            };
+            let linked = open.iter().any(|j| readers[*j].contains(&i));
+            let links = Links { share: open.contains(&i), linked, shared: &shared };
+            scan_file(file, text, style_prop, lib, &exports, &links)
         })
         .collect();
     loop {
@@ -1787,6 +1954,18 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
             if let Some(site) = blocked {
                 outcomes[i].rewritten = None;
                 outcomes[i].holds.push(Hold { kind: "linked-to-held", detail: site, at: 0 });
+                fresh = true;
+            }
+        }
+        for &j in &open {
+            for &i in &readers[j] {
+                let (from, to) = match (outcomes[j].rewritten.is_some(), outcomes[i].rewritten.is_some()) {
+                    (true, false) => (i, j),
+                    (false, true) => (j, i),
+                    _ => continue,
+                };
+                outcomes[to].rewritten = None;
+                outcomes[to].holds.push(Hold { kind: "linked-to-held", detail: sources[from].0.clone(), at: 0 });
                 fresh = true;
             }
         }
