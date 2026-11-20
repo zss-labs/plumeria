@@ -120,23 +120,34 @@ const styles = css.create({
   },
 });
 
-export default function Page() {
+export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
+  const ja = lang === 'ja';
+  const docs = ja ? '/ja/docs' : '/docs';
   return (
-    <main data-home sx={styles.home}>
+    <main lang={lang} data-home sx={styles.home}>
       <Seo
-        title="Plumeria — Predictable style overrides for React"
-        subtitle="Plumeria brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order."
+        path={ja ? '/ja' : '/'}
+        title={ja ? 'Plumeria — React のスタイルをシンプルに' : 'Plumeria — Predictable style overrides for React'}
+        subtitle={
+          ja
+            ? 'Plumeria は React のスタイルを書くためのライブラリです。同じプロパティを重ねると、配列の右側の値が使われます。'
+            : 'Plumeria brings predictable overrides to React styling. When you combine styles in an array, the rightmost style wins for each property, regardless of import or load order.'
+        }
       />
       <div sx={styles.page}>
         <div sx={styles.hero}>
           <div sx={styles.heroBody}>
             <div>
-              <h1 sx={styles.title}>Plumeria</h1>
-              <p sx={styles.description}>React styling library for reliable interfaces</p>
+              <h1 translate="no" sx={styles.title}>
+                Plumeria
+              </h1>
+              <p sx={styles.description}>
+                {ja ? 'React のためのスタイルライブラリ' : 'React styling library for reliable interfaces'}
+              </p>
             </div>
             <div sx={styles.actions}>
-              <Link to="/docs" unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
-                Get started
+              <Link to={docs} unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
+                {ja ? 'はじめる' : 'Get started'}
                 <svg
                   width="16"
                   height="16"
@@ -152,8 +163,16 @@ export default function Page() {
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </Link>
-              <Link to="/docs/why-plumeria" unstable_prefetchOnView={{}} sx={styles.button}>
-                Why Plumeria?
+              <Link to={`${docs}/why-plumeria`} unstable_prefetchOnView={{}} sx={styles.button}>
+                {ja ? (
+                  <>
+                    <span translate="no">Plumeria</span> を使う理由
+                  </>
+                ) : (
+                  <>
+                    Why <span translate="no">Plumeria</span>?
+                  </>
+                )}
               </Link>
             </div>
           </div>
@@ -161,10 +180,14 @@ export default function Page() {
             <div sx={styles.portrait} />
           </div>
         </div>
-        <SiteFooter home />
+        <SiteFooter home lang={lang} />
       </div>
     </main>
   );
+}
+
+export default function Page() {
+  return <HomePage />;
 }
 
 export const getConfig = async () => {
