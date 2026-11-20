@@ -108,7 +108,7 @@ export const Menu = () => <nav sx={styles.menu} />;
 
 ```text title="next build"
   ⚠ @plumeria(validate-values): 'position' has an invalid value 'fixd'.
-  Valid values: static, relative, absolute, fixed, sticky
+  Did you mean 'fixed'?
    ╭─[components/Menu.tsx:5:15]
  4 │   menu: {
  5 │     position: 'fixd',
@@ -131,7 +131,7 @@ A failure says what is wrong and, where it can, points at the code. A few more o
 | `'> a': { ... }` | `Combinator ">" is not allowed unless inside functional pseudo-classes.` |
 | `className` beside `sx` | `"sx" handles both "className" and "style". Avoid mixing them.` |
 | `sx={{ color: 'red' }}` | `Do not pass inline objects to "sx". It only accepts compiled styles from css.create().` |
-| `css.create` inside a component | `Do not use css.create inside functions` |
+| `css.create` inside a component | `Move css.create() to module scope and reference the result inside the function.` |
 | A style prop handed on instead of applied | `'headerStyle' is never applied here. Apply it to sx or css.use() on an element this component renders.` |
 
 Some carry the whole fix. Two states that can match at once have nothing to rank them, so the message says how to decide:
@@ -233,7 +233,7 @@ An agent cannot see the page, so a style that quietly loses is the failure it is
 The same failure reads differently under a coding agent. oxlint recognizes Claude Code, Cursor, Codex and others, and drops the frame, so each failure arrives on one line with its position, its rule and what to change:
 
 ```text title="next build, run by a coding agent"
-components/Menu.tsx:5:15: warning @plumeria(validate-values): 'position' has an invalid value 'fixd'. Valid values: static, relative, absolute, fixed, sticky
+components/Menu.tsx:5:15: warning @plumeria(validate-values): 'position' has an invalid value 'fixd'. Did you mean 'fixed'?
 
 ✖ [plumeria] Linting failed. Aborting build...
 ```
