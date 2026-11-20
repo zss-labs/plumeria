@@ -1,0 +1,81 @@
+---
+title: 'Rspack'
+description: "Rspack に Plumeria を設定します。"
+---
+
+Rspack で [`@plumeria/unplugin`](https://www.npmjs.com/package/@plumeria/unplugin) を使う例は [`examples/example-rspack`](https://github.com/zss-labs/plumeria/tree/main/examples/example-rspack) にあります。プラグインはスタイルを CSS に変換し、開発中は HMR で変更を反映します。
+
+[@plumeria/init](/ja/docs/api/migrate/init) を実行すると Rspack を検出し、必要な設定を書き込みます。以下は、同じ設定を手動で追加する手順です。
+
+## インストール
+```sh title="Terminal"
+pnpm i -D @plumeria/unplugin
+```
+
+## プラグインを設定する
+```ts title="rspack.config.js"
+import { rspack } from '@rspack/core';
+import { ReactRefreshRspackPlugin } from '@rspack/plugin-react-refresh';
+import plumeria from '@plumeria/unplugin';
+
+const isDev = process.env.NODE_ENV === 'development';
+
+export default {
+  entry: './src/index.tsx',
+  output: {
+    filename: 'bundle.js',
+    clean: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js'],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: {
+          loader: 'builtin:swc-loader',
+          options: {
+            jsc: {
+              parser: { syntax: 'typescript', tsx: true },
+              transform: {
+                react: {
+                  runtime: 'automatic',
+                  development: isDev,
+                  refresh: isDev,
+                },
+              },
+            },
+          },
+        },
+      },
+    ],
+  },
+  plugins: [
+    plumeria.rspack(),
+    new rspack.HtmlRspackPlugin({ template: './src/index.html' }),
+    isDev && new ReactRefreshRspackPlugin(),
+  ].filter(Boolean),
+  devServer: {
+    hot: true,
+    port: 3000,
+  },
+};
+```
+
+## sx の型を読み込む
+
+`@plumeria/core` を入れただけでは JSX の prop の型は追加されません。プロジェクトで使う prop 名に合わせて型宣言を読み込みます。
+
+標準の `sx` を使う場合は、パッケージ付属の型宣言を参照します。`src/` があればその中に、なければプロジェクトのルートに次のファイルを置きます。
+
+```ts title="plumeria.d.ts"
+/// <reference types="@plumeria/core/sx" />
+```
+
+`styleProp` を `'classStyle'` などに変えた場合は、プラグインの設定と同じ名前で型を宣言します。[prop の型宣言](/ja/docs/api/types/Style#スタイリング-prop-を宣言する-declaring-the-styling-prop)
+
+<Cards>
+  <Card title="パッケージとして配布する" href="/ja/docs/creating-packages" />
+  <Card title="インストール" href="/ja/docs/installation" />
+</Cards>
