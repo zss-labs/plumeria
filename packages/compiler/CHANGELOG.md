@@ -1,5 +1,11 @@
 # @plumeria/compiler
 
+## 22.2.0
+
+### Minor Changes
+
+- a53916a: Bump version to 22.2.0
+
 ## 22.1.2
 
 ### Patch Changes
