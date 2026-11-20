@@ -3307,10 +3307,16 @@ export const transformSource = async (
       ) {
         const replacement =
           classParts.length > 0 ? classParts.join(' + " " + ') : '""';
+        const value =
+          classParts.length <= 1 &&
+          replacement.startsWith('"') &&
+          !/[\\&]/.test(replacement)
+            ? replacement
+            : `{${replacement}}`;
         replacements.push({
           start: node.span.start - baseByteOffset,
           end: node.span.end - baseByteOffset,
-          content: `${classProp}={${replacement}}${styleAttr}`,
+          content: `${classProp}=${value}${styleAttr}`,
         });
       } else {
         const keptClass = existingClassExpr
