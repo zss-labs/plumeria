@@ -10,6 +10,9 @@ const ruleTester = new RuleTester({
 ruleTester.run('validate-values', validateValues, {
   valid: [
     {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { fieldSizing: 'content', readingFlow: 'grid-rows', textBoxTrim: 'trim-both', WebkitFontSmoothing: 'antialiased', ruleStyle: 'dashed', pageBreakInside: 'avoid', glyphOrientationVertical: '90deg', interpolateSize: 'allow-keywords', boxDirection: 'inherit' } });`,
+    },
+    {
       code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, 20% red, white)' } });`,
     },
     {
@@ -1570,6 +1573,14 @@ ruleTester.run('validate-values', validateValues, {
   ],
 
   invalid: [
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { fieldSizing: 'auto', readingFlow: 'grid', textBoxTrim: 'both', WebkitFontSmoothing: 'smooth', ruleStyle: 'thick', pageBreakInside: 'always' } });`,
+      errors: 6,
+    },
+    {
+      code: `import * as css from '@plumeria/core'; css.create({ s: { interpolateSize: 1 } });`,
+      errors: 1,
+    },
     {
       code: `import * as css from '@plumeria/core'; css.create({ s: { color: 'color-mix(in srgb, red blue, white)' } });`,
       errors: 1,
