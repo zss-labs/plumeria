@@ -366,7 +366,7 @@ StyleX is the closest relative, and the shared ground is real: both compile styl
 
 Two of these rows decide most projects.
 
-**Nothing to merge with at runtime** is a constraint before it is a feature. Because no merger ships, the compiler has to settle every composition it can see — across files and across a prop boundary — and refuse the ones it cannot, such as a style relayed through a chain of wrappers. StyleX makes the opposite trade: the small runtime merger means a style can be passed around and applied wherever it lands. Which trade is right depends on whether your components apply the styles they receive, or mostly forward them. If they forward them, TypedCSS is the same authoring API with StyleX's side of this trade, and [the dual model page](/docs/typedcss) is the comparison that matters.
+**Nothing to merge with at runtime** is a constraint before it is a feature. Because no merger ships, the compiler has to settle every composition it can see — across files and across a prop boundary — and refuse the ones it cannot, such as a style relayed through a chain of wrappers. StyleX makes the opposite trade: the small runtime merger means a style can be passed around and applied wherever it lands. Which trade is right depends on whether your components apply the styles they receive, or mostly forward them.
 
 **Themes are a selector, not an application step.** In StyleX a theme takes effect where `props()` applies it. In Plumeria the switch is part of the theme:
 
