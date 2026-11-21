@@ -2008,7 +2008,7 @@ export const transformSource = async (
         return {
           keyExpr: `((${getSource(node.left)}) ? ${right.keyExpr} : ${JSON.stringify(off)})`,
           options: right.options,
-          leaves: right.leaves,
+          leaves: right.leaves + 1,
           hasGroup: right.hasGroup,
         };
       }
