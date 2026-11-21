@@ -4,11 +4,12 @@ import { ESLint } from 'eslint';
 import * as tsParser from '@typescript-eslint/parser';
 import { renameProp } from './transforms/rename-prop';
 import { renameApi } from './transforms/rename-api';
+import { useToProp } from './transforms/use-to-prop';
 import type { Linter } from 'eslint';
 
 const { version } = require('../package.json') as { version: string };
 
-const TRANSFORMS = ['rename-prop', 'rename-api'] as const;
+const TRANSFORMS = ['rename-prop', 'rename-api', 'use-to-prop'] as const;
 
 const APIS = [
   'create',
@@ -43,6 +44,7 @@ const USAGE = `plumeria-codemod — codemods for migrating Plumeria APIs
 Usage
   npx @plumeria/codemod rename-prop <from> <to> [paths...]
   npx @plumeria/codemod rename-api <from> <to> [paths...]
+  npx @plumeria/codemod use-to-prop <prop> [paths...]
 
 Options
   -d, --dry-run    report what would change without writing
@@ -54,6 +56,7 @@ Examples
   npx @plumeria/codemod rename-prop classStyle sx
   npx @plumeria/codemod rename-prop classStyle sx src app --dry-run
   npx @plumeria/codemod rename-api viewTransition viewTransitionClass
+  npx @plumeria/codemod use-to-prop sx
 
 Paths default to the current directory. After the rewrite, point the toolchain
 at the new name with \`styleProp\` on your bundler plugin, and with
@@ -109,6 +112,20 @@ function parseArgs(argv: string[]): RenameOptions | null {
     );
   }
 
+  if (transform === 'use-to-prop') {
+    const [prop, ...targets] = rest;
+    if (!prop) throw new UsageError('use-to-prop needs <prop>');
+    validateProp(prop);
+    return {
+      transform: 'use-to-prop',
+      from: 'css.use()',
+      to: prop,
+      targets: targets.length > 0 ? targets : ['.'],
+      dryRun,
+      includeTypes,
+    };
+  }
+
   const [from, to, ...targets] = rest;
 
   if (!from || !to) {
@@ -132,12 +149,7 @@ function parseArgs(argv: string[]): RenameOptions | null {
       includeTypes,
     };
   }
-  if (!IDENTIFIER.test(to)) {
-    throw new UsageError(`"${to}" is not a valid identifier`);
-  }
-  if (RESERVED.has(to)) {
-    throw new UsageError(`"${to}" is already used by React`);
-  }
+  validateProp(to);
 
   return {
     transform: 'rename-prop',
@@ -149,20 +161,34 @@ function parseArgs(argv: string[]): RenameOptions | null {
   };
 }
 
+function validateProp(name: string): void {
+  if (!IDENTIFIER.test(name)) {
+    throw new UsageError(`"${name}" is not a valid identifier`);
+  }
+  if (RESERVED.has(name)) {
+    throw new UsageError(`"${name}" is already used by React`);
+  }
+}
+
 function buildConfig(options: RenameOptions): Linter.Config[] {
   const { transform, from, to, includeTypes } = options;
   const rule =
-    transform === 'rename-api'
+    transform === 'use-to-prop'
       ? {
-          plugins: { codemod: { rules: { 'rename-api': renameApi } } },
-          rules: { 'codemod/rename-api': ['error', { from, to }] },
+          plugins: { codemod: { rules: { 'use-to-prop': useToProp } } },
+          rules: { 'codemod/use-to-prop': ['error', { prop: to }] },
         }
-      : {
-          plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
-          rules: {
-            'codemod/rename-prop': ['error', { from, to, includeTypes }],
-          },
-        };
+      : transform === 'rename-api'
+        ? {
+            plugins: { codemod: { rules: { 'rename-api': renameApi } } },
+            rules: { 'codemod/rename-api': ['error', { from, to }] },
+          }
+        : {
+            plugins: { codemod: { rules: { 'rename-prop': renameProp } } },
+            rules: {
+              'codemod/rename-prop': ['error', { from, to, includeTypes }],
+            },
+          };
 
   return [
     { ignores: IGNORES },
@@ -214,7 +240,7 @@ export async function main(argv: string[]): Promise<number> {
 }
 
 async function rewriteSource(options: RenameOptions): Promise<number> {
-  const { from, to, targets, dryRun } = options;
+  const { transform, from, to, targets, dryRun } = options;
   const baseConfig = {
     overrideConfigFile: true as const,
     overrideConfig: buildConfig(options),
@@ -281,7 +307,9 @@ async function rewriteSource(options: RenameOptions): Promise<number> {
 
   if (manual.length > 0) {
     console.log(
-      `\n${manual.length} occurrence(s) need a manual rename — "${from}" is bound to a local name there:`,
+      transform === 'use-to-prop'
+        ? `\n${manual.length} occurrence(s) need a manual rewrite — "${from}" is not the whole className there:`
+        : `\n${manual.length} occurrence(s) need a manual rename — "${from}" is bound to a local name there:`,
     );
     for (const location of manual) console.log(`  ${location}`);
   }
