@@ -1364,7 +1364,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         quote(off)
                     ),
                     options: r.options,
-                    leaves: r.leaves,
+                    leaves: r.leaves + 1,
                     has_group: r.has_group,
                 }));
             }
