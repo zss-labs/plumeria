@@ -66,6 +66,175 @@ fn prop_default_message(source: &str) -> String {
     )
 }
 
+fn is_plain_read(source: &str) -> bool {
+    let chars: Vec<char> = source.chars().collect();
+    let mut code: Vec<char> = Vec::with_capacity(chars.len());
+    let mut index = 0;
+    while index < chars.len() {
+        let c = chars[index];
+        if (c == '\'' || c == '"')
+            && let Some(end) = chars[index + 1..]
+                .iter()
+                .position(|&next| next == c || next == '\\' || next == '\n')
+            && chars[index + 1 + end] == c
+        {
+            code.extend(['"', '"']);
+            index += end + 2;
+            continue;
+        }
+        code.push(c);
+        index += 1;
+    }
+
+    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    if !code
+        .iter()
+        .all(|&c| word(c) || c.is_whitespace() || "$.()!=<>&|?:\"-".contains(c))
+    {
+        return false;
+    }
+    let mut previous: Option<char> = None;
+    for (index, &c) in code.iter().enumerate() {
+        if c == '(' && previous.is_some_and(|p| word(p) || p == '$' || p == ')') {
+            return false;
+        }
+        if c == '.'
+            && !(index > 0
+                && code[index - 1].is_ascii_digit()
+                && code.get(index + 1).is_some_and(char::is_ascii_digit))
+        {
+            return false;
+        }
+        if c == '-' && code.get(index + 1) == Some(&'-') {
+            return false;
+        }
+        if !c.is_whitespace() {
+            previous = Some(c);
+        }
+    }
+    let text: String = code.iter().collect();
+    if text.split(|c: char| !word(c)).any(|token| {
+        matches!(
+            token,
+            "new" | "await" | "yield" | "delete" | "void" | "import"
+        )
+    }) {
+        return false;
+    }
+    let mut index = 0;
+    while index < code.len() {
+        let c = code[index];
+        if (c == '=' || c == '!') && code.get(index + 1) == Some(&'=') {
+            index += if code.get(index + 2) == Some(&'=') {
+                3
+            } else {
+                2
+            };
+            continue;
+        }
+        if (c == '<' || c == '>') && code.get(index + 1) == Some(&'=') {
+            index += 2;
+            continue;
+        }
+        if c == '=' {
+            return false;
+        }
+        index += 1;
+    }
+    true
+}
+
+const PARAM: &str = "__plumeria";
+
+fn param_at(text: &str, start: usize) -> Option<(usize, usize)> {
+    let digits = text[start + PARAM.len()..]
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .count();
+    if digits == 0 {
+        return None;
+    }
+    let end = start + PARAM.len() + digits;
+    text[start + PARAM.len()..end]
+        .parse()
+        .ok()
+        .map(|index| (index, end))
+}
+
+fn param_uses(text: &str) -> Vec<usize> {
+    text.match_indices(PARAM)
+        .filter_map(|(start, _)| param_at(text, start).map(|(index, _)| index))
+        .collect()
+}
+
+fn inline_params(text: &str, bound: &[String]) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0;
+    for (start, _) in text.match_indices(PARAM) {
+        if start < last {
+            continue;
+        }
+        if let Some((index, end)) = param_at(text, start)
+            && let Some(source) = bound.get(index)
+        {
+            out.push_str(&text[last..start]);
+            out.push_str(source);
+            last = end;
+        }
+    }
+    out.push_str(&text[last..]);
+    out
+}
+
+fn lookup_table(entries: &[(String, String)]) -> String {
+    let body: Vec<String> = entries
+        .iter()
+        .map(|(key, value)| {
+            let key = if key == "__proto__" {
+                "[\"__proto__\"]".to_string()
+            } else {
+                quote(key)
+            };
+            format!("{key}:{value}")
+        })
+        .collect();
+    format!("{{__proto__:null,{}}}", body.join(","))
+}
+
+fn leaf_paths(style: &Object, prefix: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
+    for (key, value) in style.iter() {
+        prefix.push(key.to_string());
+        match value {
+            Value::Obj(inner) => leaf_paths(inner, prefix, out),
+            _ => out.push(prefix.clone()),
+        }
+        prefix.pop();
+    }
+}
+
+fn pick_path(target: &mut Object, source: &Object, path: &[String]) {
+    let Some((key, rest)) = path.split_first() else {
+        return;
+    };
+    let Some(value) = source.get(key) else {
+        return;
+    };
+    if rest.is_empty() {
+        target.insert(key.clone(), value.clone());
+        return;
+    }
+    let Value::Obj(inner_source) = value else {
+        return;
+    };
+    let mut inner = target
+        .get(key)
+        .and_then(Value::as_obj)
+        .cloned()
+        .unwrap_or_default();
+    pick_path(&mut inner, inner_source, rest);
+    target.insert(key.clone(), Value::obj(inner));
+}
+
 #[derive(Clone)]
 struct Conditional {
     test: Span,
@@ -75,7 +244,6 @@ struct Conditional {
     falsy: Object,
     group_id: Option<u32>,
     value_name: Option<String>,
-    own_keys: bool,
     order: i64,
 }
 
@@ -99,7 +267,6 @@ struct Dimension {
     kind: DimKind,
     options: Vec<(String, Object)>,
     test_expr: String,
-    own_keys: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -646,7 +813,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             falsy: Object::new(),
                             group_id: Some(group_id),
                             value_name: Some(option_name.to_string()),
-                            own_keys: true,
                             order: current_order,
                         });
                     }
@@ -671,7 +837,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         falsy: Object::new(),
                         group_id: Some(group_id),
                         value_name: Some(value),
-                        own_keys: true,
                         order: current_order,
                     });
                 }
@@ -687,7 +852,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
 
         let Builder {
-            conditionals,
+            mut conditionals,
             dynamic_vars,
             prop_var_spreads,
             base_chunks,
@@ -723,6 +888,44 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             });
         }
         let state_weights = get_state_weights(&sources);
+
+        let test_sources: Vec<Option<String>> = conditionals
+            .iter()
+            .map(|c| {
+                if c.group_id.is_none() {
+                    Some(c.test_string.clone().unwrap_or_else(|| self.text(c.test)))
+                } else {
+                    c.test_lhs.clone()
+                }
+            })
+            .collect();
+        let mut bound: Vec<String> = Vec::new();
+        let mut skippable: FxHashSet<String> = FxHashSet::default();
+        if test_sources.iter().all(Option::is_some)
+            && test_sources
+                .iter()
+                .any(|source| !is_plain_read(source.as_deref().unwrap_or_default()))
+        {
+            let mut bound_groups: FxHashMap<u32, String> = FxHashMap::default();
+            for (c, source) in conditionals.iter_mut().zip(test_sources) {
+                let name = c
+                    .group_id
+                    .and_then(|group| bound_groups.get(&group).cloned());
+                let param = name
+                    .clone()
+                    .unwrap_or_else(|| format!("__plumeria{}", bound.len()));
+                if name.is_none() {
+                    bound.push(source.unwrap_or_default());
+                }
+                match c.group_id {
+                    None => c.test_string = Some(param),
+                    Some(group) => {
+                        c.test_lhs = Some(param.clone());
+                        bound_groups.insert(group, param);
+                    }
+                }
+            }
+        }
 
         let mut participation: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
         let mut register = |style: &Object, source_id: String| {
@@ -813,6 +1016,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         if !existing_class.is_empty() {
             class_parts.push(existing_class);
         }
+        let bound_from = class_parts.len();
         if !base_independent.is_empty() {
             let class_name = self.process_class(&base_independent, &state_weights);
             if !class_name.is_empty() {
@@ -855,11 +1059,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 }
             }
             if !lookup.is_empty() {
-                let entries: Vec<String> = lookup
+                let entries: Vec<(String, String)> = lookup
                     .iter()
-                    .map(|(k, v)| format!("{}:{}", quote(k), quote(&v.to_js_string())))
+                    .map(|(k, v)| (k.to_string(), quote(&v.to_js_string())))
                     .collect();
-                class_parts.push(format!("({{{}}}[{common}] || \"\")", entries.join(",")));
+                class_parts.push(format!("({}[{common}] || \"\")", lookup_table(&entries)));
             }
         }
 
@@ -881,7 +1085,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         kind: DimKind::Const,
                         options: vec![(String::new(), conflicting_style)],
                         test_expr: String::new(),
-                        own_keys: false,
                     },
                 ));
             }
@@ -895,7 +1098,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             ("0".to_string(), c.falsy.clone()),
                             ("1".to_string(), c.truthy.clone()),
                         ],
-                        own_keys: false,
                     },
                 ));
             }
@@ -940,148 +1142,120 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                                 )
                             })
                             .collect(),
-                        own_keys: first.own_keys,
                     },
                 ));
             }
             ordered.sort_by_key(|(order, _)| *order);
-            let mut dimensions: Vec<Dimension> = ordered
+            let dimensions: Vec<Dimension> = ordered
                 .into_iter()
                 .map(|(_, dimension)| dimension)
                 .collect();
 
-            let dimension_keys: Vec<FxHashSet<String>> = dimensions
-                .iter()
-                .map(|dimension| {
-                    let mut keys = FxHashSet::default();
-                    for (_, style) in &dimension.options {
-                        for key in style.keys() {
-                            if conflicting.contains(key) {
-                                keys.insert(key.to_string());
+            let mut leaves: IndexMap<Vec<String>, Vec<(usize, usize)>, FxBuildHasher> =
+                IndexMap::default();
+            for (d, dimension) in dimensions.iter().enumerate() {
+                for (o, (_, style)) in dimension.options.iter().enumerate() {
+                    let mut paths = Vec::new();
+                    leaf_paths(style, &mut Vec::new(), &mut paths);
+                    for path in paths {
+                        leaves.entry(path).or_default().push((d, o));
+                    }
+                }
+            }
+            let mut chains: IndexMap<Vec<(usize, usize)>, Vec<Vec<String>>, FxBuildHasher> =
+                IndexMap::default();
+            for (path, setters) in leaves {
+                chains.entry(setters).or_default().push(path);
+            }
+
+            for (setters, paths) in &chains {
+                let mut classes: Vec<(usize, Vec<(usize, String)>)> = Vec::new();
+                for &(d, o) in setters {
+                    let mut picked = Object::new();
+                    for path in paths {
+                        pick_path(&mut picked, &dimensions[d].options[o].1, path);
+                    }
+                    let class_name = quote(&self.process_class(&picked, &state_weights));
+                    match classes.last_mut() {
+                        Some((last, by_option)) if *last == d => by_option.push((o, class_name)),
+                        _ => classes.push((d, vec![(o, class_name)])),
+                    }
+                }
+
+                let mut expr = "\"\"".to_string();
+                let mut tests: Vec<String> = Vec::new();
+                for (d, by_option) in &classes {
+                    let dimension = &dimensions[*d];
+                    let class_of = |option: usize| {
+                        by_option
+                            .iter()
+                            .find(|(o, _)| *o == option)
+                            .map(|(_, class_name)| class_name.clone())
+                    };
+                    match dimension.kind {
+                        DimKind::Const => {
+                            if let Some(class_name) = class_of(0) {
+                                expr = class_name;
+                                tests.clear();
                             }
                         }
+                        DimKind::Std => {
+                            let truthy = class_of(1).unwrap_or_else(|| expr.clone());
+                            let falsy = class_of(0).unwrap_or_else(|| expr.clone());
+                            if truthy == falsy {
+                                expr = truthy;
+                            } else {
+                                expr = format!("({} ? {truthy} : {falsy})", dimension.test_expr);
+                                tests.push(dimension.test_expr.clone());
+                            }
+                        }
+                        DimKind::Var => {
+                            tests.push(dimension.test_expr.clone());
+                            let entries: Vec<(String, String)> = by_option
+                                .iter()
+                                .map(|(o, class_name)| {
+                                    (dimension.options[*o].0.clone(), class_name.clone())
+                                })
+                                .collect();
+                            expr = format!(
+                                "({}[{}] ?? {expr})",
+                                lookup_table(&entries),
+                                dimension.test_expr
+                            );
+                        }
                     }
-                    keys
-                })
+                }
+                tests.pop();
+                skippable.extend(tests);
+                if expr != "\"\"" {
+                    class_parts.push(expr);
+                }
+            }
+        }
+
+        if !bound.is_empty() {
+            let parts = class_parts.split_off(bound_from);
+            let params: Vec<String> = (0..bound.len())
+                .map(|index| format!("__plumeria{index}"))
                 .collect();
-            let mut parent: Vec<usize> = (0..dimensions.len()).collect();
-            fn find(parent: &mut Vec<usize>, index: usize) -> usize {
-                if parent[index] == index {
-                    return index;
-                }
-                let root = find(parent, parent[index]);
-                parent[index] = root;
-                root
-            }
-            let mut owner_by_key: FxHashMap<String, usize> = FxHashMap::default();
-            for (index, keys) in dimension_keys.iter().enumerate() {
-                let mut sorted: Vec<&String> = keys.iter().collect();
-                sorted.sort();
-                for key in sorted {
-                    match owner_by_key.get(key) {
-                        None => {
-                            owner_by_key.insert(key.clone(), index);
-                        }
-                        Some(owner) => {
-                            let a = find(&mut parent, *owner);
-                            let b = find(&mut parent, index);
-                            if a != b {
-                                parent[b] = a;
-                            }
-                        }
-                    }
-                }
-            }
-            let mut components: IndexMap<usize, Vec<usize>, FxBuildHasher> = IndexMap::default();
-            for index in 0..dimensions.len() {
-                let root = find(&mut parent, index);
-                components.entry(root).or_default().push(index);
-            }
-            let mut groups: Vec<Vec<usize>> = components.into_values().collect();
-            groups.sort_by_key(|group| group[0]);
-
-            for indexes in groups {
-                let variables = indexes
+            let body = if parts.is_empty() {
+                "\"\"".to_string()
+            } else {
+                parts.join(" + \" \" + ")
+            };
+            let uses = param_uses(&body);
+            let inline = uses.len() == bound.len()
+                && uses.iter().enumerate().all(|(index, use_)| *use_ == index)
+                && uses
                     .iter()
-                    .filter(|index| dimensions[**index].kind != DimKind::Const)
-                    .count();
-                let joined = variables > 1;
-                for index in &indexes {
-                    let dimension = &mut dimensions[*index];
-                    if !joined || dimension.kind != DimKind::Var || !dimension.own_keys {
-                        continue;
-                    }
-                    let mut numbers = Object::new();
-                    for (position, option) in dimension.options.iter_mut().enumerate() {
-                        numbers.insert(option.0.clone(), Value::Str(position.to_string()));
-                        option.0 = position.to_string();
-                    }
-                    dimension.test_expr = format!(
-                        "({}[{}] || \"\")",
-                        crate::js::json::stringify_object(&numbers),
-                        dimension.test_expr
-                    );
-                }
-                let dims: Vec<Dimension> = indexes
-                    .iter()
-                    .map(|index| dimensions[*index].clone())
-                    .collect();
-                let mut results = Object::new();
-                self.recurse_dimensions(
-                    &dims,
-                    0,
-                    Object::new(),
-                    Vec::new(),
-                    &state_weights,
-                    &mut results,
-                );
-
-                if variables == 0 {
-                    if let Some(Value::Str(only)) = results.get("")
-                        && !only.is_empty()
-                    {
-                        class_parts.push(quote(only));
-                    }
-                    continue;
-                }
-
-                let mut component_keys: FxHashSet<String> = FxHashSet::default();
-                for index in &indexes {
-                    component_keys.extend(dimension_keys[*index].iter().cloned());
-                }
-                let mut component_base = Object::new();
-                for (key, value) in base_conflict.iter() {
-                    if component_keys.contains(key) {
-                        component_base.insert(key, value.clone());
-                    }
-                }
-                let base_conflict_class = if component_base.is_empty() {
-                    String::new()
-                } else {
-                    self.process_class(&component_base, &state_weights)
-                };
-                let master_key = dims
-                    .iter()
-                    .filter(|dimension| dimension.kind != DimKind::Const)
-                    .map(|dimension| {
-                        if dimension.kind == DimKind::Std {
-                            format!("({} ? \"1\" : \"0\")", dimension.test_expr)
-                        } else if dimension.test_expr.is_empty() {
-                            "\"\"".to_string()
-                        } else {
-                            dimension.test_expr.clone()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" + \"__\" + ");
-                let fallback = if base_conflict_class.is_empty() {
-                    "\"\"".to_string()
-                } else {
-                    quote(&base_conflict_class)
-                };
+                    .all(|use_| !skippable.contains(&format!("__plumeria{use_}")));
+            if inline {
+                class_parts.extend(parts.iter().map(|part| inline_params(part, &bound)));
+            } else {
                 class_parts.push(format!(
-                    "({}[{master_key}] || {fallback})",
-                    crate::js::json::stringify_object(&results)
+                    "(({}) => {body})({})",
+                    params.join(", "),
+                    bound.join(", ")
                 ));
             }
         }
@@ -1094,33 +1268,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             dynamic_vars,
             prop_var_spreads,
         })
-    }
-
-    fn recurse_dimensions(
-        &mut self,
-        dims: &[Dimension],
-        index: usize,
-        current: Object,
-        key_parts: Vec<String>,
-        weights: &Weights,
-        results: &mut Object,
-    ) {
-        if index >= dims.len() {
-            let class_name = self.process_class(&current, weights);
-            if !class_name.is_empty() {
-                results.insert(key_parts.join("__"), Value::Str(class_name));
-            }
-            return;
-        }
-        let dimension = &dims[index];
-        for (value, style) in &dimension.options {
-            let merged = deep_merge(&current, style);
-            let mut parts = key_parts.clone();
-            if dimension.kind != DimKind::Const {
-                parts.push(value.clone());
-            }
-            self.recurse_dimensions(dims, index + 1, merged, parts, weights, results);
-        }
     }
 
     pub fn resolve_create_object(&self, var_name: &str) -> Option<Object> {
@@ -1378,7 +1525,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     falsy: Object::new(),
                     group_id: None,
                     value_name: None,
-                    own_keys: false,
                     order: builder.source_order,
                 });
             }
@@ -1400,7 +1546,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             falsy: false_style,
                             group_id: None,
                             value_name: None,
-                            own_keys: false,
                             order: builder.source_order,
                         });
                         builder.source_order += 1;
@@ -1617,7 +1762,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 falsy: Object::new(),
                 group_id: Some(group_id),
                 value_name: Some(value_name),
-                own_keys: false,
                 order: current_order,
             });
         };
