@@ -1,5 +1,11 @@
 # @plumeria/utils
 
+## 22.2.3
+
+### Patch Changes
+
+- db2ffbf: Bump version to 22.2.3
+
 ## 22.2.2
 
 ### Patch Changes

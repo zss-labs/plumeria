@@ -1,5 +1,11 @@
 # Release Notes
 
+## 22.2.3 (Nov 21, 2026)
+
+- Feat: Add the `use-to-prop` codemod to migrate `className={css.use(...)}` to the styling prop.
+
+- Feat: Expose style objects in compiler scan results and detect order-dependent overlaps between styles composed across modules.
+
 ## 22.2.2 (Nov 20, 2026)
 
 - Perf: Emit static class names as JSX string attributes.
