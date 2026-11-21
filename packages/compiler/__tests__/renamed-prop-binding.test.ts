@@ -99,7 +99,7 @@ export const Parent = () => (
       await run(PARENT);
       const code = await run(RENAMED_APPLY);
       const table: Record<string, string> = JSON.parse(
-        code.match(/\{("\w+":"[\w ]+",?)+\}/)![0],
+        `{${code.match(/\{__proto__:null,((?:"\w+":"[\w ]+",?)+)\}/)![1]}}`,
       );
       expect(Object.values(table).map(norm)).toEqual([classesOf(RED)]);
     });
