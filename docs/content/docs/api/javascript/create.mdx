@@ -176,7 +176,7 @@ The condition can sit inside the brackets or around them. Both compile to a sing
 
 **Compiled:**
 ```js
-({"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}[isLarge ? keyA : keyB] || "")
+({__proto__:null,"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}[isLarge ? keyA : keyB] || "")
 ```
 
 The branches of a condition are mutually exclusive — only one of them ever applies — so the compiler folds the condition into the key expression instead of expanding a combination per branch.
@@ -209,29 +209,19 @@ When both keys are literals, read the property directly. A condition between two
 
 Properties that do not vary belong in a base style — `styles.base` above — rather than repeated across every key of a variant object.
 
-Anything the variants do not compete for stays outside the decision table, so it is emitted once instead of being multiplied into every combination.
+## How variants are compiled [#zero-runtime-logic]
 
-## Zero-runtime logic
+The compiler precomputes the class names. At render time, the generated JavaScript selects the classes for the current variant keys.
 
-Variants, dynamic props and conditional expressions are all resolved at compile time. Nothing merges objects or concatenates class strings in the browser, as many CSS-in-JS libraries do at every render.
+### Lookup entries per property
 
-### 1. Only conflicting axes are multiplied
+For `sx={[theme[tone], state[status]]}`, suppose each variant has three options and all six options set `color`. The compiler emits three entries for each variant, six in total. The lookup for `state` takes priority because it comes last. If the selected state supplies no color, the expression falls back to the theme color.
 
-The compiler builds a **property conflict graph** across the styles an element can receive, then expands only the axes that actually collide.
+Properties set by the same options in the same order share a priority chain. If the theme also sets `fontSize` and a third variant overrides it, font size has its own chain. Theme keys can then appear in both chains. Count the entries in each chain and add them together. The compiler never needs a row for every combination of variant keys.
 
-- **Independent axes** — a `size` and a `theme` object touching entirely different properties — stay separate lookups. Two axes of three options cost `3 + 3` entries.
-- **Conflicting axes** — two objects that both set `color`, say — are grouped, and only that group becomes a combined decision table. The same two axes now cost `3 × 3`.
-- **Mutually exclusive branches** — the arms of a `?:` or `&&` — are never a product at all. Only one arm applies, so they share one table keyed by which arm won.
+### Runtime selection
 
-Grouping is per conflict, not per element. Two objects competing for `color` and two more competing for `fontSize` are two groups on the same element, costing `3 × 3` plus `3 × 3` rather than one table of `3 × 3 × 3 × 3`.
-
-It is also transitive, because overriding is: an object that sets both `color` and `fontSize` sits between those two groups and folds them into one, which is the answer that table has to give.
-
-The output is therefore bound by the element's local axes of *conflict*, not by how many styles are in play. Stacking variants that never touch the same property stays additive however many you add.
-
-### 2. Constant $O(1)$ runtime cost
-
-Whatever the table grows to is paid at build time. At runtime the browser reads a single entry from a flat, fully pre-computed object in $O(1)$ — no object allocation, no string building, and nothing for the garbage collector to reclaim.
+A match in the last variant can resolve a chain in one lookup. If several variants omit the property, selection can reach the first variant. The worst-case number of lookups for a property therefore grows with the length of its chain. The generated expression combines the selected class names.
 
 <Callout title="Atomic static API">
   An atomic class is emitted once and reused wherever the same declaration appears, so the stylesheet grows with the number of distinct declarations, not with the number of components. The compiler also removes the imports.
