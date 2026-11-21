@@ -48,11 +48,7 @@ export default function App({ active }) {
 
 ```tsx
 <div
-  className={
-    'xhrr6ses xhxthtyw' +
-    ' ' +
-    ({ '0': 'xuifcaas', '1': 'xvbwmxqp' }[active ? '1' : '0'] || 'xuifcaas')
-  }
+  className={'xhrr6ses xhxthtyw' + ' ' + (active ? 'xvbwmxqp' : 'xuifcaas')}
   style={{ '--xfuma1qq-value': scale }}
 />
 ```
