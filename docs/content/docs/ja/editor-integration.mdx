@@ -34,6 +34,25 @@ VS Code で `s` を `sx={}` に展開できるスニペットを追加します�
 エディターの ESLint 拡張機能を有効にすると、[@plumeria/eslint-plugin](/ja/docs/api/plugins/eslint-plugin) が入力中にスタイルの問題を知らせます。[インストール手順](/ja/docs/installation#eslint-を設定する)の設定を追加してください。対象のルールは[プラグインのリファレンス](/ja/docs/api/plugins/eslint-plugin)にあります。
 </Step>
 <Step>
+## コミット前のチェック
+
+ビルドは警告でも止まります。並び順がずれたままコミットすると CI で失敗し、直すためのコミットがもう一つ必要になります。Git フックを使えば、コミットの前に止められます。
+
+```sh title=".githooks/pre-commit"
+#!/bin/sh
+staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx)$' || true)
+[ -z "$staged" ] && exit 0
+echo "$staged" | xargs npx plumeria-lint
+```
+
+```sh title="Terminal"
+chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+```
+
+`plumeria-lint` は ESLint プラグインに含まれ、ESLint と oxlint のどちらを使っていても、ビルドと同じルールでチェックします。並び順と書き方は `--fix` で直してから、もう一度ステージしてください。
+</Step>
+<Step>
 ## 定義に移動する
 
 macOS では `Cmd` を、Windows と Linux では `Ctrl` を押しながらスタイル名をクリックすると、定義に移動できます。JSX の外でも使えます。
