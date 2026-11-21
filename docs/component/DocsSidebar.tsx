@@ -6,6 +6,7 @@ import { Fragment } from 'react';
 import type { Node, Root } from 'fumadocs-core/page-tree';
 import { MenuAutoClose } from 'component/MenuAutoClose';
 import { ExternalIcon } from 'component/ExternalIcon';
+import { PageSwitch } from '../src/playground/switch';
 import { breakpoints } from 'lib/mediaQuery';
 import { homeTheme } from 'lib/theme';
 
@@ -152,6 +153,25 @@ const styles = css.create({
   },
 });
 
+function Chevron() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      sx={styles.chevron}
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
 // Separators are written in capitals in meta.json.
 export const sectionName = (name: string) =>
   name
@@ -263,7 +283,8 @@ function Items({ nodes, path, depth = 0 }: { nodes: Node[]; path: string; depth?
 
 export function DocsSidebar({ tree }: { tree: Root }) {
   const path = useRouter().path.replace(/\/$/, '') || '/';
-  const crumbs = trailOf(tree.children, path);
+  const playground = path === '/playground' || path.startsWith('/playground/');
+  const crumbs = playground ? [SECTIONS.playground] : trailOf(tree.children, path);
 
   return (
     <>
@@ -285,25 +306,16 @@ export function DocsSidebar({ tree }: { tree: Root }) {
         <nav aria-label="Breadcrumb" sx={styles.trail}>
           {crumbs.map((crumb, index) => (
             <Fragment key={index}>
-              {index > 0 && (
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  sx={styles.chevron}
-                >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              )}
-              <span sx={index === crumbs.length - 1 ? styles.current : styles.parent}>{crumb}</span>
+              {index > 0 && <Chevron />}
+              <span sx={index === crumbs.length - 1 && !playground ? styles.current : styles.parent}>{crumb}</span>
             </Fragment>
           ))}
+          {playground && (
+            <>
+              <Chevron />
+              <PageSwitch current={path === '/playground/migrate' ? 'migrate' : 'compile'} subnav />
+            </>
+          )}
         </nav>
       </div>
       <aside id="docs-sidebar" popover="auto" aria-label="Docs" sx={styles.sidebar}>
