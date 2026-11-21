@@ -29,7 +29,7 @@ export const Footer = () => <p sx={styles.text}>MyText</p>;
 ビルドすると import と `css.create()` の呼び出しが消え、スタイルの宣言は生成された CSS ファイルに移ります。
 
 ```tsx title="Output"
-export const Footer = () => <p className={"xqqbxt1d xuifcaas"}>MyText</p>;
+export const Footer = () => <p className="xqqbxt1d xuifcaas">MyText</p>;
 ```
 
 ```css title="Generated CSS"
@@ -62,8 +62,8 @@ export const Item = ({ isActive }: { isActive: boolean }) => (
 上書きされた値のクラスは要素に付きません。
 
 ```html title="Output"
-<p class="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
-<p class="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
+<p className="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
+<p className="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
 ```
 
 一括指定と個別指定が重なる場合は例外です。どちらを先に書いても、重なった部分には個別指定が効きます。各組み合わせは[スタイルの優先順位](/ja/docs/specificity)、重ね合わせの数学的な規則は[スタイルを重ねる規則](/ja/docs/composition-laws)を参照してください。
