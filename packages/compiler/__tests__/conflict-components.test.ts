@@ -136,6 +136,41 @@ const bridge = css.create({
       expect(reads).toBe(1);
     });
 
+    it.each([
+      { gate: false, branch: true, expected: '', reads: ['gate'] },
+      { gate: true, branch: true, expected: 'a.a0', reads: ['gate', 'branch'] },
+      {
+        gate: true,
+        branch: false,
+        expected: 'b.b0',
+        reads: ['gate', 'branch'],
+      },
+    ])(
+      'short-circuits a nested decision ($gate, $branch)',
+      async ({ gate, branch, expected, reads }) => {
+        const seen: string[] = [];
+        const expr = await classExpr('[ka.on && (kb.on ? a.a0 : b.b0)]');
+        const result = evaluate(expr, {
+          ka: {
+            get on() {
+              seen.push('gate');
+              return gate;
+            },
+          },
+          kb: {
+            get on() {
+              seen.push('branch');
+              return branch;
+            },
+          },
+        });
+        expect(seen).toEqual(reads);
+        expect(result).toBe(
+          expected ? evaluate(await classExpr(expected), {}) : '',
+        );
+      },
+    );
+
     it('keeps a variant named __proto__', async () => {
       const result = await transformSource(
         env(
