@@ -169,6 +169,7 @@ interface StyleConditional {
   valueName?: string;
   varName?: string;
   order?: number;
+  closed?: boolean;
 }
 
 const unwrapExport = (node: any): any => {
@@ -2363,6 +2364,7 @@ export const transformSource = async (
             groupName: undefined,
             valueName: value,
             varName: undefined,
+            closed: !decision.hasGroup,
           }),
         );
         continue;
@@ -2411,8 +2413,8 @@ export const transformSource = async (
         !code.replace(/[=!]==?|[<>]=/g, '').includes('=')
       );
     };
-    const lookupTable = (entries: Array<[string, string]>) =>
-      `{__proto__:null,${entries
+    const lookupTable = (entries: Array<[string, string]>, closed = false) =>
+      `{${closed ? '' : '__proto__:null,'}${entries
         .map(
           ([key, value]) =>
             `${key === '__proto__' ? '["__proto__"]' : JSON.stringify(key)}:${value}`,
@@ -2575,6 +2577,7 @@ export const transformSource = async (
       if (Object.keys(lookupMap).length > 0) {
         const table = lookupTable(
           Object.entries(lookupMap).map(([k, v]) => [k, JSON.stringify(v)]),
+          options[0].closed,
         );
         classParts.push(`(${table}[${commonTestExpr}] || "")`);
       }
@@ -2592,6 +2595,7 @@ export const transformSource = async (
           label: string;
         }>;
         testExpr?: string;
+        closed?: boolean;
       }
       const ordered: Array<{ order: number; dimension: Dimension }> = [];
 
@@ -2655,6 +2659,7 @@ export const transformSource = async (
               style: opt.truthy,
               label: opt.valueName || 'default',
             })),
+            closed: opts[0].closed,
           },
         });
       });
@@ -2746,6 +2751,7 @@ export const transformSource = async (
                 String(dim.options[o].value),
                 className,
               ]),
+              dim.closed,
             );
             expr = `(${table}[${dim.testExpr}] ?? ${expr})`;
           }
