@@ -1,3 +1,12 @@
+## 22.2.3
+
+### Patch Changes
+
+- db2ffbf: - Feat: Add the `use-to-prop` codemod to migrate `className={css.use(...)}` to the styling prop.
+  - Feat: Expose style objects in compiler scan results and detect order-dependent overlaps between styles composed across modules.
+- Updated dependencies [db2ffbf]
+  - @plumeria/compiler@22.2.3
+
 ## 22.2.2
 
 ### Patch Changes

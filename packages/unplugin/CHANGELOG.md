@@ -1,5 +1,14 @@
 # @plumeria/unplugin
 
+## 22.2.3
+
+### Patch Changes
+
+- db2ffbf: Bump version to 22.2.3
+- Updated dependencies [db2ffbf]
+  - @plumeria/compiler@22.2.3
+  - @plumeria/eslint-plugin@22.2.3
+
 ## 22.2.2
 
 ### Patch Changes
