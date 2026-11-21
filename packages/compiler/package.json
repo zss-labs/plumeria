@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/compiler",
-  "version": "22.2.3",
+  "version": "22.2.4",
   "description": "Plumeria rust based compiler for statically extracting css",
   "author": "zss-labs",
   "license": "MIT",

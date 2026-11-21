@@ -1,5 +1,17 @@
 # Release Notes
 
+## 22.2.4 (Nov 21, 2026)
+
+- Perf: Resolve conflicting styles with one priority chain per property instead of a table over every combination of conditions.
+
+- Perf: Omit the null prototype from decision tables whose keys only come from the compiler.
+
+- Fix: Evaluate each condition once and in argument order when it feeds several chains.
+
+- Fix: Read the gate of a ternary nested inside `&&` once.
+
+- Fix: Fall back past unregistered keys such as `constructor` and keep a variant named `__proto__` in lookup tables.
+
 ## 22.2.3 (Nov 21, 2026)
 
 - Feat: Add the `use-to-prop` codemod to migrate `className={css.use(...)}` to the styling prop.
