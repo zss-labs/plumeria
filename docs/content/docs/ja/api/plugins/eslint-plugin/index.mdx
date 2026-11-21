@@ -53,7 +53,7 @@ export const styles = css.create({
 | `no-invalid-selector` | エラー | コンパイラが扱えないセレクターや入れ子の順序 |
 | `no-mixed-styling-props` | エラー | 同じ要素でのスタイル用 prop と `className` または `style` の併用 |
 | `no-mutable-binding` | 警告 | スタイル定義の中の `let` や `var` |
-| `no-order-dependent-overlap` | 警告 | 一つのスタイルの中で、記述順だけで結果が決まる二つの指定 |
+| `no-order-dependent-overlap` | 警告 | 一つのスタイルの中、または一つのスタイリング prop で重ねたスタイルの間で、記述順だけで結果が決まる二つの指定 |
 | `no-style-prop-relay` | エラー | 受け取って別のコンポーネントに渡すだけのスタイル用 prop |
 | `no-unknown-css-properties` | エラー | CSS に存在しないプロパティ |
 | `no-unused-keys` | 警告 | 同じコンポーネントファイルのどこからも読まれていないキー |
