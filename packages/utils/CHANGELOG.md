@@ -1,5 +1,11 @@
 # @plumeria/utils
 
+## 22.2.5
+
+### Patch Changes
+
+- ae33979: Bump version to 22.2.5
+
 ## 22.2.4
 
 ### Patch Changes
