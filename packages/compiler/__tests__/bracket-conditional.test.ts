@@ -82,7 +82,7 @@ ${body}
         `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div sx={on ? s[k] : s['p3']} />;`,
       );
       expect(out).toContain(
-        `{"p1":"x3git8yv","p3":"xxcejlqg","#0":"xxcejlqg"}[((on) ? k : "#0")]`,
+        `{__proto__:null,"p1":"x3git8yv","p3":"xxcejlqg","#0":"xxcejlqg"}[((on) ? k : "#0")]`,
       );
     });
 
@@ -91,7 +91,7 @@ ${body}
         `export const A = ({ on, k }: { on: boolean; k: 'p1' | 'p3' }) => <div sx={on && s[k]} />;`,
       );
       expect(out).toContain(
-        `{"p1":"x3git8yv","p3":"xxcejlqg"}[((on) ? k : "")]`,
+        `{__proto__:null,"p1":"x3git8yv","p3":"xxcejlqg"}[((on) ? k : "")]`,
       );
     });
 
