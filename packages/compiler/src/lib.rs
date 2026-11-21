@@ -223,6 +223,7 @@ pub struct PropEntry {
 #[napi(object)]
 pub struct ScanSummary {
     pub create_hash_table: std::collections::HashMap<String, String>,
+    pub create_object_table: std::collections::HashMap<String, serde_json::Value>,
     pub component_props_table:
         std::collections::HashMap<String, std::collections::HashMap<String, Vec<PropEntry>>>,
 }
@@ -237,6 +238,12 @@ pub fn scan_all(cwd: Option<String>, style_prop: Option<String>) -> Result<ScanS
         .create_hash
         .iter()
         .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let create_object_table = project
+        .tables
+        .create_obj
+        .iter()
+        .map(|(hash, object)| (hash.clone(), to_json(object)))
         .collect();
     let component_props_table = project
         .tables
@@ -264,6 +271,7 @@ pub fn scan_all(cwd: Option<String>, style_prop: Option<String>) -> Result<ScanS
         .collect();
     Ok(ScanSummary {
         create_hash_table,
+        create_object_table,
         component_props_table,
     })
 }
