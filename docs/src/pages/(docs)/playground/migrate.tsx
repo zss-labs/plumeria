@@ -5,7 +5,7 @@ export default function Page() {
   return (
     <>
       <Seo
-        title="Migrate"
+        title="Playground | Migrate"
         subtitle="Rewrite styled-components, Emotion, CSS Modules, Tailwind CSS, vanilla-extract or StyleX code as Plumeria in the browser."
         path="/playground/migrate"
       />
