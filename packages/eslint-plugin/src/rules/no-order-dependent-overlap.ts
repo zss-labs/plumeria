@@ -18,9 +18,12 @@ import {
   isStateSelector,
 } from '../util/selector';
 import type { ObjectExpression, Property, ImportSpecifier } from 'estree';
-import type { Rule } from 'eslint';
+import type { Rule, Scope } from 'eslint';
+import { resolveExport, resolveImportPath } from '@plumeria/compiler';
 import { styleObjectFromValue } from '../util/styleObject';
 import { staticValueResolver } from '../util/staticValue';
+import { scanTables } from '../util/scan';
+import { resolveStyleProp, stylePropSchema } from '../util/style-prop';
 
 type ConditionalRange = NonNullable<ReturnType<typeof parseConditionalRange>>;
 
@@ -100,6 +103,73 @@ const overlapOf = (first: string, second: string): Overlap => {
   return depthOf(first) === depthOf(second) ? 'crossing' : null;
 };
 
+type StyleValue = { [key: string]: unknown };
+
+interface Declaration {
+  context: string[];
+  property: string;
+}
+
+const isCondition = (key: string) =>
+  key.startsWith('@media') || key.startsWith('@container');
+
+const declarationsOf = (
+  style: StyleValue,
+  context: string[] = [],
+  found: Declaration[] = [],
+): Declaration[] => {
+  for (const [key, value] of Object.entries(style)) {
+    if (value !== null && typeof value === 'object') {
+      declarationsOf(value as StyleValue, [...context, key], found);
+    } else if (!key.startsWith('--')) {
+      found.push({ context, property: camelToKebabCase(key) });
+    }
+  }
+  return found;
+};
+
+const sameContext = (a: string[], b: string[], skip = -1) =>
+  a.length === b.length &&
+  a.every((key, index) => index === skip || key === b[index]);
+
+type ComposedOverlap =
+  | { kind: 'property'; first: string; second: string }
+  | { kind: 'condition'; first: string; second: string; property: string };
+
+const composedOverlap = (
+  left: Declaration[],
+  right: Declaration[],
+): ComposedOverlap | null => {
+  for (const a of left) {
+    for (const b of right) {
+      if (sameContext(a.context, b.context)) {
+        if (a.property !== b.property && overlapOf(a.property, b.property)) {
+          return { kind: 'property', first: a.property, second: b.property };
+        }
+        continue;
+      }
+      const split = a.context.findIndex(
+        (key, index) => key !== b.context[index],
+      );
+      const [first, second] = [a.context[split], b.context[split]];
+      if (
+        first === undefined ||
+        second === undefined ||
+        !isCondition(first) ||
+        !isCondition(second) ||
+        !sameContext(a.context, b.context, split) ||
+        !crossesCondition(first, second)
+      ) {
+        continue;
+      }
+      if (a.property === b.property || overlapOf(a.property, b.property)) {
+        return { kind: 'condition', first, second, property: b.property };
+      }
+    }
+  }
+  return null;
+};
+
 export const noOrderDependentOverlap: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -119,18 +189,235 @@ export const noOrderDependentOverlap: Rule.RuleModule = {
         "'{{ narrow }}' matches only where '{{ broad }}' also matches, so it is the more specific of the two, and both set '{{ property }}'. Written first, it reads as though the broader one wins, which is the opposite of what the stylesheet does.",
       state:
         "'{{ first }}' and '{{ second }}' can match at the same time and both set '{{ property }}', but neither outranks the other, so the result depends on the order they are written. Declare '{{ compound }}' if the intersection has a value of its own, or split them into separate styles and compose them in the order that should win.",
+      composedProperty:
+        "'{{ first }}' in '{{ left }}' and '{{ second }}' in '{{ right }}' overlap, but neither property outranks the other. Composed here, the order the bundler emits them decides, not the order of this array.",
+      composedCondition:
+        "'{{ first }}' in '{{ left }}' and '{{ second }}' in '{{ right }}' can match at the same time, and neither contains the other. Composed here, the order the bundler emits them decides which one sets '{{ property }}' where both match, not the order of this array.",
       keep: "Keep '{{ keep }}'",
       swap: "Write '{{ narrow }}' after '{{ broad }}'",
     },
-    schema: [],
+    schema: stylePropSchema,
   },
 
   create(context) {
     const plumeriaAliases: Record<string, string> = {};
     const sourceCode = context.sourceCode;
     const staticValue = staticValueResolver(context);
+    const styleProp = resolveStyleProp(context);
+    const filename = context.filename;
+
+    const findVariable = (scope: Scope.Scope | null, name: string) => {
+      for (let current = scope; current; current = current.upper) {
+        const variable = current.set.get(name);
+        if (variable) return variable;
+      }
+      return undefined;
+    };
+
+    const isCreateCall = (node: any): boolean => {
+      if (node?.type !== 'CallExpression') return false;
+      const callee = node.callee;
+      if (callee.type === 'Identifier') {
+        return plumeriaAliases[callee.name] === 'create';
+      }
+      return (
+        callee.type === 'MemberExpression' &&
+        callee.object.type === 'Identifier' &&
+        plumeriaAliases[callee.object.name] === 'NAMESPACE' &&
+        !callee.computed &&
+        callee.property.type === 'Identifier' &&
+        callee.property.name === 'create'
+      );
+    };
+
+    const createKeyOf = (node: any, member?: string): string | null => {
+      const variable = findVariable(sourceCode.getScope(node), node.name);
+      const definition = variable?.defs[0];
+      if (!definition) return null;
+      if (definition.type === 'Variable') {
+        return variable.scope.type === 'module' &&
+          definition.node.id.type === 'Identifier' &&
+          isCreateCall(definition.node.init)
+          ? `${filename}-${definition.node.id.name}`
+          : null;
+      }
+      if (definition.type !== 'ImportBinding') return null;
+      const specifier = definition.node as any;
+      const exportName =
+        specifier.type === 'ImportNamespaceSpecifier'
+          ? member
+          : specifier.type === 'ImportDefaultSpecifier'
+            ? 'default'
+            : specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : String(specifier.imported.value);
+      if (!exportName) return null;
+      const actualPath = resolveImportPath(
+        String((definition.parent as any).source.value),
+        filename,
+      );
+      if (!actualPath) return null;
+      const resolved = resolveExport(actualPath, exportName);
+      return resolved ? `${resolved.filePath}-${resolved.localName}` : null;
+    };
+
+    const memberName = (node: any): string | null | undefined => {
+      if (!node.computed) {
+        return node.property.type === 'Identifier' ? node.property.name : null;
+      }
+      const value = staticValue(node.property);
+      return typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : undefined;
+    };
+
+    type Guard = { test: string | null; negated: boolean };
+    type Choice = { key: string; value: string };
+    type Composed = {
+      label: string;
+      style: StyleValue;
+      guards: Guard[];
+      choices: Choice[];
+    };
+
+    const apart = (left: Composed, right: Composed) =>
+      exclusive(left.guards, right.guards) ||
+      left.choices.some((a) =>
+        right.choices.some((b) => a.key === b.key && a.value !== b.value),
+      );
+
+    const isStable = (node: any): boolean => {
+      if (node.type !== 'Identifier') return false;
+      const variable = findVariable(sourceCode.getScope(node), node.name);
+      return (
+        variable !== undefined &&
+        variable.defs.length > 0 &&
+        variable.defs.every(
+          (definition) => definition.type !== 'ImportBinding',
+        ) &&
+        variable.references.every(
+          (reference) => !reference.isWrite() || reference.init === true,
+        )
+      );
+    };
+
+    const guardOf = (test: any, negated: boolean): Guard =>
+      test.type === 'UnaryExpression' && test.operator === '!'
+        ? guardOf(test.argument, !negated)
+        : { test: isStable(test) ? sourceCode.getText(test) : null, negated };
+
+    const exclusive = (left: Guard[], right: Guard[]) =>
+      left.some((a) =>
+        right.some(
+          (b) =>
+            a.test !== null && a.test === b.test && a.negated !== b.negated,
+        ),
+      );
+
+    const stylesOf = (node: any, guards: Guard[] = []): Composed[] => {
+      if (!node) return [];
+      if (node.type === 'LogicalExpression') {
+        return node.operator === '&&'
+          ? stylesOf(node.right, [...guards, guardOf(node.left, false)])
+          : [...stylesOf(node.left, guards), ...stylesOf(node.right, guards)];
+      }
+      if (node.type === 'ConditionalExpression') {
+        return [
+          ...stylesOf(node.consequent, [...guards, guardOf(node.test, false)]),
+          ...stylesOf(node.alternate, [...guards, guardOf(node.test, true)]),
+        ];
+      }
+      if (node.type !== 'MemberExpression') return [];
+
+      let root = node.object;
+      let namespaceMember: string | undefined;
+      if (
+        root.type === 'MemberExpression' &&
+        root.object.type === 'Identifier'
+      ) {
+        const name = memberName(root);
+        if (!name) return [];
+        namespaceMember = name;
+        root = root.object;
+      }
+      if (root.type !== 'Identifier') return [];
+
+      const key = createKeyOf(root, namespaceMember);
+      if (!key) return [];
+      const tables = scanTables(context.cwd, styleProp);
+      const hash = tables.createHashTable[key];
+      const created = hash
+        ? (tables.createObjectTable[hash] as StyleValue | undefined)
+        : undefined;
+      if (!created) return [];
+
+      const name = memberName(node);
+      if (name === null) return [];
+      const names = name === undefined ? Object.keys(created) : [name];
+      const choiceKey =
+        name === undefined && isStable(node.property)
+          ? sourceCode.getText(node.property)
+          : null;
+      return names.flatMap((option) => {
+        const style = created[option];
+        return style !== null && typeof style === 'object'
+          ? [
+              {
+                label: sourceCode.getText(node),
+                style: style as StyleValue,
+                guards,
+                choices:
+                  choiceKey === null ? [] : [{ key: choiceKey, value: option }],
+              },
+            ]
+          : [];
+      });
+    };
+
+    function checkComposition(elements: any[]) {
+      const composed = elements.map((element) =>
+        stylesOf(element).map((entry) => ({
+          ...entry,
+          declarations: declarationsOf(entry.style),
+        })),
+      );
+      for (let i = 0; i < composed.length; i++) {
+        for (let j = i + 1; j < composed.length; j++) {
+          for (const left of composed[i]) {
+            for (const right of composed[j]) {
+              if (apart(left, right)) continue;
+              const overlap = composedOverlap(
+                left.declarations,
+                right.declarations,
+              );
+              if (!overlap) continue;
+              context.report({
+                node: elements[j],
+                messageId:
+                  overlap.kind === 'property'
+                    ? 'composedProperty'
+                    : 'composedCondition',
+                data: { ...overlap, left: left.label, right: right.label },
+              });
+              return;
+            }
+          }
+        }
+      }
+    }
 
     return {
+      JSXAttribute(node: any) {
+        if (node.name.type !== 'JSXIdentifier' || node.name.name !== styleProp)
+          return;
+        const expression = node.value?.expression;
+        if (expression?.type !== 'ArrayExpression') return;
+        const elements = expression.elements.filter(
+          (element: any) => element && element.type !== 'SpreadElement',
+        );
+        if (elements.length < 2) return;
+        checkComposition(elements);
+      },
       ImportDeclaration(node) {
         if (node.source.value === '@plumeria/core') {
           node.specifiers.forEach((specifier) => {
