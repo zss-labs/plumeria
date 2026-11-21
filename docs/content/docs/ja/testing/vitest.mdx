@@ -21,7 +21,7 @@ export default defineConfig({
 プラグインがコンポーネントを変換するので、DOM に届く時点ではスタイル用 prop はクラス名に変わっています。
 
 ```html
-<h1 class="xvdv6o3r xggb8uiu xvazecna">Vite + React</h1>
+<h1 className="xvdv6o3r xggb8uiu xvazecna">Vite + React</h1>
 ```
 
 Next.js プロジェクトでも、`vitest.config.ts` に同じプラグインを追加します。`@plumeria/next-plugin` が動くのは Next.js のバンドラー上だけで、Vitest では実行されないためです。
