@@ -48,9 +48,9 @@ const bridge = css.create({
   };
 
   const tableSizes = (expr: string) =>
-    (expr.match(/\{(?:"[^"]*":"[^"]*",?)+\}/g) ?? [])
-      .map((table) => (table.match(/":"/g) ?? []).length)
-      .filter((size) => size > 2);
+    (expr.match(/\{__proto__:null,(?:"[^"]*":"[^"]*",?)+\}/g) ?? []).map(
+      (table) => (table.match(/":"/g) ?? []).length,
+    );
 
   const norm = (value: string) =>
     value.trim().split(/\s+/).filter(Boolean).sort().join(' ');
@@ -86,27 +86,67 @@ const bridge = css.create({
       [{}],
     );
 
-  describe('transform: the conflict product splits per connected component', () => {
-    it('keeps one table when every group fights over the same property', async () => {
-      expect(tableSizes(await classExpr('[a[ka], b[kb]]'))).toEqual([4]);
+  describe('transform: conflicting styles become one chain per property', () => {
+    it('chains two groups that set the same property', async () => {
+      expect(tableSizes(await classExpr('[a[ka], b[kb]]'))).toEqual([2, 2]);
     });
 
-    it('splits two unrelated pairs into two tables', async () => {
+    it('writes one chain for each pair of unrelated properties', async () => {
       expect(
         tableSizes(await classExpr('[a[ka], b[kb], c[kc], d[kd]]')),
-      ).toEqual([4, 4]);
+      ).toEqual([2, 2, 2, 2]);
     });
 
-    it('rejoins the pairs when a group bridges both properties', async () => {
+    it('repeats a bridging group in each chain instead of multiplying', async () => {
       expect(
         tableSizes(await classExpr('[a[ka], b[kb], c[kc], d[kd], bridge[ke]]')),
-      ).toEqual([32]);
+      ).toEqual([2, 2, 2, 2, 2, 2]);
     });
 
-    it('leaves a lone boolean condition out of an unrelated product', async () => {
+    it('chains a boolean condition without a table', async () => {
       expect(
         tableSizes(await classExpr('[a[ka], b[kb], kc && c.c0, d[kd]]')),
-      ).toEqual([4, 4]);
+      ).toEqual([2, 2, 2]);
+    });
+
+    it.each(['constructor', 'toString', '__proto__'])(
+      'falls back past a key the table does not hold: %s',
+      async (key) => {
+        const lone = await classExpr('[a[ka]]');
+        expect(evaluate(lone, { ka: key })).toBe('');
+        const chained = await classExpr('[a.a0, b[kb]]');
+        expect(evaluate(chained, { kb: key })).toBe(
+          evaluate(await classExpr('[a.a0]'), {}),
+        );
+      },
+    );
+
+    it('reads a property once for every chain it feeds', async () => {
+      let reads = 0;
+      const ka = {
+        get on() {
+          reads++;
+          return true;
+        },
+      };
+      const expr = await classExpr('[ka.on && bridge.e0, kb && a.a0]');
+      expect(evaluate(expr, { ka, kb: false })).toBe(
+        evaluate(await classExpr('[bridge.e0]'), {}),
+      );
+      expect(reads).toBe(1);
+    });
+
+    it('keeps a variant named __proto__', async () => {
+      const result = await transformSource(
+        env(
+          `import * as css from '@plumeria/core';
+const v = css.create({ ["__proto__"]: { color: 'red' }, other: { color: 'blue' } });
+export const A = ({ k }: any) => <div sx={v[k]} />;`,
+          `${DIR}/proto.tsx`,
+        ),
+      );
+      const code = typeof result === 'string' ? result : (result?.code ?? '');
+      expect(code).toContain('["__proto__"]:"xq96bg3w"');
     });
 
     it.each([
