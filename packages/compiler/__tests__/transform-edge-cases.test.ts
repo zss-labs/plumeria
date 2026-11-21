@@ -212,7 +212,7 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
         `export const A = ({ a, b }: any) => <div sx={a ? (b ? s.a : s.b) : s.b} />;`,
       );
       expect(code).toContain(
-        `({"#0":"${RED}","#1":"${PADDING}","#2":"${PADDING}"}[((a) ? ((b) ? "#0" : "#1") : "#2")] || "")`,
+        `({__proto__:null,"#0":"${RED}","#1":"${PADDING}","#2":"${PADDING}"}[((a) ? ((b) ? "#0" : "#1") : "#2")] || "")`,
       );
     });
 
@@ -256,7 +256,7 @@ export const A = () => <Card c={s.b} />;`,
       );
       expect(code).toMatch(
         new RegExp(
-          `\\(\\{"x[a-z0-9]+":"${PADDING}","x[a-z0-9]+":"${RED}"\\}\\[d\\] \\|\\| ""\\)`,
+          `\\(\\{__proto__:null,"x[a-z0-9]+":"${PADDING}","x[a-z0-9]+":"${RED}"\\}\\[d\\] \\|\\| ""\\)`,
         ),
       );
     });
@@ -430,44 +430,62 @@ export const cls = use(s.a);`,
   describe('transform: conditions that set the same property', () => {
     const BLUE = `const t = css.create({ c: { color: 'blue' } });\n`;
 
-    it('looks two conditions up together', async () => {
+    it('checks the later condition before the earlier one', async () => {
       const { code } = await app(
         BLUE +
           `export const A = ({ x, y }: any) => <div sx={[x && s.a, y && t.c]} />;`,
       );
-      expect(code).toMatch(
-        new RegExp(
-          `\\(\\{"0__1":"x[a-z0-9]+","1__0":"${RED}","1__1":"x[a-z0-9]+"\\}\\[\\(\\(x\\) \\? "1" : "0"\\) \\+ "__" \\+ \\(\\(y\\) \\? "1" : "0"\\)\\] \\|\\| ""\\)`,
-        ),
+      expect(code).toContain(
+        `className={((y) ? "xgmn1kmt" : ((x) ? "${RED}" : ""))}`,
       );
     });
 
-    it('looks two comparisons of one name up together', async () => {
+    it('chains two comparisons of one name', async () => {
       const { code } = await app(
         BLUE +
           `export const A = ({ v }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c]} />;`,
       );
       expect(code).toContain(
-        `[((v === 'a') ? "1" : "0") + "__" + ((v === 'c') ? "1" : "0")]`,
+        `((v === 'c') ? "xgmn1kmt" : ((v === 'a') ? "${RED}" : ""))`,
       );
     });
 
-    it('keeps a base the conditions do not touch outside the lookup', async () => {
+    it('writes a base the conditions do not change as one string', async () => {
       const { code } = await app(
         BLUE +
           `export const A = ({ v, on }: any) => <div sx={[s.b, v === 'a' && s.a, v === 'c' && t.c, on && s.b]} />;`,
       );
       expect(code).toContain(
-        `({"0":"${PADDING}","1":"${PADDING}"}[((on) ? "1" : "0")] || "${PADDING}")`,
+        `className={"${PADDING}" + " " + ((v === 'c') ? "xgmn1kmt" : ((v === 'a') ? "${RED}" : ""))}`,
       );
     });
 
-    it('widens the lookup for a third condition', async () => {
+    it('drops conditions a later ternary always overrides', async () => {
       const { code } = await app(
         BLUE +
           `export const A = ({ v, y }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c, y ? s.a : t.c]} />;`,
       );
-      expect(code).toContain(`"1__1__1":"${RED}"`);
+      expect(code).toContain(`className={(y ? "${RED}" : "xgmn1kmt")}`);
+    });
+
+    it('evaluates a call once for every chain it feeds', async () => {
+      const { code } = await app(
+        BLUE +
+          `const u = css.create({ d: { color: 'red', opacity: 0.5 } });\n` +
+          `export const A = ({ a, b }: any) => <div sx={[a() && u.d, b && t.c]} />;`,
+      );
+      expect(code.match(/a\(\)/g)).toHaveLength(1);
+      expect(code).toMatch(
+        /\(\(__plumeria0, __plumeria1\) => .+\)\(\(a\(\)\), \(b\)\)/,
+      );
+    });
+
+    it('reads earlier conditions before a later call', async () => {
+      const { code } = await app(
+        BLUE +
+          `export const A = ({ flag, update }: any) => <div sx={[flag && t.c, update() && s.a]} />;`,
+      );
+      expect(code).toContain(')((flag), (update()))}');
     });
   });
 
@@ -756,7 +774,7 @@ export const A = () => <div sx={st.a} />;`,
   });
 
   describe('transform: where a component reads the style it receives', () => {
-    const TABLE = `{"xdeb8kup":"${RED}"}`;
+    const TABLE = `{__proto__:null,"xdeb8kup":"${RED}"}`;
 
     it.each([
       [
@@ -790,7 +808,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
       );
       expect(code).toMatch(
         new RegExp(
-          `className=\\{"${PADDING}" \\+ " " \\+ \\(\\{"x[a-z0-9]+":"${RED} x[a-z0-9]+","x[a-z0-9]+":"x[a-z0-9]+"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| ""\\)\\}`,
+          `className=\\{"${PADDING}" \\+ " " \\+ \\(\\{__proto__:null,"x[a-z0-9]+":"${RED} x[a-z0-9]+","x[a-z0-9]+":"x[a-z0-9]+"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| ""\\)\\}`,
         ),
       );
     });
@@ -818,13 +836,13 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
       );
     });
 
-    it('looks a bracket and a condition up together', async () => {
+    it('falls back to the bracket when the condition is off', async () => {
       const { code } = await app(
         BLUE +
           `export const A = ({ k, on }: any) => <div sx={[t[k], on && s.a]} />;`,
       );
       expect(code).toContain(
-        `[({"c":"0","x":"1","y":"2"}[k] || "") + "__" + ((on) ? "1" : "0")]`,
+        `((on) ? "${RED}" : ({__proto__:null,"c":"xgmn1kmt","x":"xgmn1kmt","y":"x3git8yv"}[k] ?? ""))`,
       );
     });
   });
