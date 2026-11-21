@@ -103,7 +103,7 @@ const styles = css.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#d5d4cc',
-    maskImage: 'url(/surveyor.webp)',
+    maskImage: 'url(/surveyor.avif)',
     maskMode: 'luminance',
     maskRepeat: 'no-repeat',
     maskPosition: '72% 30%',
