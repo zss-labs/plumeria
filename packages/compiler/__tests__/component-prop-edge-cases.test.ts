@@ -55,19 +55,19 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} /
       [
         'a conditional on true',
         'true ? s.a : s.b',
-        `({"${RED_KEY}":"${RED}","${PADDING_KEY}":"${PADDING}"}[cardStyle] || "")`,
+        `({__proto__:null,"${RED_KEY}":"${RED}","${PADDING_KEY}":"${PADDING}"}[cardStyle] || "")`,
         `<Card cardStyle={true ? "${RED_KEY}" : "${PADDING_KEY}"} />`,
       ],
       [
         'false && a style',
         'false && s.a',
-        `({"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
+        `({__proto__:null,"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
         `<Card cardStyle={false && "${RED_KEY}"} />`,
       ],
       [
         'true && a style',
         'true && s.a',
-        `({"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
+        `({__proto__:null,"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
         `<Card cardStyle={true && "${RED_KEY}"} />`,
       ],
     ])('keys %s', async (_name, value, table, site) => {
@@ -84,7 +84,9 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} /
       const { code } = await app(
         `export const A = ({ on, other }: any) => <Card cardStyle={on ? s.a : other} />;`,
       );
-      expect(code).toContain(`({"${RED_KEY}":"${RED}"}[cardStyle] || "")`);
+      expect(code).toContain(
+        `({__proto__:null,"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
+      );
       expect(code).toContain(`<Card cardStyle={on ? "${RED_KEY}" : other} />`);
     });
 
@@ -134,7 +136,7 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} /
       );
       expect(code).toMatch(
         new RegExp(
-          `\\(\\{"x[a-z0-9]+":"x[a-z0-9]+","${RED_KEY}":"${RED}"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| ""\\)`,
+          `\\(\\{__proto__:null,"x[a-z0-9]+":"x[a-z0-9]+","${RED_KEY}":"${RED}"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| ""\\)`,
         ),
       );
     });
@@ -158,7 +160,9 @@ const s = css.create({ a: { color: 'red' } });
 const Card = ({ cardStyle, cardStyle: again }: { cardStyle?: css.Style } = {}) => <div sx={cardStyle} />;
 export const A = () => <Card cardStyle={s.a} />;`,
       });
-      expect(code).toContain(`({"${RED_KEY}":"${RED}"}[cardStyle] || "")`);
+      expect(code).toContain(
+        `({__proto__:null,"${RED_KEY}":"${RED}"}[cardStyle] || "")`,
+      );
       expect(code).toContain(`<Card cardStyle={"${RED_KEY}"} />`);
     });
 
