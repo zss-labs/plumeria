@@ -25,6 +25,10 @@ const EXAMPLE_LINKS: { value: ExampleName; label: string }[] = [
   { value: 'var-type', label: 'Typed Variables' },
 ];
 
+const FEATURE_LINKS = EXAMPLE_LINKS.filter((item) => item.value !== 'card');
+
+const exampleHref = (value: ExampleName) => (value === 'card' ? '/playground' : `/playground?example=${value}`);
+
 type OutputTab = OutputKind | 'preview';
 
 const OUTPUT_TABS: { value: OutputTab; label: string }[] = [
@@ -98,10 +102,15 @@ const styles = css.create({
   editorBar: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: '12px 32px',
     alignItems: 'center',
-    padding: '10px 16px',
+    padding: '12px 16px',
     fontSize: 13,
+  },
+  pageRow: {
+    [breakpoints.md]: {
+      display: 'none',
+    },
   },
   field: {
     display: 'flex',
@@ -141,6 +150,45 @@ const styles = css.create({
   optionActive: {
     color: theme.textPrimary,
     background: theme.dropdownBg,
+  },
+  picker: {
+    anchorName: '--playground-examples',
+    display: 'inline-flex',
+    gap: 6,
+    alignItems: 'center',
+  },
+  menu: {
+    positionAnchor: '--playground-examples',
+    positionArea: 'bottom span-right',
+    inset: 'auto',
+    flexDirection: 'column',
+    gap: 2,
+    padding: 4,
+    margin: '4px 0 0',
+    background: theme.dropdownBg,
+    borderColor: theme.cardBorder,
+    borderStyle: 'solid',
+    borderWidth: '1px',
+    borderRadius: 8,
+    ':popover-open': {
+      display: 'flex',
+    },
+  },
+  menuItem: {
+    padding: '8px 12px',
+    fontSize: 12,
+    color: theme.textSecondary,
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    borderRadius: 6,
+    ':hover': {
+      color: theme.textPrimary,
+      background: theme.iconBg,
+    },
+  },
+  menuItemActive: {
+    color: theme.textPrimary,
+    background: theme.iconBg,
   },
   actions: {
     display: 'flex',
@@ -394,16 +442,46 @@ export function Playground() {
     <div sx={styles.root}>
       <div sx={styles.bar}>
         <div sx={styles.editorBar}>
-          <PageSwitch current="compile" />
+          <div sx={styles.pageRow}>
+            <PageSwitch current="compile" />
+          </div>
           <div sx={styles.field}>
-            <span sx={styles.label}>Example</span>
             <div sx={styles.group}>
-              {EXAMPLE_LINKS.map((item) => (
+              <a
+                href="/playground"
+                aria-current={example === 'card' ? 'page' : undefined}
+                sx={[styles.option, example === 'card' && styles.optionActive]}
+              >
+                Card
+              </a>
+              <button
+                type="button"
+                popoverTarget="playground-examples"
+                sx={[styles.option, styles.picker, example !== 'card' && styles.optionActive]}
+              >
+                {(FEATURE_LINKS.find((item) => item.value === example) ?? FEATURE_LINKS[0]).label}
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="playground-examples" popover="auto" sx={styles.menu}>
+              {FEATURE_LINKS.map((item) => (
                 <a
                   key={item.value}
-                  href={item.value === 'card' ? '/playground' : `/playground?example=${item.value}`}
+                  href={exampleHref(item.value)}
                   aria-current={example === item.value ? 'page' : undefined}
-                  sx={[styles.option, example === item.value && styles.optionActive]}
+                  sx={[styles.menuItem, example === item.value && styles.menuItemActive]}
                 >
                   {item.label}
                 </a>
