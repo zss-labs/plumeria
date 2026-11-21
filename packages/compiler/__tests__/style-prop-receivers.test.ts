@@ -208,7 +208,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
 
       // one entry per style reaching it, whatever the prop is called
       expect(declarationOf(code, 'Alone')).toMatch(
-        /className=\{\(\{("\w+":"[\w ]+",?)+\}\[sx\] \|\| ""\)\}/,
+        /className=\{\(\{__proto__:null,("\w+":"[\w ]+",?)+\}\[sx\] \|\| ""\)\}/,
       );
       expect(declarationOf(code, 'Renamed')).toMatch(/\[styleArray\] \|\| ""/);
     });
