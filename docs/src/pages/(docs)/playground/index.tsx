@@ -5,7 +5,7 @@ export default function Page() {
   return (
     <>
       <Seo
-        title="Playground"
+        title="Playground | Compile"
         subtitle="Write Plumeria styles in the browser with full type information and every @plumeria/eslint-plugin rule."
         path="/playground"
       />
