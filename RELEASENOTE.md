@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.2.5 (Nov 21, 2026)
+
+- Update: README.md
+
 ## 22.2.4 (Nov 21, 2026)
 
 - Perf: Resolve conflicting styles with one priority chain per property instead of a table over every combination of conditions.

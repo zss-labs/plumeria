@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/swc-jest",
-  "version": "22.2.4",
+  "version": "22.2.5",
   "description": "Plumeria Jest transformer on @swc/jest",
   "author": "zss-labs",
   "license": "MIT",
