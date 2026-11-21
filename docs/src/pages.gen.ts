@@ -1,5 +1,5 @@
 // deno-fmt-ignore-file
-// biome-ignore format: generated types do not need formatting
+// biome-ignore-all format: generated types do not need formatting
 // prettier-ignore
 import type { PathsForPages, GetConfigResponse, SearchCodecsForPages } from 'waku/router';
 
@@ -14,10 +14,6 @@ import type { getConfig as File_DocsPlaygroundMigrate_getConfig } from './pages/
 // prettier-ignore
 import type { getConfig as File_404_getConfig } from './pages/404';
 // prettier-ignore
-import type { getConfig as File_ApiOgpSlug_getConfig } from './pages/_api/ogp/[...slug]';
-// prettier-ignore
-import type { getConfig as File_Root_getConfig } from './pages/_root';
-// prettier-ignore
 import type { getConfig as File_BlogSlug_getConfig } from './pages/blog/[...slug]';
 // prettier-ignore
 import type { getConfig as File_BlogIndex_getConfig } from './pages/blog/index';
@@ -29,6 +25,12 @@ import type { getConfig as File_JaDocsSlug_getConfig } from './pages/ja/docs/[..
 import type { getConfig as File_JaDocsIndex_getConfig } from './pages/ja/docs/index';
 // prettier-ignore
 import type { getConfig as File_JaIndex_getConfig } from './pages/ja/index';
+// prettier-ignore
+import type { getConfig as File_DocsLayout_getConfig } from './pages/(docs)/_layout';
+// prettier-ignore
+import type { getConfig as File_BlogLayout_getConfig } from './pages/blog/_layout';
+// prettier-ignore
+import type { getConfig as File_JaDocsLayout_getConfig } from './pages/ja/docs/_layout';
 
 // prettier-ignore
 type Page =
@@ -37,8 +39,6 @@ type Page =
 | ({ path: '/playground' } & GetConfigResponse<typeof File_DocsPlaygroundIndex_getConfig>)
 | ({ path: '/playground/migrate' } & GetConfigResponse<typeof File_DocsPlaygroundMigrate_getConfig>)
 | ({ path: '/404' } & GetConfigResponse<typeof File_404_getConfig>)
-| ({ path: '/_api/ogp/[...slug]' } & GetConfigResponse<typeof File_ApiOgpSlug_getConfig>)
-| ({ path: '/_root' } & GetConfigResponse<typeof File_Root_getConfig>)
 | ({ path: '/blog/[...slug]' } & GetConfigResponse<typeof File_BlogSlug_getConfig>)
 | ({ path: '/blog' } & GetConfigResponse<typeof File_BlogIndex_getConfig>)
 | ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>)
@@ -48,9 +48,9 @@ type Page =
 
 // prettier-ignore
 type Layout =
-| { path: '/' }
-| { path: '/blog' }
-| { path: '/ja/docs' };
+| ({ path: '/' } & Awaited<ReturnType<typeof File_DocsLayout_getConfig>>)
+| ({ path: '/blog' } & Awaited<ReturnType<typeof File_BlogLayout_getConfig>>)
+| ({ path: '/ja/docs' } & Awaited<ReturnType<typeof File_JaDocsLayout_getConfig>>);
 
 // prettier-ignore
 declare module 'waku/router' {
