@@ -186,7 +186,7 @@ fn inline_params(text: &str, bound: &[String]) -> String {
     out
 }
 
-fn lookup_table(entries: &[(String, String)]) -> String {
+fn lookup_table(entries: &[(String, String)], closed: bool) -> String {
     let body: Vec<String> = entries
         .iter()
         .map(|(key, value)| {
@@ -198,7 +198,8 @@ fn lookup_table(entries: &[(String, String)]) -> String {
             format!("{key}:{value}")
         })
         .collect();
-    format!("{{__proto__:null,{}}}", body.join(","))
+    let prototype = if closed { "" } else { "__proto__:null," };
+    format!("{{{prototype}{}}}", body.join(","))
 }
 
 fn leaf_paths(style: &Object, prefix: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
@@ -245,6 +246,7 @@ struct Conditional {
     group_id: Option<u32>,
     value_name: Option<String>,
     order: i64,
+    closed: bool,
 }
 
 pub struct Built {
@@ -267,6 +269,7 @@ struct Dimension {
     kind: DimKind,
     options: Vec<(String, Object)>,
     test_expr: String,
+    closed: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -814,6 +817,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             group_id: Some(group_id),
                             value_name: Some(option_name.to_string()),
                             order: current_order,
+                            closed: false,
                         });
                     }
                     continue;
@@ -838,6 +842,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         group_id: Some(group_id),
                         value_name: Some(value),
                         order: current_order,
+                        closed: !decision.has_group,
                     });
                 }
                 continue;
@@ -1063,7 +1068,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .iter()
                     .map(|(k, v)| (k.to_string(), quote(&v.to_js_string())))
                     .collect();
-                class_parts.push(format!("({}[{common}] || \"\")", lookup_table(&entries)));
+                class_parts.push(format!(
+                    "({}[{common}] || \"\")",
+                    lookup_table(&entries, options[0].closed)
+                ));
             }
         }
 
@@ -1085,6 +1093,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         kind: DimKind::Const,
                         options: vec![(String::new(), conflicting_style)],
                         test_expr: String::new(),
+                        closed: true,
                     },
                 ));
             }
@@ -1098,6 +1107,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             ("0".to_string(), c.falsy.clone()),
                             ("1".to_string(), c.truthy.clone()),
                         ],
+                        closed: true,
                     },
                 ));
             }
@@ -1142,6 +1152,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                                 )
                             })
                             .collect(),
+                        closed: first.closed,
                     },
                 ));
             }
@@ -1219,7 +1230,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                                 .collect();
                             expr = format!(
                                 "({}[{}] ?? {expr})",
-                                lookup_table(&entries),
+                                lookup_table(&entries, dimension.closed),
                                 dimension.test_expr
                             );
                         }
@@ -1526,6 +1537,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     group_id: None,
                     value_name: None,
                     order: builder.source_order,
+                    closed: false,
                 });
             }
             builder.source_order += 1;
@@ -1547,6 +1559,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             group_id: None,
                             value_name: None,
                             order: builder.source_order,
+                            closed: false,
                         });
                         builder.source_order += 1;
                         return Ok(true);
@@ -1763,6 +1776,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 group_id: Some(group_id),
                 value_name: Some(value_name),
                 order: current_order,
+                closed: false,
             });
         };
         for entry in possibilities {
