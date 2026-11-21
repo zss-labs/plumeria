@@ -161,6 +161,15 @@ naming the same container — and the narrower one is written first. The optimiz
 places the narrower one last whatever the source says, so the declarations read
 the wrong way round. The swap is offered as a suggestion rather than a fix.
 
+Styles composed in one styling prop, such as `sx={[shared.edge, styles.box]}`,
+are compared with each other too, including styles imported from another
+module. Two names of one property, two shorthands that cross, and two
+conditions that cross are reported at the array: split across styles, the order
+the bundler emits them decides, not the order of the array. The styles are read
+from the files on disk, so an unsaved edit is checked once it is saved.
+
+Accepts `{ styleProp }`; see [Configuring the styling prop](#configuring-the-styling-prop).
+
 A pair of spellings is one property in a horizontal writing mode and two
 properties in a vertical one, which is per element and cannot be read from the
 source. The rule reads them as one property; disable the line where an element
