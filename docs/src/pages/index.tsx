@@ -100,17 +100,11 @@ const styles = css.create({
     },
   },
   portrait: {
+    display: 'block',
     width: '100%',
     height: '100%',
-    backgroundColor: '#d5d4cc',
-    maskImage: 'url(/surveyor.avif)',
-    maskMode: 'luminance',
-    maskRepeat: 'no-repeat',
-    maskPosition: '72% 30%',
-    maskSize: '65% auto',
-    [breakpoints.md]: {
-      maskSize: '86% auto',
-    },
+    objectFit: 'cover',
+    objectPosition: '72% center',
   },
   arrow: {
     transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -181,7 +175,14 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
             </div>
           </div>
           <div aria-hidden="true" sx={styles.banner}>
-            <div sx={styles.portrait} />
+            <img
+              src="/surveyor-banner.avif"
+              alt=""
+              width={1368}
+              height={480}
+              fetchPriority="high"
+              sx={styles.portrait}
+            />
           </div>
         </div>
         <SiteFooter home lang={lang} />
