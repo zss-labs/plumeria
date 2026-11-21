@@ -53,7 +53,7 @@ A key resolves when it is a `const` holding a string, a member of a `const` obje
 | `no-invalid-selector` | error | a selector or nesting order the compiler cannot place |
 | `no-mixed-styling-props` | error | the styling prop on an element that also has `className` or `style` |
 | `no-mutable-binding` | warn | a `let` or `var` in a style definition |
-| `no-order-dependent-overlap` | warn | two declarations in one style that only source order can rank |
+| `no-order-dependent-overlap` | warn | two declarations in one style, or in styles composed in one styling prop, that only source order can rank |
 | `no-style-prop-relay` | error | a style prop a component only passes on |
 | `no-unknown-css-properties` | error | a property CSS does not have |
 | `no-unused-keys` | warn | a key nothing in the same component file reads |
