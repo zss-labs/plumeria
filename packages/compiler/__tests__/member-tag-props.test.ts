@@ -84,8 +84,8 @@ export const Home = () => (
     it('compiles the leaf component with both styles in its lookup map', async () => {
       await run(PARENT);
       const { code } = await run(LEAF);
-      const map = code.match(/\{("\w+":"\w+",?)+\}/)?.[0];
-      expect(map && Object.keys(JSON.parse(map))).toHaveLength(2);
+      const map = code.match(/\{__proto__:null,((?:"\w+":"\w+",?)+)\}/)?.[1];
+      expect(map && Object.keys(JSON.parse(`{${map}}`))).toHaveLength(2);
     });
   });
 });
