@@ -33,14 +33,13 @@
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "shiki": "^4.1.0",
-    "sucrase": "^3.35.1",
-    "waku": "1.0.0-rc.4",
+    "waku": "1.0.0-rc.5",
     "zod": "^4.4.3",
     "zss-engine": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@plumeria/compiler-wasm32-wasi": "^21.2.0",
+    "@plumeria/compiler-wasm32-wasi": "^22.2.2",
     "@plumeria/core": "workspace:^",
     "@plumeria/eslint-plugin": "workspace:^",
     "@plumeria/headlessui": "workspace:^",
