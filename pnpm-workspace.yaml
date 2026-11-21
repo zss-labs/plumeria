@@ -19,12 +19,12 @@ catalog:
   '@swc/core': 1.15.47
   '@types/react': ^19.2.18
   '@types/react-dom': ^19.2.4
-  next: ^16.4.5
+  next: ^16.4.6
   postcss: 8.5.26
   react: ^19.3.1
   react-dom: ^19.3.1
   webpack: 5.109.2
-  zss-engine: 3.1.1
+  zss-engine: 3.2.0
 
 minimumReleaseAge: 0
 
