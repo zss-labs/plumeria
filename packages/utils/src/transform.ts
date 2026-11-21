@@ -168,7 +168,6 @@ interface StyleConditional {
   groupName?: string;
   valueName?: string;
   varName?: string;
-  ownKeys?: boolean;
   order?: number;
 }
 
@@ -2342,7 +2341,6 @@ export const transformSource = async (
               groupName: undefined,
               valueName: optionName,
               varName,
-              ownKeys: true,
             });
           });
           continue;
@@ -2365,7 +2363,6 @@ export const transformSource = async (
             groupName: undefined,
             valueName: value,
             varName: undefined,
-            ownKeys: true,
           }),
         );
         continue;
@@ -2403,6 +2400,45 @@ export const transformSource = async (
       stateSources.push({ order, style: c.falsy as CSSProperties });
     });
     const stateWeights = getStateWeights(stateSources);
+
+    const isPlainRead = (source: string) => {
+      const code = source.replace(/'[^'\\\n]*'|"[^"\\\n]*"/g, '""');
+      return (
+        /^[\w$.\s()!=<>&|?:"-]*$/.test(code) &&
+        !/[\w$)]\s*\(|(?<!\d)\.|\.(?!\d)|\+\+|--|\b(?:new|await|yield|delete|void|import)\b/.test(
+          code,
+        ) &&
+        !code.replace(/[=!]==?|[<>]=/g, '').includes('=')
+      );
+    };
+    const lookupTable = (entries: Array<[string, string]>) =>
+      `{__proto__:null,${entries
+        .map(
+          ([key, value]) =>
+            `${key === '__proto__' ? '["__proto__"]' : JSON.stringify(key)}:${value}`,
+        )
+        .join(',')}}`;
+    const testSource = (c: StyleConditional) =>
+      c.groupId === undefined ? (c.testString ?? getSource(c.test)) : c.testLHS;
+    const bound: string[] = [];
+    const skippable = new Set<string>();
+    if (
+      conditionals.every((c) => testSource(c) !== undefined) &&
+      conditionals.some((c) => !isPlainRead(testSource(c) ?? ''))
+    ) {
+      const boundGroups = new Map<number, string>();
+      conditionals.forEach((c) => {
+        const name =
+          c.groupId === undefined ? undefined : boundGroups.get(c.groupId);
+        const param = name ?? `__plumeria${bound.length}`;
+        if (name === undefined) bound.push(testSource(c) ?? '');
+        if (c.groupId === undefined) c.testString = param;
+        else {
+          c.testLHS = param;
+          boundGroups.set(c.groupId, param);
+        }
+      });
+    }
 
     const participation: Record<string, Set<string>> = {};
     const registerParticipation = (style: CSSObject, sourceId: string) => {
@@ -2489,6 +2525,7 @@ export const transformSource = async (
     const classParts: string[] = [];
 
     if (existingClass) classParts.push(existingClass);
+    const boundFrom = classParts.length;
 
     if (Object.keys(baseIndependent).length > 0) {
       const className = processStyleRecords(baseIndependent, stateWeights)
@@ -2526,7 +2563,7 @@ export const transformSource = async (
         options[0].testLHS ??
         options[0].testString ??
         getSource(options[0].test);
-      const lookupMap: Record<string, string> = {};
+      const lookupMap: Record<string, string> = Object.create(null);
       options.forEach((opt) => {
         if (opt.valueName !== undefined && opt.truthy) {
           const className = processStyleRecords(opt.truthy, stateWeights)
@@ -2536,10 +2573,10 @@ export const transformSource = async (
         }
       });
       if (Object.keys(lookupMap).length > 0) {
-        const entries = Object.entries(lookupMap)
-          .map(([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`)
-          .join(',');
-        classParts.push(`({${entries}}[${commonTestExpr}] || "")`);
+        const table = lookupTable(
+          Object.entries(lookupMap).map(([k, v]) => [k, JSON.stringify(v)]),
+        );
+        classParts.push(`(${table}[${commonTestExpr}] || "")`);
       }
     });
 
@@ -2555,7 +2592,6 @@ export const transformSource = async (
           label: string;
         }>;
         testExpr?: string;
-        ownKeys?: boolean;
       }
       const ordered: Array<{ order: number; dimension: Dimension }> = [];
 
@@ -2619,7 +2655,6 @@ export const transformSource = async (
               style: opt.truthy,
               label: opt.valueName || 'default',
             })),
-            ownKeys: opts[0].ownKeys,
           },
         });
       });
@@ -2627,118 +2662,122 @@ export const transformSource = async (
       ordered.sort((a, b) => a.order - b.order);
       const dimensions: Dimension[] = ordered.map((o) => o.dimension);
 
-      const keysOf = (dim: Dimension) => {
-        const keys = new Set<string>();
-        dim.options.forEach((opt) =>
-          Object.keys(opt.style).forEach((key) => {
-            if (conflictingKeys.has(key)) keys.add(key);
+      const leafPaths = (style: CSSObject, prefix: string[]): string[][] =>
+        Object.entries(style).flatMap(([key, value]) =>
+          value && typeof value === 'object' && !Array.isArray(value)
+            ? leafPaths(value as CSSObject, [...prefix, key])
+            : [[...prefix, key]],
+        );
+
+      const leaves = new Map<string, { path: string[]; setters: string[] }>();
+      dimensions.forEach((dim, d) =>
+        dim.options.forEach((opt, o) =>
+          leafPaths(opt.style, []).forEach((path) => {
+            const id = JSON.stringify(path);
+            const leaf = leaves.get(id);
+            if (leaf) leaf.setters.push(`${d}:${o}`);
+            else leaves.set(id, { path, setters: [`${d}:${o}`] });
           }),
-        );
-        return keys;
-      };
-      const dimensionKeys = dimensions.map(keysOf);
-      const parent = dimensions.map((_, index) => index);
-      const find = (index: number): number =>
-        parent[index] === index ? index : (parent[index] = find(parent[index]));
-      const ownerByKey = new Map<string, number>();
-      dimensionKeys.forEach((keys, index) => {
-        keys.forEach((key) => {
-          const owner = ownerByKey.get(key);
-          if (owner === undefined) {
-            ownerByKey.set(key, index);
-            return;
-          }
-          const a = find(owner);
-          const b = find(index);
-          if (a !== b) parent[b] = a;
-        });
-      });
-      const components = new Map<number, number[]>();
-      dimensions.forEach((_, index) => {
-        const root = find(index);
-        const group = components.get(root);
-        if (group) group.push(index);
-        else components.set(root, [index]);
+        ),
+      );
+
+      const chains = new Map<string, string[][]>();
+      leaves.forEach(({ path, setters }) => {
+        const id = setters.join(',');
+        const paths = chains.get(id);
+        if (paths) paths.push(path);
+        else chains.set(id, [path]);
       });
 
-      const emitComponent = (indexes: number[]) => {
-        const dims = indexes.map((index) => dimensions[index]);
-        const variables = dims.filter((dim) => dim.type !== 'const');
-
-        const joined = variables.length > 1;
-        dims.forEach((dim) => {
-          if (!joined || dim.type !== 'var' || !dim.ownKeys) return;
-          const numbers: Record<string, string> = {};
-          dim.options.forEach((opt, index) => {
-            numbers[String(opt.value)] = String(index);
-            opt.value = String(index);
+      const pick = (style: CSSObject, paths: string[][]) => {
+        const picked: CSSObject = {};
+        paths.forEach((path) => {
+          let source = style;
+          let target = picked;
+          path.forEach((key, index) => {
+            if (index === path.length - 1) {
+              target[key] = source[key];
+              return;
+            }
+            source = source[key] as CSSObject;
+            target = (target[key] ??= {}) as CSSObject;
           });
-          dim.testExpr = `(${JSON.stringify(numbers)}[${dim.testExpr}] || "")`;
         });
-
-        const results: Record<string, string> = {};
-        const recurse = (
-          dimIndex: number,
-          currentStyle: CSSObject,
-          keyParts: string[],
-        ) => {
-          if (dimIndex >= dims.length) {
-            const className = processStyleRecords(currentStyle, stateWeights)
-              .map((r) => r.hash)
-              .join(' ');
-            if (className) results[keyParts.join('__')] = className;
-            return;
-          }
-          const dimension = dims[dimIndex];
-          dimension.options.forEach((opt) =>
-            recurse(
-              dimIndex + 1,
-              deepMerge(currentStyle, opt.style),
-              dimension.type === 'const'
-                ? keyParts
-                : [...keyParts, String(opt.value)],
-            ),
-          );
-        };
-        recurse(0, {}, []);
-
-        if (variables.length === 0) {
-          const only = results[''];
-          if (only) classParts.push(JSON.stringify(only));
-          return;
-        }
-
-        const componentKeys = new Set<string>();
-        indexes.forEach((index) =>
-          dimensionKeys[index].forEach((key) => componentKeys.add(key)),
-        );
-        const componentBase: CSSObject = {};
-        Object.entries(baseConflict).forEach(([key, value]) => {
-          if (componentKeys.has(key)) componentBase[key] = value;
-        });
-        const baseConflictClass =
-          Object.keys(componentBase).length > 0
-            ? processStyleRecords(componentBase, stateWeights)
-                .map((r) => r.hash)
-                .join(' ')
-            : '';
-
-        const masterKeyExpr = variables
-          .map((dim) =>
-            dim.type === 'std'
-              ? `(${dim.testExpr} ? "1" : "0")`
-              : dim.testExpr || '""',
-          )
-          .join(' + "__" + ');
-
-        classParts.push(
-          `(${JSON.stringify(results)}[${masterKeyExpr}] || ${baseConflictClass ? JSON.stringify(baseConflictClass) : '""'})`,
-        );
+        return picked;
       };
 
-      [...components.values()]
-        .sort((a, b) => a[0] - b[0])
-        .forEach(emitComponent);
+      chains.forEach((paths, id) => {
+        const classes = new Map<number, Map<number, string>>();
+        id.split(',').forEach((setter) => {
+          const [d, o] = setter.split(':').map(Number);
+          const className = processStyleRecords(
+            pick(dimensions[d].options[o].style, paths),
+            stateWeights,
+          )
+            .map((r) => r.hash)
+            .join(' ');
+          if (!classes.has(d)) classes.set(d, new Map());
+          classes.get(d)?.set(o, JSON.stringify(className));
+        });
+
+        let expr = '""';
+        const tests: string[] = [];
+        classes.forEach((byOption, d) => {
+          const dim = dimensions[d];
+          if (dim.type === 'const') {
+            const className = byOption.get(0);
+            if (className !== undefined) {
+              expr = className;
+              tests.length = 0;
+            }
+          } else if (dim.type === 'std') {
+            const truthy = byOption.get(1) ?? expr;
+            const falsy = byOption.get(0) ?? expr;
+            if (truthy === falsy) {
+              expr = truthy;
+            } else {
+              expr = `(${dim.testExpr} ? ${truthy} : ${falsy})`;
+              tests.push(dim.testExpr ?? '');
+            }
+          } else {
+            tests.push(dim.testExpr ?? '');
+            const table = lookupTable(
+              [...byOption].map(([o, className]) => [
+                String(dim.options[o].value),
+                className,
+              ]),
+            );
+            expr = `(${table}[${dim.testExpr}] ?? ${expr})`;
+          }
+        });
+        tests.slice(0, -1).forEach((test) => skippable.add(test));
+        if (expr !== '""') classParts.push(expr);
+      });
+    }
+
+    if (bound.length > 0) {
+      const parts = classParts.splice(boundFrom);
+      const body = parts.join(' + " " + ') || '""';
+      const uses = [...body.matchAll(/__plumeria(\d+)/g)].map((m) =>
+        Number(m[1]),
+      );
+      const inline =
+        uses.length === bound.length &&
+        uses.every((use, index) => use === index) &&
+        uses.every((use) => !skippable.has(`__plumeria${use}`));
+      if (inline)
+        classParts.push(
+          ...parts.map((part) =>
+            part.replace(
+              /__plumeria(\d+)/g,
+              (_, index) => bound[Number(index)],
+            ),
+          ),
+        );
+      else
+        classParts.push(
+          `((${bound.map((_, i) => `__plumeria${i}`).join(', ')}) => ${body})(${bound.join(', ')})`,
+        );
     }
 
     classParts.push(...dynamicClassParts);
