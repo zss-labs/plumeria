@@ -897,3 +897,222 @@ ruleTester.run('no-order-dependent-overlap', noOrderDependentOverlap, {
     },
   ],
 });
+
+fs.writeFileSync(
+  path.join(DIR, 'shared.ts'),
+  `import * as css from '@plumeria/core';
+import { bp } from './breakpoints';
+export const shared = css.create({
+  edge: { paddingTop: 4 },
+  medium: { [bp.medium]: { color: 'red' } },
+  broad: { '@media (min-width: 600px)': { color: 'red' } },
+  grid: { '@supports (display: grid)': { [bp.medium]: { color: 'red' } } },
+});`,
+);
+
+const component = (name: string, local: string, sx: string) => {
+  const filename = path.join(DIR, `${name}.tsx`);
+  const code = `import * as css from '@plumeria/core';
+import { shared } from './shared';
+import * as tokens from './shared';
+const styles = css.create(${local});
+export const App = ({ active, size }) => <div sx={${sx}} />;
+`;
+  fs.writeFileSync(filename, code);
+  return { filename, code };
+};
+
+const composedTester = new RuleTester({
+  languageOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    parserOptions: { ecmaFeatures: { jsx: true } },
+  },
+});
+
+composedTester.run(
+  'no-order-dependent-overlap composed',
+  noOrderDependentOverlap,
+  {
+    valid: [
+      component(
+        'SameProperty',
+        `{ box: { paddingTop: 10 } }`,
+        `[shared.edge, styles.box]`,
+      ),
+      component(
+        'ContainedCondition',
+        `{ box: { '@media (min-width: 700px) and (max-width: 1000px)': { color: 'blue' } } }`,
+        `[shared.broad, styles.box]`,
+      ),
+      (() => {
+        const filename = path.join(DIR, 'Shadowed.tsx');
+        const code = `import * as css from '@plumeria/core';
+import { shared } from './shared';
+const styles = css.create({ box: { paddingBlockStart: 10 } });
+export const App = ({ local }) => {
+  const styles = local;
+  return <div sx={[shared.edge, styles.box]} />;
+};
+`;
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      component(
+        'ExclusiveGuards',
+        `{ box: { paddingBlockStart: 10 } }`,
+        `[active && shared.edge, !active && styles.box]`,
+      ),
+      component(
+        'ExclusiveBranches',
+        `{ box: { paddingBlockStart: 10 } }`,
+        `[active ? shared.edge : null, !active && styles.box]`,
+      ),
+      (() => {
+        const filename = path.join(DIR, 'SameChoice.tsx');
+        const code = `import * as css from '@plumeria/core';
+import { sizes } from './sizes';
+const styles = css.create({ small: { paddingTop: 4 }, large: { margin: 0 } });
+export const App = ({ size }) => <div sx={[sizes[size], styles[size]]} />;
+`;
+        fs.writeFileSync(
+          path.join(DIR, 'sizes.ts'),
+          `import * as css from '@plumeria/core';
+export const sizes = css.create({ small: { margin: 0 }, large: { paddingBlockStart: 10 } });`,
+        );
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      component(
+        'Alternatives',
+        `{ box: { paddingBlockStart: 10 } }`,
+        `[active ? shared.edge : styles.box]`,
+      ),
+    ],
+    invalid: [
+      {
+        ...component(
+          'Alias',
+          `{ box: { paddingBlockStart: 10 } }`,
+          `[shared.edge, styles.box]`,
+        ),
+        errors: [
+          {
+            messageId: 'composedProperty',
+            data: {
+              first: 'padding-top',
+              second: 'padding-block-start',
+              left: 'shared.edge',
+              right: 'styles.box',
+            },
+          },
+        ],
+      },
+      {
+        ...component(
+          'CrossingCondition',
+          `{ box: { '@media (min-width: 700px) and (max-width: 1000px)': { color: 'blue' } } }`,
+          `[tokens.shared.medium, active && styles.box]`,
+        ),
+        errors: [
+          {
+            messageId: 'composedCondition',
+            data: {
+              first: '@media (min-width: 600px) and (max-width: 900px)',
+              second: '@media (min-width: 700px) and (max-width: 1000px)',
+              property: 'color',
+              left: 'tokens.shared.medium',
+              right: 'styles.box',
+            },
+          },
+        ],
+      },
+      {
+        ...component(
+          'CalledGuards',
+          `{ box: { paddingBlockStart: 10 } }`,
+          `[active() && shared.edge, !active() && styles.box]`,
+        ),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...component(
+          'MemberGuards',
+          `{ box: { paddingBlockStart: 10 } }`,
+          `[size.on && shared.edge, !size.on && styles.box]`,
+        ),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...(() => {
+          const filename = path.join(DIR, 'Reassigned.tsx');
+          const code = `import * as css from '@plumeria/core';
+import { shared } from './shared';
+const styles = css.create({ box: { paddingBlockStart: 10 } });
+export const App = ({ active }) => {
+  active = !active;
+  return <div sx={[active && shared.edge, !active && styles.box]} />;
+};
+`;
+          fs.writeFileSync(filename, code);
+          return { filename, code };
+        })(),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...(() => {
+          const filename = path.join(DIR, 'ImportedGuard.tsx');
+          const code = `import * as css from '@plumeria/core';
+import { shared } from './shared';
+import { on } from './flags';
+const styles = css.create({ box: { paddingBlockStart: 10 } });
+export const App = () => <div sx={[on && shared.edge, !on && styles.box]} />;
+`;
+          fs.writeFileSync(filename, code);
+          return { filename, code };
+        })(),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...(() => {
+          const filename = path.join(DIR, 'SameChoiceOverlap.tsx');
+          const code = `import * as css from '@plumeria/core';
+import { sizes } from './sizes';
+const styles = css.create({ small: { margin: 0 }, large: { paddingTop: 4 } });
+export const App = ({ size }) => <div sx={[sizes[size], styles[size]]} />;
+`;
+          fs.writeFileSync(filename, code);
+          return { filename, code };
+        })(),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...component(
+          'NestedCondition',
+          `{ box: { '@supports (display: grid)': { '@media (min-width: 700px) and (max-width: 1000px)': { color: 'blue' } } } }`,
+          `[shared.grid, styles.box]`,
+        ),
+        errors: [
+          {
+            messageId: 'composedCondition',
+            data: {
+              first: '@media (min-width: 600px) and (max-width: 900px)',
+              second: '@media (min-width: 700px) and (max-width: 1000px)',
+              property: 'color',
+              left: 'shared.grid',
+              right: 'styles.box',
+            },
+          },
+        ],
+      },
+      {
+        ...component(
+          'Variant',
+          `{ small: { margin: 0 }, large: { paddingBlockStart: 10 } }`,
+          `[shared.edge, styles[size]]`,
+        ),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+    ],
+  },
+);
