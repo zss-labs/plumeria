@@ -6,6 +6,7 @@ No install needed — run it with `npx`.
 ```sh
 npx @plumeria/codemod rename-prop sx classStyle
 npx @plumeria/codemod rename-api viewTransition viewTransitionClass
+npx @plumeria/codemod use-to-prop sx
 ```
 
 Commit before running, so the rewrite can be reverted with `git checkout`.
@@ -111,3 +112,32 @@ local name, so only the import changes:
 + const fade = viewTransitionClass({ old: { opacity: 0 } });
   const slide = vt({ new: { opacity: 1 } });
 ```
+
+## `use-to-prop`
+
+Moves `className={css.use(...)}` onto the styling prop:
+
+```sh
+npx @plumeria/codemod use-to-prop <prop> [paths...]
+```
+
+| Option          | Effect                                   |
+| --------------- | ---------------------------------------- |
+| `-d, --dry-run` | report what would change without writing |
+
+### What it rewrites
+
+A `className` that is exactly one `css.use()` call. Several styles become an
+array:
+
+```diff
+- <div className={css.use(styles.card)} />
+- <div className={css.use(styles.card, active && styles.active)} />
++ <div sx={styles.card} />
++ <div sx={[styles.card, active && styles.active]} />
+```
+
+### What it reports instead of rewriting
+
+A `css.use()` mixed with other classes, stored in a variable, or on an element
+that already has the prop or spreads props. The import of `use` is left in place.
