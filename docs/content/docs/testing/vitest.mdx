@@ -21,7 +21,7 @@ export default defineConfig({
 The component is compiled by the plugin, and the styling prop is gone by the time it reaches the DOM:
 
 ```html
-<h1 class="xvdv6o3r xggb8uiu xvazecna">Vite + React</h1>
+<h1 className="xvdv6o3r xggb8uiu xvazecna">Vite + React</h1>
 ```
 
 A Next.js project adds the same plugin to `vitest.config.ts`. `@plumeria/next-plugin` hooks into Next.js's bundler, which Vitest never runs.
