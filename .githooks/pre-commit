@@ -16,3 +16,15 @@ if ! echo "$staged" | xargs pnpm exec prettier --check --ignore-unknown; then
 EOF
   exit 1
 fi
+
+if ! echo "$staged" | xargs pnpm exec plumeria-lint; then
+  cat <<'EOF'
+
+✖ Lint check failed.
+  Please run the following command before committing:
+
+      pnpm lint && git add -u
+
+EOF
+  exit 1
+fi
