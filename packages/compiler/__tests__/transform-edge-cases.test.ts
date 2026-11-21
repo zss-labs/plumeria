@@ -212,8 +212,16 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
         `export const A = ({ a, b }: any) => <div sx={a ? (b ? s.a : s.b) : s.b} />;`,
       );
       expect(code).toContain(
-        `({__proto__:null,"#0":"${RED}","#1":"${PADDING}","#2":"${PADDING}"}[((a) ? ((b) ? "#0" : "#1") : "#2")] || "")`,
+        `({"#0":"${RED}","#1":"${PADDING}","#2":"${PADDING}"}[((a) ? ((b) ? "#0" : "#1") : "#2")] || "")`,
       );
+    });
+
+    it('keeps the null prototype when a key comes from the caller', async () => {
+      const { code } = await app(
+        `const t = css.create({ x: { color: 'blue' } });\n` +
+          `export const A = ({ a, k }: any) => <div sx={a ? t[k] : s.b} />;`,
+      );
+      expect(code).toContain('({__proto__:null,');
     });
 
     it('reads through parentheses', async () => {
