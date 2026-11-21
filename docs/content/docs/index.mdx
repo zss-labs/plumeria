@@ -29,7 +29,7 @@ export const Footer = () => <p sx={styles.text}>MyText</p>;
 The import and the `css.create()` call compile away, and the declarations move to a generated stylesheet:
 
 ```tsx title="Output"
-export const Footer = () => <p className={"xqqbxt1d xuifcaas"}>MyText</p>;
+export const Footer = () => <p className="xqqbxt1d xuifcaas">MyText</p>;
 ```
 
 ```css title="Generated CSS"
@@ -62,8 +62,8 @@ export const Item = ({ isActive }: { isActive: boolean }) => (
 The class that loses never reaches the element:
 
 ```html title="Output"
-<p class="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
-<p class="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
+<p className="xqqbxt1d xuifcaas">MyText</p> <!-- isActive is false -->
+<p className="xqqbxt1d xxcejlqg">MyText</p> <!-- isActive is true -->
 ```
 
 A shorthand against a longhand is the exception: the longhand wins wherever the two meet, in either order. [Specificity](/docs/specificity) ranks every pair, and [Composition laws](/docs/composition-laws) states the merge formally.
