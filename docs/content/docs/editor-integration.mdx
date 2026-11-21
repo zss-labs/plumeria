@@ -35,6 +35,25 @@ In VS Code, add a snippet that expands `s` into `sx={}`:
 Set it up with the config in [Installation](/docs/installation#eslint-setup); the [plugin reference](/docs/api/plugins/eslint-plugin) lists every rule.
 </Step>
 <Step>
+## Pre-commit hook
+
+The build stops on a warning, so a style committed out of order fails CI and takes a second commit to fix. A Git hook stops it before the commit instead:
+
+```sh title=".githooks/pre-commit"
+#!/bin/sh
+staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx)$' || true)
+[ -z "$staged" ] && exit 0
+echo "$staged" | xargs npx plumeria-lint
+```
+
+```sh title="Terminal"
+chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+```
+
+`plumeria-lint` ships with the ESLint plugin and checks the same rules as the build, with ESLint or oxlint. `--fix` settles the order and the formatting before you stage again.
+</Step>
+<Step>
 ## Jump to definition
 
 `Cmd` + click (macOS) or `Ctrl` + click (Windows, Linux) jumps from a style to its definition, even outside JSX.
