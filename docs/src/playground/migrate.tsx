@@ -1,14 +1,15 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import * as css from '@plumeria/core';
-import { theme } from 'lib/theme';
+import { homeTheme, theme } from 'lib/theme';
 import { breakpoints } from 'lib/mediaQuery';
 import { SAMPLES } from './migrate-samples';
 import type { Source } from './migrate-samples';
 import type { MigrateRequest, MigrateResponse } from './migrate-worker';
 import type { MigrateEditor } from './migrate-editor';
+import { PageSwitch } from './switch';
 
 const SOURCES: Source[] = ['css-modules', 'vanilla-extract', 'emotion', 'styled-components', 'stylex', 'tailwindcss'];
 
@@ -43,7 +44,6 @@ function isDark() {
   return document.documentElement.classList.contains('dark');
 }
 
-type Transpile = (path: string, text: string) => string;
 type Result = { files: Record<string, string>; stdout: string; stderr: string; ok: boolean };
 
 type Stage = 'pick' | 'convert' | 'done';
@@ -59,13 +59,11 @@ const blink = css.keyframes({
   },
 });
 
-const FADE_OUT = 400;
+const HOLD = /^(\s+(?:\S+:)?\d+:\d+\s+)([a-z-]+)(.*)$/;
 
-function fadeText(host: HTMLElement | null, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
-  return [...(host?.querySelectorAll<HTMLElement>('.view-lines, .margin-view-overlays') ?? [])].map((element) =>
-    element.animate(keyframes, options),
-  );
-}
+const isWide = () => window.matchMedia('(min-width: 1440px)').matches;
+const TYPE_STEP = 55;
+const TYPE_PAUSE = 320;
 
 const styles = css.create({
   root: {
@@ -81,6 +79,52 @@ const styles = css.create({
       gap: 12,
       height: 'calc(100dvh - 104px)',
       padding: '12px',
+    },
+  },
+  side: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    margin: '-4px 0 0 -8px',
+    [breakpoints.md]: {
+      display: 'none',
+      margin: 0,
+    },
+  },
+  sideHeld: {
+    [breakpoints.md]: {
+      display: 'flex',
+    },
+  },
+  columnWide: {
+    '@media (min-width: 1440px)': {
+      maxWidth: '100%',
+    },
+  },
+  panesWide: {
+    '@media (min-width: 1440px)': {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: 16,
+    },
+  },
+  sourceWide: {
+    '@media (min-width: 1440px)': {
+      position: 'relative',
+      zIndex: 1,
+      pointerEvents: 'auto',
+      background: homeTheme.background,
+      opacity: 1,
+    },
+  },
+  outputWide: {
+    '@media (min-width: 1440px)': {
+      gridArea: '1 / 2',
+    },
+  },
+  viewsWide: {
+    '@media (min-width: 1440px)': {
+      display: 'none',
     },
   },
   column: {
@@ -103,19 +147,6 @@ const styles = css.create({
     gridTemplateColumns: 'minmax(0, 1fr)',
     minHeight: 0,
   },
-  frame: {
-    flex: 'none',
-    width: '100%',
-    height: 96,
-    background: 'transparent',
-    borderColor: theme.cardBorder,
-    borderStyle: 'solid',
-    borderWidth: '1px',
-    borderRadius: 12,
-  },
-  away: {
-    display: 'none',
-  },
   pane: {
     display: 'flex',
     flexDirection: 'column',
@@ -127,7 +158,10 @@ const styles = css.create({
     borderStyle: 'solid',
     borderWidth: '1px',
     borderRadius: 12,
-    transition: 'opacity 0.45s ease',
+    transition: 'opacity 0.6s ease',
+    '@media (min-width: 1440px)': {
+      transition: 'opacity 0.45s ease',
+    },
   },
   hidden: {
     pointerEvents: 'none',
@@ -213,6 +247,9 @@ const styles = css.create({
   },
   terminal: {
     flex: 'none',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 680,
     height: '28%',
     padding: '12px 16px',
     overflow: 'auto',
@@ -226,6 +263,9 @@ const styles = css.create({
     borderStyle: 'solid',
     borderWidth: '1px',
     borderRadius: 12,
+    '@media (min-width: 1440px)': {
+      maxWidth: '100%',
+    },
   },
   command: {
     color: theme.textPrimary,
@@ -233,6 +273,9 @@ const styles = css.create({
   },
   prompt: {
     color: theme.textMuted,
+  },
+  typed: {
+    color: theme.plumeAccent,
   },
   token: {
     padding: 0,
@@ -278,6 +321,20 @@ const styles = css.create({
   error: {
     color: '#b42318',
   },
+  held: {
+    flexShrink: 0,
+    padding: '4px 8px',
+    marginLeft: 'auto',
+    fontSize: 11,
+    color: theme.plumeAccent,
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    background: theme.iconBg,
+    borderRadius: 6,
+    ':hover': {
+      color: theme.textPrimary,
+    },
+  },
   hold: {
     color: theme.plumeAccent,
     textDecoration: 'none',
@@ -292,22 +349,22 @@ export function Migrate() {
   const [stage, setStage] = useState<Stage>('pick');
   const [view, setView] = useState<View>('source');
   const [picking, setPicking] = useState(false);
+  const [typed, setTyped] = useState<string>();
   const [cursor, setCursor] = useState(0);
   const [files, setFiles] = useState<Record<string, string>>(SAMPLES[SOURCES[0]]);
   const [input, setInput] = useState(Object.keys(SAMPLES[SOURCES[0]])[0]);
   const [result, setResult] = useState<Result>();
   const [good, setGood] = useState<Result>();
   const [editor, setEditor] = useState<MigrateEditor>();
-  const [transpiler, setTranspiler] = useState<Transpile>();
-  const [framed, setFramed] = useState(false);
-  const faded = useRef(0);
-  const fading = useRef<Animation[]>([]);
-  const frame = useRef<HTMLIFrameElement>(null);
   const worker = useRef<Worker | null>(null);
   const terminal = useRef<HTMLDivElement>(null);
   const inputHost = useRef<HTMLDivElement>(null);
   const outputHost = useRef<HTMLDivElement>(null);
+  const sourcePane = useRef<HTMLElement>(null);
+  const outputPane = useRef<HTMLElement>(null);
+  const slid = useRef<boolean>(undefined);
   const latest = useRef(0);
+  const typing = useRef<ReturnType<typeof setTimeout>[]>([]);
   const running = stage === 'pick' ? undefined : source;
   const sample = running ?? SOURCES[cursor];
 
@@ -344,6 +401,7 @@ export function Migrate() {
     return () => {
       created.terminate();
       worker.current = null;
+      for (const timer of typing.current) clearTimeout(timer);
     };
   }, []);
 
@@ -359,23 +417,8 @@ export function Migrate() {
 
   useEffect(() => {
     if (stage !== 'convert' || !editor || !result) return;
-    const timer = setTimeout(
-      () => {
-        setStage('done');
-        setView('plumeria');
-        const incoming = fadeText(
-          outputHost.current,
-          [
-            { opacity: 0, transform: 'translateY(-6px)' },
-            { opacity: 1, transform: 'none' },
-          ],
-          { duration: 500, easing: 'ease-out' },
-        );
-        void Promise.all(incoming.map((animation) => animation.finished)).then(clearFade, clearFade);
-      },
-      Math.max(0, FADE_OUT - (performance.now() - faded.current)),
-    );
-    return () => clearTimeout(timer);
+    setStage('done');
+    setView('plumeria');
   }, [stage, editor, result]);
 
   useEffect(() => {
@@ -421,13 +464,8 @@ export function Migrate() {
     if (stage === 'pick') preview(index);
   }
 
-  function clearFade() {
-    for (const animation of fading.current) animation.cancel();
-    fading.current = [];
-  }
-
   function open() {
-    clearFade();
+    if (typed !== undefined) return;
     latest.current += 1;
     preview(Math.max(0, SOURCES.indexOf(source ?? SOURCES[0])));
     setStage('pick');
@@ -440,18 +478,16 @@ export function Migrate() {
   function choose(next: Source) {
     if (next !== SOURCES[cursor]) preview(SOURCES.indexOf(next));
     setPicking(false);
-    clearFade();
-    faded.current = performance.now();
-    requestAnimationFrame(() => {
-      fading.current = fadeText(
-        inputHost.current,
-        [
-          { opacity: 1, transform: 'none' },
-          { opacity: 0, transform: 'translateY(-6px)' },
-        ],
-        { duration: FADE_OUT, easing: 'ease-in', fill: 'forwards' },
-      );
-    });
+    setTyped('');
+    for (let count = 1; count <= next.length; count += 1) {
+      typing.current.push(setTimeout(() => setTyped(next.slice(0, count)), count * TYPE_STEP));
+    }
+    typing.current.push(setTimeout(() => run(next), next.length * TYPE_STEP + TYPE_PAUSE));
+  }
+
+  function run(next: Source) {
+    typing.current = [];
+    setTyped(undefined);
     setStage('convert');
     setSource(next);
     setResult(undefined);
@@ -487,57 +523,26 @@ export function Migrate() {
     editor?.show(shown, shownText);
   }, [editor, shown, shownText]);
 
-  useEffect(() => {
-    if (ready && !transpiler) {
-      void import('sucrase').then(({ transform }) =>
-        setTranspiler(
-          () => (path: string, text: string) =>
-            transform(text, {
-              transforms: ['typescript', 'jsx'],
-              jsxRuntime: 'automatic',
-              production: true,
-              filePath: path,
-            }).code,
-        ),
-      );
-    }
-  }, [ready, transpiler]);
+  const split = ready && Boolean(good);
+  const holds = result?.stdout.split('\n').filter((line) => HOLD.test(line)).length ?? 0;
 
-  useEffect(() => {
-    const target = frame.current?.contentWindow;
-    if (!target || !framed || !transpiler || !good) return;
-    const files: Record<string, string> = {};
-    for (const [path, text] of Object.entries(good.files)) {
-      if (!/\.[jt]sx?$/.test(path)) continue;
-      const key = `/${path.replace(/^src\//, '')}`;
-      files[key] = transpiler(key, text);
-    }
-    const entry = Object.keys(files).find((key) => key.endsWith('.tsx'));
-    if (entry) target.postMessage({ type: 'playground:render', files, sources: {}, entry }, '*');
-  }, [framed, transpiler, good]);
-
-  useEffect(() => {
-    const send = () => frame.current?.contentWindow?.postMessage({ type: 'playground:theme', dark: isDark() }, '*');
-    const onMessage = (event: MessageEvent<{ type?: string }>) => {
-      if (event.source !== frame.current?.contentWindow || event.data?.type !== 'playground:ready') return;
-      send();
-      setFramed(true);
-    };
-    window.addEventListener('message', onMessage);
-    if (frame.current?.contentDocument?.readyState === 'complete') {
-      send();
-      setFramed(true);
-    }
-    const observer = new MutationObserver(send);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => {
-      window.removeEventListener('message', onMessage);
-      observer.disconnect();
-    };
-  }, []);
+  useLayoutEffect(() => {
+    const previous = slid.current;
+    slid.current = split;
+    const pane = outputPane.current;
+    const origin = sourcePane.current;
+    if (previous === undefined || previous === split || !pane || !origin || !isWide()) return;
+    const shift = origin.getBoundingClientRect().left - pane.getBoundingClientRect().left;
+    const away = { transform: `translateX(${shift}px)` };
+    const home = { transform: 'none' };
+    pane.animate(split ? [away, home] : [home, away], {
+      duration: 560,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    });
+  }, [split]);
 
   const views = (
-    <div sx={styles.views}>
+    <div sx={[styles.views, styles.viewsWide]}>
       {(['source', 'plumeria'] as const).map((item) => (
         <button
           key={item}
@@ -559,9 +564,21 @@ export function Migrate() {
 
   return (
     <div sx={styles.root}>
-      <div sx={styles.column}>
-        <div sx={styles.panes}>
-          <section sx={[styles.pane, view !== 'source' && styles.hidden]} aria-label={LABELS[sample]}>
+      <div sx={[styles.side, holds > 0 && styles.sideHeld]}>
+        <PageSwitch current="migrate" />
+        {holds > 0 && (
+          <a href="/docs/api/migrate/migrate#finish-with-ai" target="_blank" rel="noreferrer" sx={styles.held}>
+            {holds} held · Finish with AI
+          </a>
+        )}
+      </div>
+      <div sx={[styles.column, styles.columnWide]}>
+        <div sx={[styles.panes, styles.panesWide]}>
+          <section
+            ref={sourcePane}
+            sx={[styles.pane, view !== 'source' && styles.hidden, styles.sourceWide]}
+            aria-label={LABELS[sample]}
+          >
             <div sx={styles.paneHead}>
               <div role="tablist" sx={styles.tabs}>
                 {Object.keys(files).map((path) => (
@@ -581,7 +598,11 @@ export function Migrate() {
             </div>
             <div ref={inputHost} sx={styles.editor} />
           </section>
-          <section sx={[styles.pane, view !== 'plumeria' && styles.hidden]} aria-label="Plumeria">
+          <section
+            ref={outputPane}
+            sx={[styles.pane, (view !== 'plumeria' || !split) && styles.hidden, styles.outputWide]}
+            aria-label="Plumeria"
+          >
             <div sx={styles.paneHead}>
               <div role="tablist" sx={styles.tabs}>
                 {outputs.map((path, index) => (
@@ -602,16 +623,6 @@ export function Migrate() {
             <div ref={outputHost} sx={styles.editor} />
           </section>
         </div>
-        <iframe
-          ref={frame}
-          sx={[styles.frame, !(ready && good) && styles.away]}
-          src="/playground/preview"
-          title="Preview"
-          onLoad={() => {
-            frame.current?.contentWindow?.postMessage({ type: 'playground:theme', dark: isDark() }, '*');
-            setFramed(true);
-          }}
-        />
         <div
           ref={terminal}
           sx={styles.terminal}
@@ -624,7 +635,12 @@ export function Migrate() {
           <div sx={styles.command}>
             <span sx={styles.prompt}>$ </span>
             npx @plumeria/migrate from{' '}
-            {picking || !source ? (
+            {typed !== undefined ? (
+              <>
+                <span sx={styles.typed}>{typed}</span>
+                <span sx={styles.caret} />
+              </>
+            ) : picking || !source ? (
               <span sx={styles.caret} />
             ) : (
               <button type="button" sx={styles.token} onClick={open}>
@@ -655,7 +671,7 @@ export function Migrate() {
                 {result.stdout && (
                   <pre sx={styles.log}>
                     {result.stdout.split('\n').map((line, index) => {
-                      const hold = /^(\s+\d+:\d+\s+)([a-z-]+)(.*)$/.exec(line);
+                      const hold = HOLD.exec(line);
                       return (
                         <Fragment key={index}>
                           {index > 0 && '\n'}
