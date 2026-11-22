@@ -127,6 +127,14 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
         ),
     >,
     pub shorthand_starts: FxHashSet<u32>,
+    pub hoisted_lookups: IndexMap<String, String, FxBuildHasher>,
+    pub reserved_lookup_names: Option<FxHashSet<String>>,
+    pub lookup_index: u32,
+}
+
+pub struct Insertion {
+    pub at: u32,
+    pub content: String,
 }
 
 pub type TResult<T> = Result<T, String>;
@@ -462,6 +470,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             applied_style_props: FxHashSet::default(),
             jsx_owner: FxHashMap::default(),
             shorthand_starts: FxHashSet::default(),
+            hoisted_lookups: IndexMap::default(),
+            reserved_lookup_names: None,
+            lookup_index: 0,
         }
     }
 
@@ -857,7 +868,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
 
-        let out = splice(self.source, &self.replacements);
+        let plain = splice(self.source, &self.replacements, None);
+        let insertion = self.hoist_insertion(&plain);
+        let out = match &insertion {
+            Some(insertion) => splice(self.source, &self.replacements, Some(insertion)),
+            None => plain,
+        };
         let elided = self.elided_imports(&out);
         if elided.is_empty() {
             return Ok(out);
@@ -865,7 +881,43 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         self.replacements.extend(elided);
         self.replacements
             .sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
-        Ok(splice(self.source, &self.replacements))
+        Ok(splice(self.source, &self.replacements, insertion.as_ref()))
+    }
+
+    fn hoist_insertion(&self, spliced: &str) -> Option<Insertion> {
+        let declarations: Vec<String> = self
+            .hoisted_lookups
+            .iter()
+            .filter(|(_, name)| spliced.contains(&format!("{name}_init()")))
+            .map(|(table, name)| {
+                format!("var {name}; function {name}_init() {{ return ({name} = {table}); }}")
+            })
+            .collect();
+        if declarations.is_empty() {
+            return None;
+        }
+        let mut header_end = self.program.directives.last().map(|d| d.span.end);
+        for statement in &self.program.body {
+            match statement {
+                Statement::ImportDeclaration(import) => header_end = Some(import.span.end),
+                _ => break,
+            }
+        }
+        let declarations = declarations.join("\n");
+        Some(match header_end {
+            Some(at) => Insertion {
+                at,
+                content: format!("\n{declarations}"),
+            },
+            None => Insertion {
+                at: self
+                    .program
+                    .body
+                    .first()
+                    .map_or(self.source.len() as u32, |s| oxc_span::GetSpan::span(s).start),
+                content: format!("{declarations}\n"),
+            },
+        })
     }
 
     fn elided_imports(&self, out: &str) -> Vec<Replacement> {
@@ -983,17 +1035,33 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
     }
 }
 
-fn splice(source: &str, replacements: &[Replacement]) -> String {
+fn splice(source: &str, replacements: &[Replacement], insertion: Option<&Insertion>) -> String {
     let mut out = String::with_capacity(source.len());
     let mut offset: u32 = 0;
+    let mut pending = insertion;
+    let mut flush = |out: &mut String, offset: &mut u32, until: u32| {
+        let Some(insertion) = pending else {
+            return;
+        };
+        if insertion.at > until {
+            return;
+        }
+        let at = insertion.at.max(*offset);
+        out.push_str(&source[*offset as usize..at as usize]);
+        out.push_str(&insertion.content);
+        *offset = at;
+        pending = None;
+    };
     for replacement in replacements {
         if replacement.start < offset {
             continue;
         }
+        flush(&mut out, &mut offset, replacement.start);
         out.push_str(&source[offset as usize..replacement.start as usize]);
         out.push_str(&replacement.content);
         offset = replacement.end;
     }
+    flush(&mut out, &mut offset, source.len() as u32);
     out.push_str(&source[offset as usize..]);
     out
 }
