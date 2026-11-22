@@ -263,7 +263,7 @@ impl Project {
 
     fn strip_file_contributions(&mut self, file: &str, component_props: Option<&PropsTable>) {
         self.release_file_objects(file);
-        self.tables.element_styles.remove(file);
+        self.tables.prop_names.remove(file);
         if let Some(keys) = self.receiver_keys_by_file.remove(file) {
             for key in keys {
                 self.tables.style_receiver.shift_remove(&key);
@@ -757,8 +757,7 @@ impl Project {
 
     fn refresh_hash_table(&mut self) -> Result<(), String> {
         use crate::style::hash_table::{
-            build_hash_table, create_sources, element_sources, files_using, props_sources,
-            refresh_name_cache,
+            build_hash_table, create_sources, file_sources, files_using, refresh_name_cache,
         };
         refresh_name_cache(&self.tables.create_obj, &mut self.create_names);
         let mut renamed: IndexSet<String, FxBuildHasher> = IndexSet::default();
@@ -773,8 +772,7 @@ impl Project {
                     .collect()
             };
             let mut sources = create_sources(&self.create_names, owners);
-            sources.extend(props_sources(&self.tables.component_props));
-            sources.extend(element_sources(&self.tables.element_styles));
+            sources.extend(file_sources(&self.tables.prop_names));
             let table = build_hash_table(&sources);
             let previous = &self.tables.hash_table;
             let changed: FxHashSet<&str> = previous
@@ -783,11 +781,14 @@ impl Project {
                 .filter(|hash| previous.get(*hash) != table.get(*hash))
                 .map(String::as_str)
                 .collect();
-            if !changed.is_empty() {
+            let unchanged = changed.is_empty();
+            if !unchanged {
                 renamed.extend(files_using(&sources, &changed));
             }
-            table
+            drop(changed);
+            (table, unchanged)
         };
+        let (table, unchanged) = table;
         self.tables.hash_table = table;
         let mut head = 0;
         while head < renamed.len() {
@@ -804,6 +805,14 @@ impl Project {
                 .insert(file.clone(), self.scan_generation);
         }
         self.tables.renamed_files = renamed.into_iter().collect();
+        let stamp_exists = self.scanned_cwd.as_deref().is_some_and(|cwd| {
+            std::path::Path::new(cwd)
+                .join("node_modules/.cache/plumeria/hash-stamp")
+                .exists()
+        });
+        if unchanged && !self.persist_pending && self.persisted_names.is_some() && stamp_exists {
+            return Ok(());
+        }
         self.persist_pending = true;
         self.persist_hash_table()?;
         self.persist_pending = false;
