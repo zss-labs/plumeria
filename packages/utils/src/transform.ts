@@ -106,7 +106,7 @@ const spreadValues = (
   return { spread, resolvesValue, sourceOf };
 };
 
-import { getStyleRecords } from './create';
+import { collectStyleRecords, getStyleRecords } from './create';
 import {
   styleFunctionsOf,
   resolveDynamicStyle,
@@ -118,6 +118,7 @@ import type {
   DynamicStyleTables,
 } from './dynamicKey';
 import { getStateWeights } from './escalation';
+import { shortenAtomMap } from './hashToHash';
 import type { StyleSource } from './escalation';
 import { themeHashOf } from './createTheme';
 import { resolveImportPath } from './resolver';
@@ -454,7 +455,12 @@ export const transformSource = async (
   const processStyleRecords = (
     style: CSSObject,
     weights?: Record<string, number>,
-  ) => getStyleRecords(style as CSSProperties, weights);
+  ) =>
+    getStyleRecords(
+      style as CSSProperties,
+      weights,
+      scannedTables.hashToHashTable,
+    );
 
   const localConsts = collectLocalConsts(ast);
   const localConstNodes = collectLocalConstNodes(ast);
@@ -907,7 +913,11 @@ export const transformSource = async (
           const hashMap: Record<string, Record<string, string>> = {};
           Object.entries(obj).forEach(([key, style]) => {
             if (typeof style !== 'object' || style === null) return;
-            const records = getStyleRecords(style as CSSProperties);
+            const records = getStyleRecords(
+              style as CSSProperties,
+              undefined,
+              scannedTables.hashToHashTable,
+            );
             const atomMap: Record<string, string> = {};
             records.forEach((r) => (atomMap[r.key] = r.hash));
             hashMap[key] = atomMap;
@@ -2234,7 +2244,7 @@ export const transformSource = async (
             fallback as HasSpan,
           );
         const atoms: Record<string, string> = {};
-        getStyleRecords(style as CSSProperties).forEach((record) => {
+        collectStyleRecords(style as CSSProperties).forEach((record) => {
           atoms[record.key] = record.hash;
         });
         const key = genBase36Hash(Object.values(atoms).join(' '), 1, 8);
@@ -2954,7 +2964,10 @@ export const transformSource = async (
                 hashMap = {};
                 Object.keys(obj).forEach((key) => {
                   if (atomicMap[key]) {
-                    hashMap![key] = atomicMap[key];
+                    hashMap![key] = shortenAtomMap(
+                      atomicMap[key],
+                      scannedTables.hashToHashTable,
+                    );
                   }
                 });
               }
@@ -2996,6 +3009,8 @@ export const transformSource = async (
 
           if (scannedTables.createAtomicMapTable[hash]) {
             atomMap = scannedTables.createAtomicMapTable[hash][propName];
+            if (atomMap)
+              atomMap = shortenAtomMap(atomMap, scannedTables.hashToHashTable);
           }
 
           if (atomMap) {
@@ -3106,7 +3121,10 @@ export const transformSource = async (
           const hashMap: Record<string, Record<string, string>> = {};
           Object.keys(obj).forEach((key) => {
             if (atomicMap[key]) {
-              hashMap[key] = atomicMap[key];
+              hashMap[key] = shortenAtomMap(
+                atomicMap[key],
+                scannedTables.hashToHashTable,
+              );
             }
           });
 
