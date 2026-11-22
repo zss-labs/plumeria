@@ -41,8 +41,8 @@ const s = css.create({
 
   const app = (body: string) => transform({ 'app.tsx': HEAD + body });
 
-  const RED = 'xq96bg3w';
-  const PADDING = 'x8ti24uy';
+  const RED = 'x6bg3w';
+  const PADDING = 'xi24uy';
 
   afterAll(() => fs.rmSync(DIR, { recursive: true, force: true }));
 
@@ -444,7 +444,7 @@ export const cls = use(s.a);`,
           `export const A = ({ x, y }: any) => <div sx={[x && s.a, y && t.c]} />;`,
       );
       expect(code).toContain(
-        `className={((y) ? "xgmn1kmt" : ((x) ? "${RED}" : ""))}`,
+        `className={((y) ? "xn1kmt" : ((x) ? "${RED}" : ""))}`,
       );
     });
 
@@ -454,7 +454,7 @@ export const cls = use(s.a);`,
           `export const A = ({ v }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c]} />;`,
       );
       expect(code).toContain(
-        `((v === 'c') ? "xgmn1kmt" : ((v === 'a') ? "${RED}" : ""))`,
+        `((v === 'c') ? "xn1kmt" : ((v === 'a') ? "${RED}" : ""))`,
       );
     });
 
@@ -464,7 +464,7 @@ export const cls = use(s.a);`,
           `export const A = ({ v, on }: any) => <div sx={[s.b, v === 'a' && s.a, v === 'c' && t.c, on && s.b]} />;`,
       );
       expect(code).toContain(
-        `className={"${PADDING}" + " " + ((v === 'c') ? "xgmn1kmt" : ((v === 'a') ? "${RED}" : ""))}`,
+        `className={"${PADDING}" + " " + ((v === 'c') ? "xn1kmt" : ((v === 'a') ? "${RED}" : ""))}`,
       );
     });
 
@@ -473,7 +473,7 @@ export const cls = use(s.a);`,
         BLUE +
           `export const A = ({ v, y }: any) => <div sx={[v === 'a' && s.a, v === 'c' && t.c, y ? s.a : t.c]} />;`,
       );
-      expect(code).toContain(`className={(y ? "${RED}" : "xgmn1kmt")}`);
+      expect(code).toContain(`className={(y ? "${RED}" : "xn1kmt")}`);
     });
 
     it('evaluates a call once for every chain it feeds', async () => {
@@ -684,7 +684,7 @@ export const A = () => <Card cardStyle={s.a} />;`;
           root: project,
           isDev: false,
         });
-        expect(code).toContain(`<Card cardStyle={"xdeb8kup"} />`);
+        expect(code).toContain(`<Card cardStyle={"xa50i4kt"} />`);
       } finally {
         process.chdir(previous);
       }
@@ -782,7 +782,7 @@ export const A = () => <div sx={st.a} />;`,
   });
 
   describe('transform: where a component reads the style it receives', () => {
-    const TABLE = `{__proto__:null,"xdeb8kup":"${RED}"}`;
+    const TABLE = `{__proto__:null,"xa50i4kt":"${RED}"}`;
 
     it.each([
       [
@@ -806,7 +806,7 @@ export const A = () => <div sx={st.a} />;`,
 export const A = () => <Card cardStyle={s.a} />;`,
       );
       expect(code).toContain(lookup);
-      expect(code).toContain('<Card cardStyle={"xdeb8kup"} />');
+      expect(code).toContain('<Card cardStyle={"xa50i4kt"} />');
     });
 
     it('joins a base with a received array that holds a function key', async () => {
@@ -831,7 +831,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
       );
       expect(code).toMatch(/<div className="x[a-z0-9]+" \/>/);
       expect(code).not.toContain(RED);
-      expect(css).toBe('.xgmn1kmt { color: blue; }\n');
+      expect(css).toBe('.xn1kmt { color: blue; }\n');
     });
 
     it('writes a conditional between two of them as it stands', async () => {
@@ -840,7 +840,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
           `export const A = ({ on }: any) => <div sx={[on ? s.a : t.c, s.b]} />;`,
       );
       expect(code).toContain(
-        `className={"${PADDING}" + " " + (on ? "${RED}" : "xgmn1kmt")}`,
+        `className={"${PADDING}" + " " + (on ? "${RED}" : "xn1kmt")}`,
       );
     });
 
@@ -850,7 +850,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
           `export const A = ({ k, on }: any) => <div sx={[t[k], on && s.a]} />;`,
       );
       expect(code).toContain(
-        `((on) ? "${RED}" : ({__proto__:null,"c":"xgmn1kmt","x":"xgmn1kmt","y":"x3git8yv"}[k] ?? ""))`,
+        `((on) ? "${RED}" : ({__proto__:null,"c":"xn1kmt","x":"xn1kmt","y":"xit8yv"}[k] ?? ""))`,
       );
     });
   });
