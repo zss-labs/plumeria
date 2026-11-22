@@ -501,10 +501,13 @@ pub fn scan_file_pass<'b, 'a>(
                         .create_hash
                         .insert(unique_key.clone(), hash.clone());
                     project.register_file_key(KeyTable::CreateHash, &unique_key, file);
-                    project
+                    let previous = project
                         .tables
                         .create_obj
                         .insert(hash.clone(), value.clone());
+                    if previous.as_ref() != Some(&value) {
+                        project.create_names.remove(&hash);
+                    }
                     local.create_obj.insert(hash.clone(), Some(value));
                     project.register_object_owner(ObjectTable::CreateObject, &hash, file);
 
@@ -560,7 +563,7 @@ pub fn scan_file_pass<'b, 'a>(
 
                     let mut hash_map = Object::new();
                     for (key, style) in obj.iter() {
-                        hash_map.insert(key, Value::obj(atom_map(&entries_object(style))));
+                        hash_map.insert(key, Value::obj(atom_map(&entries_object(style), None)));
                     }
                     let atoms = Value::obj(hash_map);
                     local.atomic_map.insert(hash.clone(), atoms.clone());
@@ -789,7 +792,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                 let Some((style, has_vars)) = self.resolve_dynamic_call(call)? else {
                     return Ok(None);
                 };
-                let atoms = atom_map(&style);
+                let atoms = atom_map(&style, None);
                 Ok(Some(Resolved {
                     class_string: atom_class_string(&atoms),
                     style,
@@ -1023,7 +1026,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                     .entry(prop_name.to_string())
                     .or_default();
                 for alternative in alternatives {
-                    let atoms = atom_map(&alternative.style);
+                    let atoms = atom_map(&alternative.style, None);
                     let class_string = atom_class_string(&atoms);
                     let has_vars = !alternative.dynamic_calls.is_empty();
                     list.push(TableEntry {
@@ -1194,6 +1197,7 @@ pub fn jsx_phase<'b, 'a>(
     let style_prop = project.scanned_style_prop.clone().unwrap_or_default();
     let tables = std::mem::take(&mut project.tables);
     let mut local_props = PropsTable::default();
+    let mut element_styles: Vec<Object> = Vec::new();
     let outcome = (|| -> Result<(), String> {
         let context = JsxContext {
             file,
@@ -1210,6 +1214,27 @@ pub fn jsx_phase<'b, 'a>(
         for opening in jsx_openings(program) {
             let Some(comp_key) = project.resolve_component_key(&opening.name, file, &local_imports)
             else {
+                for attribute in &opening.attributes {
+                    let JSXAttributeItem::Attribute(attribute) = attribute else {
+                        continue;
+                    };
+                    let JSXAttributeName::Identifier(name) = &attribute.name else {
+                        continue;
+                    };
+                    if name.name.as_str() != style_prop.as_str() {
+                        continue;
+                    }
+                    let Some(JSXAttributeValue::ExpressionContainer(container)) = &attribute.value
+                    else {
+                        continue;
+                    };
+                    let Some(expr) = container.expression.as_expression() else {
+                        continue;
+                    };
+                    if let Ok(Some(alternatives)) = context.prop_alternatives(E::new(expr)) {
+                        element_styles.extend(alternatives.into_iter().map(|alt| alt.style));
+                    }
+                }
                 continue;
             };
             for attribute in &opening.attributes {
@@ -1238,6 +1263,14 @@ pub fn jsx_phase<'b, 'a>(
     })();
     project.tables = tables;
     outcome?;
+    if element_styles.is_empty() {
+        project.tables.element_styles.remove(file);
+    } else {
+        project
+            .tables
+            .element_styles
+            .insert(file.to_string(), element_styles);
+    }
 
     for (comp_key, props) in &local_props {
         let global = project
