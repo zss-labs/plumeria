@@ -106,7 +106,7 @@ import * as css from '@plumeria/core';
 const s = css.create({ palette: (color: string) => ({ color }) });
 export const A = (p: any) => <div sx={s.palette(p.c)} />;
 `);
-      expect(css).toContain('.xokp0532');
+      expect(css).toContain('.xp0532');
       expect(css).toContain('color: var(--x80848wl-color)');
     });
 
@@ -119,7 +119,7 @@ const s = css.create({ plain: { color: 'gray' }, palette: (color: string) => ({ 
 export const A = (p: any) => <div sx={p.on ? s.palette(p.c) : s.plain} />;
 export const B = (p: any) => <div sx={p.on && s.palette(p.d)} />;
 `);
-      expect(css).toContain('.xokp0532 { color: var(--x80848wl-color); }');
+      expect(css).toContain('.xp0532 { color: var(--x80848wl-color); }');
       expect(css).toContain('color: gray');
     });
 
