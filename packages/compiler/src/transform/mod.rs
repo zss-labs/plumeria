@@ -225,7 +225,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         style: &Object,
         weights: Option<&Weights>,
     ) -> Vec<StyleRecord> {
-        style_records(style, weights)
+        style_records(style, weights, Some(&self.tables.hash_table))
     }
 
     pub fn owner_component_of(&self, at: u32) -> Option<String> {
@@ -291,6 +291,9 @@ pub struct OverlayView<'x> {
 }
 
 impl SheetTables for OverlayView<'_> {
+    fn hash_table(&self) -> &crate::style::records::HashTable {
+        &self.tables.hash_table
+    }
     fn keyframes_obj(&self, hash: &str) -> Option<Value> {
         self.writes
             .keyframes_obj
@@ -355,7 +358,7 @@ impl SheetTables for OverlayView<'_> {
 }
 
 pub fn transform_source(project: &mut Project, env: &TransformEnv) -> TResult<TransformOutput> {
-    project.scan_overlay(&env.cwd, &env.style_prop);
+    project.scan_overlay(&env.cwd, &env.style_prop)?;
     let allocator = Allocator::default();
     let source: &str = allocator.alloc_str(&env.source);
     let mut program = parse_program(&allocator, source)?;
