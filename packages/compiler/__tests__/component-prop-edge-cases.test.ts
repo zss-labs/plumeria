@@ -42,10 +42,10 @@ const Card = ({ cardStyle }: { cardStyle?: css.Style }) => <div sx={cardStyle} /
 
   const app = (body: string) => transform({ 'app.tsx': HEAD + body });
 
-  const RED = 'xq96bg3w';
-  const PADDING = 'x8ti24uy';
-  const RED_KEY = 'xdeb8kup';
-  const PADDING_KEY = 'x2sgbyc1';
+  const RED = 'x6bg3w';
+  const PADDING = 'xi24uy';
+  const RED_KEY = 'xa50i4kt';
+  const PADDING_KEY = 'x5d24gkx';
   const CARRIER = '[((cardStyle && cardStyle.key) || cardStyle)]';
 
   afterAll(() => fs.rmSync(DIR, { recursive: true, force: true }));
