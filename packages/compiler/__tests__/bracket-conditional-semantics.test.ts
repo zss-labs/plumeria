@@ -7,6 +7,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_STYLE_PROP } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -48,7 +49,9 @@ const sparse = css.create({
     const result = await transformSource(
       env(HEAD + body, `${DIR}/fixture.tsx`),
     );
-    const code = typeof result === 'string' ? result : (result?.code ?? '');
+    const code = inlineLookups(
+      typeof result === 'string' ? result : (result?.code ?? ''),
+    );
     const found = code.match(/className=(?:\{([\s\S]*?)\}|"([^"]*)") \/>/);
     if (!found) throw new Error(`no className in:\n${code}`);
     return found[1] ?? JSON.stringify(found[2]);
