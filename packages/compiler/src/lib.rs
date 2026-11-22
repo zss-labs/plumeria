@@ -226,13 +226,16 @@ pub struct ScanSummary {
     pub create_object_table: std::collections::HashMap<String, serde_json::Value>,
     pub component_props_table:
         std::collections::HashMap<String, std::collections::HashMap<String, Vec<PropEntry>>>,
+    pub renamed_files: Vec<String>,
 }
 
 #[napi(js_name = "scanAll")]
 pub fn scan_all(cwd: Option<String>, style_prop: Option<String>) -> Result<ScanSummary> {
     let cwd = current_dir(cwd)?;
     let mut project = lock_project();
-    project.scan_all(&cwd, style_prop.as_deref().unwrap_or(DEFAULT_STYLE_PROP));
+    project
+        .scan_all(&cwd, style_prop.as_deref().unwrap_or(DEFAULT_STYLE_PROP))
+        .map_err(failure)?;
     let create_hash_table = project
         .tables
         .create_hash
@@ -273,6 +276,7 @@ pub fn scan_all(cwd: Option<String>, style_prop: Option<String>) -> Result<ScanS
         create_hash_table,
         create_object_table,
         component_props_table,
+        renamed_files: project.tables.renamed_files.clone(),
     })
 }
 
@@ -421,14 +425,18 @@ pub fn get_style_records(
     weights: Option<std::collections::HashMap<String, i64>>,
 ) -> Vec<StyleRecordOutput> {
     let weights = weights.map(|weights| weights.into_iter().collect::<style::records::Weights>());
-    style::records::style_records(&object_from_json(&style_rule), weights.as_ref())
-        .into_iter()
-        .map(|record| StyleRecordOutput {
-            key: record.key,
-            hash: record.hash,
-            sheet: record.sheet,
-        })
-        .collect()
+    style::records::style_records(
+        &object_from_json(&style_rule),
+        weights.as_ref(),
+        Some(&style::records::HashTable::default()),
+    )
+    .into_iter()
+    .map(|record| StyleRecordOutput {
+        key: record.key,
+        hash: record.hash,
+        sheet: record.sheet,
+    })
+    .collect()
 }
 
 #[napi(js_name = "themeHashOf")]
