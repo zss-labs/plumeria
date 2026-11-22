@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::engine::hash::{hash_normalized, normalize_object};
+use crate::engine::hash::{full_hash, normalize_object};
 use crate::engine::transpile::{AtomicMap, process_atomic_props, split_atomic_and_nested};
 use crate::engine::{NOT_NORMALIZE, is_at_rule, transpile_atomic};
 use crate::js::number::number_to_string;
@@ -14,6 +14,14 @@ pub struct StyleRecord {
 }
 
 pub type Weights = FxHashMap<String, i64>;
+pub type HashTable = FxHashMap<String, String>;
+
+fn shorten(hash: &str, table: Option<&HashTable>) -> String {
+    match table {
+        Some(table) => crate::style::hash_table::short_name(hash, table),
+        None => hash.to_string(),
+    }
+}
 
 fn replace_first(text: &str, from: &str, to: &str) -> String {
     match text.find(from) {
@@ -28,7 +36,11 @@ fn single(key: &str, value: Value) -> Object {
     object
 }
 
-pub fn style_records(style: &Object, weights: Option<&Weights>) -> Vec<StyleRecord> {
+pub fn style_records(
+    style: &Object,
+    weights: Option<&Weights>,
+    table: Option<&HashTable>,
+) -> Vec<StyleRecord> {
     let mut flat = Object::new();
     let mut non_flat = Object::new();
     split_atomic_and_nested(style, &mut flat, &mut non_flat);
@@ -51,14 +63,15 @@ pub fn style_records(style: &Object, weights: Option<&Weights>) -> Vec<StyleReco
                     Some(prop),
                 );
                 let mut sheets = String::new();
-                let mut hashes: Vec<&str> = Vec::new();
+                let mut hashes: Vec<String> = Vec::new();
                 for (hash, sheet) in atomic_map.iter() {
+                    let short = shorten(hash, table);
                     sheets.push_str(&replace_first(
                         sheet,
                         &format!(".{hash}"),
-                        &format!(".{hash}{not_suffix}"),
+                        &format!(".{short}{not_suffix}"),
                     ));
-                    hashes.push(hash);
+                    hashes.push(short);
                 }
                 records.push(StyleRecord {
                     key: format!("{prop}:{inner_prop}"),
@@ -70,10 +83,15 @@ pub fn style_records(style: &Object, weights: Option<&Weights>) -> Vec<StyleReco
             let mut atomic_map = AtomicMap::default();
             process_atomic_props(&single(prop, value.clone()), &mut atomic_map, None);
             let mut sheets = String::new();
-            let mut hashes: Vec<&str> = Vec::new();
+            let mut hashes: Vec<String> = Vec::new();
             for (hash, sheet) in atomic_map.iter() {
-                sheets.push_str(sheet);
-                hashes.push(hash);
+                let short = shorten(hash, table);
+                sheets.push_str(&replace_first(
+                    sheet,
+                    &format!(".{hash}"),
+                    &format!(".{short}"),
+                ));
+                hashes.push(short);
             }
             records.push(StyleRecord {
                 key: prop.to_string(),
@@ -94,12 +112,19 @@ pub fn style_records(style: &Object, weights: Option<&Weights>) -> Vec<StyleReco
             }
         }
         for (selector, style) in base {
-            process_selector_style(selector, style, None, weights, &mut records);
+            process_selector_style(selector, style, None, weights, table, &mut records);
         }
         for (at_rule, nested) in query {
             if let Value::Obj(nested) = nested {
                 for (selector, style) in nested.iter() {
-                    process_selector_style(selector, style, Some(at_rule), weights, &mut records);
+                    process_selector_style(
+                        selector,
+                        style,
+                        Some(at_rule),
+                        weights,
+                        table,
+                        &mut records,
+                    );
                 }
             }
         }
@@ -133,6 +158,7 @@ fn process_selector_style(
     style: &Value,
     at_rule: Option<&str>,
     weights: Option<&Weights>,
+    table: Option<&HashTable>,
     records: &mut Vec<StyleRecord>,
 ) {
     for (prop, value) in entries_of(style) {
@@ -146,16 +172,13 @@ fn process_selector_style(
             None => format!("{selector}:{prop}"),
         };
         let weight = weights.and_then(|w| w.get(&key)).copied().unwrap_or(0);
-        let normalized = if weight > 0 {
-            format!(
-                "[{},{}]",
-                normalize_object(&source),
-                number_to_string(weight as f64)
-            )
+        let base_hash = full_hash(&normalize_object(&source));
+        let short = shorten(&base_hash, table);
+        let hash = if weight > 0 {
+            format!("{short}-{}", number_to_string(weight as f64))
         } else {
-            normalize_object(&source)
+            short.to_string()
         };
-        let hash = hash_normalized(&normalized, 1, 8);
         let condition_depth = 1 + usize::from(at_rule.is_some());
         let state_depth = if prop.starts_with("--") {
             0
@@ -182,9 +205,9 @@ pub fn class_string(records: &[StyleRecord]) -> String {
         .join(" ")
 }
 
-pub fn atom_map(style: &Object) -> Object {
+pub fn atom_map(style: &Object, table: Option<&HashTable>) -> Object {
     let mut map = Object::new();
-    for record in style_records(style, None) {
+    for record in style_records(style, None, table) {
         map.insert(record.key, Value::Str(record.hash));
     }
     map
