@@ -24,13 +24,14 @@
     "test:e2e": "playwright test",
     "prettier": "prettier --write \"**/*.js\" \"**/*.ts\" \"**/*.tsx\"",
     "prettier:report": "prettier --check \"**/*.js\" \"**/*.ts\" \"**/*.tsx\"",
-    "lint": "oxlint --fix",
-    "lint:report": "oxlint --deny-warnings",
+    "lint": "eslint --fix",
+    "lint:report": "eslint --max-warnings=0",
     "changeset:version": "node scripts/update-release-note.js",
     "build:skill": "node scripts/build-skill.js"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "@plumeria/codemod": "workspace:^",
     "@plumeria/eslint-plugin": "workspace:^",
@@ -40,14 +41,15 @@
     "@swc/jest": "^0.2.39",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.8.0",
+    "eslint": "^10.15.0",
     "jest": "^30.4.2",
     "next": "catalog:",
-    "oxlint": "1.87.0",
     "prettier": "^3.8.3",
     "prettier-plugin-insert-comma": "^1.1.8",
     "rimraf": "^6.1.3",
     "turbo": "^2.9.16",
     "typescript": "6.0.3",
+    "typescript-eslint": "^8.73.0",
     "zss-engine": "catalog:"
   },
   "packageManager": "pnpm@11.3.0"
