@@ -145,6 +145,13 @@ pub fn hash_normalized(normalized: &str, seed: u64, length: usize) -> String {
     format!("x{tail}")
 }
 
+pub fn full_hash(normalized: &str) -> String {
+    format!(
+        "x{:0>13}",
+        to_base36(murmurhash3_x64_128(normalized.as_bytes(), 1))
+    )
+}
+
 pub fn hash_object(object: &Object) -> String {
     hash_normalized(&normalize_object(object), 1, 8)
 }
