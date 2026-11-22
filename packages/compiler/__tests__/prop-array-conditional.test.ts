@@ -8,6 +8,7 @@ import {
   deepMerge,
 } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -93,7 +94,7 @@ export const ShapesParent = ({ on }: { on?: boolean }) => (
 
   const run = async (file: string): Promise<string> => {
     const result = await transformSource(env(files[file], file));
-    return result.code;
+    return inlineLookups(result.code);
   };
 
   const classesOf = (style: Record<string, unknown>) =>
