@@ -57,9 +57,12 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
   // Snapshot of componentPropsTable used to detect which child components'
   // prop possibilities changed on an edit (compKey -> propName -> joined keys).
   let propsTableSnapshot: Record<string, Record<string, string>> = {};
+  let renamedFiles: string[] = [];
   const snapshotPropsTable = (): Record<string, Record<string, string>> => {
     const snap: Record<string, Record<string, string>> = {};
-    const table = scanAll().componentPropsTable || {};
+    const summary = scanAll();
+    renamedFiles = summary.renamedFiles || [];
+    const table = summary.componentPropsTable || {};
     for (const compKey of Object.keys(table)) {
       snap[compKey] = {};
       for (const propName of Object.keys(table[compKey])) {
@@ -189,6 +192,7 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
 
     buildStart() {
       sheetRef = undefined;
+      scanAll();
     },
 
     async buildEnd(this: any) {
@@ -279,6 +283,13 @@ function attachViteHooks(plugin: any, options?: VitePluginOptions) {
             needsReload = true;
           }
         }
+      }
+
+      for (const file of renamedFiles) {
+        devServer.moduleGraph.getModulesByFile(file)?.forEach((m) => {
+          if (m.isSelfAccepting === false) needsReload = true;
+          addModule(m);
+        });
       }
 
       // Only re-queue targets that actually depend on the changed file,
