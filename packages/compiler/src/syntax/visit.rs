@@ -44,6 +44,22 @@ pub fn expression_has_identifier(expr: &Expression, test: &dyn Fn(&str) -> bool)
     visitor.found
 }
 
+struct AnyCall {
+    found: bool,
+}
+
+impl<'a> Visit<'a> for AnyCall {
+    fn visit_call_expression(&mut self, _: &CallExpression<'a>) {
+        self.found = true;
+    }
+}
+
+pub fn expression_has_call(expr: &Expression) -> bool {
+    let mut visitor = AnyCall { found: false };
+    visitor.visit_expression(expr);
+    visitor.found
+}
+
 pub struct ReadsNames<'f> {
     pub names: &'f dyn Fn(&str) -> bool,
     pub found: bool,
