@@ -112,14 +112,13 @@ Plumeria treats a style as a **type schema**, not a runtime object. Every entry 
 }
 ```
 
-Static styles resolve to class names entirely at compile time. The dynamic pieces leave no library behind either: function keys compile down to CSS variables, and a style chosen at runtime compiles to a literal lookup of precomputed class strings. What ships is class names, CSS, and the expressions you already wrote:
+Plumeria is a compiler and a type-definition syntax. Static styles become class names at build time, and dynamic styles work too, because function keys pass their values through CSS variables.
 
 - No runtime bundle
-- No runtime evaluation
-- No runtime parsing
 - No runtime dependencies
 
-Zero-runtime means the cost moves, not that it vanishes. All of the work happens at build time, and the browser receives class names and CSS.
+The only JavaScript left is a property lookup into a table of class strings.
+This lookup runs in constant time on every render.
 
 ## Ask an agent to write Plumeria
 
