@@ -9,6 +9,7 @@ jest.mock('@plumeria/compiler', () => ({
   needsCompile: jest.requireActual('@plumeria/compiler').needsCompile,
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: jest.fn((css: string) => css),
+  scanAll: jest.fn(),
   resolvePropertyPolicy: jest.fn(() => ({ policy: true })),
   transformSource: jest.fn(
     ({
@@ -122,7 +123,13 @@ it('updates and removes an existing target without a watch callback', async () =
   await plugin.transform.handler.call({}, SOURCE, id);
   await plugin.transform.handler.call({}, SOURCE, id);
   expect(plugin.__plumeriaInternal.targets).toEqual([
-    { id, dependencies: ['/dependency.ts'] },
+    {
+      id,
+      dependencies: [
+        '/dependency.ts',
+        '/project/node_modules/.cache/plumeria/hash-stamp',
+      ],
+    },
   ]);
 
   await plugin.transform.handler.call({}, `${SOURCE} EMPTY`, id);
@@ -392,7 +399,12 @@ describe('the lint guard', () => {
   const create = (lint?: boolean) =>
     unpluginFactory(lint === undefined ? {} : { lint }, {} as never) as any;
   const run = () => ({
-    hooks: { run: { tap: (_name: string, fn: () => void) => fn() } },
+    context: '/project',
+    hooks: {
+      run: { tap: (_name: string, fn: () => void) => fn() },
+      beforeRun: { tap: jest.fn() },
+      watchRun: { tap: jest.fn() },
+    },
   });
 
   beforeEach(() => startLintGuard.mockClear());
@@ -401,6 +413,21 @@ describe('the lint guard', () => {
     create().webpack(run());
     create().rspack(run());
     expect(startLintGuard).toHaveBeenCalledTimes(2);
+  });
+
+  it('rescans before webpack runs and watch runs', () => {
+    const { scanAll } = jest.requireMock<{ scanAll: jest.Mock }>(
+      '@plumeria/compiler',
+    );
+    const bundler = run();
+    scanAll.mockClear();
+    create().webpack(bundler);
+
+    bundler.hooks.beforeRun.tap.mock.calls[0][1]();
+    bundler.hooks.watchRun.tap.mock.calls[0][1]();
+
+    expect(scanAll).toHaveBeenCalledTimes(2);
+    expect(scanAll).toHaveBeenCalledWith('/project', 'sx');
   });
 
   it('starts on a rollup or rolldown build outside watch mode', () => {
