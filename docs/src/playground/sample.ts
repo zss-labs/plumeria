@@ -10,10 +10,7 @@ export const SAMPLE_FILES: SampleFile[] = [
   {
     path: ENTRY,
     label: 'Card.tsx',
-    source: `import * as css from '@plumeria/core';
-import * as t from '@plumeria/wind';
-import { theme } from './theme';
-import { breakpoints } from './tokens';
+    source: `import { styles } from './styles';
 
 const External = () => (
   <svg sx={styles.icon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -46,8 +43,17 @@ export const Card = () => (
     </article>
   </main>
 );
+`,
+  },
+  {
+    path: '/styles.ts',
+    label: 'styles.ts',
+    source: `import * as css from '@plumeria/core';
+import * as t from '@plumeria/wind';
+import { theme } from './theme';
+import { breakpoints } from './tokens';
 
-const styles = css.create({
+export const styles = css.create({
   canvas: {
     position: 'fixed',
     inset: 0,
