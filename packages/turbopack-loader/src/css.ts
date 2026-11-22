@@ -5,6 +5,7 @@ import {
   compileStylesheet,
   devGenerationsPath,
   generationMarker,
+  hashStampPath,
   watchSources,
 } from './index';
 import type { LoaderOptions } from './index';
@@ -51,6 +52,7 @@ export default function cssLoader(this: CssLoaderContext) {
   try {
     watchSources(this, cwd);
     const css = compileStylesheet(options, cwd);
+    this.addDependency(hashStampPath(cwd));
     callback(
       null,
       optimizer(
