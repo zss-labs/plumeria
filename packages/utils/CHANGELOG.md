@@ -1,5 +1,11 @@
 # @plumeria/utils
 
+## 22.2.6
+
+### Patch Changes
+
+- 783555e: - Perf: Build each lookup table once per module instead of on every render, including for functions an import cycle calls before the module evaluates.
+
 ## 22.2.5
 
 ### Patch Changes

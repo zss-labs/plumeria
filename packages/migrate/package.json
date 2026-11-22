@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/migrate",
-  "version": "22.2.5",
+  "version": "22.2.6",
   "description": "Migrate other styling library to Plumeria",
   "author": "zss-labs",
   "license": "MIT",

@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.2.6 (Nov 22, 2026)
+
+- Perf: Build each lookup table once per module instead of on every render, including for functions an import cycle calls before the module evaluates.
+
 ## 22.2.5 (Nov 21, 2026)
 
 - Update: README.md
