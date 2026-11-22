@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
   const DIR = fs.realpathSync(
@@ -34,7 +35,7 @@ const s = css.create({
       isDev: false,
     });
     return {
-      code,
+      code: inlineLookups(code),
       css: compileCSS({ include: ['**/*.{ts,tsx}'], exclude: [], cwd }),
     };
   };
