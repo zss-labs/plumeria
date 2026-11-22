@@ -20,7 +20,7 @@ import {
   getStyleRecords,
   deepMerge,
 } from '@plumeria/utils';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
 
 describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
   const DIR = fs.realpathSync(
@@ -270,7 +270,7 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
     return norm(
       Object.entries(winners)
         .flatMap(([key, value]) =>
-          getStyleRecords({ [key]: value }).map((r) => r.hash),
+          getStyleRecords({ [key]: value }).map((r) => scannedNames(r.hash)),
         )
         .join(' '),
     );
