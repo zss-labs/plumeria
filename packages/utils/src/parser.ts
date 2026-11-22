@@ -71,7 +71,15 @@ import { checkedVarTypeHash, createVarType } from './varType';
 import { createPositionTry } from './positionTry';
 import { DEFAULT_STYLE_PROP } from './constants';
 import { needsCompile } from './stylePropFilter';
-import { getStyleRecords } from './create';
+import { collectStyleRecords, getStyleRecords } from './create';
+import {
+  buildHashToHashTable,
+  createSources,
+  elementSources,
+  filesUsing,
+  propsSources,
+  refreshNameCache,
+} from './hashToHash';
 import {
   styleFunctionsOf,
   resolveDynamicStyle,
@@ -1820,6 +1828,8 @@ const fileCache: Record<string, CachedData> = {};
 
 const receiverKeysByFile = new Map<string, string[]>();
 
+const elementStylesByFile = new Map<string, CSSObject[]>();
+
 // Global reverse dependency map and known file tracking for incremental updates
 const dependentsMap = new Map<string, Set<string>>();
 let knownFiles = new Set<string>();
@@ -1867,8 +1877,13 @@ const globalAgregatedTables: Tables = {
   createStaticObjectTable: {},
   componentPropsTable: {},
   styleReceiverTable: {},
+  hashToHashTable: {},
+  renamedFiles: [],
 };
 let hasComputedOnce = false;
+const createNames = new Map<string, string[]>();
+let persistedNames: Record<string, string> | undefined;
+let persistPending = false;
 let resolutionConfigStamp: string | undefined;
 let scannedCwd: string | undefined;
 let scannedStyleProp: string | undefined;
@@ -1914,7 +1929,7 @@ function layerTables(source: Tables, detached: ReadonlySet<string>): Tables {
   return Object.fromEntries(
     Object.entries(source).map(([key, value]) => [
       key,
-      key === 'styleReceiverTable'
+      key === 'styleReceiverTable' || key === 'renamedFiles'
         ? value
         : detached.has(key)
           ? { ...value }
@@ -1929,7 +1944,9 @@ function snapshotTables(): Tables {
     overlayBase = Object.fromEntries(
       Object.entries(globalAgregatedTables).map(([key, value]) => [
         key,
-        key === 'styleReceiverTable' ? value : { ...value },
+        key === 'styleReceiverTable' || key === 'renamedFiles'
+          ? value
+          : { ...value },
       ]),
     ) as Tables;
     overlayBaseGeneration = tablesGeneration;
@@ -2009,6 +2026,7 @@ function releaseObjectOwner(
 // to remove are derived from it.
 function stripFileContributions(filePath: string, cached: CachedData) {
   releaseFileObjects(filePath);
+  elementStylesByFile.delete(filePath);
   const receiverKeys = receiverKeysByFile.get(filePath);
   if (receiverKeys) {
     for (const key of receiverKeys)
@@ -2104,16 +2122,20 @@ export function scanAll(
 
 function runScan(scanCwd: string, styleProp: string): Tables {
   const cwd = path.resolve(scanCwd);
+  const sameRoot = scannedCwd === cwd;
+  if (!persistPending || !sameRoot) globalAgregatedTables.renamedFiles = [];
   if (
     hasComputedOnce &&
+    !persistPending &&
     process.env.NODE_ENV === 'production' &&
-    scannedCwd === cwd &&
+    sameRoot &&
     scannedStyleProp === styleProp
   ) {
     return snapshotTables();
   }
 
   const localTables = globalAgregatedTables;
+  if (!sameRoot) persistedNames = undefined;
   scannedCwd = cwd;
   const stylePropChanged =
     scannedStyleProp !== undefined && scannedStyleProp !== styleProp;
@@ -2257,6 +2279,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
 
   // Return the most recent aggregated data immediately if there are no changes
   if (invalidated.size === 0 && hasComputedOnce) {
+    if (persistPending) refreshHashTable(cwd);
     return snapshotTables();
   }
 
@@ -2800,6 +2823,12 @@ function runScan(scanCwd: string, styleProp: string): Tables {
                   localCreateHashTable[name] = hash;
                   localTables.createHashTable[uniqueKey] = hash;
                   registerFileKey('createHashTable', uniqueKey, filePath);
+                  const previous = localTables.createObjectTable[hash];
+                  if (
+                    previous === undefined ||
+                    JSON.stringify(previous) !== JSON.stringify(obj)
+                  )
+                    createNames.delete(hash);
                   localTables.createObjectTable[hash] = obj;
                   localCreateObjectTable[hash] = obj;
                   registerObjectOwner('createObjectTable', hash, filePath);
@@ -2837,7 +2866,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
                   const hashMap: Record<string, Record<string, string>> = {};
 
                   Object.entries(obj).forEach(([key, style]) => {
-                    const records = getStyleRecords(style as CSSProperties);
+                    const records = collectStyleRecords(style as CSSProperties);
                     const atomMap: Record<string, string> = {};
                     records.forEach((r) => (atomMap[r.key] = r.hash));
                     hashMap[key] = atomMap;
@@ -3065,7 +3094,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           const resolved = resolveDynamicCallInScan(expr);
           if (!resolved) return null;
           const atomMap: Record<string, string> = {};
-          getStyleRecords(resolved.style as CSSProperties).forEach(
+          collectStyleRecords(resolved.style as CSSProperties).forEach(
             (record) => (atomMap[record.key] = record.hash),
           );
           return {
@@ -3261,7 +3290,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           const list = ((table[compKey] ??= {})[propName] ??= []);
           for (const alternative of alternatives) {
             const atomMap: Record<string, string> = {};
-            getStyleRecords(alternative.styleObj as CSSProperties).forEach(
+            collectStyleRecords(alternative.styleObj as CSSProperties).forEach(
               (record) => (atomMap[record.key] = record.hash),
             );
             const classString = Object.values(atomMap).join(' ');
@@ -3343,6 +3372,7 @@ function runScan(scanCwd: string, styleProp: string): Tables {
       for (const { name, fn } of componentFunctions(ast))
         registerReceiver(name, fn);
 
+      const elementStyles: CSSObject[] = [];
       traverse(ast, {
         JSXOpeningElement({ node }) {
           const compKey = resolveComponentKey(
@@ -3350,7 +3380,26 @@ function runScan(scanCwd: string, styleProp: string): Tables {
             filePath,
             localImports,
           );
-          if (!compKey) return;
+          if (!compKey) {
+            for (const attr of node.attributes as any[]) {
+              if (
+                attr.type !== 'JSXAttribute' ||
+                attr.name.type !== 'Identifier' ||
+                attr.name.value !== styleProp ||
+                attr.value?.type !== 'JSXExpressionContainer'
+              )
+                continue;
+              try {
+                for (const alternative of propAlternatives(
+                  attr.value.expression,
+                ) ?? [])
+                  elementStyles.push(alternative.styleObj);
+              } catch {
+                // ignore
+              }
+            }
+            return;
+          }
 
           node.attributes.forEach((attr: any) => {
             if (
@@ -3371,6 +3420,10 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           });
         },
       });
+
+      if (elementStyles.length > 0)
+        elementStylesByFile.set(filePath, elementStyles);
+      else elementStylesByFile.delete(filePath);
 
       const globalTable = localTables.componentPropsTable!;
       for (const compKey of Object.keys(localComponentPropsTable)) {
@@ -3462,8 +3515,95 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           a.spanStart - b.spanStart,
       );
   }
+  refreshHashTable(cwd);
   hasComputedOnce = true;
   return snapshotTables();
+}
+
+function refreshHashTable(cwd: string) {
+  const tables = globalAgregatedTables;
+  refreshNameCache(tables.createObjectTable, createNames);
+  const sources = [
+    ...createSources(
+      createNames,
+      (objectHash) =>
+        objectTableOwners.get(`createObjectTable:${objectHash}`) ?? [],
+    ),
+    ...propsSources(tables.componentPropsTable ?? {}),
+    ...elementSources(elementStylesByFile),
+  ];
+  const previous = tables.hashToHashTable ?? {};
+  const table = buildHashToHashTable(sources);
+  const changed = new Set<string>();
+  for (const hash of [...Object.keys(previous), ...Object.keys(table)])
+    if (previous[hash] !== table[hash]) changed.add(hash);
+  tables.hashToHashTable = table;
+  const renamedSet = new Set<string>(tables.renamedFiles ?? []);
+  if (changed.size > 0)
+    for (const file of filesUsing(sources, changed)) renamedSet.add(file);
+  const renamed = [...renamedSet];
+  for (let head = 0; head < renamed.length; head++) {
+    for (const dep of dependentsMap.get(renamed[head]) ?? []) {
+      if (!renamedSet.has(dep)) {
+        renamedSet.add(dep);
+        renamed.push(dep);
+      }
+    }
+  }
+  for (const file of renamed) compileRevisions.set(file, tablesGeneration);
+  tables.renamedFiles = renamed;
+  persistPending = true;
+  persistHashTable(cwd, table);
+  persistPending = false;
+}
+
+function persistHashTable(cwd: string, table: Record<string, string>) {
+  const dir = path.join(cwd, 'node_modules/.cache/plumeria');
+  const tablePath = path.join(dir, 'hash-names.json');
+  const stampPath = path.join(dir, 'hash-stamp');
+  const names: Record<string, string> = {};
+  for (const hash of Object.keys(table).sort()) names[hash] = table[hash];
+  if (persistedNames === undefined) {
+    try {
+      persistedNames = JSON.parse(fs.readFileSync(tablePath, 'utf8'));
+    } catch {
+      persistedNames = undefined;
+    }
+  }
+  const saved = persistedNames;
+  const renamed =
+    saved === undefined ||
+    Object.entries(names).some(
+      ([hash, name]) => hash in saved && saved[hash] !== name,
+    );
+  const stampMissing = !fs.existsSync(stampPath);
+  const unchanged =
+    saved !== undefined &&
+    Object.keys(saved).length === Object.keys(names).length &&
+    Object.entries(names).every(([hash, name]) => saved[hash] === name);
+  if (unchanged && !stampMissing) return;
+  const failed = (file: string, error: unknown) =>
+    new Error(
+      `[plumeria] Failed to update ${file}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (error) {
+    throw failed(dir, error);
+  }
+  if (renamed || stampMissing) {
+    try {
+      fs.writeFileSync(stampPath, String(process.hrtime.bigint()));
+    } catch (error) {
+      throw failed(stampPath, error);
+    }
+  }
+  try {
+    fs.writeFileSync(tablePath, JSON.stringify(names));
+  } catch (error) {
+    throw failed(tablePath, error);
+  }
+  persistedNames = names;
 }
 
 export function getFileDependencies(filePath: string): string[] {
@@ -3906,7 +4046,11 @@ export function extractOndemandStyles(
       const obj = t.createObjectTable[hash];
       if (obj) {
         Object.entries(obj).forEach(([_key, style]) => {
-          const records = getStyleRecords(style as CSSProperties);
+          const records = getStyleRecords(
+            style as CSSProperties,
+            undefined,
+            t.hashToHashTable,
+          );
           records.forEach((r: StyleRecord) => addSheet(r.sheet));
         });
       }
