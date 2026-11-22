@@ -95,7 +95,11 @@ describe('the webpack adapter', () => {
 
   const compilerWith = (rules: unknown[]) => ({
     isChild: () => false,
-    hooks: { run: { tap: jest.fn() } },
+    hooks: {
+      run: { tap: jest.fn() },
+      beforeRun: { tap: jest.fn() },
+      watchRun: { tap: jest.fn() },
+    },
     context: DIR,
     options: { mode: 'development', module: { rules } },
   });
@@ -227,7 +231,12 @@ describe('the lint guard through the adapters', () => {
     const tap = jest.fn((_name: string, fn: () => void) => fn());
     plugin.webpack({
       isChild: () => false,
-      hooks: { run: { tap }, thisCompilation: { tap: jest.fn() } },
+      hooks: {
+        run: { tap },
+        beforeRun: { tap: jest.fn() },
+        watchRun: { tap: jest.fn() },
+        thisCompilation: { tap: jest.fn() },
+      },
       context: DIR,
       options: { mode: 'production', module: { rules: [] } },
     });
