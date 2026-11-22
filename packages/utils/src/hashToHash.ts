@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'zss-engine';
 import { collectStyleRecords } from './create';
 import { shortName } from './hashName';
-import type { CreateObjectTable, CSSObject, TableEntry } from './types';
+import type { CreateObjectTable } from './types';
 
 const MIN_LENGTH = 5;
 
@@ -10,8 +10,11 @@ export interface StyleSource {
   files: Iterable<string>;
 }
 
-const styleNames = (style: CSSProperties): string[] =>
-  collectStyleRecords(style).flatMap((record) => record.hash.split(' '));
+export const classNames = (classString: string): string[] =>
+  classString.split(' ').filter(Boolean);
+
+export const styleNames = (style: CSSProperties): string[] =>
+  collectStyleRecords(style).flatMap((record) => classNames(record.hash));
 
 export function refreshNameCache(
   createObjectTable: CreateObjectTable,
@@ -38,30 +41,10 @@ export function createSources(
   return sources;
 }
 
-export function propsSources(
-  componentPropsTable: Record<string, Record<string, TableEntry[]>>,
-): StyleSource[] {
+export function fileSources(namesByFile: Map<string, string[]>): StyleSource[] {
   const sources: StyleSource[] = [];
-  for (const props of Object.values(componentPropsTable))
-    for (const entries of Object.values(props))
-      for (const entry of entries)
-        sources.push({
-          names: styleNames(entry.styleObj as CSSProperties),
-          files: [entry.filePath],
-        });
-  return sources;
-}
-
-export function elementSources(
-  elementStyles: Map<string, CSSObject[]>,
-): StyleSource[] {
-  const sources: StyleSource[] = [];
-  for (const [file, styles] of elementStyles)
-    for (const style of styles)
-      sources.push({
-        names: styleNames(style as CSSProperties),
-        files: [file],
-      });
+  for (const [file, names] of namesByFile)
+    sources.push({ names, files: [file] });
   return sources;
 }
 
@@ -81,7 +64,7 @@ export function buildHashToHashTable(
 ): Record<string, string> {
   const hashes = new Set<string>();
   for (const source of sources)
-    for (const name of source.names) hashes.add(name);
+    for (const name of source.names) if (name) hashes.add(name);
 
   const table: Record<string, string> = {};
   let maxLength = 0;
