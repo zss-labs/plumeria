@@ -9,6 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_STYLE_PROP } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -183,7 +184,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
       isDev: false,
       addDependency: () => {},
     });
-    return result.code;
+    return inlineLookups(result.code);
   };
 
   // A declaration can span lines, so it is read from its name to the next one.
