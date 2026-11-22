@@ -11,7 +11,7 @@ import {
   getStyleRecords,
   deepMerge,
 } from '@plumeria/utils';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -164,7 +164,7 @@ export const Parent = ({
 
   const classesOf = (style: Record<string, unknown>) =>
     getStyleRecords(style as never)
-      .map((record) => record.hash)
+      .map((record) => scannedNames(record.hash))
       .sort()
       .join(' ');
 
