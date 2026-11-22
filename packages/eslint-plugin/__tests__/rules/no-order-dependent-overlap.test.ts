@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { parse } from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import { noOrderDependentOverlap } from '../../src/rules/no-order-dependent-overlap';
 
@@ -907,6 +908,7 @@ export const shared = css.create({
   medium: { [bp.medium]: { color: 'red' } },
   broad: { '@media (min-width: 600px)': { color: 'red' } },
   grid: { '@supports (display: grid)': { [bp.medium]: { color: 'red' } } },
+  container: { '@container (min-width: 300px) and (max-width: 500px)': { borderTop: 'solid', '--tone': 'red' } },
 });`,
 );
 
@@ -988,6 +990,80 @@ export const sizes = css.create({ small: { margin: 0 }, large: { paddingBlockSta
         `{ box: { paddingBlockStart: 10 } }`,
         `[active ? shared.edge : styles.box]`,
       ),
+      (() => {
+        const filename = path.join(DIR, 'NamedCreateAndUnknownStyle.tsx');
+        const code = `import { create } from '@plumeria/core';
+const styles = create({ box: { paddingTop: 10 } });
+export const App = () => <div className="box" sx={[unknown.box, styles.box]} />;
+`;
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      (() => {
+        const filename = path.join(DIR, 'UnresolvedCompositions.tsx');
+        const code = `import * as css from '@plumeria/core';
+import * as tokens from './shared';
+import { missing } from './shared';
+import { styles as absent } from './missing';
+const value = null;
+const dynamic = getKey();
+const styles = css.create({ 0: { margin: 0 }, box: { paddingTop: 10 }, empty: null });
+class View {
+  #box;
+  render(parameter) {
+  return <>
+    <div className="box" sx={styles.box} />
+    <div sx={[value.box, parameter.box]} />
+    <div sx={[tokens.edge, missing.box]} />
+    <div sx={[absent.box, (getStyles()).box]} />
+    <div sx={[unknown.box || null, styles[0], styles['box']]} />
+    <div sx={[tokens[dynamic].edge, styles.empty]} />
+    <div sx={[styles.#box, unknown.box]} />
+  </>;
+  }
+}
+`;
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      (() => {
+        const module = path.join(DIR, 'default-styles.ts');
+        const filename = path.join(DIR, 'DefaultStyle.tsx');
+        fs.writeFileSync(
+          module,
+          `import * as css from '@plumeria/core';
+export default css.create({ box: { margin: 0 } });`,
+        );
+        const code = `import styles from './default-styles';
+import { shared as named } from './shared';
+export const App = () => <div sx={[styles.box, named.broad]} />;
+`;
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      (() => {
+        const filename = path.join(DIR, 'MemberForms.tsx');
+        const code = `import * as css from '@plumeria/core';
+import { 'shared' as literal } from './shared';
+const styles = css.create({ box: { margin: 0 }, empty: null });
+class View {
+  #box;
+  render() {
+    return <>
+      <div sx={[styles['box'], styles.empty]} />
+      <div sx={[styles.#box, literal.edge]} />
+    </>;
+  }
+}
+`;
+        fs.writeFileSync(filename, code);
+        return { filename, code };
+      })(),
+      component(
+        'CrossingContainerWithoutPropertyOverlap',
+        `{ box: { '@container (min-width: 400px) and (max-width: 700px)': { color: 'blue' } } }`,
+        `[shared.container, styles.box]`,
+      ),
     ],
     invalid: [
       {
@@ -1026,6 +1102,14 @@ export const sizes = css.create({ small: { margin: 0 }, large: { paddingBlockSta
             },
           },
         ],
+      },
+      {
+        ...component(
+          'CrossingContainerProperties',
+          `{ box: { '@container (min-width: 400px) and (max-width: 700px)': { borderBlockWidth: 2, '--tone': 'blue' } } }`,
+          `[shared.container, styles.box]`,
+        ),
+        errors: [{ messageId: 'composedCondition' }],
       },
       {
         ...component(
@@ -1116,3 +1200,27 @@ export const App = ({ size }) => <div sx={[sizes[size], styles[size]]} />;
     ],
   },
 );
+
+const missingNodeParser = {
+  parse(code: string, options: any) {
+    const ast = parse(code, options) as any;
+    const expression =
+      ast.body[0].declarations[0].init.openingElement.attributes[0].value
+        .expression;
+    expression.elements[0].right = null;
+    return ast;
+  },
+};
+
+new RuleTester({
+  languageOptions: {
+    ecmaVersion: 'latest',
+    parser: missingNodeParser,
+    parserOptions: { ecmaFeatures: { jsx: true } },
+  },
+}).run('no-order-dependent-overlap defensive AST', noOrderDependentOverlap, {
+  valid: [
+    'const view = <div sx={[unknown.box || fallback.box, other.box]} />;',
+  ],
+  invalid: [],
+});
