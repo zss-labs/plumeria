@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::js::value::entries_object;
 use crate::js::{Object, Value};
-use crate::project::tables::{Map, PropsTable};
+use crate::project::tables::Map;
 use crate::style::records::{HashTable, style_records};
 
 const MIN_LENGTH: usize = 5;
@@ -14,10 +14,16 @@ pub struct StyleSource<'a> {
     pub files: Vec<&'a str>,
 }
 
-fn style_names(style: &Object) -> Vec<String> {
+pub fn style_names(style: &Object) -> Vec<String> {
     style_records(style, None, None)
         .iter()
-        .flat_map(|record| record.hash.split(' ').map(str::to_string))
+        .flat_map(|record| {
+            record
+                .hash
+                .split_ascii_whitespace()
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
         .collect()
 }
 
@@ -49,25 +55,12 @@ pub fn create_sources<'a>(
         .collect()
 }
 
-pub fn props_sources(props: &PropsTable) -> Vec<StyleSource<'_>> {
-    props
-        .values()
-        .flat_map(|by_prop| by_prop.values().flatten())
-        .map(|entry| StyleSource {
-            names: Cow::Owned(style_names(&entry.style)),
-            files: vec![entry.file.as_str()],
-        })
-        .collect()
-}
-
-pub fn element_sources(element_styles: &Map<Vec<Object>>) -> Vec<StyleSource<'_>> {
-    element_styles
+pub fn file_sources(names_by_file: &Map<Vec<String>>) -> Vec<StyleSource<'_>> {
+    names_by_file
         .iter()
-        .flat_map(|(file, styles)| {
-            styles.iter().map(move |style| StyleSource {
-                names: Cow::Owned(style_names(style)),
-                files: vec![file.as_str()],
-            })
+        .map(|(file, names)| StyleSource {
+            names: Cow::Borrowed(names.as_slice()),
+            files: vec![file.as_str()],
         })
         .collect()
 }
@@ -90,6 +83,7 @@ pub fn build_hash_table(sources: &[StyleSource<'_>]) -> HashTable {
     let hashes: FxHashSet<&str> = sources
         .iter()
         .flat_map(|source| source.names.iter().map(String::as_str))
+        .filter(|hash| !hash.is_empty())
         .collect();
 
     let mut table = HashTable::default();
