@@ -84,7 +84,7 @@ pub fn compile_css(project: &mut Project, options: &CompileOptions) -> Result<St
             },
         )?,
     };
-    project.scan_overlay(&cwd.to_string_lossy(), &options.style_prop);
+    project.scan_overlay(&cwd.to_string_lossy(), &options.style_prop)?;
     let mut tables = std::mem::take(&mut project.tables);
     let mut cache = std::mem::take(&mut project.css_cache);
     let context = format!(
@@ -728,7 +728,7 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
             },
             &overlay,
         );
-        for record in style_records(style, None) {
+        for record in style_records(style, None, Some(&self.tables.hash_table)) {
             self.sheets.insert(record.sheet);
         }
     }
@@ -749,7 +749,7 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
                 &overlay,
             );
         }
-        for record in style_records(&style, None) {
+        for record in style_records(&style, None, Some(&self.tables.hash_table)) {
             self.sheets.insert(record.sheet);
         }
     }
