@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_STYLE_PROP, getStyleRecords } from '@plumeria/utils';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -72,7 +72,7 @@ export const Parent = () => (
 
   const classesOf = (style: Record<string, unknown>) =>
     getStyleRecords(style as never)
-      .map((r) => r.hash)
+      .map((r) => scannedNames(r.hash))
       .sort()
       .join(' ');
 
