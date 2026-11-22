@@ -21,6 +21,7 @@ import {
   deepMerge,
 } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
   const DIR = fs.realpathSync(
@@ -169,7 +170,9 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
     const source = `${HEAD}export const A = ({ ${VARS.join(', ')} }: any) => <div sx={${styleExpr}} />;\n`;
     fs.writeFileSync(id, source);
     const result = await transformSource(env(source, id));
-    const code = typeof result === 'string' ? result : (result?.code ?? '');
+    const code = inlineLookups(
+      typeof result === 'string' ? result : (result?.code ?? ''),
+    );
 
     // A dynamic style function puts a `style` attribute after the class list.
     const dynamic = code.match(/className=\{([\s\S]*?)\}(?= style=| \/>)/);
@@ -745,7 +748,9 @@ export const B = ({ k }: any) => <div sx={escaped[k]} />;
       const result = await transformSource(
         env(source, `${DIR}/fixture-escape-${fixtureCount++}.tsx`),
       );
-      const code = typeof result === 'string' ? result : (result?.code ?? '');
+      const code = inlineLookups(
+        typeof result === 'string' ? result : (result?.code ?? ''),
+      );
       const dynamic = code.match(/className=\{([\s\S]*?)\}(?= style=| \/>)/);
       if (!dynamic) throw new Error(`no className in:\n${code}`);
       return dynamic[1];
