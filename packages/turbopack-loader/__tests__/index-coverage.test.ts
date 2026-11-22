@@ -6,6 +6,7 @@ const mockTransformSource = jest.fn((_options: unknown) => ({
   code: 'transformed',
   dependencies: [] as string[],
 }));
+const mockScanAll = jest.fn();
 const mockWriteFileSync = jest.fn();
 
 jest.mock('@plumeria/compiler', () => ({
@@ -15,6 +16,7 @@ jest.mock('@plumeria/compiler', () => ({
   sourcePackages: jest.requireActual('@plumeria/compiler').sourcePackages,
   optimizer: (css: string) => css,
   resolvePropertyPolicy: () => ({}),
+  scanAll: (...args: unknown[]) => mockScanAll(...args),
   transformSource: (options: unknown) => mockTransformSource(options),
 }));
 jest.mock('fs', () => ({
@@ -27,6 +29,7 @@ import loader, {
   devBridge,
   generationId,
   inSourcePackage,
+  reconcileHashes,
   resolveSourcePackage,
   sourcePackages,
   watchSources,
@@ -61,6 +64,7 @@ const setNodeEnv = (value: string | undefined) => {
 afterEach(() => {
   setNodeEnv(originalNodeEnv);
   mockCompileCSS.mockClear();
+  mockScanAll.mockClear();
   mockTransformSource.mockClear();
   mockWriteFileSync.mockClear();
 });
@@ -126,4 +130,9 @@ it('skips a development bridge when the edited file has disappeared', () => {
   const module = { resourcePath, code: 'first', dependencies: [] };
   expect(devBridge(module, {}, process.cwd())).toBe('');
   expect(devBridge({ ...module, code: 'second' }, {}, process.cwd())).toBe('');
+});
+
+it('reconciles hashes with the default style prop', () => {
+  reconcileHashes('/project');
+  expect(mockScanAll).toHaveBeenCalledWith('/project', 'sx');
 });
