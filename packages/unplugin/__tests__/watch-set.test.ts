@@ -86,7 +86,9 @@ const run = async (file: string): Promise<string> => {
 
 const watchedBy = async (file: string) => {
   await run(file);
-  return [...new Set(deps.get(file))].sort();
+  return [...new Set(deps.get(file))]
+    .filter((dep) => !dep.endsWith('/hash-stamp'))
+    .sort();
 };
 
 beforeAll(async () => {
