@@ -6,6 +6,7 @@ import {
   transpileAtomic,
   isAtRule,
 } from 'zss-engine';
+import { FULL_HASH_LENGTH, shortName, toFullHash } from './hashName';
 
 export interface StyleRecord {
   key: string;
@@ -16,6 +17,15 @@ export interface StyleRecord {
 export function getStyleRecords(
   styleRule: CSSProperties,
   weights?: Record<string, number>,
+  hashTable: Record<string, string> = {},
+): StyleRecord[] {
+  return collectStyleRecords(styleRule, weights, hashTable);
+}
+
+export function collectStyleRecords(
+  styleRule: CSSProperties,
+  weights?: Record<string, number>,
+  hashTable?: Record<string, string>,
 ): StyleRecord[] {
   const flat: CSSProperties = {};
   const nonFlat: CSSProperties = {};
@@ -32,14 +42,20 @@ export function getStyleRecords(
         const atomicMap = new Map<string, string>();
         const notSuffix = innerProp.startsWith('--') ? '' : notNormalize;
 
-        processAtomicProps({ [innerProp]: innerValue }, atomicMap, prop);
+        processAtomicProps(
+          { [innerProp]: innerValue },
+          atomicMap,
+          prop,
+          FULL_HASH_LENGTH,
+        );
 
         const querySheets: string[] = [];
         const queryHashes: string[] = [];
 
         for (const [hash, sheet] of atomicMap) {
-          querySheets.push(sheet.replace(`.${hash}`, `.${hash}${notSuffix}`));
-          queryHashes.push(hash);
+          const short = shortName(toFullHash(hash), hashTable);
+          querySheets.push(sheet.replace(`.${hash}`, `.${short}${notSuffix}`));
+          queryHashes.push(short);
         }
         const queryKey = prop + ':' + innerProp;
 
@@ -52,14 +68,20 @@ export function getStyleRecords(
     } else if (typeof value === 'string' || typeof value === 'number') {
       const atomicMap = new Map<string, string>();
 
-      processAtomicProps({ [prop]: value }, atomicMap);
+      processAtomicProps(
+        { [prop]: value },
+        atomicMap,
+        undefined,
+        FULL_HASH_LENGTH,
+      );
 
       const sheets: string[] = [];
       const hashes: string[] = [];
 
       for (const [hash, sheet] of atomicMap) {
-        sheets.push(sheet);
-        hashes.push(hash);
+        const short = shortName(toFullHash(hash), hashTable);
+        sheets.push(sheet.replace(`.${hash}`, `.${short}`));
+        hashes.push(short);
       }
 
       records.push({
@@ -104,11 +126,11 @@ export function getStyleRecords(
           : `${selector}:${prop}`;
         const weight = weights?.[key] ?? 0;
 
-        const hash = genBase36Hash(
-          weight > 0 ? [hashSource, weight] : hashSource,
-          1,
-          8,
+        const baseHash = toFullHash(
+          genBase36Hash(hashSource, 1, FULL_HASH_LENGTH),
         );
+        const hash =
+          shortName(baseHash, hashTable) + (weight > 0 ? `-${weight}` : '');
         const conditionDepth = 1 + (atRule ? 1 : 0);
         const stateDepth = prop.startsWith('--') ? 0 : conditionDepth;
         const notSuffix = notNormalize.repeat(stateDepth + weight);
