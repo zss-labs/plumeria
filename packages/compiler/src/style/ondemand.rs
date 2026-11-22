@@ -17,6 +17,7 @@ pub trait SheetTables {
     fn theme_names_sorted(&self) -> Vec<(String, String)>;
     fn theme_obj(&self, hash: &str) -> Option<Value>;
     fn theme_selector(&self, hash: &str) -> Option<String>;
+    fn hash_table(&self) -> &crate::style::records::HashTable;
 }
 
 fn find_markers(text: &str, mut found: impl FnMut(&str, &str)) {
@@ -215,7 +216,8 @@ pub fn extract_ondemand_styles(
     for hash in &walker.creates {
         if let Some(Value::Obj(object)) = tables.create_obj(hash) {
             for (_, style) in object.iter() {
-                for record in style_records(&entries_object(style), None) {
+                for record in style_records(&entries_object(style), None, Some(tables.hash_table()))
+                {
                     add_sheet(record.sheet);
                 }
             }
