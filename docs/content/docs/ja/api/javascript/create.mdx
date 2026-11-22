@@ -176,7 +176,9 @@ const toneStyles = css.create({
 
 **ビルド後の JavaScript**
 ```js
-({__proto__:null,"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}[isLarge ? keyA : keyB] || "")
+var __plumeria_lookup0; function __plumeria_lookup0_init() { return (__plumeria_lookup0 = {__proto__:null,"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}); }
+
+((__plumeria_lookup0 ?? __plumeria_lookup0_init())[isLarge ? keyA : keyB] || "")
 ```
 
 一度に選ばれる分岐は一つです。コンパイラは分岐ごとに組み合わせを作らず、表を引くキーの式に条件を含めます。
