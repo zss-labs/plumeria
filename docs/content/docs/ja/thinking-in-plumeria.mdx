@@ -129,11 +129,13 @@ Type '"warning"' is not assignable to type '"danger" | "info" | undefined'.
 キーで選ぶ式は、クラス名を引くための表に変換されます。
 
 ```tsx title="Output"
+var __plumeria_lookup0; function __plumeria_lookup0_init() { return (__plumeria_lookup0 = {__proto__:null,"info":"xuin35ub xkex1i2c","danger":"xt5mu2nw x7tnr6ub"}); }
+
 <div
   className={
     "xxp6epoh xi0vg1kw xkhnu0f1 xqqbxt1d xyqr9vb7" + " " +
     ((pinned) ? "xxkkh052 x3v14h35" : "") + " " +
-    ({__proto__:null,"info":"xuin35ub xkex1i2c","danger":"xt5mu2nw x7tnr6ub"}[tone] || "")
+    ((__plumeria_lookup0 ?? __plumeria_lookup0_init())[tone] || "")
   }
 >
 ```
