@@ -38,7 +38,7 @@ export function resolveImportPath(importPath: string, importerPath: string): str
 }
 
 export const resolveExport = () => null;
-export const scanAll = () => ({});
+export const scanAll = () => ({ createHashTable: {}, createObjectTable: {} });
 export const styleReceivers = () => ({});
 
 function unwrap(node: ts.Expression): ts.Expression {
