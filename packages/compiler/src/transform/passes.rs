@@ -13,6 +13,7 @@ use crate::eval::functions::style_functions_of;
 use crate::eval::{argument_expr, resolve_theme_selector};
 use crate::js::json::{quote, stringify, stringify_object};
 use crate::js::{Object, Value};
+use crate::style::hash_table::{shorten_atom_map, shorten_atomic};
 use crate::style::records::atom_map;
 use crate::style::theme::{checked_var_type_hash, theme_atomic_map, theme_hash_of};
 use crate::syntax::expr::{E, K, Member, Prop, unwrap, unwrap_style};
@@ -165,7 +166,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 let mut hash_map = Object::new();
                 for (key, style) in obj.iter() {
                     let Value::Obj(style) = style else { continue };
-                    hash_map.insert(key, Value::obj(atom_map(style)));
+                    hash_map.insert(
+                        key,
+                        Value::obj(atom_map(style, Some(&self.tables.hash_table))),
+                    );
                 }
                 let functions = style_functions_of(object);
                 self.local_create_styles.insert(
@@ -464,8 +468,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .filter(|h| !h.is_empty())
             .or_else(|| self.merged_create.get(var_name).filter(|h| !h.is_empty()))?;
         let obj = self.create_object(hash)?;
-        let atomic = self.tables.atomic_map.get(hash).cloned()?;
-        Some((obj, atomic))
+        let atomic = self.tables.atomic_map.get(hash)?;
+        Some((obj, shorten_atomic(atomic, &self.tables.hash_table)))
     }
 
     pub fn create_object(&self, hash: &str) -> Option<Value> {
@@ -716,7 +720,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 .and_then(|atomic| atomic.as_obj())
                 .and_then(|atomic| atomic.get(prop_name));
             if let Some(atoms) = atoms.filter(|atoms| atoms.truthy()) {
-                let content = format!("({})", stringify(atoms));
+                let atoms = match atoms {
+                    Value::Obj(atoms) => {
+                        Value::obj(shorten_atom_map(atoms, &self.tables.hash_table))
+                    }
+                    other => other.clone(),
+                };
+                let content = format!("({})", stringify(&atoms));
                 self.replacements.push(Replacement {
                     start: span.start,
                     end: span.end,
@@ -862,7 +872,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         if let Some(hash) = hash
             && let (Some(obj), Some(atomic)) = (
                 self.create_object(&hash),
-                self.tables.atomic_map.get(&hash).cloned(),
+                self.tables
+                    .atomic_map
+                    .get(&hash)
+                    .map(|atomic| shorten_atomic(atomic, &self.tables.hash_table)),
             )
         {
             let hash_map = Self::filtered_hash_map(&obj, &atomic);
