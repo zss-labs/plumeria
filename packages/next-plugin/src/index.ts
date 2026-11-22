@@ -8,6 +8,7 @@ import * as path from 'path';
 import {
   devGenerationsPath,
   inSourcePackage,
+  reconcileHashes,
   resolveSourcePackage,
   sourcePackages,
 } from '@plumeria/turbopack-loader';
@@ -47,6 +48,7 @@ export function withPlumeria(
   { lint = true, ...options }: PlumeriaOptions = {},
 ): NextConfig {
   if (lint) startNextLintGuard(lintOverrides(options));
+  reconcileHashes(process.cwd(), options.styleProp);
 
   const globalRef = global as typeof global & {
     __PLUMERIA_DEV_CSS_RESET__?: boolean;
