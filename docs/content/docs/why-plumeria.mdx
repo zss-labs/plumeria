@@ -69,9 +69,11 @@ The element receives one class per property:
 Gray is still in the stylesheet, because a `Badge` with no override needs it, and it even comes after teal. It makes no difference, since its class never reaches this element. The compiler knows every style the project passes to `Badge`, and it writes the merge as a lookup:
 
 ```tsx title="Badge.tsx (output)"
+var __plumeria_lookup0; function __plumeria_lookup0_init() { return (__plumeria_lookup0 = {__proto__:null,"x672n4nd":"xxcejlqg"}); }
+
 <span
   className={
-    "x8ti24uy" + " " + ({__proto__:null,"x672n4nd":"xxcejlqg"}[sx] ?? "xuifcaas")
+    "x8ti24uy" + " " + ((__plumeria_lookup0 ?? __plumeria_lookup0_init())[sx] ?? "xuifcaas")
   }
 >
   {children}
