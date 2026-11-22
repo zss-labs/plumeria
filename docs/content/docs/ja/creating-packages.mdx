@@ -81,12 +81,19 @@ export const App = () => (
 アプリをビルドすると、`Button` と、アプリがそこに渡す各スタイルが一緒にコンパイルされます。
 
 ```js title="dist/assets/index.js"
+var __plumeria_lookup0;
+function __plumeria_lookup0_init() {
+  return (__plumeria_lookup0 = {
+    __proto__: null,
+    x9ct19gt: 'xbpntsfg',
+    x409xipj: 'x5iwg3of',
+  });
+}
 var Button = ({ children, sx }) =>
   jsx('button', {
     className:
       'xnuwkl3w xgxw0ba0 xf882boo x1b4ohri ' +
-      ({ __proto__: null, x9ct19gt: 'xbpntsfg', x409xipj: 'x5iwg3of' }[sx] ??
-        'xc4k1q4z'),
+      ((__plumeria_lookup0 ?? __plumeria_lookup0_init())[sx] ?? 'xc4k1q4z'),
     children,
   });
 ```
