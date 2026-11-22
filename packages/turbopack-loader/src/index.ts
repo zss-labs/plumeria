@@ -6,6 +6,7 @@ import {
   compileCSS,
   optimizer,
   resolvePropertyPolicy,
+  scanAll,
   transformSource,
   DEFAULT_STYLE_PROP,
   needsCompile,
@@ -65,6 +66,13 @@ export function watchSources(
     if (entry.isDirectory()) watchSources(context, entryPath);
     else if (SOURCE_FILE.test(entry.name)) context.addDependency(entryPath);
   }
+}
+
+export const hashStampPath = (cwd: string) =>
+  path.join(cwd, 'node_modules', '.cache', 'plumeria', 'hash-stamp');
+
+export function reconcileHashes(cwd: string, styleProp?: string) {
+  scanAll(cwd, styleProp ?? DEFAULT_STYLE_PROP);
 }
 
 export const devGenerationsPath = (cwd: string) =>
@@ -193,6 +201,7 @@ export default async function loader(this: LoaderContext, source: string) {
       isDev: process.env.NODE_ENV !== 'production',
       addDependency: (depPath: string) => this.addDependency(depPath),
     });
+    this.addDependency(hashStampPath(process.cwd()));
 
     let relativeImportPath = path.relative(
       path.dirname(resourcePath),
