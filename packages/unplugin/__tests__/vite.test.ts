@@ -506,6 +506,39 @@ it('ignores hot updates before a development server is configured', () => {
   expect(plugin.handleHotUpdate({ modules: [], file: ID })).toBeUndefined();
 });
 
+it('fully reloads renamed files that cannot accept hot updates', () => {
+  const renamed = {
+    id: '/project/src/Renamed.tsx',
+    isSelfAccepting: false,
+  };
+  const accepted = {
+    id: '/project/src/Accepted.tsx',
+    isSelfAccepting: true,
+  };
+  const invalidateModule = jest.fn();
+  const send = jest.fn();
+  const plugin = vite()[0] as any;
+  mockScanAll.mockReturnValue({
+    componentPropsTable: {},
+    renamedFiles: [renamed.id, accepted.id],
+  });
+  plugin.configureServer({
+    moduleGraph: {
+      getModulesByFile: jest.fn(
+        (file) => new Set([file === renamed.id ? renamed : accepted]),
+      ),
+      getModuleById: jest.fn(() => null),
+      invalidateModule,
+    },
+    ws: { send },
+  });
+
+  expect(plugin.handleHotUpdate({ modules: [], file: ID })).toEqual([]);
+  expect(invalidateModule).toHaveBeenCalledWith(renamed);
+  expect(invalidateModule).toHaveBeenCalledWith(accepted);
+  expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' });
+});
+
 it('keeps build mode out of development behavior', () => {
   const plugin = vite()[0] as any;
   plugin.configResolved({ root: '/project', command: 'build' });
