@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { parseSync } from '@swc/core';
 import { getStyleRecords, DEFAULT_STYLE_PROP } from '@plumeria/utils';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const env = (source: string, filePath: string) => ({
@@ -37,7 +37,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
   afterEach(() => {
     for (const name of fs.readdirSync(directory))
-      fs.rmSync(path.join(directory, name));
+      fs.rmSync(path.join(directory, name), { recursive: true, force: true });
   });
 
   it('preserves UTF-8 BOM and multibyte leading comments without shifting replacements', async () => {
@@ -139,7 +139,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     fs.writeFileSync(child, childSource);
     fs.writeFileSync(parent, parentSource);
     const result = await run(childSource, child);
-    expect(result).toContain(classHash({ color: 'red' }));
+    expect(result).toContain(scannedNames(classHash({ color: 'red' })));
     expect(result).toContain('rest.styleArray');
     expect(() => checkSyntax(result)).not.toThrow();
   });
@@ -164,8 +164,8 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       const parentResult = await run(parentSource, parent);
       const childResult = await run(childSource, child);
       expect(parentResult).toContain('(flag)');
-      expect(childResult).toContain(classHash({ color: 'blue' }));
-      expect(childResult).toContain(classHash({ color: 'red' }));
+      expect(childResult).toContain(scannedNames(classHash({ color: 'blue' })));
+      expect(childResult).toContain(scannedNames(classHash({ color: 'red' })));
       expect(() => checkSyntax(parentResult)).not.toThrow();
       expect(() => checkSyntax(childResult)).not.toThrow();
     },
