@@ -34,8 +34,8 @@ catalogs:
       specifier: 5.109.2
       version: 5.109.2
     zss-engine:
-      specifier: 3.2.0
-      version: 3.2.0
+      specifier: 3.3.0
+      version: 3.3.0
 
 overrides:
   '@vercel/og>sharp': '-'
@@ -100,7 +100,7 @@ importers:
         version: 6.0.3
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
 
   docs:
     dependencies:
@@ -175,7 +175,7 @@ importers:
         version: 4.4.3
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -977,7 +977,7 @@ importers:
         version: 1.87.0
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
     devDependencies:
       '@types/eslint':
         specifier: ^9.6.1
@@ -1140,7 +1140,7 @@ importers:
         version: link:../compiler
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
 
   packages/unplugin:
     dependencies:
@@ -1158,7 +1158,7 @@ importers:
         version: 3.0.0
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
     devDependencies:
       vite:
         specifier: ^8.0.13
@@ -1180,7 +1180,7 @@ importers:
         version: 8.5.26
       zss-engine:
         specifier: 'catalog:'
-        version: 3.2.0
+        version: 3.3.0
 
   packages/wind:
     dependencies:
@@ -11986,8 +11986,8 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
-  zss-engine@3.2.0:
-    resolution: {integrity: sha512-ds3oHrKCAoP5FLnRvgV5AN7tou5tRY11HxWs0WEcaAs4fe+/768ErSOvGOiyObKLF51acDg0sKR7EtXCZBHrGQ==}
+  zss-engine@3.3.0:
+    resolution: {integrity: sha512-KI8EFWrg9JceM3LD/rbAUlMX6IZbRZRizkA5Wn6IOZSHId/A2TrQFT+6g5utfSDX3N821cdbKqKCAJtSX3oZxg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -23671,7 +23671,7 @@ snapshots:
 
   zod@4.4.3: {}
 
-  zss-engine@3.2.0:
+  zss-engine@3.3.0:
     dependencies:
       cssdefs: 1.0.2
 
