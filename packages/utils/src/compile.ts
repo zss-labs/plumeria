@@ -830,7 +830,11 @@ export function compileCSS(options: CompilerOptions) {
 
     const processStyle = (style: CSSObject) => {
       extractOndemandStyles(style, appendSheet(extractedSheets), scannedTables);
-      const records = getStyleRecords(style as CSSProperties);
+      const records = getStyleRecords(
+        style as CSSProperties,
+        undefined,
+        scannedTables.hashToHashTable,
+      );
       records.forEach((r: StyleRecord) => extractedSheets.push(r.sheet));
     };
 
