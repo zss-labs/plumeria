@@ -29,8 +29,8 @@ const s = css.create({
 
   const app = (body: string) => compile({ 'app.tsx': HEAD + body });
 
-  const RED = '.xq96bg3w { color: red; }';
-  const PADDING = '.x8ti24uy { padding: 4px; }';
+  const RED = '.x6bg3w { color: red; }';
+  const PADDING = '.xi24uy { padding: 4px; }';
 
   afterAll(() => fs.rmSync(DIR, { recursive: true, force: true }));
 
