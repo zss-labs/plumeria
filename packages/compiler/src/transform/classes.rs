@@ -1697,7 +1697,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         Some(fallback.span()),
                     ));
                 };
-                let atoms = crate::style::records::atom_map(&style);
+                let atoms = crate::style::records::atom_map(&style, None);
                 let key = hash_str(&crate::style::records::atom_class_string(&atoms));
                 let mut list = possibilities.unwrap_or_default();
                 list.push(PropPossibility {
