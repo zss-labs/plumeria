@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 
-use super::hash::hash_object;
+use super::hash::{full_hash, normalize_object};
 use super::helper::{apply_css_value, camel_to_kebab_case, is_at_rule};
 use super::shorthand::get_property_depth;
 use crate::js::{Object, Value};
@@ -77,7 +77,7 @@ fn walk_atomic_props(flat: &Object, atomic_map: &mut AtomicMap, at_rules: &mut V
             wrapped.insert(rule.clone(), Value::obj(source));
             source = wrapped;
         }
-        let atomic_hash = hash_object(&source);
+        let atomic_hash = full_hash(&normalize_object(&source));
         if atomic_map.contains_key(&atomic_hash) {
             continue;
         }
