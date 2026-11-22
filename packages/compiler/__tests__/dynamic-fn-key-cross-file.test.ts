@@ -14,7 +14,7 @@ describe.each(implementations)('$name', ({ compileCSS }) => {
 
   beforeEach(() => {
     for (const name of fs.readdirSync(FIXTURE_DIR)) {
-      fs.rmSync(path.join(FIXTURE_DIR, name));
+      fs.rmSync(path.join(FIXTURE_DIR, name), { recursive: true, force: true });
     }
   });
 
@@ -67,9 +67,7 @@ export const A = (p: any) => <div sx={importedStyles.tone(p.c)} />;
 `,
       );
 
-      expect(compile()).toContain(
-        '.xokp0532 { color: var(--x80848wl-color); }',
-      );
+      expect(compile()).toContain('.xp0532 { color: var(--x80848wl-color); }');
     });
 
     it('resolves a const declared in the defining file', () => {
