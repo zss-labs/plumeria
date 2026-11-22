@@ -176,7 +176,9 @@ The condition can sit inside the brackets or around them. Both compile to a sing
 
 **Compiled:**
 ```js
-({__proto__:null,"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}[isLarge ? keyA : keyB] || "")
+var __plumeria_lookup0; function __plumeria_lookup0_init() { return (__plumeria_lookup0 = {__proto__:null,"small":"xhrr6ses x1v10r0u","large":"xpdfgu2b xj7b4jff"}); }
+
+((__plumeria_lookup0 ?? __plumeria_lookup0_init())[isLarge ? keyA : keyB] || "")
 ```
 
 The branches of a condition are mutually exclusive — only one of them ever applies — so the compiler folds the condition into the key expression instead of expanding a combination per branch.
