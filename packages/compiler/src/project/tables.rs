@@ -86,6 +86,9 @@ pub struct Tables {
     pub static_obj: Map<Value>,
     pub component_props: PropsTable,
     pub style_receiver: Ordered<Vec<String>>,
+    pub element_styles: Map<Vec<Object>>,
+    pub hash_table: Map<String>,
+    pub renamed_files: Vec<String>,
 }
 
 impl Tables {
