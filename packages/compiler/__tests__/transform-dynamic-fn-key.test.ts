@@ -241,7 +241,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
         header + `export const A = (p: any) => <div sx={s.palette(p.c)} />;`,
         'a.tsx',
       );
-      expect(code).toContain('className="xokp0532"');
+      expect(code).toContain('className="xp0532"');
       expect(code).toContain(
         `style={{ "--x80848wl-color": (typeof (p.c) === 'number' ? (p.c) + 'px' : (p.c)) }}`,
       );
@@ -471,7 +471,7 @@ export const J = (p: any) => <div sx={s.named(p.c)} />;`,
         header + `export const E = () => <Box styleArray={s.stat} />;`,
         'e.tsx',
       );
-      expect(code).toContain('styleArray={({"color":"xq96bg3w"})}');
+      expect(code).toContain('styleArray={({"color":"x6bg3w"})}');
     });
   });
 
