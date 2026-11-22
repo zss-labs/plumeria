@@ -71,7 +71,7 @@ describe('createTheme edits compiled into the virtual CSS', () => {
 
   beforeEach(() => {
     for (const name of fs.readdirSync(projectDir)) {
-      fs.rmSync(path.join(projectDir, name));
+      fs.rmSync(path.join(projectDir, name), { recursive: true, force: true });
     }
     jest.spyOn(process, 'cwd').mockReturnValue(projectDir);
   });
