@@ -25,6 +25,10 @@ ruleTester.run('use-to-prop', useToProp, {
       options,
     },
     {
+      code: imports + '<div className={css.other(styles.text)} />',
+      options,
+    },
+    {
       code: '<div className={use(styles.text)} />',
       options,
     },
