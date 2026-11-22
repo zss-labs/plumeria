@@ -56,10 +56,24 @@ TypedCSS, introduced in Plumeria 22.0 as a second execution model, is now deprec
 - `use-to-prop sx` converts `className={css.use(a, b)}` to `sx={[a, b]}`.
 - `no-order-dependent-overlap` detects conflicts between styles composed across modules.
 - The compiler emits static class names as JSX attributes such as `className="xvdv6o3r xggb8uiu"`.
+- Conflicting styles resolve through one priority chain per property instead of a table over every combination of conditions.
+- The core README shows the priority-chain output.
 
 ---
 
 ## Release notes
+
+## 22.2.5 (Nov 22, 2026)
+
+- Update: Show the priority-chain output in the core README.
+
+## 22.2.4 (Nov 21, 2026)
+
+- Perf: Resolve conflicting styles with one priority chain per property instead of a table over every combination of conditions.
+- Perf: Omit the null prototype from decision tables whose keys only come from the compiler.
+- Fix: Evaluate each condition once and in argument order when it feeds several chains.
+- Fix: Read the gate of a ternary nested inside `&&` once.
+- Fix: Fall back past unregistered keys such as `constructor` and keep a variant named `__proto__` in lookup tables.
 
 ## 22.2.3 (Nov 21, 2026)
 
