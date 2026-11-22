@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { getStyleRecords, DEFAULT_STYLE_PROP } from '@plumeria/utils';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const env = (source: string, filePath: string) => ({
@@ -134,12 +134,12 @@ describe.each(implementations)('$name', ({ transformSource }) => {
         exports,
       );
       expect(exports.Card({}).props.className).toBe(
-        classHash({ color: 'red' }),
+        scannedNames(classHash({ color: 'red' })),
       );
       const tree = exports.App();
       const supplied = tree.children[1].props;
       expect(exports.Card(supplied).props.className).toBe(
-        classHash({ color: 'blue' }),
+        scannedNames(classHash({ color: 'blue' })),
       );
       expect(exports.Card({ cardStyle: null }).props.className).toBe('');
       expect(exports.Card({ cardStyle: false }).props.className).toBe('');
