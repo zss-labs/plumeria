@@ -74,11 +74,12 @@ import { needsCompile } from './stylePropFilter';
 import { collectStyleRecords, getStyleRecords } from './create';
 import {
   buildHashToHashTable,
+  classNames,
   createSources,
-  elementSources,
+  fileSources,
   filesUsing,
-  propsSources,
   refreshNameCache,
+  styleNames,
 } from './hashToHash';
 import {
   styleFunctionsOf,
@@ -1828,7 +1829,7 @@ const fileCache: Record<string, CachedData> = {};
 
 const receiverKeysByFile = new Map<string, string[]>();
 
-const elementStylesByFile = new Map<string, CSSObject[]>();
+const propNamesByFile = new Map<string, string[]>();
 
 // Global reverse dependency map and known file tracking for incremental updates
 const dependentsMap = new Map<string, Set<string>>();
@@ -2026,7 +2027,7 @@ function releaseObjectOwner(
 // to remove are derived from it.
 function stripFileContributions(filePath: string, cached: CachedData) {
   releaseFileObjects(filePath);
-  elementStylesByFile.delete(filePath);
+  propNamesByFile.delete(filePath);
   const receiverKeys = receiverKeysByFile.get(filePath);
   if (receiverKeys) {
     for (const key of receiverKeys)
@@ -2871,6 +2872,13 @@ function runScan(scanCwd: string, styleProp: string): Tables {
                     records.forEach((r) => (atomMap[r.key] = r.hash));
                     hashMap[key] = atomMap;
                   });
+                  if (!createNames.has(hash))
+                    createNames.set(
+                      hash,
+                      Object.values(hashMap).flatMap((atomMap) =>
+                        classNames(Object.values(atomMap).join(' ')),
+                      ),
+                    );
                   localCreateAtomicMapTable[hash] = hashMap;
                   localTables.createAtomicMapTable[hash] = hashMap;
                   registerObjectOwner('createAtomicMapTable', hash, filePath);
@@ -3372,7 +3380,17 @@ function runScan(scanCwd: string, styleProp: string): Tables {
       for (const { name, fn } of componentFunctions(ast))
         registerReceiver(name, fn);
 
-      const elementStyles: CSSObject[] = [];
+      const propNames: string[] = [];
+      const hasCall = (expr: Expression): boolean => {
+        let found = false;
+        traverse(expr, {
+          CallExpression({ stop }) {
+            found = true;
+            stop();
+          },
+        });
+        return found;
+      };
       traverse(ast, {
         JSXOpeningElement({ node }) {
           const compKey = resolveComponentKey(
@@ -3389,11 +3407,14 @@ function runScan(scanCwd: string, styleProp: string): Tables {
                 attr.value?.type !== 'JSXExpressionContainer'
               )
                 continue;
+              if (!hasCall(attr.value.expression)) continue;
               try {
                 for (const alternative of propAlternatives(
                   attr.value.expression,
                 ) ?? [])
-                  elementStyles.push(alternative.styleObj);
+                  propNames.push(
+                    ...styleNames(alternative.styleObj as CSSProperties),
+                  );
               } catch {
                 // ignore
               }
@@ -3421,9 +3442,12 @@ function runScan(scanCwd: string, styleProp: string): Tables {
         },
       });
 
-      if (elementStyles.length > 0)
-        elementStylesByFile.set(filePath, elementStyles);
-      else elementStylesByFile.delete(filePath);
+      for (const props of Object.values(localComponentPropsTable))
+        for (const entries of Object.values(props))
+          for (const entry of entries)
+            propNames.push(...classNames(entry.classString));
+      if (propNames.length > 0) propNamesByFile.set(filePath, propNames);
+      else propNamesByFile.delete(filePath);
 
       const globalTable = localTables.componentPropsTable!;
       for (const compKey of Object.keys(localComponentPropsTable)) {
@@ -3529,8 +3553,7 @@ function refreshHashTable(cwd: string) {
       (objectHash) =>
         objectTableOwners.get(`createObjectTable:${objectHash}`) ?? [],
     ),
-    ...propsSources(tables.componentPropsTable ?? {}),
-    ...elementSources(elementStylesByFile),
+    ...fileSources(propNamesByFile),
   ];
   const previous = tables.hashToHashTable ?? {};
   const table = buildHashToHashTable(sources);
@@ -3552,6 +3575,13 @@ function refreshHashTable(cwd: string) {
   }
   for (const file of renamed) compileRevisions.set(file, tablesGeneration);
   tables.renamedFiles = renamed;
+  if (
+    changed.size === 0 &&
+    !persistPending &&
+    persistedNames !== undefined &&
+    fs.existsSync(path.join(cwd, 'node_modules/.cache/plumeria/hash-stamp'))
+  )
+    return;
   persistPending = true;
   persistHashTable(cwd, table);
   persistPending = false;
