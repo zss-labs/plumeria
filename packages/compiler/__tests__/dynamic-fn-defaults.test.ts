@@ -192,7 +192,7 @@ export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`),
       ['an omitted argument', 'st.fn()'],
     ])('writes the same fallback into the rule for %s', async (_name, call) => {
       const { css } = await transform('(n = GAP)', '{ width: n }', call);
-      expect(css).toBe('.xmkz4ovz { width: var(--xkvwfgqc-n, 4px); }\n');
+      expect(css).toBe('.xz4ovz { width: var(--xkvwfgqc-n, 4px); }\n');
     });
   });
 });
