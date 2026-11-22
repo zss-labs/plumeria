@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_STYLE_PROP } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
+import { inlineLookups } from '../compiler-implementations/inline-lookups';
 
 describe.each(implementations)('$name', ({ transformSource }) => {
   const DIR = fs.realpathSync(
@@ -35,7 +36,9 @@ ${body}
 
   const run = async (body: string): Promise<string> => {
     const result = await transformSource(env(wrap(body), `${DIR}/fixture.tsx`));
-    return typeof result === 'string' ? result : (result?.code ?? '');
+    return inlineLookups(
+      typeof result === 'string' ? result : (result?.code ?? ''),
+    );
   };
 
   // Bracket access with a literal key must resolve inside a conditional exactly
