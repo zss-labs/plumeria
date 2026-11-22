@@ -18,7 +18,8 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
     const scan = options.scan ?? [filePath];
     for (const name of fs.readdirSync(directory)) {
       const existing = path.join(directory, name);
-      if (!scan.includes(existing)) fs.rmSync(existing);
+      if (!scan.includes(existing))
+        fs.rmSync(existing, { recursive: true, force: true });
     }
     if (scan.includes(filePath)) fs.writeFileSync(filePath, source);
     return transformSource({
