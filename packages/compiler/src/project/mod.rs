@@ -119,6 +119,9 @@ pub struct Project {
     stat_memo: Option<FxHashMap<String, Option<Stat>>>,
     pub resolver: Resolver,
     const_cache: values::ConstCache,
+    persisted_names: Option<std::collections::BTreeMap<String, String>>,
+    persist_pending: bool,
+    create_names: crate::project::tables::Map<Vec<String>>,
 }
 
 pub fn project() -> &'static Mutex<Project> {
@@ -260,6 +263,7 @@ impl Project {
 
     fn strip_file_contributions(&mut self, file: &str, component_props: Option<&PropsTable>) {
         self.release_file_objects(file);
+        self.tables.element_styles.remove(file);
         if let Some(keys) = self.receiver_keys_by_file.remove(file) {
             for key in keys {
                 self.tables.style_receiver.shift_remove(&key);
@@ -317,28 +321,37 @@ impl Project {
         deps.into_iter().collect()
     }
 
-    pub fn scan_overlay(&mut self, cwd: &str, style_prop: &str) {
-        self.scan_all(cwd, style_prop);
+    pub fn scan_overlay(&mut self, cwd: &str, style_prop: &str) -> Result<(), String> {
+        self.scan_all(cwd, style_prop)
     }
 
-    pub fn scan_all(&mut self, cwd: &str, style_prop: &str) {
+    pub fn scan_all(&mut self, cwd: &str, style_prop: &str) -> Result<(), String> {
         self.stat_memo = Some(FxHashMap::default());
-        self.run_scan(cwd, style_prop);
+        let result = self.run_scan(cwd, style_prop);
         self.stat_memo = None;
+        result
     }
 
-    fn run_scan(&mut self, scan_cwd: &str, style_prop: &str) {
+    fn run_scan(&mut self, scan_cwd: &str, style_prop: &str) -> Result<(), String> {
         let cwd = resolve(&std::env::current_dir().unwrap_or_default(), scan_cwd)
             .to_string_lossy()
             .into_owned();
+        let same_root = self.scanned_cwd.as_deref() == Some(cwd.as_str());
+        if !self.persist_pending || !same_root {
+            self.tables.renamed_files.clear();
+        }
         if self.has_computed_once
+            && !self.persist_pending
             && is_production()
-            && self.scanned_cwd.as_deref() == Some(cwd.as_str())
+            && same_root
             && self.scanned_style_prop.as_deref() == Some(style_prop)
         {
-            return;
+            return Ok(());
         }
 
+        if !same_root {
+            self.persisted_names = None;
+        }
         self.scanned_cwd = Some(cwd.clone());
         let style_prop_changed = self
             .scanned_style_prop
@@ -538,7 +551,10 @@ impl Project {
         }
 
         if invalidated.is_empty() && self.has_computed_once {
-            return;
+            if self.persist_pending {
+                return self.refresh_hash_table();
+            }
+            return Ok(());
         }
 
         self.scan_generation += 1;
@@ -734,7 +750,109 @@ impl Project {
                 });
             }
         }
+        self.refresh_hash_table()?;
         self.has_computed_once = true;
+        Ok(())
+    }
+
+    fn refresh_hash_table(&mut self) -> Result<(), String> {
+        use crate::style::hash_table::{
+            build_hash_table, create_sources, element_sources, files_using, props_sources,
+            refresh_name_cache,
+        };
+        refresh_name_cache(&self.tables.create_obj, &mut self.create_names);
+        let mut renamed: IndexSet<String, FxBuildHasher> = IndexSet::default();
+        renamed.extend(self.tables.renamed_files.drain(..));
+        let table = {
+            let owners = |object_hash: &str| -> Vec<&str> {
+                self.object_owners
+                    .get(&(ObjectTable::CreateObject, object_hash.to_string()))
+                    .into_iter()
+                    .flatten()
+                    .map(String::as_str)
+                    .collect()
+            };
+            let mut sources = create_sources(&self.create_names, owners);
+            sources.extend(props_sources(&self.tables.component_props));
+            sources.extend(element_sources(&self.tables.element_styles));
+            let table = build_hash_table(&sources);
+            let previous = &self.tables.hash_table;
+            let changed: FxHashSet<&str> = previous
+                .keys()
+                .chain(table.keys())
+                .filter(|hash| previous.get(*hash) != table.get(*hash))
+                .map(String::as_str)
+                .collect();
+            if !changed.is_empty() {
+                renamed.extend(files_using(&sources, &changed));
+            }
+            table
+        };
+        self.tables.hash_table = table;
+        let mut head = 0;
+        while head < renamed.len() {
+            let file = renamed[head].clone();
+            if let Some(dependents) = self.dependents.get(&file) {
+                for dependent in dependents {
+                    renamed.insert(dependent.clone());
+                }
+            }
+            head += 1;
+        }
+        for file in &renamed {
+            self.compile_revisions
+                .insert(file.clone(), self.scan_generation);
+        }
+        self.tables.renamed_files = renamed.into_iter().collect();
+        self.persist_pending = true;
+        self.persist_hash_table()?;
+        self.persist_pending = false;
+        Ok(())
+    }
+
+    fn persist_hash_table(&mut self) -> Result<(), String> {
+        let Some(cwd) = self.scanned_cwd.as_deref() else {
+            return Ok(());
+        };
+        let dir = std::path::Path::new(cwd).join("node_modules/.cache/plumeria");
+        let table_path = dir.join("hash-names.json");
+        let stamp_path = dir.join("hash-stamp");
+        let names: std::collections::BTreeMap<String, String> = self
+            .tables
+            .hash_table
+            .iter()
+            .map(|(hash, name)| (hash.clone(), name.clone()))
+            .collect();
+        if self.persisted_names.is_none() {
+            self.persisted_names = std::fs::read_to_string(&table_path)
+                .ok()
+                .and_then(|text| serde_json::from_str(&text).ok());
+        }
+        let renamed = match &self.persisted_names {
+            None => true,
+            Some(saved) => names
+                .iter()
+                .any(|(hash, name)| saved.get(hash).is_some_and(|saved| saved != name)),
+        };
+        let stamp_missing = !stamp_path.exists();
+        if self.persisted_names.as_ref() == Some(&names) && !stamp_missing {
+            return Ok(());
+        }
+        let failed = |path: &std::path::Path, error: &dyn std::fmt::Display| {
+            format!("[plumeria] Failed to update {}: {error}", path.display())
+        };
+        std::fs::create_dir_all(&dir).map_err(|error| failed(&dir, &error))?;
+        if renamed || stamp_missing {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| elapsed.as_nanos());
+            std::fs::write(&stamp_path, stamp.to_string())
+                .map_err(|error| failed(&stamp_path, &error))?;
+        }
+        let text = serde_json::to_string(&names).map_err(|error| failed(&table_path, &error))?;
+        std::fs::write(&table_path, text).map_err(|error| failed(&table_path, &error))?;
+        self.persisted_names = Some(names);
+        Ok(())
     }
 
     fn visit_scan_order(
