@@ -1,7 +1,13 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { implementations } from '../compiler-implementations';
+import { implementations, scannedNames } from '../compiler-implementations';
+
+it('shortens scanned class names while preserving other names', () => {
+  expect(scannedNames('x1234567 x1234567-2 other')).toBe(
+    'x34567 x34567-2 other',
+  );
+});
 
 describe.each(implementations)('$name', ({ compileCSS }) => {
   const directory = fs.realpathSync(
