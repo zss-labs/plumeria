@@ -689,6 +689,15 @@ export const transformSource = async (
     end: number;
     content: string;
   }> = [];
+  const hoistedLookups = new Map<string, string>();
+  const reservedLookupNames = new Set<string>();
+  let lookupIndex = 0;
+  const nextLookupName = () => {
+    let name: string;
+    do name = `__plumeria_lookup${lookupIndex++}`;
+    while (reservedLookupNames.has(name));
+    return name;
+  };
 
   const deferredSources: Array<{
     token: string;
@@ -1176,6 +1185,10 @@ export const transformSource = async (
   };
 
   traverse(ast, {
+    Identifier({ node }: { node: Identifier }) {
+      const lookupName = /^(__plumeria_lookup\d+)(?:_init)?$/.exec(node.value);
+      if (lookupName) reservedLookupNames.add(lookupName[1]);
+    },
     ImportDeclaration({ node }: { node: ImportDeclaration }) {
       if (node.source.value === '@plumeria/core') {
         if (node.typeOnly) return;
@@ -2420,6 +2433,17 @@ export const transformSource = async (
             `${key === '__proto__' ? '["__proto__"]' : JSON.stringify(key)}:${value}`,
         )
         .join(',')}}`;
+    const lookupRef = (entries: Array<[string, string]>, closed = false) => {
+      const table = lookupTable(entries, closed);
+      if (!entries.every(([, value]) => /^"[^"\\]*"$/.test(value)))
+        return table;
+      let name = hoistedLookups.get(table);
+      if (name === undefined) {
+        name = nextLookupName();
+        hoistedLookups.set(table, name);
+      }
+      return `(${name} ?? ${name}_init())`;
+    };
     const testSource = (c: StyleConditional) =>
       c.groupId === undefined ? (c.testString ?? getSource(c.test)) : c.testLHS;
     const bound: string[] = [];
@@ -2575,7 +2599,7 @@ export const transformSource = async (
         }
       });
       if (Object.keys(lookupMap).length > 0) {
-        const table = lookupTable(
+        const table = lookupRef(
           Object.entries(lookupMap).map(([k, v]) => [k, JSON.stringify(v)]),
           options[0].closed,
         );
@@ -2746,7 +2770,7 @@ export const transformSource = async (
             }
           } else {
             tests.push(dim.testExpr ?? '');
-            const table = lookupTable(
+            const table = lookupRef(
               [...byOption].map(([o, className]) => [
                 String(dim.options[o].value),
                 className,
@@ -3568,20 +3592,67 @@ export const transformSource = async (
       );
   }
 
-  const splice = (list: typeof replacements): string => {
+  type Insertion = { at: number; content: string };
+  const splice = (list: typeof replacements, insert?: Insertion): string => {
     let offset = 0;
+    let pending = insert;
     const parts: Buffer[] = [];
+    const flush = (until: number) => {
+      if (!pending || pending.at > until) return;
+      const at = Math.max(pending.at, offset);
+      parts.push(
+        sourceBuffer.subarray(offset, at),
+        Buffer.from(pending.content),
+      );
+      offset = at;
+      pending = undefined;
+    };
     list.forEach((r) => {
       if (r.start < offset) return;
+      flush(r.start);
       parts.push(sourceBuffer.subarray(offset, r.start));
       parts.push(Buffer.from(r.content));
       offset = r.end;
     });
+    flush(sourceBuffer.length);
     parts.push(sourceBuffer.subarray(offset));
     return Buffer.concat(parts).toString();
   };
 
-  const transformedSource = splice(replacements);
+  const hoistInsertion = (spliced: string): Insertion | undefined => {
+    const declarations = [...hoistedLookups]
+      .filter(([, name]) => spliced.includes(`${name}_init()`))
+      .map(
+        ([table, name]) =>
+          `var ${name}; function ${name}_init() { return (${name} = ${table}); }`,
+      );
+    if (declarations.length === 0) return undefined;
+    let headerEnd: number | undefined;
+    let inPrologue = true;
+    for (const statement of ast.body) {
+      const directive =
+        inPrologue &&
+        statement.type === 'ExpressionStatement' &&
+        statement.expression.type === 'StringLiteral';
+      if (!directive) inPrologue = false;
+      if (!directive && statement.type !== 'ImportDeclaration') break;
+      headerEnd = statement.span.end - baseByteOffset;
+    }
+    if (headerEnd !== undefined)
+      return { at: headerEnd, content: `\n${declarations.join('\n')}` };
+    const first = ast.body[0];
+    return {
+      at: first ? first.span.start - baseByteOffset : sourceBuffer.length,
+      content: `${declarations.join('\n')}\n`,
+    };
+  };
+
+  const plainSource = splice(replacements);
+  const insertion =
+    hoistedLookups.size > 0 ? hoistInsertion(plainSource) : undefined;
+  const transformedSource = insertion
+    ? splice(replacements, insertion)
+    : plainSource;
   const elided = elidedImports(
     ast,
     baseByteOffset,
@@ -3593,7 +3664,7 @@ export const transformSource = async (
   replacements.push(...elided);
   replacements.sort((a, b) => a.start - b.start || b.end - a.end);
 
-  return { code: splice(replacements) };
+  return { code: splice(replacements, insertion) };
 };
 
 const elidedImports = (
