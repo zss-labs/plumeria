@@ -18,6 +18,7 @@ use crate::eval::functions::{
 };
 use crate::eval::{Env, EvalResult, Evaluator, Lookup, argument_expr, resolve_theme_selector};
 use crate::js::{Object, Value, deep_merge, entries_object};
+use crate::style::hash_table::style_names;
 use crate::style::records::{atom_class_string, atom_map};
 use crate::style::theme::{checked_var_type_hash, theme_atomic_map, theme_hash_of};
 use crate::syntax::component::{Wrapped, component_functions, wrapped_bindings};
@@ -26,7 +27,7 @@ use crate::syntax::module::{
     Aliases, CORE, SpecKind, add_core_aliases, import_specs, plumeria_method,
 };
 use crate::syntax::parse::parse_object_text;
-use crate::syntax::visit::{expression_has_identifier, jsx_openings};
+use crate::syntax::visit::{expression_has_call, expression_has_identifier, jsx_openings};
 
 type Map<V> = FxHashMap<String, V>;
 
@@ -565,6 +566,21 @@ pub fn scan_file_pass<'b, 'a>(
                     for (key, style) in obj.iter() {
                         hash_map.insert(key, Value::obj(atom_map(&entries_object(style), None)));
                     }
+                    project.create_names.entry(hash.clone()).or_insert_with(|| {
+                        hash_map
+                            .values()
+                            .filter_map(|atoms| match atoms {
+                                Value::Obj(atoms) => Some(atom_class_string(atoms)),
+                                _ => None,
+                            })
+                            .flat_map(|class_string| {
+                                class_string
+                                    .split_ascii_whitespace()
+                                    .map(str::to_string)
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect()
+                    });
                     let atoms = Value::obj(hash_map);
                     local.atomic_map.insert(hash.clone(), atoms.clone());
                     project.tables.atomic_map.insert(hash.clone(), atoms);
@@ -986,17 +1002,30 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
         prop_name: &str,
         comp_key: &str,
         table: &mut PropsTable,
+        names: &mut Vec<String>,
     ) -> EvalResult<()> {
         match node.kind() {
             K::Conditional(cond) => {
-                self.register_styles(E::new(&cond.consequent), prop_name, comp_key, table)?;
-                return self.register_styles(E::new(&cond.alternate), prop_name, comp_key, table);
+                self.register_styles(E::new(&cond.consequent), prop_name, comp_key, table, names)?;
+                return self.register_styles(
+                    E::new(&cond.alternate),
+                    prop_name,
+                    comp_key,
+                    table,
+                    names,
+                );
             }
             K::Binary(_, op, right) if op.is_and() => {
-                return self.register_styles(right, prop_name, comp_key, table);
+                return self.register_styles(right, prop_name, comp_key, table, names);
             }
             K::Paren(paren) => {
-                return self.register_styles(E::new(&paren.expression), prop_name, comp_key, table);
+                return self.register_styles(
+                    E::new(&paren.expression),
+                    prop_name,
+                    comp_key,
+                    table,
+                    names,
+                );
             }
             K::Array(array) => {
                 let expr = node.expr().unwrap();
@@ -1028,6 +1057,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                 for alternative in alternatives {
                     let atoms = atom_map(&alternative.style, None);
                     let class_string = atom_class_string(&atoms);
+                    names.extend(class_string.split_ascii_whitespace().map(str::to_string));
                     let has_vars = !alternative.dynamic_calls.is_empty();
                     list.push(TableEntry {
                         key: hash_str(&class_string),
@@ -1059,6 +1089,12 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
             _ => {}
         }
         if let Some(resolved) = self.resolve_call_style_prop(node)? {
+            names.extend(
+                resolved
+                    .class_string
+                    .split_ascii_whitespace()
+                    .map(str::to_string),
+            );
             let list = table
                 .entry(comp_key.to_string())
                 .or_default()
@@ -1197,7 +1233,7 @@ pub fn jsx_phase<'b, 'a>(
     let style_prop = project.scanned_style_prop.clone().unwrap_or_default();
     let tables = std::mem::take(&mut project.tables);
     let mut local_props = PropsTable::default();
-    let mut element_styles: Vec<Object> = Vec::new();
+    let mut prop_names: Vec<String> = Vec::new();
     let outcome = (|| -> Result<(), String> {
         let context = JsxContext {
             file,
@@ -1231,8 +1267,12 @@ pub fn jsx_phase<'b, 'a>(
                     let Some(expr) = container.expression.as_expression() else {
                         continue;
                     };
-                    if let Ok(Some(alternatives)) = context.prop_alternatives(E::new(expr)) {
-                        element_styles.extend(alternatives.into_iter().map(|alt| alt.style));
+                    if expression_has_call(expr)
+                        && let Ok(Some(alternatives)) = context.prop_alternatives(E::new(expr))
+                    {
+                        for alternative in &alternatives {
+                            prop_names.extend(style_names(&alternative.style));
+                        }
                     }
                 }
                 continue;
@@ -1256,6 +1296,7 @@ pub fn jsx_phase<'b, 'a>(
                     name.name.as_str(),
                     &comp_key,
                     &mut local_props,
+                    &mut prop_names,
                 )?;
             }
         }
@@ -1263,13 +1304,13 @@ pub fn jsx_phase<'b, 'a>(
     })();
     project.tables = tables;
     outcome?;
-    if element_styles.is_empty() {
-        project.tables.element_styles.remove(file);
+    if prop_names.is_empty() {
+        project.tables.prop_names.remove(file);
     } else {
         project
             .tables
-            .element_styles
-            .insert(file.to_string(), element_styles);
+            .prop_names
+            .insert(file.to_string(), prop_names);
     }
 
     for (comp_key, props) in &local_props {
