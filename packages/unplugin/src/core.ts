@@ -42,6 +42,8 @@ export const EXTENSION_PATTERN =
 const PROJECT_INCLUDE = ['**/*.{js,jsx,ts,tsx}'];
 const PROJECT_EXCLUDE = ['**/node_modules/**', '**/dist/**'];
 
+const HASH_STAMP = 'node_modules/.cache/plumeria/hash-stamp';
+
 const listFiles = (cwd: string): string[] =>
   globFiles(PROJECT_INCLUDE, PROJECT_EXCLUDE, cwd);
 
@@ -103,16 +105,25 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
   const startLint = () => {
     startLintGuard(lintOverrides(options));
   };
-  const lintOnRun = (bundler: {
-    hooks: { run: { tap: (name: string, fn: () => void) => void } };
+  const reconcile = (root: string) => {
+    compiler.scanAll(path.resolve(root), styleProp);
+  };
+  type Hook = { tap: (name: string, fn: () => void) => void };
+  const onBundler = (bundler: {
+    context: string;
+    hooks: { run: Hook; beforeRun: Hook; watchRun: Hook };
   }) => {
+    const scan = () => reconcile(bundler.context);
+    bundler.hooks.beforeRun.tap('@plumeria/unplugin', scan);
+    bundler.hooks.watchRun.tap('@plumeria/unplugin', scan);
     if (!lint) return;
     bundler.hooks.run.tap('@plumeria/unplugin', () => {
       startLint();
     });
   };
-  const lintUnlessWatching = {
+  const onBuildStart = {
     buildStart(this: { meta: { watchMode: boolean } }) {
+      reconcile(viteRoot);
       if (lint && !this.meta.watchMode) startLint();
     },
   };
@@ -121,10 +132,10 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
     name: '@plumeria/unplugin',
     enforce: 'pre',
 
-    webpack: lintOnRun,
-    rspack: lintOnRun,
-    rollup: lintUnlessWatching,
-    rolldown: lintUnlessWatching,
+    webpack: onBundler,
+    rspack: onBundler,
+    rollup: onBuildStart,
+    rolldown: onBuildStart,
     vite: {
       config(_config: unknown, { command }: { command: string }) {
         if (lint && command === 'build') startLint();
@@ -246,6 +257,7 @@ export const unpluginFactory: UnpluginFactory<PluginOptions | undefined> = (
           cwd,
           addDependency,
         });
+        addDependency(path.join(cwd, HASH_STAMP));
 
         const filePath = path.resolve(baseId);
         const fileCss = compileCSS({
