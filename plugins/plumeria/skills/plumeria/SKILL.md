@@ -262,7 +262,7 @@ export const Button = ({ size, children }: ButtonProps) => {
 
 Best practices:
 
-- **Keep variant `css.create()` calls minimal.** Every key in a `css.create()` used with bracket notation is compiled into the generated lookup table (e.g. `{__proto__:null,"small":"...","medium":"..."}[size]`). Separate variants into dedicated calls; don't mix them with unrelated static styles.
+- **Keep variant `css.create()` calls minimal.** Every key in a `css.create()` used with bracket notation is compiled into the lookup table the module declares once (e.g. `{__proto__:null,"small":"...","medium":"..."}`). Separate variants into dedicated calls; don't mix them with unrelated static styles.
 - **Variant keys are selector-parsed: no spaces.** Every key in a `css.create()` — a variant key included — is read as a selector, so a key must not contain a space or combinator characters; a space is a descendant combinator and stops the build (`no-combinator`). When a display label contains a space, use a slug key and keep a label map for rendering: e.g. the status "On leave" becomes the key `onLeave`, with `const statusLabels = { active: 'Active', onLeave: 'On leave', offline: 'Offline' }`.
 - **Local variable assignment is supported.** `const currentStyle = sizeStyles[size]; <div sx={currentStyle} />` works — the compiler traces local style variables and inlines them during JSX extraction.
 
