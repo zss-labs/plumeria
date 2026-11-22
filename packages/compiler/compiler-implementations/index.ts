@@ -87,3 +87,13 @@ export const implementations: Implementation[] = [
     scanAll: (cwd, styleProp) => ts.scanAll(cwd, styleProp),
   },
 ];
+
+// getStyleRecords names a rule by its 7-char fallback; a scanned project
+// shortens every collision-free name to its last 5 chars.
+export const scannedNames = (classNames: string): string =>
+  classNames
+    .split(' ')
+    .map((name) =>
+      /^x[0-9a-z]{7}(-\d+)?$/.test(name) ? 'x' + name.slice(3) : name,
+    )
+    .join(' ');
