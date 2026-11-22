@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 use oxc_ast::ast::*;
+use oxc_ast_visit::Visit;
 use oxc_span::{GetSpan, Span};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
@@ -200,6 +201,86 @@ fn lookup_table(entries: &[(String, String)], closed: bool) -> String {
         .collect();
     let prototype = if closed { "" } else { "__proto__:null," };
     format!("{{{prototype}{}}}", body.join(","))
+}
+
+fn is_plain_string(value: &str) -> bool {
+    value.len() >= 2
+        && value.starts_with('"')
+        && value.ends_with('"')
+        && !value[1..value.len() - 1].contains(['"', '\\'])
+}
+
+#[derive(Default)]
+struct LookupNames(FxHashSet<String>);
+
+impl LookupNames {
+    fn note(&mut self, name: &str) {
+        let base = name.strip_suffix("_init").unwrap_or(name);
+        if let Some(digits) = base.strip_prefix("__plumeria_lookup")
+            && !digits.is_empty()
+            && digits.bytes().all(|b| b.is_ascii_digit())
+        {
+            self.0.insert(base.to_string());
+        }
+    }
+}
+
+impl<'a> Visit<'a> for LookupNames {
+    fn visit_identifier_name(&mut self, it: &IdentifierName<'a>) {
+        self.note(&it.name);
+    }
+    fn visit_identifier_reference(&mut self, it: &IdentifierReference<'a>) {
+        self.note(&it.name);
+    }
+    fn visit_binding_identifier(&mut self, it: &BindingIdentifier<'a>) {
+        self.note(&it.name);
+    }
+    fn visit_label_identifier(&mut self, it: &LabelIdentifier<'a>) {
+        self.note(&it.name);
+    }
+    fn visit_jsx_identifier(&mut self, it: &JSXIdentifier<'a>) {
+        self.note(&it.name);
+    }
+}
+
+fn lookup_names(source: &str, program: &Program) -> FxHashSet<String> {
+    let mut names = LookupNames::default();
+    if source.contains("__plumeria_lookup") || source.contains("\\u") {
+        names.visit_program(program);
+    }
+    names.0
+}
+
+impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
+    fn lookup_ref(&mut self, entries: &[(String, String)], closed: bool) -> String {
+        let table = lookup_table(entries, closed);
+        if !entries.iter().all(|(_, value)| is_plain_string(value)) {
+            return table;
+        }
+        let name = match self.hoisted_lookups.get(&table) {
+            Some(name) => name.clone(),
+            None => {
+                let name = self.next_lookup_name();
+                self.hoisted_lookups.insert(table, name.clone());
+                name
+            }
+        };
+        format!("({name} ?? {name}_init())")
+    }
+
+    fn next_lookup_name(&mut self) -> String {
+        let (source, program) = (self.source, self.program);
+        let reserved = self
+            .reserved_lookup_names
+            .get_or_insert_with(|| lookup_names(source, program));
+        loop {
+            let name = format!("__plumeria_lookup{}", self.lookup_index);
+            self.lookup_index += 1;
+            if !reserved.contains(&name) {
+                return name;
+            }
+        }
+    }
 }
 
 fn leaf_paths(style: &Object, prefix: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
@@ -1070,7 +1151,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .collect();
                 class_parts.push(format!(
                     "({}[{common}] || \"\")",
-                    lookup_table(&entries, options[0].closed)
+                    self.lookup_ref(&entries, options[0].closed)
                 ));
             }
         }
@@ -1230,7 +1311,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                                 .collect();
                             expr = format!(
                                 "({}[{}] ?? {expr})",
-                                lookup_table(&entries, dimension.closed),
+                                self.lookup_ref(&entries, dimension.closed),
                                 dimension.test_expr
                             );
                         }
