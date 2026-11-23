@@ -243,7 +243,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
       );
       expect(code).toContain('className="xokp0532"');
       expect(code).toContain(
-        `style={{ "--x80848wl-color": (typeof (p.c) === 'number' ? (p.c) + 'px' : (p.c)) }}`,
+        `style={{ "--x80848wl-color": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c) }}`,
       );
     });
 
@@ -296,8 +296,12 @@ export const E = (p: any) => (<div><a sx={s.link(p.b, p.h)} /><i sx={s.deep(p.s)
       );
       const vars = code.match(/"--[^"]+"/g) ?? [];
       expect(vars).toHaveLength(3);
-      expect(code).toContain(`(p.h) + 'px' : (p.h)`);
-      expect(code).toContain(`(p.s) + 'px' : (p.s)`);
+      expect(code).toContain(
+        `(__plumeria_value) + 'px' : (__plumeria_value))(p.h)`,
+      );
+      expect(code).toContain(
+        `(__plumeria_value) + 'px' : (__plumeria_value))(p.s)`,
+      );
     });
 
     it('keeps a unitless nested property free of the px fallback', async () => {
@@ -346,7 +350,7 @@ export const U = (p: any) => <div sx={s.units(p.n)} />;`,
         'unit-split.tsx',
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-n": \(typeof \(p\.n\) === 'number' \? \(p\.n\) \+ 'px' : \(p\.n\)\), "--\1-n-z-index": p\.n/,
+        /"--([a-z0-9]+)-n": \(\(__plumeria_value\) => typeof \(__plumeria_value\) === 'number' \? \(__plumeria_value\) \+ 'px' : \(__plumeria_value\)\)\(p\.n\), "--\1-n-z-index": p\.n/,
       );
     });
 
@@ -369,10 +373,10 @@ export const S = (p: any) => <div sx={s.same(p.c)} />;`,
         'conditional.tsx',
       );
       expect(code).toContain(
-        `"--x80848wl-color": (((p.on)) ? (typeof (p.c) === 'number' ? (p.c) + 'px' : (p.c)) : undefined)`,
+        `"--x80848wl-color": (((p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c) : undefined)`,
       );
       expect(code).toContain(
-        `"--x80848wl-color": ((!(p.on)) ? (typeof (p.b) === 'number' ? (p.b) + 'px' : (p.b)) : (((p.on)) ? (typeof (p.a) === 'number' ? (p.a) + 'px' : (p.a)) : undefined))`,
+        `"--x80848wl-color": ((!(p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.b) : (((p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.a) : undefined))`,
       );
     });
 
@@ -392,10 +396,10 @@ export const H = (p: any) => (<div>
         'named.tsx',
       );
       expect(code).toContain(
-        `"--x4fa0uiv-color": (typeof (p.c) === 'number' ? (p.c) + 'px' : (p.c))`,
+        `"--x4fa0uiv-color": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c)`,
       );
       expect(code).toContain(
-        `"--xs7d3nvt-t": (typeof (p.t) === 'number' ? (p.t) + 'px' : (p.t))`,
+        `"--xs7d3nvt-t": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.t)`,
       );
     });
 
@@ -416,7 +420,7 @@ export const K = (p: any) => (<div>
       expect(code).toContain('<i className="xymr32dw" />');
       expect(code).toContain('<b className="x2x7bpc1" />');
       expect(code).toContain(
-        '"--xav007xm-color": (typeof (`rgb(${p.r} 0 0)`) === \'number\'',
+        "\"--xav007xm-color\": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(`rgb(${p.r} 0 0)`)",
       );
     });
 
