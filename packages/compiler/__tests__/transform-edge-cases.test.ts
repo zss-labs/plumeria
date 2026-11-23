@@ -510,7 +510,7 @@ export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
         "{ fn: (size: number) => ({ width: `${size}px`, ':hover': { width: `${size}%` }, ':focus': { width: size } }) }",
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-size": \(\(p\.n\) \+ 'px'\), "--\1-size-width": \(\(p\.n\) \+ '%'\), "--\1-size-width-px": \(typeof \(p\.n\) === 'number' \? \(p\.n\) \+ 'px' : \(p\.n\)\)/,
+        /"--([a-z0-9]+)-size": \(\(p\.n\) \+ 'px'\), "--\1-size-width": \(\(p\.n\) \+ '%'\), "--\1-size-width-px": \(\(__plumeria_value\) => typeof \(__plumeria_value\) === 'number' \? \(__plumeria_value\) \+ 'px' : \(__plumeria_value\)\)\(p\.n\)/,
       );
     });
 
