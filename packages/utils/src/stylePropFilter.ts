@@ -1,4 +1,5 @@
 const CORE = '@plumeria/core';
+const REACT = '@plumeria/react';
 
 const isIdentifierStart = (c: number) =>
   (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95 || c === 36;
@@ -295,4 +296,6 @@ export const needsCompile = (
   styleProp: string,
   filePath: string,
 ): boolean =>
-  source.includes(CORE) || usesStyleProp(source, styleProp, filePath);
+  source.includes(CORE) ||
+  source.includes(REACT) ||
+  usesStyleProp(source, styleProp, filePath);
