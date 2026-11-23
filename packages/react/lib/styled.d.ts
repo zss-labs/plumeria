@@ -47,12 +47,46 @@ export type StyledPropsOf<R> = [Reads<R>] extends [never]
   ? {}
   : Intersect<Reads<R>>;
 
+export interface JSXRegister {}
+
+type Framework = JSXRegister extends {
+  IntrinsicElements: infer I;
+  Element: infer E;
+}
+  ? { intrinsic: I; element: E; useReactProps: false }
+  : {
+      intrinsic: JSX.IntrinsicElements;
+      element: ReactElement;
+      useReactProps: true;
+    };
+
+type Intrinsic = Framework['intrinsic'];
+
 export type StyledTarget =
-  | keyof JSX.IntrinsicElements
-  | JSXElementConstructor<any>;
+  | keyof Intrinsic
+  | (Framework['useReactProps'] extends true
+      ? JSXElementConstructor<any>
+      : (props: any) => any);
+
+type PropsOf<T> = Framework['useReactProps'] extends true
+  ? T extends keyof JSX.IntrinsicElements | JSXElementConstructor<any>
+    ? ComponentPropsWithRef<T>
+    : never
+  : T extends keyof Intrinsic
+    ? Intrinsic[T]
+    : T extends (props: infer P) => any
+      ? P
+      : never;
+
+type Known<T> = {
+  [K in keyof T as string extends K ? never : K]: T[K];
+};
 
 export type StyledProps<T extends StyledTarget, P> = P &
-  Omit<ComponentPropsWithRef<T>, keyof P | 'sx'> & {
+  Omit<
+    Framework['useReactProps'] extends true ? PropsOf<T> : Known<PropsOf<T>>,
+    keyof P | 'sx'
+  > & {
     sx?: Style;
   };
 
@@ -62,7 +96,7 @@ type Branded = { readonly [styledBrand]: unknown };
 
 export type StyledComponent<T extends StyledTarget, R> = ((
   props: StyledProps<T, StyledPropsOf<R>>,
-) => ReactElement) & {
+) => Framework['element']) & {
   readonly [styledBrand]: R;
 };
 
@@ -74,11 +108,9 @@ export type StyledFactory<T extends StyledTarget> = {
 };
 
 export type styled = {
-  <C extends JSXElementConstructor<any> & Branded>(
-    component: C,
-  ): StyledFactory<C>;
+  <C extends ((props: any) => any) & Branded>(component: C): StyledFactory<C>;
 } & {
-  [T in keyof JSX.IntrinsicElements]: StyledFactory<T>;
+  [T in keyof Intrinsic & string]: StyledFactory<T>;
 };
 
 export const styled: styled;
