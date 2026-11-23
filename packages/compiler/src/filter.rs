@@ -361,5 +361,7 @@ pub fn uses_style_prop(source: &str, style_prop: &str, file_path: &str) -> bool 
 }
 
 pub fn needs_compile(source: &str, style_prop: &str, file_path: &str) -> bool {
-    source.contains(CORE) || uses_style_prop(source, style_prop, file_path)
+    source.contains(CORE)
+        || source.contains(crate::styled::REACT)
+        || uses_style_prop(source, style_prop, file_path)
 }
