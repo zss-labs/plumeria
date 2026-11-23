@@ -243,7 +243,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
       );
       expect(code).toContain('className="xokp0532"');
       expect(code).toContain(
-        `style={{ "--x80848wl-color": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c) }}`,
+        `style={{ ...((__plumeria_arg0) => ({ "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.c) }}`,
       );
     });
 
@@ -297,10 +297,10 @@ export const E = (p: any) => (<div><a sx={s.link(p.b, p.h)} /><i sx={s.deep(p.s)
       const vars = code.match(/"--[^"]+"/g) ?? [];
       expect(vars).toHaveLength(3);
       expect(code).toContain(
-        `(__plumeria_value) + 'px' : (__plumeria_value))(p.h)`,
+        `(__plumeria_arg1) + 'px' : (__plumeria_arg1)) }))(p.b, p.h)`,
       );
       expect(code).toContain(
-        `(__plumeria_value) + 'px' : (__plumeria_value))(p.s)`,
+        `(__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.s)`,
       );
     });
 
@@ -311,7 +311,9 @@ const s = css.create({ fade: (o: number) => ({ ':hover': { opacity: o } }) });
 export const F = (p: any) => <div sx={s.fade(p.o)} />;`,
         'unitless.tsx',
       );
-      expect(code).toMatch(/"--[^"]+": p\.o }}/);
+      expect(code).toMatch(
+        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+": __plumeria_arg0 \}\)\)\(p\.o\) }}/,
+      );
     });
 
     it('keeps a multi-word unitless property free of the px fallback', async () => {
@@ -324,7 +326,9 @@ export const F2 = (p: any) => (<div><i sx={s.grow(1)} /><b sx={s.weight(p.w)} />
         'unitless-multiword.tsx',
       );
       expect(code).toMatch(/"--[^"]+-n": "1"/);
-      expect(code).toMatch(/"--[^"]+-n": p\.w/);
+      expect(code).toMatch(
+        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+-n": __plumeria_arg0 \}\)\)\(p\.w\)/,
+      );
     });
 
     it('leaves a custom property number alone whichever way it is written', async () => {
@@ -337,7 +341,9 @@ export const F3 = (p: any) => (<div><i sx={s.gap(4)} /><b sx={s.gap(p.n)} /></di
         'custom-prop.tsx',
       );
       expect(code).toMatch(/"--[^"]+-n": "4"/);
-      expect(code).toMatch(/"--[^"]+-n": p\.n/);
+      expect(code).toMatch(
+        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+-n": __plumeria_arg0 \}\)\)\(p\.n\)/,
+      );
     });
 
     it('splits the variable when the parameter lands in both unit rules', async () => {
@@ -350,7 +356,7 @@ export const U = (p: any) => <div sx={s.units(p.n)} />;`,
         'unit-split.tsx',
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-n": \(\(__plumeria_value\) => typeof \(__plumeria_value\) === 'number' \? \(__plumeria_value\) \+ 'px' : \(__plumeria_value\)\)\(p\.n\), "--\1-n-z-index": p\.n/,
+        /"--([a-z0-9]+)-n": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\), "--\1-n-z-index": __plumeria_arg0 \}\)\)\(p\.n\)/,
       );
     });
 
@@ -372,11 +378,13 @@ export const S = (p: any) => <div sx={s.same(p.c)} />;`,
           `export const G = (p: any) => (<div><i sx={p.on && s.palette(p.c)} /><b sx={p.on ? s.palette(p.a) : s.palette(p.b)} /></div>);`,
         'conditional.tsx',
       );
+      const palette = (source: string) =>
+        `((__plumeria_arg0) => ({ "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(${source})`;
       expect(code).toContain(
-        `"--x80848wl-color": (((p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c) : undefined)`,
+        `style={{ ...(((p.on)) ? ${palette('p.c')} : null) }}`,
       );
       expect(code).toContain(
-        `"--x80848wl-color": ((!(p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.b) : (((p.on)) ? ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.a) : undefined))`,
+        `style={{ ...(((p.on)) ? ${palette('p.a')} : null), ...((!(p.on)) ? ${palette('p.b')} : null) }}`,
       );
     });
 
@@ -396,10 +404,10 @@ export const H = (p: any) => (<div>
         'named.tsx',
       );
       expect(code).toContain(
-        `"--x4fa0uiv-color": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.c)`,
+        `((__plumeria_arg0) => ({ "--x4fa0uiv-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.c)`,
       );
       expect(code).toContain(
-        `"--xs7d3nvt-t": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.t)`,
+        `((__plumeria_arg0) => ({ "--xs7d3nvt-t": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.t)`,
       );
     });
 
@@ -420,7 +428,7 @@ export const K = (p: any) => (<div>
       expect(code).toContain('<i className="xymr32dw" />');
       expect(code).toContain('<b className="x2x7bpc1" />');
       expect(code).toContain(
-        "\"--xav007xm-color\": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(`rgb(${p.r} 0 0)`)",
+        "((__plumeria_arg0) => ({ \"--xav007xm-color\": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(`rgb(${p.r} 0 0)`)",
       );
     });
 
@@ -490,7 +498,9 @@ export const A = ({ r }: { r: number }) => <div sx={s.fill(r)} />;`,
         'unit-percent.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
-      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ '%'\)/);
+      expect(styleOf(code)).toMatch(
+        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\)/,
+      );
     });
 
     it('moves a unit written as px the same way', async () => {
@@ -501,7 +511,9 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-px.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
-      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ 'px'\)/);
+      expect(styleOf(code)).toMatch(
+        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ 'px'\)/,
+      );
     });
 
     it('moves a unit written inside calc', async () => {
@@ -514,7 +526,9 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       expect(sheets.join('')).toMatch(
         /width: calc\(100% - var\(--[a-z0-9-]+\)\);/,
       );
-      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ 'px'\)/);
+      expect(styleOf(code)).toMatch(
+        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ 'px'\)/,
+      );
     });
 
     it('still carries the unit when the declaration writes none', async () => {
@@ -562,7 +576,7 @@ export const Bar = ({ p }: { p: { rating: number } }) => (
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+, 0%\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(\(p\.rating \/ 5\) \* 100\) \+ '%'\)/,
+        /\(\(__plumeria_arg0\) => \(\{ "--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\) \}\)\)\(\(p\.rating \/ 5\) \* 100\)/,
       );
     });
 
@@ -590,10 +604,10 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
       expect(css).toMatch(/margin: var\(--[a-z0-9-]+-margin\);/);
       expect(css).toMatch(/translate: var\(--[a-z0-9-]+-translate\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin": \(\(r\) \+ 'rem'\)/,
+        /"--[a-z0-9-]+-margin": \(\(__plumeria_arg0\) \+ 'rem'\)/,
       );
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-translate": \(\(r\) \+ '%'\)/,
+        /"--[a-z0-9-]+-translate": \(\(__plumeria_arg0\) \+ '%'\)/,
       );
     });
 
@@ -607,7 +621,9 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
       expect(sheets.join('')).toMatch(
         /width: calc\(var\(--[a-z0-9-]+\) \+ var\(--[a-z0-9-]+-width\)\);/,
       );
-      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+-width": \(\(r\) \+ '%'\)/);
+      expect(styleOf(code)).toMatch(
+        /"--[a-z0-9-]+-width": \(\(__plumeria_arg0\) \+ '%'\)/,
+      );
     });
 
     it('splits one parameter that lands in declarations with different units', async () => {
@@ -622,7 +638,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       expect(css).toMatch(/margin-top: var\(--[a-z0-9-]+-margin-top\);/);
       expect(styleOf(code)).toContain("+ 'px'");
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin-top": \(\(r\) \+ '%'\)/,
+        /"--[a-z0-9-]+-margin-top": \(\(__plumeria_arg0\) \+ '%'\)/,
       );
     });
 
