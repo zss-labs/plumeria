@@ -21,7 +21,9 @@ use crate::js::cmp_utf16;
 use crate::syntax::component::{Wrapped, wrapped_bindings};
 use crate::syntax::module::{CORE, import_specs, module_export_name};
 use crate::syntax::parse::parse_program;
-pub use tables::{Condition, KeyTable, ObjectTable, Ordered, PropsTable, TableEntry, Tables};
+pub use tables::{
+    Condition, KeyTable, Keyed, ObjectTable, Ordered, PropsTable, TableEntry, Tables,
+};
 
 pub const DEFAULT_STYLE_PROP: &str = "sx";
 const DIAGNOSTIC_PREFIX: &str = "[plumeria] ";
