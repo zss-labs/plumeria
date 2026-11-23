@@ -54,7 +54,10 @@ export const A = (p: any) => <div sx={${call}} />;`;
     transform({ 'app.tsx': source(body, options) });
 
   const numeric = (expression: string) =>
-    `(typeof (${expression}) === 'number' ? (${expression}) + 'px' : (${expression}))`;
+    `((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(${expression})`;
+
+  const defaulted = (source: string, value: string) =>
+    `((__plumeria_value) => (__plumeria_value) === undefined ? ${value} : (__plumeria_value))(${source})`;
 
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -235,10 +238,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
           params: `(n: number | string = ${written})`,
         });
         expect(code).toMatch(
-          sets(
-            'n-1',
-            numeric(`((p.n) === undefined ? ${fallback} : (p.n)) + 4`),
-          ),
+          sets('n-1', numeric(`${defaulted('p.n', fallback)} + 4`)),
         );
       },
     );
@@ -249,7 +249,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
         params: '({ size = 10 }: { size?: number })',
       });
       expect(code).toMatch(
-        sets('size-1', numeric('((p.n) === undefined ? 10 : (p.n)) + 4')),
+        sets('size-1', numeric(`${defaulted('p.n', '10')} + 4`)),
       );
     });
 
