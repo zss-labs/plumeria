@@ -185,6 +185,59 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(actual.exports.counter.reads).toBe(2);
   });
 
+  it('evaluates each dynamic style argument once per call', async () => {
+    const actual = render(
+      await run(
+        `import * as css from '@plumeria/core';\n${head}\nconst styles = css.create({ sum: (n: number) => ({ width: n + n }), pair: (n: number) => ({ width: n + 4, height: n * 2 }), fallback: (n = 10) => ({ width: n + 4 }), plain: (n: number) => ({ width: n }) });\nconst Button = styled.button({ color: 'black' });\nexport const reads: string[] = [];\nconst read = (name: string, value?: number) => { reads.push(name); return value; };\nexport const Sum = () => <div sx={styles.sum(read('sum', 4)!)} />;\nexport const Pair = () => <Button sx={styles.pair(read('pair', 4)!)} />;\nexport const Fallback = () => <div sx={styles.fallback(read('fallback'))} />;\nexport const Unused = () => <div sx={styles.plain(8, read('unused'))} />;`,
+      ),
+    );
+    const { reads } = actual.exports;
+
+    for (const name of ['Sum', 'Pair', 'Fallback']) {
+      actual(name);
+      expect(reads.splice(0)).toEqual([name.toLowerCase()]);
+    }
+    actual('Unused');
+    expect(reads.splice(0)).toEqual(['unused']);
+  });
+
+  it('reads an identifier argument before a later argument runs', async () => {
+    const actual = render(
+      await run(
+        `import * as css from '@plumeria/core';\n${head}\nconst styles = css.create({ size: (width: number, height: number) => ({ width, height }) });\nlet x = 1;\nconst bump = () => { x = 2; return 3; };\nexport const Size = () => <div sx={styles.size(x, bump())} />;`,
+      ),
+    );
+
+    expect(Object.values(actual.exports.Size().props.style as object)).toEqual([
+      '1px',
+      '3px',
+    ]);
+  });
+
+  it('keeps a caller variable apart from a parameter of the same name', async () => {
+    const actual = render(
+      await run(
+        `import * as css from '@plumeria/core';\n${head}\nconst styles = css.create({ size: (width: number, height: number) => ({ width, height }) });\nconst readWidth = () => 10;\nexport const Size = ({ width = 20 }) => <div sx={styles.size(readWidth(), width)} />;`,
+      ),
+    );
+
+    expect(
+      Object.values(actual.exports.Size({}).props.style as object),
+    ).toEqual(['10px', '20px']);
+  });
+
+  it('evaluates every value of a repeated named argument', async () => {
+    const actual = render(
+      await run(
+        `import * as css from '@plumeria/core';\n${head}\nconst styles = css.create({ size: ({ width }: { width: number }) => ({ width }) });\nexport const reads: string[] = [];\nconst first = () => { reads.push('first'); return 1; };\nconst second = () => { reads.push('second'); return 2; };\nexport const Size = () => <div sx={styles.size({ width: first(), width: second() })} />;`,
+      ),
+    );
+
+    const style = actual.exports.Size().props.style as object;
+    expect(actual.exports.reads).toEqual(['first', 'second']);
+    expect(Object.values(style)).toEqual(['2px']);
+  });
+
   it('keeps dynamic style arguments in source order', async () => {
     const actual = render(
       await run(
