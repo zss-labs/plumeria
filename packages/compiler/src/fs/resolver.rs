@@ -742,7 +742,7 @@ impl Resolver {
     }
 
     pub fn resolve_import_path(&mut self, import_path: &str, importer: &str) -> Option<String> {
-        if import_path == "@plumeria/core" {
+        if import_path == "@plumeria/core" || import_path == crate::styled::REACT {
             return None;
         }
         if import_path.starts_with('.') {
