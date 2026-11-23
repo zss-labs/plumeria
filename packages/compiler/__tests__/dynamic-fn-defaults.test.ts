@@ -165,7 +165,7 @@ export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`),
         'st.fn(p.n)',
       );
       expect(code).toContain(
-        `((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.n)`,
+        `-n": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.n)`,
       );
       expect(compile('(n, flag = DEFAULT)', '{ width: n }', 'st.fn(p.n)')).toBe(
         css,
@@ -179,7 +179,7 @@ export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`),
         'st.fn(p.n)',
       );
       expect(code).toContain(
-        `((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(p.n)`,
+        `-n": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.n)`,
       );
       expect(css).toMatch(/\{ width: var\(--[a-z0-9]+-n\); \}/);
     });
