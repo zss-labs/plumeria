@@ -8,6 +8,7 @@ mod optimize;
 mod policy;
 mod project;
 mod style;
+mod styled;
 mod syntax;
 mod transform;
 
@@ -143,14 +144,23 @@ pub struct TransformOutput {
 #[napi(js_name = "transformSource")]
 pub fn transform_source(env: Env, options: TransformEnv) -> Result<TransformOutput> {
     let cwd = current_dir(options.cwd)?;
+    let style_prop = options
+        .style_prop
+        .unwrap_or_else(|| DEFAULT_STYLE_PROP.to_string());
+    let source = match styled::desugar(&options.source, &options.file_path, &style_prop) {
+        Ok(Some(desugared)) => {
+            styled::set_style_prop(&style_prop);
+            desugared
+        }
+        Ok(None) => options.source,
+        Err(message) => return Err(compilation_error(&env, message)),
+    };
     let transform_env = transform::TransformEnv {
-        source: options.source,
+        source,
         module_id: options.module_id,
         file_path: options.file_path,
         root: options.root,
-        style_prop: options
-            .style_prop
-            .unwrap_or_else(|| DEFAULT_STYLE_PROP.to_string()),
+        style_prop,
         class_prop: options
             .class_prop
             .unwrap_or_else(|| "className".to_string()),
@@ -231,8 +241,10 @@ pub struct ScanSummary {
 #[napi(js_name = "scanAll")]
 pub fn scan_all(cwd: Option<String>, style_prop: Option<String>) -> Result<ScanSummary> {
     let cwd = current_dir(cwd)?;
+    let style_prop = style_prop.as_deref().unwrap_or(DEFAULT_STYLE_PROP);
+    styled::set_style_prop(style_prop);
     let mut project = lock_project();
-    project.scan_all(&cwd, style_prop.as_deref().unwrap_or(DEFAULT_STYLE_PROP));
+    project.scan_all(&cwd, style_prop);
     let create_hash_table = project
         .tables
         .create_hash
