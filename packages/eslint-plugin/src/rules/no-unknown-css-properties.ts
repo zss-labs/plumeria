@@ -5,6 +5,7 @@
 import type { ObjectExpression, ImportSpecifier } from 'estree';
 import type { Rule } from 'eslint';
 import { styleObjectFromValue } from '../util/styleObject';
+import { styledRule } from '../util/styledCall';
 import { cssPropertyData } from '../util/cssPropertyData';
 
 const knownProperties = new Set(cssPropertyData);
@@ -103,6 +104,11 @@ export const noUnknownCssProperties: Rule.RuleModule = {
         }
       },
       CallExpression(node) {
+        const styled = styledRule(context, node);
+        if (styled) {
+          checkStyleObject(styled, true);
+          return;
+        }
         let isCssProperties = false;
         let isPositionTry = false;
         let isCreate = false;
