@@ -122,7 +122,7 @@ export const App = () => (
     'rejects a received style passed to a component that declares it in %s',
     async (name) => {
       await expect(run(name)).rejects.toThrow(
-        'passed on to a component that declares',
+        /is a style received through a prop, so it cannot be passed on to <\w+>, which takes sx too/,
       );
     },
   );
