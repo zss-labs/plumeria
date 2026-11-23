@@ -31,6 +31,12 @@ export type CreateStaticObjectTable = Record<string, CSSObject>;
 export type CreateThemeHashTable = Record<string, string>; // varName -> hash
 export type CreateThemeSelectorTable = Record<string, string>; // hash -> CSS selector
 
+export interface Condition {
+  test: Expression;
+  truthy: boolean;
+  keyed?: { options: string[]; option: number | null };
+}
+
 export interface TableEntry {
   key: string;
   styleObj: CSSObject;
@@ -38,7 +44,7 @@ export interface TableEntry {
   spanStart: number;
   filePath: string;
   hasVars?: boolean;
-  conditions?: Array<{ test: Expression; truthy: boolean }>;
+  conditions?: Condition[];
   dynamicCalls?: Expression[];
 }
 
