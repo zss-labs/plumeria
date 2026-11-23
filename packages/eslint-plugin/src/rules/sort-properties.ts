@@ -54,7 +54,12 @@ function getPropertyIndex(name: string): number {
   // check the special prefixes
   if (name.startsWith(':')) return pseudoGroupOffset1;
   if (name.startsWith('&')) return pseudoGroupOffset2;
-  if (name.startsWith('@media') || name.startsWith('@container'))
+  if (
+    name.startsWith('@media') ||
+    name.startsWith('@container') ||
+    name.startsWith('@supports') ||
+    name.startsWith('@starting-style')
+  )
     return pseudoGroupOffset3;
 
   return defaultOffset;
