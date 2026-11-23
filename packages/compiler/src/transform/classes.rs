@@ -27,11 +27,56 @@ pub struct DynamicVar {
     pub value_expr: String,
     pub test: Option<String>,
     pub order: Option<i64>,
+    pub call: Option<std::sync::Arc<CallBinding>>,
+}
+
+#[derive(Debug)]
+pub struct CallBinding {
+    pub params: Vec<String>,
+    pub args: Vec<String>,
 }
 
 pub fn fold_dynamic_vars(vars: &[DynamicVar]) -> Vec<String> {
     let mut sorted: Vec<&DynamicVar> = vars.iter().collect();
     sorted.sort_by_key(|entry| entry.order.unwrap_or(0));
+    if sorted.iter().any(|entry| entry.call.is_some()) {
+        let mut parts = Vec::new();
+        let mut index = 0;
+        while index < sorted.len() {
+            let first = sorted[index];
+            let mut end = index + 1;
+            if let Some(call) = &first.call {
+                while end < sorted.len()
+                    && sorted[end]
+                        .call
+                        .as_ref()
+                        .is_some_and(|other| std::sync::Arc::ptr_eq(call, other))
+                {
+                    end += 1;
+                }
+            }
+            let pairs: Vec<String> = sorted[index..end]
+                .iter()
+                .filter(|entry| !entry.css_var.is_empty())
+                .map(|entry| format!("\"{}\": {}", entry.css_var, entry.value_expr))
+                .collect();
+            let object = match &first.call {
+                Some(call) => format!(
+                    "(({}) => ({{ {} }}))({})",
+                    call.params.join(", "),
+                    pairs.join(", "),
+                    call.args.join(", ")
+                ),
+                None => format!("{{ {} }}", pairs.join(", ")),
+            };
+            parts.push(match &first.test {
+                Some(test) => format!("...(({test}) ? {object} : null)"),
+                None => format!("...{object}"),
+            });
+            index = end;
+        }
+        return parts;
+    }
     let mut grouped: IndexMap<&str, Vec<&DynamicVar>, FxBuildHasher> = IndexMap::default();
     for entry in sorted {
         grouped
@@ -515,6 +560,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let mut temp = self.merged_static.clone();
         let mut provided: FxHashSet<String> = FxHashSet::default();
         let mut runtime: Vec<(String, E<'b, 'a>)> = Vec::new();
+        let mut extra: Vec<E<'b, 'a>> = Vec::new();
 
         if let Some(named) = &func.named {
             let first = call.arguments.first().map(argument_expr);
@@ -534,8 +580,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         continue;
                     };
                     if p.shorthand {
-                        if let Expression::Identifier(ident) = &p.value {
-                            given.insert(ident.name.to_string(), E::new(&p.value));
+                        if let Expression::Identifier(ident) = &p.value
+                            && let Some(earlier) =
+                                given.insert(ident.name.to_string(), E::new(&p.value))
+                        {
+                            extra.push(earlier);
                         }
                         continue;
                     }
@@ -550,7 +599,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         },
                         _ => continue,
                     };
-                    given.insert(key, E::new(&p.value));
+                    if let Some(earlier) = given.insert(key, E::new(&p.value)) {
+                        extra.push(earlier);
+                    }
                 }
             }
             let arg_obj = match first.and_then(|arg| arg.object_expr()) {
@@ -581,6 +632,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 }
                 runtime.push((param.local.clone(), source));
             }
+            extra.extend(
+                given
+                    .iter()
+                    .filter(|(key, _)| !named.iter().any(|param| &param.key == *key))
+                    .map(|(_, source)| *source),
+            );
         } else if call.arguments.len() == 1
             && argument_expr(&call.arguments[0]).object_expr().is_some()
         {
@@ -597,8 +654,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         } else {
             for (index, argument) in call.arguments.iter().enumerate() {
-                if let Some(param) = func.params.get(index) {
-                    runtime.push((param.clone(), argument_expr(argument)));
+                match func.params.get(index) {
+                    Some(param) => runtime.push((param.clone(), argument_expr(argument))),
+                    None => extra.push(argument_expr(argument)),
                 }
             }
         }
@@ -629,17 +687,43 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             )
         })?;
 
+        let text_of = |source: E<'b, 'a>| {
+            let span = source.span();
+            bound
+                .and_then(|bound| bound.get(&(span.start, span.end)))
+                .cloned()
+                .unwrap_or_else(|| self.source_of(source))
+        };
+        let mut reads: Vec<(u32, Option<&String>, String)> = runtime
+            .iter()
+            .map(|(param, source)| (source.span().start, Some(param), text_of(*source)))
+            .chain(
+                extra
+                    .iter()
+                    .map(|source| (source.span().start, None, text_of(*source))),
+            )
+            .filter(|(_, _, text)| !is_literal_source(text))
+            .collect();
+        reads.sort_by_key(|(start, _, _)| *start);
+        let names: Vec<String> = (0..reads.len())
+            .map(|index| format!("__plumeria_arg{index}"))
+            .collect();
         let mut sources: Vec<(String, String)> = runtime
             .iter()
             .map(|(param, source)| {
-                let span = source.span();
-                let text = bound
-                    .and_then(|bound| bound.get(&(span.start, span.end)))
-                    .cloned()
-                    .unwrap_or_else(|| self.source_of(*source));
-                (param.clone(), text)
+                let read = reads.iter().position(|(_, read, _)| *read == Some(param));
+                match read {
+                    Some(index) => (param.clone(), names[index].clone()),
+                    None => (param.clone(), text_of(*source)),
+                }
             })
             .collect();
+        let call_binding = (!reads.is_empty()).then(|| {
+            std::sync::Arc::new(CallBinding {
+                params: names.clone(),
+                args: reads.iter().map(|(_, _, text)| text.clone()).collect(),
+            })
+        });
         for entry in &resolved.derived {
             let mut rendered = String::new();
             for piece in &entry.pieces {
@@ -713,8 +797,20 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     value_expr,
                     test: None,
                     order: None,
+                    call: call_binding.clone(),
                 });
             }
+        }
+        if vars.is_empty()
+            && let Some(call) = call_binding
+        {
+            vars.push(DynamicVar {
+                css_var: String::new(),
+                value_expr: String::new(),
+                test: None,
+                order: None,
+                call: Some(call),
+            });
         }
         Ok(Some((resolved.style, vars)))
     }
@@ -2400,13 +2496,27 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
     }
 }
 
-fn read_once(source: &str, body: impl Fn(&str) -> String) -> String {
+fn is_identifier(source: &str) -> bool {
     let mut chars = source.chars();
-    let plain = chars
+    chars
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '$')
-        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
-    if plain {
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
+
+fn is_literal_source(source: &str) -> bool {
+    let trimmed = source.trim();
+    parse_js_number(trimmed).is_some_and(|n| !n.is_nan())
+        || ['"', '\''].iter().any(|quote| {
+            trimmed.len() >= 2
+                && trimmed.starts_with(*quote)
+                && trimmed.ends_with(*quote)
+                && !trimmed[1..trimmed.len() - 1].contains(*quote)
+        })
+}
+
+fn read_once(source: &str, body: impl Fn(&str) -> String) -> String {
+    if is_identifier(source) {
         return format!("({})", body(source));
     }
     let value = "__plumeria_value";
