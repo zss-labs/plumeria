@@ -283,8 +283,25 @@ const suspendsWithin = (sub: any, spans: Span[]): boolean => {
   return found;
 };
 
+const isIdentifierSource = (source: string) =>
+  /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(source);
+
+const isLiteralSource = (source: string) => {
+  const trimmed = source.trim();
+  return (
+    (trimmed !== '' && !isNaN(Number(trimmed))) ||
+    ['"', "'"].some(
+      (quote) =>
+        trimmed.length >= 2 &&
+        trimmed.startsWith(quote) &&
+        trimmed.endsWith(quote) &&
+        !trimmed.slice(1, -1).includes(quote),
+    )
+  );
+};
+
 const readOnce = (source: string, body: (value: string) => string): string =>
-  /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(source)
+  isIdentifierSource(source)
     ? `(${body(source)})`
     : `((__plumeria_value) => ${body('__plumeria_value')})(${source})`;
 
@@ -362,22 +379,46 @@ const isNoOpStyle = (node: Expression): boolean =>
   (t.isBooleanLiteral(node) && node.value === false) ||
   (t.isIdentifier(node) && node.value === 'undefined');
 
+type CallBinding = { params: string[]; args: string[] };
+
 type DynamicVar = {
   cssVar: string;
   valueExpr: string;
   test?: string;
   order?: number;
+  call?: CallBinding;
 };
 
 const foldDynamicVars = (vars: DynamicVar[]): string[] => {
+  const sorted = [...vars].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  if (sorted.some((entry) => entry.call)) {
+    const parts: string[] = [];
+    let index = 0;
+    while (index < sorted.length) {
+      const first = sorted[index];
+      let end = index + 1;
+      if (first.call)
+        while (end < sorted.length && sorted[end].call === first.call) end++;
+      const pairs = sorted
+        .slice(index, end)
+        .filter((entry) => entry.cssVar)
+        .map((entry) => `"${entry.cssVar}": ${entry.valueExpr}`);
+      const object = first.call
+        ? `((${first.call.params.join(', ')}) => ({ ${pairs.join(', ')} }))(${first.call.args.join(', ')})`
+        : `{ ${pairs.join(', ')} }`;
+      parts.push(
+        first.test ? `...((${first.test}) ? ${object} : null)` : `...${object}`,
+      );
+      index = end;
+    }
+    return parts;
+  }
   const grouped = new Map<string, DynamicVar[]>();
-  [...vars]
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .forEach((entry) => {
-      const list = grouped.get(entry.cssVar);
-      if (list) list.push(entry);
-      else grouped.set(entry.cssVar, [entry]);
-    });
+  sorted.forEach((entry) => {
+    const list = grouped.get(entry.cssVar);
+    if (list) list.push(entry);
+    else grouped.set(entry.cssVar, [entry]);
+  });
 
   return [...grouped].map(([cssVar, entries]) => {
     let value = 'undefined';
@@ -2079,6 +2120,7 @@ export const transformSource = async (
     const tempStaticTable = { ...mergedStaticTable };
     const providedParams = new Set<string>();
     const runtime: Array<{ param: string; source: Expression }> = [];
+    const extra: Expression[] = [];
 
     const resolveObjectArg = (argExpr: ObjectExpression) =>
       objectExpressionToObject(
@@ -2119,14 +2161,19 @@ export const transformSource = async (
         );
       }
       const given = new Map<string, Expression>();
+      const give = (key: string, value: Expression) => {
+        const earlier = given.get(key);
+        if (earlier) extra.push(earlier);
+        given.set(key, value);
+      };
       ((argExpr as ObjectExpression)?.properties ?? []).forEach((prop) => {
         if (prop.type === 'Identifier') {
-          given.set(prop.value, prop);
+          give(prop.value, prop);
         } else if (
           prop.type === 'KeyValueProperty' &&
           (t.isIdentifier(prop.key) || t.isStringLiteral(prop.key))
         ) {
-          given.set(String(prop.key.value), prop.value);
+          give(String(prop.key.value), prop.value);
         }
       });
 
@@ -2151,6 +2198,9 @@ export const transformSource = async (
           providedParams.add(local);
         } else runtime.push({ param: local, source });
       });
+      given.forEach((source, key) => {
+        if (!func.named!.some((param) => param.key === key)) extra.push(source);
+      });
     } else if (
       callArgs.length === 1 &&
       callArgs[0].expression.type === 'ObjectExpression'
@@ -2167,8 +2217,8 @@ export const transformSource = async (
     } else {
       callArgs.forEach((callArg, i) => {
         const p = func.params[i];
-        if (!p) return;
-        runtime.push({ param: p, source: callArg.expression });
+        if (!p) extra.push(callArg.expression);
+        else runtime.push({ param: p, source: callArg.expression });
       });
     }
 
@@ -2186,17 +2236,35 @@ export const transformSource = async (
     );
     const { style, varGroups, derived } = resolved;
 
+    const textOf = (source: Expression) => {
+      const { start, end } = (source as HasSpan).span;
+      return (
+        bound?.get(`${start}:${end}`) ??
+        sourceBuffer
+          .subarray(start - baseByteOffset, end - baseByteOffset)
+          .toString('utf-8')
+      );
+    };
+    const reads = [
+      ...runtime.map(({ param, source }) => ({ source, param })),
+      ...extra.map((source) => ({ source, param: undefined })),
+    ]
+      .map(({ source, param }) => ({
+        start: (source as HasSpan).span.start,
+        param,
+        text: textOf(source),
+      }))
+      .filter(({ text }) => !isLiteralSource(text))
+      .sort((a, b) => a.start - b.start);
+    const names = reads.map((_, index) => `__plumeria_arg${index}`);
     const argSources = new Map<string, string>();
     runtime.forEach(({ param, source }) => {
-      const { start, end } = (source as HasSpan).span;
-      argSources.set(
-        param,
-        bound?.get(`${start}:${end}`) ??
-          sourceBuffer
-            .subarray(start - baseByteOffset, end - baseByteOffset)
-            .toString('utf-8'),
-      );
+      const index = reads.findIndex((read) => read.param === param);
+      argSources.set(param, index < 0 ? textOf(source) : names[index]);
     });
+    const call: CallBinding | undefined = reads.length
+      ? { params: names, args: reads.map(({ text }) => text) }
+      : undefined;
     const runtimeSources = runtime.map(({ param }) => ({
       name: param,
       argSource: argSources.get(param)!,
@@ -2258,9 +2326,10 @@ export const transformSource = async (
               )
             : argSource;
         }
-        vars.push({ cssVar, valueExpr });
+        vars.push({ cssVar, valueExpr, call });
       });
     });
+    if (!vars.length && call) vars.push({ cssVar: '', valueExpr: '', call });
 
     return { style, vars };
   };
