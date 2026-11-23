@@ -315,7 +315,6 @@ export const noOrderDependentOverlap: Rule.RuleModule = {
       );
 
     const stylesOf = (node: any, guards: Guard[] = []): Composed[] => {
-      if (!node) return [];
       if (node.type === 'LogicalExpression') {
         return node.operator === '&&'
           ? stylesOf(node.right, [...guards, guardOf(node.left, false)])
