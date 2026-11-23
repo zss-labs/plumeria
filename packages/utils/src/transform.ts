@@ -1891,10 +1891,11 @@ export const transformSource = async (
       return null;
 
     if (!isVisibleReference(callee.object)) return null;
+    const functionName = callee.property.value;
     const styleInfo = localCreateStyles[callee.object.value];
     const func =
-      styleInfo?.functions?.[callee.property.value] ??
-      createFunctionImportMap[callee.object.value]?.[callee.property.value];
+      styleInfo?.functions?.[functionName] ??
+      createFunctionImportMap[callee.object.value]?.[functionName];
     if (!func) return null;
 
     const callArgs = (expr as CallExpression).arguments;
@@ -1937,9 +1938,7 @@ export const transformSource = async (
         (argExpr && argExpr.type !== 'ObjectExpression')
       ) {
         throwCompilationError(
-          `[plumeria] ${getSource(expr)} takes one object argument, because ${
-            callee.property.value
-          } destructures its parameter.`,
+          `[plumeria] ${getSource(expr)} takes one object argument, because ${functionName} destructures its parameter.`,
           expr as HasSpan,
         );
       }
@@ -1950,6 +1949,17 @@ export const transformSource = async (
         given.set(key, value);
       };
       ((argExpr as ObjectExpression)?.properties ?? []).forEach((prop) => {
+        const at =
+          prop.type === 'SpreadElement'
+            ? prop.arguments
+            : 'key' in prop && prop.key.type === 'Computed'
+              ? prop.key
+              : undefined;
+        if (at)
+          throwCompilationError(
+            `[plumeria] ${getSource(expr)} cannot take a spread or a computed key, because ${functionName} destructures its parameter. Write each key out.`,
+            at as HasSpan,
+          );
         if (prop.type === 'Identifier') {
           give(prop.value, prop);
         } else if (
