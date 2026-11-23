@@ -172,10 +172,16 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
     const code = typeof result === 'string' ? result : (result?.code ?? '');
 
     // A dynamic style function puts a `style` attribute after the class list.
+    const spread = code.match(/<div \{\.\.\.([\s\S]*)\} \/>/);
     const dynamic = code.match(/className=\{([\s\S]*?)\}(?= style=| \/>)/);
     const literal = code.match(/className="([^"]*)"/);
-    if (!dynamic && !literal) throw new Error(`no className in:\n${code}`);
-    const expr = dynamic ? dynamic[1] : JSON.stringify(literal![1]);
+    if (!spread && !dynamic && !literal)
+      throw new Error(`no className in:\n${code}`);
+    const expr = spread
+      ? `(${spread[1]}).className`
+      : dynamic
+        ? dynamic[1]
+        : JSON.stringify(literal![1]);
 
     const { compileCSS } = implementations.find(
       (implementation) => implementation.transformSource === transformSource,
@@ -704,7 +710,7 @@ describe.each(implementations)('$name', ({ transformSource, optimizer }) => {
       [{}],
     );
 
-  const HASH = /\bx[0-9a-z]{7}\b/g;
+  const HASH = /(?<!--)\bx[0-9a-z]{7}\b/g;
 
   describe.each(CASES)('%s', (_label, source, entries, varNames) => {
     it('produces the specified class list for every input', async () => {
