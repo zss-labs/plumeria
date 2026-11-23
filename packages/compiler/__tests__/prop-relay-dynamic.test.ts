@@ -327,7 +327,12 @@ export const Parent = ({
     it('leaves a parameter that reaches no declaration as a bare key', async () => {
       const code = await run(PARENT);
       const plain = code.match(/plain=\{([\s\S]*?)\}\s*\/>/)![1];
-      expect(plain).toBe('"' + JSON.parse(plain) + '"');
+      expect(typeof new Function('color', `return (${plain});`)('red')).toBe(
+        'string',
+      );
+      expect(() => new Function(`return (${plain});`)()).toThrow(
+        ReferenceError,
+      );
       await expect(run(USED_PLAIN)).resolves.toContain('className=');
     });
 
