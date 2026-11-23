@@ -12,6 +12,13 @@ pub type Ordered<V> = IndexMap<String, V, FxBuildHasher>;
 pub struct Condition {
     pub test: (u32, u32),
     pub truthy: bool,
+    pub keyed: Option<Keyed>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Keyed {
+    pub options: Vec<String>,
+    pub option: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
