@@ -61,6 +61,25 @@ declare module '@builder.io/qwik' {
 
 型名は `Style` です。ここではパッケージが公開していない型名を書いてもエラーにならず、古い名前のままだと `sx` がどんな値でも受け取れてしまいます。
 
+## styled の型
+
+`@plumeria/react` の `styled` は、タグ・props・戻り値の型を React から取ります。ほかの JSX フレームワークで使うときは、そのフレームワークの `JSX` の型を一度だけ登録します。
+
+```ts title="types.d.ts"
+import type { JSX } from '@builder.io/qwik';
+
+declare module '@plumeria/react' {
+  interface JSXRegister {
+    IntrinsicElements: JSX.IntrinsicElements;
+    Element: JSX.Element;
+  }
+}
+```
+
+Preact では `JSX` を `preact` から import します。
+
+`@plumeria/react` の型定義ファイルは `react` からの import を含みます。`@types/react` を入れない場合は `skipLibCheck: true` のままにしてください。Vite のテンプレートでは最初から有効です。
+
 ## 単一ファイルコンポーネント
 
 コンパイラが読めるのは TypeScript と TSX です。`.vue`、`.svelte`、`.astro` の場合は、別の `.ts` ファイルに `css.create` を書き、コンポーネントから読み込みます。テンプレートは JSX ではないので、そのファイル内で `css.use` を使ってクラス名を作り、文字列を export します。
