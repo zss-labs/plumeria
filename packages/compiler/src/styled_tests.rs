@@ -93,7 +93,7 @@ fn desugared_components_compile_through_the_transform() {
     assert!(ghost.contains("[__styled_sx]"), "{ghost}");
     assert!(
         ghost.contains(
-            "_value\": ((__plumeria_value) => typeof (__plumeria_value) === 'number' ? (__plumeria_value) + 'px' : (__plumeria_value))(__styled_Ghost__0$0({ pad: __styled_prop0 })) }}"
+            "style={{ ...((__plumeria_arg0) => ({ \"--xzny3k0w-__styled_value\": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(__styled_Ghost__0$0({ pad: __styled_prop0 })) }}"
         ),
         "{ghost}"
     );
