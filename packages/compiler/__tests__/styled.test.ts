@@ -238,6 +238,121 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(Object.values(style)).toEqual(['2px']);
   });
 
+  describe('an element that reads at runtime in both attributes', () => {
+    const element = (body: string) =>
+      run(
+        `import * as css from '@plumeria/core';
+const styles = css.create({ w: (n: number) => ({ width: n }), base: { padding: 8 }, track: (n: number) => ({ color: 'red' }) });
+const tones = css.create({ x: { color: 'red' }, y: { color: 'blue' } });
+export const reads: string[] = [];
+const read = <T,>(name: string, value: T) => { reads.push(name); return value; };
+export const flags = { value: true, get on() { reads.push('on'); return this.value; } };
+${body}`,
+      ).then(render);
+
+    it('reads every attribute and element once in attribute order', async () => {
+      const actual = await element(
+        `export const A = () => <div style={read('style', { top: 1 })} sx={[tones[read('tone', 'x')], styles.w(read('w', 4)), flags.on && styles.base]} className={read('class', 'c')} />;`,
+      );
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual([
+        'style',
+        'tone',
+        'w',
+        'on',
+        'class',
+      ]);
+      expect(props.className).toMatch(/^c /);
+      expect(Object.values(props.style)).toEqual([1, '4px']);
+    });
+
+    it('passes a comma expression key as one argument', async () => {
+      const actual = await element(
+        `export const A = () => <div sx={[tones[read('mark', 'x'), read('tone', 'y')], styles.w(read('w', 4))]} />;
+export const B = () => <div sx={tones.y} />;`,
+      );
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['mark', 'tone', 'w']);
+      expect(props.className).toContain(actual.exports.B().props.className);
+      expect(Object.values(props.style)).toEqual(['4px']);
+    });
+
+    it('keeps the order beside a condition with three branches', async () => {
+      const actual = await element(
+        `export const A = () => <div sx={[styles.w(read('w', 4)), read('a', false) ? tones.x : read('b', true) ? tones.y : styles.base]} />;`,
+      );
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['w', 'a', 'b']);
+      expect(Object.values(props.style)).toEqual(['4px']);
+    });
+
+    it('reads a guard once for a literal argument behind it', async () => {
+      const actual = await element(
+        `export const A = () => <div sx={flags.on && styles.w(4)} />;`,
+      );
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['on']);
+      expect(props.className).not.toBe('');
+      expect(Object.values(props.style)).toEqual(['4px']);
+    });
+
+    it('keeps two attributes when only one side reads at runtime', async () => {
+      const code = await run(
+        `import * as css from '@plumeria/core';
+const tones = css.create({ x: { color: 'red' }, y: { color: 'blue' } });
+const styles = css.create({ w: (n: number) => ({ width: n }) });
+export const A = ({ tone }: { tone: 'x' | 'y' }) => <div style={{ top: 1 }} sx={tones[tone]} />;
+export const B = ({ tone }: { tone: 'x' | 'y' }) => <div className={'fixed'} sx={[tones[tone], styles.w(4)]} />;`,
+      );
+
+      expect(code).toContain('style={{ top: 1 }}');
+      expect(code).not.toContain('{...(');
+    });
+
+    it('passes the style on untouched when a false guard leaves no variable', async () => {
+      const actual = await element(
+        `export const style = { get top() { reads.push('top'); return 1; } };
+export const A = () => <div style={style} sx={[flags.on && styles.w(read('w', 4)), tones.x]} />;`,
+      );
+      actual.exports.flags.value = false;
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['on']);
+      expect(props.style).toBe(actual.exports.style);
+    });
+
+    it('evaluates an unused argument without copying the style', async () => {
+      const actual = await element(
+        `export const style = { top: 1 };
+export const A = () => <div style={style} sx={[flags.on && styles.track(1, read('unused', 0)), tones.x]} />;`,
+      );
+      const { props } = actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['on', 'unused']);
+      expect(props.style).toBe(actual.exports.style);
+    });
+
+    it('keeps an awaited argument behind its guard', async () => {
+      const actual = await element(
+        `export const A = async () => <div sx={[flags.on && styles.w(await read('w', Promise.resolve(4))), tones[read('tone', 'y')]]} />;`,
+      );
+      const { props } = await actual.exports.A();
+
+      expect(actual.exports.reads).toEqual(['on', 'w', 'tone']);
+      expect(Object.values(props.style)).toEqual(['4px']);
+
+      actual.exports.flags.value = false;
+      actual.exports.reads.splice(0);
+      const off = await actual.exports.A();
+      expect(actual.exports.reads).toEqual(['on', 'tone']);
+      expect(off.props.style).toBeUndefined();
+    });
+  });
+
   it('keeps dynamic style arguments in source order', async () => {
     const actual = render(
       await run(
@@ -308,6 +423,76 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(counter.reads).toBe(1);
     expect(actual('MixedOn')).toEqual(reference('Both'));
     expect(counter.reads).toBe(2);
+  });
+
+  describe('a received style that awaits', () => {
+    const settle = async (
+      actual: { exports: any },
+      name: string,
+      props: object = {},
+    ) => {
+      let node = await actual.exports[name](props);
+      while (typeof node.type === 'function') node = node.type(node.props);
+      return {
+        tag: node.type,
+        classes: String(node.props.className ?? '')
+          .split(/\s+/)
+          .filter(Boolean)
+          .sort(),
+      };
+    };
+    const setup = async () =>
+      render(
+        await run(
+          `import * as css from '@plumeria/core';\n${head}\nconst styles = css.create({ base: { padding: 8 }, danger: { color: 'red' }, width: (w: number) => ({ width: w }) });\nconst Button = styled.button({ color: 'black' });\nexport const reads: string[] = [];\nconst p = { get key() { reads.push('tone'); return 'danger'; } };\nconst flags = { get on() { reads.push('on'); return true; } };\nconst ready = () => { reads.push('ready'); return Promise.resolve(true); };\nconst readWidth = () => { reads.push('width'); return 10; };\nexport const Awaited = async () => <Button sx={[styles.base, (await ready()) && styles[p.key]]} />;\nexport const Late = async () => <Button sx={[styles[p.key], (await ready()) && styles.base]} />;\nexport const Early = async () => <Button sx={[(await ready()) && styles.base, styles[p.key], flags.on && styles.base]} />;\nexport const Nested = async ({ c }: { c: boolean }) => <Button sx={[styles[p.key], c ? (await ready()) && styles.base : null]} />;\nexport const Guarded = ({ c }: { c: boolean }) => <Button sx={[c ? styles.width(readWidth()) : null, flags.on && styles.base]} />;`,
+        ),
+      );
+    const references = async () =>
+      render(
+        await run(
+          `import * as css from '@plumeria/core';\nconst r = css.create({ red: { color: 'red' }, base: { color: 'black', padding: 8 }, both: { color: 'red', padding: 8 } });\nexport const Red = () => <button sx={r.red} />;\nexport const Base = () => <button sx={r.base} />;\nexport const Both = () => <button sx={r.both} />;`,
+        ),
+      );
+
+    it.each([
+      ['Awaited', ['ready', 'tone']],
+      ['Late', ['tone', 'ready']],
+      ['Early', ['ready', 'tone', 'on']],
+    ])('reads %s in source order', async (name, order) => {
+      const actual = await setup();
+      const reference = await references();
+
+      expect(await settle(actual, name)).toEqual(reference('Both'));
+      expect(actual.exports.reads).toEqual(order);
+    });
+
+    it('reads an awaited guard only on its own branch', async () => {
+      const actual = await setup();
+      const reference = await references();
+      const { reads } = actual.exports;
+
+      expect(await settle(actual, 'Nested', { c: false })).toEqual(
+        reference('Red'),
+      );
+      expect(reads.splice(0)).toEqual(['tone']);
+      expect(await settle(actual, 'Nested', { c: true })).toEqual(
+        reference('Both'),
+      );
+      expect(reads.splice(0)).toEqual(['tone', 'ready']);
+    });
+
+    it('reads a guarded dynamic argument only when the guard holds', async () => {
+      const actual = await setup();
+      const reference = await references();
+      const { reads } = actual.exports;
+
+      expect(await settle(actual, 'Guarded', { c: false })).toEqual(
+        reference('Base'),
+      );
+      expect(reads.splice(0)).toEqual(['on']);
+      await settle(actual, 'Guarded', { c: true });
+      expect(reads.splice(0)).toEqual(['width', 'on']);
+    });
   });
 
   it('extends a styled component through a barrel', async () => {
