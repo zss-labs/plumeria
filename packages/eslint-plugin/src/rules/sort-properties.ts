@@ -11,6 +11,7 @@ import type {
 } from 'estree';
 import type { Rule } from 'eslint';
 import { styleObjectFromValue } from '../util/styleObject';
+import { styledRule } from '../util/styledCall';
 import { staticValueResolver } from '../util/staticValue';
 
 import { propertyGroups } from '../util/propertyGroups';
@@ -312,6 +313,11 @@ export const sortProperties: Rule.RuleModule = {
         }
       },
       CallExpression(node) {
+        const styled = styledRule(context, node);
+        if (styled) {
+          checkStyleObject(styled);
+          return;
+        }
         let isCssProperties = false;
         let isPositionTry = false;
         if (node.callee.type === 'MemberExpression') {
