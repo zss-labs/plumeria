@@ -7,7 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::inline::Inliner;
 use super::{
-    Condition, KeyTable, LocalImport, LocalImports, ObjectTable, Project, PropsTable, Stamp,
+    Condition, KeyTable, Keyed, LocalImport, LocalImports, ObjectTable, Project, PropsTable, Stamp,
     TableEntry,
 };
 use crate::engine::hash::hash_str;
@@ -849,6 +849,81 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
         }
     }
 
+    fn keyed_alternatives(&self, expr: E<'b, 'a>) -> Option<Vec<PropAlternative>> {
+        let Some(Prop::Computed(key)) = expr.prop() else {
+            return None;
+        };
+        if !matches!(
+            unwrap(key).expr(),
+            Some(
+                Expression::Identifier(_)
+                    | Expression::StaticMemberExpression(_)
+                    | Expression::StringLiteral(_)
+                    | Expression::NumericLiteral(_)
+            )
+        ) {
+            return None;
+        }
+        let hash = self.create_hash_of(expr.object()?.ident_name()?)?;
+        let styles = self.global_create_obj.get(&hash)?.as_obj()?;
+        let atoms = self.global_atomic_map.get(&hash)?.as_obj()?;
+        let literal = match unwrap(key).expr() {
+            Some(Expression::StringLiteral(literal)) => literal.value.as_str().map(str::to_string),
+            Some(Expression::NumericLiteral(literal)) => Some(literal.value.to_string()),
+            _ => None,
+        };
+        if let Some(option) = literal {
+            let (Some(style), Some(Value::Obj(_))) = (
+                styles.get(&option).and_then(|style| style.as_obj()),
+                atoms.get(&option),
+            ) else {
+                return None;
+            };
+            return Some(vec![PropAlternative {
+                style: style.clone(),
+                conditions: Vec::new(),
+                dynamic_calls: Vec::new(),
+            }]);
+        }
+        let span = key.span();
+        let choices: Vec<(String, Object)> = styles
+            .iter()
+            .filter_map(
+                |(option, style)| match (style.as_obj(), atoms.get(option)) {
+                    (Some(style), Some(Value::Obj(_))) => Some((option.to_string(), style.clone())),
+                    _ => None,
+                },
+            )
+            .collect();
+        if choices.is_empty() {
+            return None;
+        }
+        let options: Vec<String> = choices.iter().map(|(option, _)| option.clone()).collect();
+        let condition = |option: Option<usize>| Condition {
+            test: (span.start, span.end),
+            truthy: true,
+            keyed: Some(Keyed {
+                options: options.clone(),
+                option,
+            }),
+        };
+        let mut out: Vec<PropAlternative> = choices
+            .into_iter()
+            .enumerate()
+            .map(|(index, (_, style))| PropAlternative {
+                style,
+                conditions: vec![condition(Some(index))],
+                dynamic_calls: Vec::new(),
+            })
+            .collect();
+        out.push(PropAlternative {
+            style: Object::new(),
+            conditions: vec![condition(None)],
+            dynamic_calls: Vec::new(),
+        });
+        Some(out)
+    }
+
     fn contains_style_reference(&self, expr: &Expression) -> bool {
         expression_has_identifier(expr, &|name| self.is_style_name(name))
     }
@@ -881,7 +956,11 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                 let test = (cond.test.span().start, cond.test.span().end);
                 let mut out = Vec::new();
                 for entry in truthy {
-                    let mut conditions = vec![Condition { test, truthy: true }];
+                    let mut conditions = vec![Condition {
+                        test,
+                        truthy: true,
+                        keyed: None,
+                    }];
                     conditions.extend(entry.conditions);
                     out.push(PropAlternative {
                         conditions,
@@ -892,6 +971,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                     let mut conditions = vec![Condition {
                         test,
                         truthy: false,
+                        keyed: None,
                     }];
                     conditions.extend(entry.conditions);
                     out.push(PropAlternative {
@@ -915,7 +995,11 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                 let test = (left.span().start, left.span().end);
                 let mut out = Vec::new();
                 for entry in truthy {
-                    let mut conditions = vec![Condition { test, truthy: true }];
+                    let mut conditions = vec![Condition {
+                        test,
+                        truthy: true,
+                        keyed: None,
+                    }];
                     conditions.extend(entry.conditions);
                     out.push(PropAlternative {
                         conditions,
@@ -926,6 +1010,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                     conditions: vec![Condition {
                         test,
                         truthy: false,
+                        keyed: None,
                     }],
                     ..empty
                 });
@@ -959,6 +1044,11 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                     result = next;
                 }
                 return Ok(Some(result));
+            }
+            K::Member(_) => {
+                if let Some(keyed) = self.keyed_alternatives(expr) {
+                    return Ok(Some(keyed));
+                }
             }
             _ => {}
         }
@@ -1052,6 +1142,28 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
                     return Ok(());
                 }
                 return Err("[plumeria] Style prop fallbacks using || or ?? cannot be resolved. Use a conditional expression with defined styles.".to_string());
+            }
+            K::Member(_) => {
+                if let Some(alternatives) = self.keyed_alternatives(node) {
+                    let list = table
+                        .entry(comp_key.to_string())
+                        .or_default()
+                        .entry(prop_name.to_string())
+                        .or_default();
+                    for alternative in alternatives {
+                        let class_string = atom_class_string(&atom_map(&alternative.style));
+                        list.push(TableEntry {
+                            key: hash_str(&class_string),
+                            style: alternative.style,
+                            span_start: node.start(),
+                            file: self.file.to_string(),
+                            has_vars: false,
+                            conditions: Some(alternative.conditions),
+                            dynamic_calls: Some(alternative.dynamic_calls),
+                        });
+                    }
+                    return Ok(());
+                }
             }
             _ => {}
         }
