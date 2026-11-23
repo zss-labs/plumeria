@@ -24,9 +24,24 @@ pub fn stamp(file: impl AsRef<std::path::Path>) -> std::io::Result<SourceStamp> 
     })
 }
 
-// Scan invalidation also visits unchanged importers. Share their text with extraction.
 pub fn read(file: &str) -> std::io::Result<String> {
-    type Cache = FxHashMap<String, (SourceStamp, String)>;
+    let (source, styled) = load(file)?;
+    if !styled {
+        return Ok(source);
+    }
+    match crate::styled::desugar(&source, file, &crate::styled::style_prop()) {
+        Ok(Some(desugared)) => Ok(desugared),
+        _ => Ok(source),
+    }
+}
+
+pub fn read_raw(file: &str) -> std::io::Result<String> {
+    load(file).map(|(source, _)| source)
+}
+
+// Scan invalidation also visits unchanged importers. Share their text with extraction.
+fn load(file: &str) -> std::io::Result<(String, bool)> {
+    type Cache = FxHashMap<String, (SourceStamp, String, bool)>;
     static SOURCES: OnceLock<Mutex<Cache>> = OnceLock::new();
     let mut cache = SOURCES
         .get_or_init(|| Mutex::new(Cache::default()))
@@ -39,10 +54,10 @@ pub fn read(file: &str) -> std::io::Result<String> {
             return Err(error);
         }
     };
-    if let Some((previous, source)) = cache.get(file)
+    if let Some((previous, source, styled)) = cache.get(file)
         && *previous == stamp
     {
-        return Ok(source.clone());
+        return Ok((source.clone(), *styled));
     }
     drop(cache);
     let source = std::fs::read_to_string(file)?;
@@ -54,8 +69,9 @@ pub fn read(file: &str) -> std::io::Result<String> {
     if cache.len() >= 4096 {
         cache.clear();
     }
-    cache.insert(file.to_string(), (stamp, source.clone()));
-    Ok(source)
+    let styled = source.contains(crate::styled::REACT);
+    cache.insert(file.to_string(), (stamp, source.clone(), styled));
+    Ok((source, styled))
 }
 
 #[cfg(test)]
