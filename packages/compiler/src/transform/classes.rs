@@ -638,6 +638,20 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let mut given: FxHashMap<String, E<'b, 'a>> = FxHashMap::default();
             if let Some(object) = first.and_then(|arg| arg.object_expr()) {
                 for prop in &object.properties {
+                    let at = match prop {
+                        ObjectPropertyKind::SpreadProperty(spread) => Some(spread.argument.span()),
+                        ObjectPropertyKind::ObjectProperty(p) if p.computed => Some(p.key.span()),
+                        _ => None,
+                    };
+                    if at.is_some() {
+                        return Err(self.fail(
+                            format!(
+                                "[plumeria] {} cannot take a spread or a computed key, because {property} destructures its parameter. Write each key out.",
+                                self.source_of(expr)
+                            ),
+                            at,
+                        ));
+                    }
                     let ObjectPropertyKind::ObjectProperty(p) = prop else {
                         continue;
                     };
