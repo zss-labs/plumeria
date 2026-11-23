@@ -164,7 +164,7 @@ export const A = () => <div sx={s.a} />;`,
         `export const A = ({ n }: any) => <div sx={s.fn(n, 2)} />;`,
       );
       expect(code).toMatch(
-        /style=\{\{ "--[a-z0-9]+-size": \(typeof \(n\) === 'number' \? \(n\) \+ 'px' : \(n\)\) \}\}/,
+        /style=\{\{ \.\.\.\(\(__plumeria_arg0\) => \(\{ "--[a-z0-9]+-size": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\) \}\)\)\(n\) \}\}/,
       );
     });
 
@@ -185,7 +185,9 @@ const s = css.create({ fn: (size: number) => ({ width: \`\${size}px\`, height: s
 export const A = ({ n }: any) => <><i sx={s.fn("3")} /><b sx={s.fn(n)} /><u sx={s.fn(4)} /></>;`,
       });
       expect(code).toMatch(/<i [^>]*"--[a-z0-9]+-size": "3px"/);
-      expect(code).toMatch(/<b [^>]*"--[a-z0-9]+-size": \(\(n\) \+ 'px'\)/);
+      expect(code).toMatch(
+        /<b [^{]*\{\{ \.\.\.\(\(__plumeria_arg0\) => \(\{ "--[a-z0-9]+-size": \(\(__plumeria_arg0\) \+ 'px'\)[^}]*\}\)\)\(n\)/,
+      );
     });
 
     it('emits no class for an object handed to a positional parameter at runtime', async () => {
@@ -291,7 +293,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
 
   describe('transform: the attributes beside the style prop', () => {
     const FN = `const d = css.create({ fn: (size: number) => ({ width: size }) });\n`;
-    const SIZE = `"--[a-z0-9]+-size": \\(typeof \\(n\\) === 'number' \\? \\(n\\) \\+ 'px' : \\(n\\)\\)`;
+    const SIZE = `\\.\\.\\.\\(\\(__plumeria_arg0\\) => \\(\\{ "--[a-z0-9]+-size": \\(typeof \\(__plumeria_arg0\\) === 'number' \\? \\(__plumeria_arg0\\) \\+ 'px' : \\(__plumeria_arg0\\)\\) \\}\\)\\)\\(n\\)`;
 
     it.each([
       [
@@ -510,7 +512,7 @@ export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
         "{ fn: (size: number) => ({ width: `${size}px`, ':hover': { width: `${size}%` }, ':focus': { width: size } }) }",
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-size": \(\(p\.n\) \+ 'px'\), "--\1-size-width": \(\(p\.n\) \+ '%'\), "--\1-size-width-px": \(\(__plumeria_value\) => typeof \(__plumeria_value\) === 'number' \? \(__plumeria_value\) \+ 'px' : \(__plumeria_value\)\)\(p\.n\)/,
+        /"--([a-z0-9]+)-size": \(\(__plumeria_arg0\) \+ 'px'\), "--\1-size-width": \(\(__plumeria_arg0\) \+ '%'\), "--\1-size-width-px": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\) \}\)\)\(p\.n\)/,
       );
     });
 
@@ -519,7 +521,7 @@ export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
         "{ fn: (n: number) => ({ lineHeight: n, ':hover': { lineHeight: `${n}px` }, ':focus': { lineHeight: `${n}%` } }) }",
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-n": p\.n, "--\1-n-line-height": \(\(p\.n\) \+ 'px'\), "--\1-n-line-height-percent": \(\(p\.n\) \+ '%'\)/,
+        /"--([a-z0-9]+)-n": __plumeria_arg0, "--\1-n-line-height": \(\(__plumeria_arg0\) \+ 'px'\), "--\1-n-line-height-percent": \(\(__plumeria_arg0\) \+ '%'\) \}\)\)\(p\.n\)/,
       );
     });
 
@@ -528,7 +530,7 @@ export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
         "{ fn: (n: number) => ({ width: `${n}px`, ':hover': { width: `${n}px` }, height: `${n}%` }) }",
       );
       expect(code).toMatch(
-        /style=\{\{ "--([a-z0-9]+)-n": \(\(p\.n\) \+ 'px'\), "--\1-n-height": \(\(p\.n\) \+ '%'\) \}\}/,
+        /style=\{\{ \.\.\.\(\(__plumeria_arg0\) => \(\{ "--([a-z0-9]+)-n": \(\(__plumeria_arg0\) \+ 'px'\), "--\1-n-height": \(\(__plumeria_arg0\) \+ '%'\) \}\)\)\(p\.n\) \}\}/,
       );
     });
   });
