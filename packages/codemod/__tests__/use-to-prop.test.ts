@@ -29,6 +29,10 @@ ruleTester.run('use-to-prop', useToProp, {
       options,
     },
     {
+      code: imports + '<div className={css["use"](styles.text)} />',
+      options,
+    },
+    {
       code:
         imports +
         'function View(css) { return <div className={css.use(x)} />; }',
