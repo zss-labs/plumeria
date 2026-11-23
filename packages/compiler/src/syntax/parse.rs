@@ -11,7 +11,31 @@ fn options() -> ParseOptions {
 }
 
 pub fn parse_program<'a>(allocator: &'a Allocator, source: &'a str) -> Result<Program<'a>, String> {
-    let ret = Parser::new(allocator, source, SourceType::tsx())
+    parse_typed(allocator, source, SourceType::tsx())
+}
+
+pub fn parse_file_program<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    file: &str,
+) -> Result<Program<'a>, String> {
+    let ts = [".ts", ".mts", ".cts"]
+        .iter()
+        .any(|ext| file.ends_with(ext));
+    let source_type = if ts {
+        SourceType::ts()
+    } else {
+        SourceType::tsx()
+    };
+    parse_typed(allocator, source, source_type)
+}
+
+fn parse_typed<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    source_type: SourceType,
+) -> Result<Program<'a>, String> {
+    let ret = Parser::new(allocator, source, source_type)
         .with_options(options())
         .parse();
     if ret.fatal_error || !ret.diagnostics.is_empty() {
