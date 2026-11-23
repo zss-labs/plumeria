@@ -378,14 +378,28 @@ export const S = (p: any) => <div sx={s.same(p.c)} />;`,
           `export const G = (p: any) => (<div><i sx={p.on && s.palette(p.c)} /><b sx={p.on ? s.palette(p.a) : s.palette(p.b)} /></div>);`,
         'conditional.tsx',
       );
-      const palette = (source: string) =>
-        `((__plumeria_arg0) => ({ "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(${source})`;
-      expect(code).toContain(
-        `style={{ ...(((p.on)) ? ${palette('p.c')} : null) }}`,
+      const [i, b] = [...code.matchAll(/<[ib] \{\.\.\.([\s\S]*?)\} \/>/g)].map(
+        ([, spread]) =>
+          (p: object): { className: string; style?: Record<string, unknown> } =>
+            new Function('p', `return (${spread});`)(p),
       );
-      expect(code).toContain(
-        `style={{ ...(((p.on)) ? ${palette('p.a')} : null), ...((!(p.on)) ? ${palette('p.b')} : null) }}`,
-      );
+      const on = { on: true, c: 'red', a: 'blue', b: 'green' };
+      const off = { ...on, on: false };
+      const lit = i(on);
+      const [name] = Object.keys(lit.style!);
+
+      expect(lit.className).not.toBe('');
+      expect(lit.style).toEqual({ [name]: 'red' });
+      expect(i(off).className).toBe('');
+      expect(i(off).style).toBeUndefined();
+      expect(b(on)).toEqual({
+        className: lit.className,
+        style: { [name]: 'blue' },
+      });
+      expect(b(off)).toEqual({
+        className: lit.className,
+        style: { [name]: 'green' },
+      });
     });
 
     it('takes named parameters from a destructured signature', async () => {
