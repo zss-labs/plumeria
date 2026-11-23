@@ -61,6 +61,25 @@ Declare `SVGAttributes` even where the framework has it extend `HTMLAttributes` 
 
 The type is `Style`. A name the package does not export is not reported here, so a stale one leaves `sx` accepting anything at all rather than failing.
 
+## Typing styled
+
+`styled` from `@plumeria/react` takes its tags, props and return type from React. To use it with another JSX framework, register that framework's `JSX` types once:
+
+```ts title="types.d.ts"
+import type { JSX } from '@builder.io/qwik';
+
+declare module '@plumeria/react' {
+  interface JSXRegister {
+    IntrinsicElements: JSX.IntrinsicElements;
+    Element: JSX.Element;
+  }
+}
+```
+
+For Preact, import `JSX` from `preact` instead.
+
+The declaration file of `@plumeria/react` still imports from `react`. Without `@types/react`, keep `skipLibCheck: true`, which the Vite templates already set.
+
 ## Single-file components
 
 The transform parses TypeScript and TSX. A `.vue`, `.svelte` or `.astro` file is neither, so `css.create` goes in a `.ts` module the component imports from. The template is not JSX either, so the module also resolves the class name with `css.use` and exports the string:
