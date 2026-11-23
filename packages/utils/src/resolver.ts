@@ -527,7 +527,8 @@ export function resolveImportPath(
   importPath: string,
   importerPath: string,
 ): string | null {
-  if (importPath === '@plumeria/core') return null;
+  if (importPath === '@plumeria/core' || importPath === '@plumeria/react')
+    return null;
 
   if (importPath.startsWith('.')) {
     return resolveWithExtension(
