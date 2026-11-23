@@ -185,6 +185,10 @@ pub fn compile_css(project: &mut Project, options: &CompileOptions) -> Result<St
             if !hit {
                 cache.files.remove(&resource);
                 let source = match options.sources.get(&resource) {
+                    Some(source) if source.contains(crate::styled::REACT) => {
+                        crate::styled::desugar(source, &resource, &crate::styled::style_prop())?
+                            .unwrap_or_else(|| source.clone())
+                    }
                     Some(source) => source.clone(),
                     None => match crate::fs::source::read(&resource) {
                         Ok(source) => source,
