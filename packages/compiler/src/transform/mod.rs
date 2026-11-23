@@ -119,6 +119,7 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub declared_props: FxHashMap<String, FxHashSet<String>>,
     pub component_param_names: FxHashSet<String>,
     pub applied_style_props: FxHashSet<String>,
+    pub element_reads: Option<FxHashMap<(u32, u32), String>>,
     pub jsx_owner: FxHashMap<
         u32,
         (
@@ -460,6 +461,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             declared_props: FxHashMap::default(),
             component_param_names: FxHashSet::default(),
             applied_style_props: FxHashSet::default(),
+            element_reads: None,
             jsx_owner: FxHashMap::default(),
             shorthand_starts: FxHashSet::default(),
         }
