@@ -186,103 +186,6 @@ type Span = [number, number];
 const spanOf = (node: any): Span => [node.span.start, node.span.end];
 const spanKey = ([start, end]: Span) => `${start}:${end}`;
 
-const reachable = (
-  sub: any,
-  target: Span,
-  path: Array<[string, boolean]>,
-): boolean => {
-  const decided = (node: any) =>
-    path.find(([key]) => key === spanKey(spanOf(node)))?.[1];
-  const holds = (node: any) =>
-    node.span.start <= target[0] && node.span.end >= target[1];
-  const reach = (node: any): boolean => {
-    if (!node?.span) return false;
-    if (node.span.start === target[0] && node.span.end === target[1])
-      return true;
-    if (!holds(node)) return false;
-    switch (node.type) {
-      case 'ParenthesisExpression':
-      case 'TsAsExpression':
-      case 'TsSatisfiesExpression':
-      case 'TsNonNullExpression':
-        return reach(node.expression);
-      case 'BinaryExpression': {
-        if (!['&&', '||', '??'].includes(node.operator)) return false;
-        if (holds(node.left)) return reach(node.left);
-        const needed =
-          node.operator === '&&'
-            ? true
-            : node.operator === '||'
-              ? false
-              : undefined;
-        return (
-          needed !== undefined &&
-          decided(node.left) === needed &&
-          reach(node.right)
-        );
-      }
-      case 'ConditionalExpression': {
-        if (holds(node.test)) return reach(node.test);
-        const [branch, needed] = holds(node.consequent)
-          ? [node.consequent, true]
-          : [node.alternate, false];
-        return decided(node.test) === needed && reach(branch);
-      }
-      case 'MemberExpression':
-        return (
-          node.property.type === 'Computed' && reach(node.property.expression)
-        );
-      case 'CallExpression':
-        return node.arguments.some(
-          (argument: any) => !argument.spread && reach(argument.expression),
-        );
-      case 'ObjectExpression':
-        return node.properties.some(
-          (property: any) =>
-            property.type === 'KeyValueProperty' && reach(property.value),
-        );
-      case 'ArrayExpression':
-        return node.elements.some(
-          (element: any) =>
-            element && !element.spread && reach(element.expression),
-        );
-      default:
-        return false;
-    }
-  };
-  return reach(sub);
-};
-
-const suspendsWithin = (sub: any, spans: Span[]): boolean => {
-  if (!spans.length) return false;
-  let found = false;
-  const visit = (node: any): void => {
-    if (found || !node || typeof node !== 'object') return;
-    if (Array.isArray(node)) {
-      node.forEach(visit);
-      return;
-    }
-    if (
-      node.type === 'ArrowFunctionExpression' ||
-      node.type === 'FunctionExpression' ||
-      node.type === 'ClassExpression'
-    )
-      return;
-    if (
-      (node.type === 'AwaitExpression' || node.type === 'YieldExpression') &&
-      spans.some(
-        ([start, end]) => node.span.start >= start && node.span.end <= end,
-      )
-    ) {
-      found = true;
-      return;
-    }
-    for (const key in node) if (key !== 'span') visit(node[key]);
-  };
-  visit(sub);
-  return found;
-};
-
 const isIdentifierSource = (source: string) =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(source);
 
@@ -1741,90 +1644,17 @@ export const transformSource = async (
       .subarray(start - baseByteOffset, end - baseByteOffset)
       .toString('utf-8');
 
-  const bySource = (a: Span, b: Span) => a[0] - b[0] || a[1] - b[1];
-
   const freshKeyName = (names: { next: number }) => {
     let name = `__plumeria_key${names.next++}`;
     while (source.includes(name)) name += '_';
     return name;
   };
 
-  const pushRead = (out: Span[], span: Span, bound: Map<string, string>) => {
-    const key = spanKey(span);
-    if (!bound.has(key) && !out.some((other) => spanKey(other) === key))
-      out.push(span);
-  };
-
-  const callArguments = (
-    sub: Expression,
-    rows: KeyedRow[],
-    bound: Map<string, string>,
-  ): Span[] => {
-    const out: Span[] = [];
-    const push = (argument: any) => {
-      if (
-        argument.type === 'StringLiteral' ||
-        argument.type === 'NumericLiteral' ||
-        argument.type === 'BooleanLiteral' ||
-        argument.type === 'Identifier'
-      )
-        return;
-      pushRead(out, spanOf(argument), bound);
-    };
-    for (const row of rows) {
-      if (row.fixed) continue;
-      for (const root of row.calls ?? [sub])
-        traverse(root, {
-          CallExpression({ node: call }: { node: CallExpression }) {
-            if (!isStyleFunctionCall(call)) return;
-            for (const argument of call.arguments) {
-              const expression = argument.expression as any;
-              if (expression.type === 'ObjectExpression') {
-                for (const property of expression.properties)
-                  if (property.type === 'KeyValueProperty')
-                    push(property.value);
-              } else push(expression);
-            }
-          },
-        });
-    }
-    return out.sort(bySource);
-  };
-
-  const bindReads = (
-    sub: Expression,
-    items: Span[],
-    bound: Map<string, string>,
-    path: Array<[string, boolean]>,
-    names: { next: number },
-  ) => {
-    const params: string[] = [];
-    const args: string[] = [];
-    const inside: Span[] = [];
-    const inner = new Map(bound);
-    let passing = true;
-    for (const item of items) {
-      passing = passing && reachable(sub, item, path);
-      if (passing) {
-        const param = freshKeyName(names);
-        args.push(`(${textAt(item)})`);
-        params.push(param);
-        inner.set(spanKey(item), param);
-      } else inside.push(item);
-    }
-    return { params, args, inner, inside };
-  };
-
   const decideKeyed = (
-    sub: Expression,
     rows: KeyedRow[],
+    reads: Map<string, string>,
+    calls: string[],
     names: { next: number },
-    bound: Map<string, string>,
-    path: Array<[string, boolean]>,
-    carrier: (
-      calls: Expression[] | undefined,
-      bound: Map<string, string>,
-    ) => string | null,
   ): [string, boolean] => {
     const first = rows[0];
     if (!first) return ['""', true];
@@ -1832,41 +1662,19 @@ export const transformSource = async (
     if (!condition) {
       const key = JSON.stringify(first.key);
       if (first.fixed) return [key, true];
+      const carried = first.calls
+        ? first.calls.flatMap((call) => {
+            const name = reads.get(spanKey(spanOf(call)));
+            return name ? [name] : [];
+          })
+        : calls;
       return [
-        `{ key: ${key}, vars: ${carrier(first.calls, bound) ?? '{}'} }`,
+        `{ key: ${key}, vars: { ${carried.map((name) => `...${name}`).join(', ')} } }`,
         false,
       ];
     }
     const test = spanOf(condition.test);
     const testKey = spanKey(test);
-    const pending = callArguments(sub, rows, bound);
-    if (pending.some((argument) => argument[0] < test[0])) {
-      const items = [...pending];
-      for (const row of rows)
-        for (const other of row.conditions)
-          pushRead(items, spanOf(other.test), bound);
-      items.sort(bySource);
-      const { params, args, inner, inside } = bindReads(
-        sub,
-        items,
-        bound,
-        path,
-        names,
-      );
-      if (params.length) {
-        if (suspendsWithin(sub, inside))
-          throwCompilationError(
-            `[plumeria] This ${styleProp} value awaits or yields in a condition read only after a dynamic style argument, ` +
-              `which cannot be compiled in place. Read the awaited value into a variable before the JSX.`,
-            sub as HasSpan,
-          );
-        const [body] = decideKeyed(sub, rows, names, inner, path, carrier);
-        return [
-          `((${params.join(', ')}) => ${body})(${args.join(', ')})`,
-          false,
-        ];
-      }
-    }
     const branch = (keep: (condition: Condition) => boolean): KeyedRow[] =>
       rows.flatMap((row) => {
         const position = row.conditions.findIndex(
@@ -1881,36 +1689,34 @@ export const transformSource = async (
           },
         ];
       });
-    const text = bound.get(testKey) ?? textAt(test);
+    const text = reads.get(testKey) ?? textAt(test);
     const keyed = condition.keyed;
     if (!keyed) {
       const [truthy] = decideKeyed(
-        sub,
         branch((other) => other.truthy),
+        reads,
+        calls,
         names,
-        bound,
-        [...path, [testKey, true]],
-        carrier,
       );
       const [falsy] = decideKeyed(
-        sub,
         branch((other) => !other.truthy),
+        reads,
+        calls,
         names,
-        bound,
-        [...path, [testKey, false]],
-        carrier,
       );
       return [`((${text}) ? ${truthy} : ${falsy})`, false];
     }
-    const optionRows = [...keyed.options.map((_, index) => index), null].map(
+    const branches = [...keyed.options.map((_, index) => index), null].map(
       (option) =>
-        branch(
-          (other) => other.keyed !== undefined && other.keyed.option === option,
+        decideKeyed(
+          branch(
+            (other) =>
+              other.keyed !== undefined && other.keyed.option === option,
+          ),
+          reads,
+          calls,
+          names,
         ),
-    );
-    const start = names.next;
-    const branches = optionRows.map((optionRow) =>
-      decideKeyed(sub, optionRow, names, bound, path, carrier),
     );
     const [fallback] = branches.pop()!;
     if (branches.every(([, fixed]) => fixed)) {
@@ -1922,39 +1728,17 @@ export const transformSource = async (
         false,
       ];
     }
-    names.next = start;
     const name = freshKeyName(names);
-    const laterRows = optionRows.flat();
-    const later = callArguments(sub, laterRows, bound);
-    for (const row of laterRows)
-      for (const other of row.conditions)
-        pushRead(later, spanOf(other.test), bound);
-    later.sort(bySource);
     const pairs = keyed.options.map(
       (option, index) => `${JSON.stringify(option)}:${index}`,
     );
-    const { params, args, inner, inside } = bindReads(
-      sub,
-      later,
-      bound,
-      path,
-      names,
-    );
-    params.unshift(name);
-    args.unshift(`{__proto__:null,${pairs.join(',')}}[${text}]`);
-    if (suspendsWithin(sub, inside))
-      throwCompilationError(
-        `[plumeria] This ${styleProp} value awaits or yields in a condition read only after choosing a style by the key ${textAt(test)}, ` +
-          `which cannot be compiled in place. Read the awaited value into a variable before the JSX.`,
-        sub as HasSpan,
-      );
-    const innerBranches = optionRows.map((optionRow) =>
-      decideKeyed(sub, optionRow, names, inner, path, carrier),
-    );
-    let [body] = innerBranches.pop()!;
-    for (let index = innerBranches.length - 1; index >= 0; index--)
-      body = `(${name} === ${index} ? ${innerBranches[index][0]} : ${body})`;
-    return [`((${params.join(', ')}) => ${body})(${args.join(', ')})`, false];
+    let body = fallback;
+    for (let index = branches.length - 1; index >= 0; index--)
+      body = `(${name} === ${index} ? ${branches[index][0]} : ${body})`;
+    return [
+      `((${name}) => ${body})({__proto__:null,${pairs.join(',')}}[${text}])`,
+      false,
+    ];
   };
 
   const componentParamNames = new Set<string>();
@@ -2099,7 +1883,6 @@ export const transformSource = async (
   const resolveDynamicCall = (
     expr: Expression,
     forceRuntime = false,
-    bound?: Map<string, string>,
   ): { style: CSSObject; vars: DynamicVar[] } | null => {
     if (!t.isCallExpression(expr) || !t.isMemberExpression(expr.callee))
       return null;
@@ -2238,12 +2021,9 @@ export const transformSource = async (
 
     const textOf = (source: Expression) => {
       const { start, end } = (source as HasSpan).span;
-      return (
-        bound?.get(`${start}:${end}`) ??
-        sourceBuffer
-          .subarray(start - baseByteOffset, end - baseByteOffset)
-          .toString('utf-8')
-      );
+      return sourceBuffer
+        .subarray(start - baseByteOffset, end - baseByteOffset)
+        .toString('utf-8');
     };
     const reads = [
       ...runtime.map(({ param, source }) => ({ source, param })),
@@ -2334,6 +2114,370 @@ export const transformSource = async (
     return { style, vars };
   };
 
+  const resolveCreateObject = (varName: string): CSSObject | null => {
+    const localStyle = localCreateStyles[varName];
+    if (localStyle?.type === 'create') return localStyle.obj;
+
+    let hash = scannedTables.createHashTable[`${resourcePath}-${varName}`];
+    if (!hash) hash = mergedCreateTable[varName];
+    if (hash && scannedTables.createObjectTable[hash])
+      return scannedTables.createObjectTable[hash];
+
+    return null;
+  };
+
+  const resolveBracketGroup = (
+    node: Expression,
+  ): { varName: string; keyExpr: Expression; obj: CSSObject } | null => {
+    if (
+      !t.isMemberExpression(node) ||
+      !t.isIdentifier(node.object) ||
+      node.property.type !== 'Computed' ||
+      t.isStringLiteral(node.property.expression)
+    ) {
+      return null;
+    }
+    if (!isVisibleReference(node.object)) return null;
+    const varName = (node.object as Identifier).value;
+    const obj = resolveCreateObject(varName);
+    return obj ? { varName, keyExpr: node.property.expression, obj } : null;
+  };
+
+  interface Decision {
+    keyExpr: string;
+    options: Array<{ value: string; style: CSSObject }>;
+    leaves: number;
+    hasGroup: boolean;
+  }
+
+  const buildDecision = (
+    node: Expression,
+    prefix: string,
+    off: string,
+    counter: { n: number },
+    scoped: boolean,
+  ): Decision | null => {
+    if (node.type === 'ParenthesisExpression') {
+      return buildDecision(node.expression, prefix, off, counter, scoped);
+    }
+    if (node.type === 'ConditionalExpression') {
+      const a = buildDecision(node.consequent, prefix, off, counter, scoped);
+      if (!a) return null;
+      const b = buildDecision(node.alternate, prefix, off, counter, scoped);
+      if (!b) return null;
+      return {
+        keyExpr: `((${getSource(node.test)}) ? ${a.keyExpr} : ${b.keyExpr})`,
+        options: [...a.options, ...b.options],
+        leaves: a.leaves + b.leaves,
+        hasGroup: a.hasGroup || b.hasGroup,
+      };
+    }
+    if (node.type === 'BinaryExpression' && node.operator === '&&') {
+      const right = buildDecision(node.right, prefix, off, counter, scoped);
+      if (!right) return null;
+      return {
+        keyExpr: `((${getSource(node.left)}) ? ${right.keyExpr} : ${JSON.stringify(off)})`,
+        options: right.options,
+        leaves: right.leaves + 1,
+        hasGroup: right.hasGroup,
+      };
+    }
+    const group = resolveBracketGroup(node);
+    if (group) {
+      const tag = scoped ? `${counter.n++}:` : '';
+      const keySource = getSource(group.keyExpr);
+      return {
+        keyExpr: tag ? `(${JSON.stringify(tag)} + ${keySource})` : keySource,
+        options: Object.entries(group.obj).map(([value, style]) => ({
+          value: `${tag}${value}`,
+          style: style as CSSObject,
+        })),
+        leaves: 1,
+        hasGroup: true,
+      };
+    }
+    const style = resolveStyleObject(node);
+    if (!style) return null;
+    const value = `${prefix}${counter.n++}`;
+    return {
+      keyExpr: JSON.stringify(value),
+      options: [{ value, style }],
+      leaves: 1,
+      hasGroup: false,
+    };
+  };
+
+  const collectGroupKeys = (
+    node: Expression,
+    acc: Map<string, Set<unknown>>,
+  ) => {
+    if (node.type === 'ParenthesisExpression') {
+      collectGroupKeys(node.expression, acc);
+    } else if (node.type === 'ConditionalExpression') {
+      collectGroupKeys(node.consequent, acc);
+      collectGroupKeys(node.alternate, acc);
+    } else if (node.type === 'BinaryExpression' && node.operator === '&&') {
+      collectGroupKeys(node.right, acc);
+    } else {
+      const group = resolveBracketGroup(node);
+      if (group)
+        Object.entries(group.obj).forEach(([key, style]) => {
+          let styles = acc.get(key);
+          if (!styles) acc.set(key, (styles = new Set()));
+          styles.add(style);
+        });
+    }
+  };
+
+  const resolveDecision = (node: Expression): Decision | null => {
+    const groupKeys = new Map<string, Set<unknown>>();
+    collectGroupKeys(node, groupKeys);
+    let prefix = '#';
+    while ([...groupKeys.keys()].some((k) => k.startsWith(prefix)))
+      prefix += '#';
+    const scoped = [...groupKeys.values()].some((styles) => styles.size > 1);
+    const off = !scoped && groupKeys.has('') ? `${prefix}off` : '';
+    return buildDecision(node, prefix, off, { n: 0 }, scoped);
+  };
+
+  let elementReads: Map<string, string> | null = null;
+  const readText = (node: any): string =>
+    elementReads?.get(spanKey(spanOf(node))) ?? getSource(node);
+
+  interface ElementPlan {
+    params: string[];
+    vars: Array<{ name: string; always: boolean }>;
+    folds: string[];
+    reads: Map<string, string>;
+    classRuntime: boolean;
+    styleRuntime: boolean;
+  }
+
+  const newPlan = (): ElementPlan => ({
+    params: [],
+    vars: [],
+    folds: [],
+    reads: new Map(),
+    classRuntime: false,
+    styleRuntime: false,
+  });
+
+  const slot = (plan: ElementPlan, kind: string) => {
+    const name = `__plumeria_${kind}${plan.params.length}`;
+    plan.params.push(name);
+    return name;
+  };
+
+  const readsNothing = (node: any): boolean => {
+    switch (node.type) {
+      case 'StringLiteral':
+      case 'NumericLiteral':
+      case 'BooleanLiteral':
+      case 'NullLiteral':
+        return true;
+      case 'TemplateLiteral':
+        return node.expressions.length === 0;
+      case 'ParenthesisExpression':
+        return readsNothing(node.expression);
+      case 'UnaryExpression':
+        return node.argument.type === 'NumericLiteral';
+      case 'ObjectExpression':
+        return node.properties.every(
+          (property: any) =>
+            property.type === 'KeyValueProperty' &&
+            property.key.type !== 'Computed' &&
+            readsNothing(property.value),
+        );
+      default:
+        return false;
+    }
+  };
+
+  const varsObject = (
+    vars: DynamicVar[],
+  ): { object: string; runtime: boolean; always: boolean } | null => {
+    const first = vars[0];
+    if (!first) return null;
+    const pairs = vars
+      .filter((entry) => entry.cssVar)
+      .map((entry) => `"${entry.cssVar}": ${entry.valueExpr}`);
+    if (!first.call)
+      return {
+        object: `{ ${pairs.join(', ')} }`,
+        runtime: false,
+        always: true,
+      };
+    const body = pairs.length ? `({ ${pairs.join(', ')} })` : 'null';
+    return {
+      object: `((${first.call.params.join(', ')}) => ${body})(${first.call.args.join(', ')})`,
+      runtime: true,
+      always: pairs.length > 0,
+    };
+  };
+
+  const planTopElement = (
+    expr: Expression,
+    plan: ElementPlan,
+  ): string[] | null => {
+    expr = resolveLocalStyleAlias(localStyleAliases, expr);
+    if (
+      t.isMemberExpression(expr) &&
+      t.isIdentifier(expr.object) &&
+      expr.property.type === 'Computed' &&
+      expr.property.expression.type !== 'StringLiteral' &&
+      isVisibleReference(expr) &&
+      resolveCreateObject(expr.object.value)
+    ) {
+      const dynExpr = expr.property.expression;
+      plan.reads.set(spanKey(spanOf(dynExpr)), slot(plan, 't'));
+      plan.classRuntime = true;
+      return [`(${getSource(dynExpr)})`];
+    }
+    const decision = resolveDecision(expr);
+    if (decision && (decision.hasGroup || decision.leaves > 2)) {
+      plan.reads.set(spanKey(spanOf(expr)), slot(plan, 't'));
+      plan.classRuntime = true;
+      return [`(${decision.keyExpr})`];
+    }
+    return planElement(expr, false, plan);
+  };
+
+  const planElement = (
+    node: Expression,
+    guarded: boolean,
+    plan: ElementPlan,
+  ): string[] | null => {
+    node = resolveLocalStyleAlias(localStyleAliases, unwrapExpression(node));
+    if (isNoOpStyle(node)) return [];
+    if (t.isIdentifier(node)) return null;
+    if (node.type === 'ArrayExpression') {
+      const items: string[] = [];
+      for (const element of node.elements) {
+        if (!element) continue;
+        if (element.spread) return null;
+        const more = planElement(element.expression, guarded, plan);
+        if (!more) return null;
+        items.push(...more);
+      }
+      return items;
+    }
+    if (
+      t.isMemberExpression(node) &&
+      t.isIdentifier(node.object) &&
+      componentParamNames.has(node.object.value)
+    )
+      return null;
+    if (resolveStyleObject(node)) return [];
+    const dynamic = resolveDynamicCall(node);
+    if (dynamic) {
+      const vars = varsObject(dynamic.vars);
+      if (!vars) return [];
+      plan.vars.push({
+        name: slot(plan, 'v'),
+        always: vars.always && !guarded,
+      });
+      plan.styleRuntime ||= vars.runtime || guarded;
+      return [vars.object];
+    }
+    let test: Expression;
+    let consequent: Expression;
+    let alternate: Expression | undefined;
+    if (node.type === 'ConditionalExpression') {
+      test = node.test;
+      consequent = node.consequent;
+      alternate = node.alternate;
+    } else if (node.type === 'BinaryExpression' && node.operator === '&&') {
+      test = node.left;
+      consequent = node.right;
+    } else return null;
+    return planGuard(test, consequent, alternate, plan, (node, plan) =>
+      planElement(node, true, plan),
+    );
+  };
+
+  const planReceiver = (
+    node: Expression,
+    plan: ElementPlan,
+  ): string[] | null => {
+    node = unwrapExpression(node);
+    if (isNoOpStyle(node)) return [];
+    if (node.type === 'ArrayExpression') {
+      const items: string[] = [];
+      for (const element of node.elements) {
+        if (!element) continue;
+        if (element.spread) return null;
+        const more = planReceiver(element.expression, plan);
+        if (!more) return null;
+        items.push(...more);
+      }
+      return items;
+    }
+    if (node.type === 'ConditionalExpression') {
+      if (node.test.type === 'BooleanLiteral')
+        return planReceiver(
+          node.test.value ? node.consequent : node.alternate,
+          plan,
+        );
+      return planGuard(
+        node.test,
+        node.consequent,
+        node.alternate,
+        plan,
+        planReceiver,
+      );
+    }
+    if (node.type === 'BinaryExpression' && node.operator === '&&') {
+      if (node.left.type === 'BooleanLiteral')
+        return node.left.value ? planReceiver(node.right, plan) : [];
+      return planGuard(node.left, node.right, undefined, plan, planReceiver);
+    }
+    if (t.isMemberExpression(node) && node.property.type === 'Computed') {
+      const key = node.property.expression;
+      const literal = unwrapExpression(key);
+      if (literal.type === 'StringLiteral' || literal.type === 'NumericLiteral')
+        return [];
+      plan.reads.set(spanKey(spanOf(key)), slot(plan, 't'));
+      return [`(${getSource(key)})`];
+    }
+    if (isStyleFunctionCall(node)) {
+      const dynamic = resolveDynamicCall(node, true);
+      if (!dynamic) return null;
+      if (!dynamic.vars.length) return [];
+      const name = slot(plan, 'v');
+      plan.reads.set(spanKey(spanOf(node)), name);
+      plan.vars.push({ name, always: true });
+      const fold = foldDynamicVars(dynamic.vars).join(', ');
+      plan.folds.push(fold);
+      return [`{ ${fold} }`];
+    }
+    return [];
+  };
+
+  const planGuard = (
+    test: Expression,
+    consequent: Expression,
+    alternate: Expression | undefined,
+    plan: ElementPlan,
+    recurse: (node: Expression, plan: ElementPlan) => string[] | null,
+  ): string[] | null => {
+    plan.reads.set(spanKey(spanOf(test)), slot(plan, 't'));
+    plan.classRuntime = true;
+    const start = plan.params.length;
+    const yes = recurse(consequent, plan);
+    if (!yes) return null;
+    const middle = plan.params.length;
+    const no = alternate ? recurse(alternate, plan) : [];
+    if (!no) return null;
+    const end = plan.params.length;
+    if (end === start) return [`(${getSource(test)})`];
+    const nulls = (count: number) => Array<string>(count).fill('null');
+    const truthy = ['true', ...yes, ...nulls(end - middle)];
+    const falsy = ['false', ...nulls(middle - start), ...no];
+    return [
+      `...((${getSource(test)}) ? [${truthy.join(', ')}] : [${falsy.join(', ')}])`,
+    ];
+  };
+
   const buildClassParts = (
     args: Array<{ expression: Expression; order?: number }>,
     dynamicClassParts: string[] = [],
@@ -2361,132 +2505,6 @@ export const transformSource = async (
     const baseChunks: Array<{ order: number; style: CSSObject }> = [];
     let baseStyle: CSSObject = {};
     let isOptimizable = true;
-
-    const resolveCreateObject = (varName: string): CSSObject | null => {
-      const localStyle = localCreateStyles[varName];
-      if (localStyle?.type === 'create') return localStyle.obj;
-
-      let hash = scannedTables.createHashTable[`${resourcePath}-${varName}`];
-      if (!hash) hash = mergedCreateTable[varName];
-      if (hash && scannedTables.createObjectTable[hash])
-        return scannedTables.createObjectTable[hash];
-
-      return null;
-    };
-
-    const resolveBracketGroup = (
-      node: Expression,
-    ): { varName: string; keyExpr: Expression; obj: CSSObject } | null => {
-      if (
-        !t.isMemberExpression(node) ||
-        !t.isIdentifier(node.object) ||
-        node.property.type !== 'Computed' ||
-        t.isStringLiteral(node.property.expression)
-      ) {
-        return null;
-      }
-      if (!isVisibleReference(node.object)) return null;
-      const varName = (node.object as Identifier).value;
-      const obj = resolveCreateObject(varName);
-      return obj ? { varName, keyExpr: node.property.expression, obj } : null;
-    };
-
-    interface Decision {
-      keyExpr: string;
-      options: Array<{ value: string; style: CSSObject }>;
-      leaves: number;
-      hasGroup: boolean;
-    }
-
-    const buildDecision = (
-      node: Expression,
-      prefix: string,
-      off: string,
-      counter: { n: number },
-      scoped: boolean,
-    ): Decision | null => {
-      if (node.type === 'ParenthesisExpression') {
-        return buildDecision(node.expression, prefix, off, counter, scoped);
-      }
-      if (node.type === 'ConditionalExpression') {
-        const a = buildDecision(node.consequent, prefix, off, counter, scoped);
-        if (!a) return null;
-        const b = buildDecision(node.alternate, prefix, off, counter, scoped);
-        if (!b) return null;
-        return {
-          keyExpr: `((${getSource(node.test)}) ? ${a.keyExpr} : ${b.keyExpr})`,
-          options: [...a.options, ...b.options],
-          leaves: a.leaves + b.leaves,
-          hasGroup: a.hasGroup || b.hasGroup,
-        };
-      }
-      if (node.type === 'BinaryExpression' && node.operator === '&&') {
-        const right = buildDecision(node.right, prefix, off, counter, scoped);
-        if (!right) return null;
-        return {
-          keyExpr: `((${getSource(node.left)}) ? ${right.keyExpr} : ${JSON.stringify(off)})`,
-          options: right.options,
-          leaves: right.leaves + 1,
-          hasGroup: right.hasGroup,
-        };
-      }
-      const group = resolveBracketGroup(node);
-      if (group) {
-        const tag = scoped ? `${counter.n++}:` : '';
-        const keySource = getSource(group.keyExpr);
-        return {
-          keyExpr: tag ? `(${JSON.stringify(tag)} + ${keySource})` : keySource,
-          options: Object.entries(group.obj).map(([value, style]) => ({
-            value: `${tag}${value}`,
-            style: style as CSSObject,
-          })),
-          leaves: 1,
-          hasGroup: true,
-        };
-      }
-      const style = resolveStyleObject(node);
-      if (!style) return null;
-      const value = `${prefix}${counter.n++}`;
-      return {
-        keyExpr: JSON.stringify(value),
-        options: [{ value, style }],
-        leaves: 1,
-        hasGroup: false,
-      };
-    };
-
-    const collectGroupKeys = (
-      node: Expression,
-      acc: Map<string, Set<unknown>>,
-    ) => {
-      if (node.type === 'ParenthesisExpression') {
-        collectGroupKeys(node.expression, acc);
-      } else if (node.type === 'ConditionalExpression') {
-        collectGroupKeys(node.consequent, acc);
-        collectGroupKeys(node.alternate, acc);
-      } else if (node.type === 'BinaryExpression' && node.operator === '&&') {
-        collectGroupKeys(node.right, acc);
-      } else {
-        const group = resolveBracketGroup(node);
-        if (group)
-          Object.entries(group.obj).forEach(([key, style]) => {
-            let styles = acc.get(key);
-            if (!styles) acc.set(key, (styles = new Set()));
-            styles.add(style);
-          });
-      }
-    };
-
-    const resolveDecision = (node: Expression): Decision | null => {
-      const groupKeys = new Map<string, Set<unknown>>();
-      collectGroupKeys(node, groupKeys);
-      let prefix = '#';
-      while ([...groupKeys.keys()].some((k) => k.startsWith(prefix)))
-        prefix += '#';
-      const scoped = [...groupKeys.values()].some((styles) => styles.size > 1);
-      const off = !scoped && groupKeys.has('') ? `${prefix}off` : '';
-      return buildDecision(node, prefix, off, { n: 0 }, scoped);
-    };
 
     const collectConditions = (
       node: Expression,
@@ -2524,15 +2542,16 @@ export const transformSource = async (
             );
           }
           branchStyle = dynamic.style;
-          dynamic.vars.forEach((v) =>
-            dynamicVars.push({
-              ...v,
-              test: currentTestStrings.length
-                ? currentTestStrings.join(' && ')
-                : undefined,
-              order: argOrder,
-            }),
-          );
+          if (!elementReads)
+            dynamic.vars.forEach((v) =>
+              dynamicVars.push({
+                ...v,
+                test: currentTestStrings.length
+                  ? currentTestStrings.join(' && ')
+                  : undefined,
+                order: argOrder,
+              }),
+            );
         }
       }
       if (branchStyle) {
@@ -2553,7 +2572,7 @@ export const transformSource = async (
         return true;
       }
       if (node.type === 'ConditionalExpression') {
-        const testSource = getSource(node.test);
+        const testSource = readText(node.test);
         if (currentTestStrings.length === 0) {
           const trueStyle = resolveStyleObject(node.consequent);
           const falseStyle = resolveStyleObject(node.alternate);
@@ -2583,7 +2602,7 @@ export const transformSource = async (
       } else if (node.type === 'BinaryExpression' && node.operator === '&&') {
         return collectConditions(
           node.right,
-          [...currentTestStrings, `(${getSource(node.left)})`],
+          [...currentTestStrings, `(${readText(node.left)})`],
           argOrder,
         );
       } else if (node.type === 'ParenthesisExpression') {
@@ -2744,7 +2763,7 @@ export const transformSource = async (
           : null;
         if (styleObj) {
           const dynExpr = expr.property.expression;
-          const dynSource = getSource(dynExpr);
+          const dynSource = readText(dynExpr);
           const currentGroupId = ++groupIdCounter;
           const currentOrder = sourceOrder++;
           Object.entries(styleObj).forEach(([optionName, style]) => {
@@ -2769,11 +2788,13 @@ export const transformSource = async (
       if (decision && (decision.hasGroup || decision.leaves > 2)) {
         const groupId = ++groupIdCounter;
         const currentOrder = sourceOrder++;
+        const keyExpr =
+          elementReads?.get(spanKey(spanOf(expr))) ?? decision.keyExpr;
         decision.options.forEach(({ value, style }) =>
           conditionals.push({
             test: expr,
-            testLHS: decision.keyExpr,
-            testString: `${decision.keyExpr} === '${value}'`,
+            testLHS: keyExpr,
+            testString: `${keyExpr} === '${value}'`,
             truthy: style,
             falsy: {},
             groupId,
@@ -3581,40 +3602,22 @@ export const transformSource = async (
             node.value.type === 'JSXExpressionContainer'
           ) {
             const expr = node.value.expression;
-            const carrierFor = (
-              subNode: Expression,
-              calls: Expression[] | undefined,
-              bound: Map<string, string>,
-            ): string | null => {
-              const vars: DynamicVar[] = [];
-              let unresolved = false;
-              for (const expression of calls ?? [subNode])
-                traverse(expression, {
-                  CallExpression({ node: call }: { node: CallExpression }) {
-                    if (!isStyleFunctionCall(call)) return;
-                    const resolved = resolveDynamicCall(call, true, bound);
-                    if (!resolved) {
-                      unresolved = true;
-                      return;
-                    }
-                    vars.push(...resolved.vars);
-                  },
-                });
-              if (unresolved) return null;
-              return `{ ${foldDynamicVars(vars).join(', ')} }`;
-            };
             const replaceWithKey = (subNode: Expression) => {
               const entries = localPropEntries(
                 list,
                 (subNode as HasSpan).span.start,
               );
               if (!entries) return false;
-              const none = new Map<string, string>();
+              const plan = newPlan();
+              const items = planReceiver(subNode, plan);
+              if (!items) return false;
               const rows: KeyedRow[] = [];
               for (const entry of entries) {
                 if (
                   entry.hasVars &&
-                  !carrierFor(subNode, entry.dynamicCalls, none)
+                  entry.dynamicCalls?.some(
+                    (call) => !plan.reads.has(spanKey(spanOf(call))),
+                  )
                 )
                   return false;
                 rows.push({
@@ -3625,14 +3628,22 @@ export const transformSource = async (
                 });
                 processStyleRecords(entry.styleObj);
               }
-              const content = decideKeyed(
-                subNode,
+              const [body] = decideKeyed(
                 rows,
+                plan.reads,
+                plan.vars.map(({ name }) => name),
                 { next: 0 },
-                none,
-                [],
-                (calls, bound) => carrierFor(subNode, calls, bound),
-              )[0];
+              );
+              const [row] = rows;
+              const key = JSON.stringify(row.key);
+              const folds = plan.folds.join(', ');
+              const content = !plan.params.length
+                ? body
+                : rows.length === 1 && !row.conditions.length
+                  ? row.fixed
+                    ? `({ ${folds} }, ${key})`
+                    : `{ key: ${key}, vars: { ${folds} } }`
+                  : `((${plan.params.join(', ')}) => (${body}))(${items.join(', ')})`;
               replacements.push({
                 start: (subNode as HasSpan).span.start - baseByteOffset,
                 end: (subNode as HasSpan).span.end - baseByteOffset,
@@ -3720,6 +3731,7 @@ export const transformSource = async (
           attr.name.value === 'style',
       );
       let existingStyleExpr = '';
+      let styleObject = false;
 
       if (styleAttrExisting) {
         replacements.push({
@@ -3732,6 +3744,7 @@ export const transformSource = async (
           const innerExpr = styleAttrExisting.value?.expression;
 
           if (innerExpr.type === 'ObjectExpression') {
+            styleObject = true;
             for (const property of innerExpr.properties) {
               const token = deferProperty(property);
               if (token) existingStyleParts.push(token);
@@ -3742,59 +3755,152 @@ export const transformSource = async (
         }
       }
 
-      const {
-        classParts,
-        isOptimizable,
-        baseStyle,
-        dynamicVars,
-        propVarSpreads,
-      } = buildClassParts(args, dynamicClassParts, existingClassExpr, true);
-
-      if (!isOptimizable) {
-        throwCompilationError(
-          `[plumeria] Dynamic or unresolvable style object "${getSource(expr)}" is not supported.`,
-          expr as HasSpan,
-        );
+      const styleArg = existingStyleExpr
+        ? existingStyleExpr.slice(3)
+        : styleObject
+          ? `{ ${existingStyleParts.join(', ')} }`
+          : null;
+      const classIsExpr = existingClassExpr.startsWith('(');
+      const attributeReads = (attr: JSXAttribute | undefined) =>
+        attr?.value?.type === 'JSXExpressionContainer' &&
+        attr.value.expression.type !== 'JSXEmptyExpression' &&
+        !readsNothing(attr.value.expression);
+      let plan = newPlan();
+      const plans: Array<{ params: string[]; items: string[] }> = [];
+      for (const arg of args) {
+        const start = plan.params.length;
+        const items = planTopElement(arg.expression, plan);
+        if (!items) {
+          plans.length = 0;
+          plan = newPlan();
+          break;
+        }
+        plans.push({ params: plan.params.slice(start), items });
       }
-
-      const styleParts = [
-        ...existingStyleParts,
-        ...foldDynamicVars(dynamicVars),
-        ...propVarSpreads,
-      ];
-      const styleAttr =
-        styleParts.length > 0 || existingStyleExpr
-          ? ` style={{ ${[existingStyleExpr, ...styleParts].filter(Boolean).join(', ')} }}`
-          : '';
-
       if (
-        isOptimizable &&
-        (args.length > 0 ||
-          Object.keys(baseStyle).length > 0 ||
-          dynamicClassParts.length > 0)
+        plans.length === args.length &&
+        (plan.classRuntime || attributeReads(classNameAttr)) &&
+        (plan.styleRuntime || attributeReads(styleAttrExisting))
       ) {
-        const replacement =
-          classParts.length > 0 ? classParts.join(' + " " + ') : '""';
-        const value =
-          classParts.length <= 1 &&
-          replacement.startsWith('"') &&
-          !/[\\&]/.test(replacement)
-            ? replacement
-            : `{${replacement}}`;
+        const entries: Array<{
+          order: [number, number];
+          param: string;
+          arg: string;
+        }> = [];
+        if (classIsExpr && classNameAttr)
+          entries.push({
+            order: [classNameAttr.span.start, 0],
+            param: '__plumeria_class',
+            arg: existingClassExpr,
+          });
+        if (styleArg !== null && styleAttrExisting)
+          entries.push({
+            order: [styleAttrExisting.span.start, 0],
+            param: '__plumeria_style',
+            arg: styleArg,
+          });
+        plans.forEach(({ params, items }, index) => {
+          if (!params.length) return;
+          const single =
+            params.length === 1 &&
+            items.length === 1 &&
+            !items[0].startsWith('...');
+          entries.push({
+            order: [node.span.start, index + 1],
+            param: single ? params[0] : `[${params.join(', ')}]`,
+            arg: single ? items[0] : `[${items.join(', ')}]`,
+          });
+        });
+        entries.sort(
+          (a, b) => a.order[0] - b.order[0] || a.order[1] - b.order[1],
+        );
+
+        elementReads = plan.reads;
+        let built;
+        try {
+          built = buildClassParts(
+            args,
+            [],
+            classIsExpr ? '__plumeria_class' : existingClassExpr,
+            true,
+          );
+        } finally {
+          elementReads = null;
+        }
+        const classValue = built.classParts.length
+          ? built.classParts.join(' + " " + ')
+          : '""';
+        const existing = styleArg !== null ? '__plumeria_style' : undefined;
+        const spread = [
+          ...(existing ? [existing] : []),
+          ...plan.vars.map(({ name }) => name),
+        ].map((name) => `...${name}`);
+        const copy = `{ ${spread.join(', ')} }`;
+        const styleValue = !plan.vars.length
+          ? (existing ?? 'undefined')
+          : plan.vars.some(({ always }) => always)
+            ? copy
+            : `(${plan.vars.map(({ name }) => name).join(' || ')}) ? ${copy} : ${existing ?? 'undefined'}`;
         replacements.push({
           start: node.span.start - baseByteOffset,
           end: node.span.end - baseByteOffset,
-          content: `${classProp}=${value}${styleAttr}`,
+          content: `{...((${entries.map(({ param }) => param).join(', ')}) => ({ ${classProp}: ${classValue}, style: ${styleValue} }))(${entries.map(({ arg }) => arg).join(', ')})}`,
         });
       } else {
-        const keptClass = existingClassExpr
-          ? `${classProp}={${existingClassExpr}}`
-          : '';
-        replacements.push({
-          start: node.span.start - baseByteOffset,
-          end: node.span.end - baseByteOffset,
-          content: `${keptClass}${styleAttr}`,
-        });
+        const {
+          classParts,
+          isOptimizable,
+          baseStyle,
+          dynamicVars,
+          propVarSpreads,
+        } = buildClassParts(args, dynamicClassParts, existingClassExpr, true);
+
+        if (!isOptimizable) {
+          throwCompilationError(
+            `[plumeria] Dynamic or unresolvable style object "${getSource(expr)}" is not supported.`,
+            expr as HasSpan,
+          );
+        }
+
+        const styleParts = [
+          ...existingStyleParts,
+          ...foldDynamicVars(dynamicVars),
+          ...propVarSpreads,
+        ];
+        const styleAttr =
+          styleParts.length > 0 || existingStyleExpr
+            ? ` style={{ ${[existingStyleExpr, ...styleParts].filter(Boolean).join(', ')} }}`
+            : '';
+
+        if (
+          isOptimizable &&
+          (args.length > 0 ||
+            Object.keys(baseStyle).length > 0 ||
+            dynamicClassParts.length > 0)
+        ) {
+          const replacement =
+            classParts.length > 0 ? classParts.join(' + " " + ') : '""';
+          const value =
+            classParts.length <= 1 &&
+            replacement.startsWith('"') &&
+            !/[\\&]/.test(replacement)
+              ? replacement
+              : `{${replacement}}`;
+          replacements.push({
+            start: node.span.start - baseByteOffset,
+            end: node.span.end - baseByteOffset,
+            content: `${classProp}=${value}${styleAttr}`,
+          });
+        } else {
+          const keptClass = existingClassExpr
+            ? `${classProp}={${existingClassExpr}}`
+            : '';
+          replacements.push({
+            start: node.span.start - baseByteOffset,
+            end: node.span.end - baseByteOffset,
+            content: `${keptClass}${styleAttr}`,
+          });
+        }
       }
       if (appliedBefore) {
         const referenced = new Set(appliedStyleProps);
