@@ -238,6 +238,22 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(Object.values(style)).toEqual(['2px']);
   });
 
+  it.each([
+    ['a spread', '{ ...rest }'],
+    ['a spread beside a key', '{ ...rest, width: w() }'],
+    ['a computed key', '{ [k()]: w() }'],
+    ['a computed key beside a key', '{ width: w(), [k()]: 9 }'],
+    ['a computed method beside a key', '{ width: w(), [k()]() {} }'],
+  ])('rejects %s in a named argument', async (_, argument) => {
+    const message = await failure(
+      `import * as css from '@plumeria/core';\nconst styles = css.create({ size: ({ width }: { width: number }) => ({ width }) });\nexport const A = ({ rest, w, k }: any) => <div sx={styles.size(${argument})} />;`,
+    );
+
+    expect(message).toContain(
+      'cannot take a spread or a computed key, because size destructures its parameter.',
+    );
+  });
+
   describe('an element that reads at runtime in both attributes', () => {
     const element = (body: string) =>
       run(
