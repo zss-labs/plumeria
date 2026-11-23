@@ -19,6 +19,7 @@ import {
   isAtRule,
 } from 'zss-engine';
 import { readSource, sourceStamp } from './sourceCache';
+import { desugar } from './styled';
 import { resolveNamespaceMembers } from './namespaceImport';
 import {
   compilationRevision,
@@ -465,7 +466,11 @@ export function compileCSS(options: CompilerOptions) {
   const processFile = (filePath: string, writes: Writes): string[] => {
     const scannedTables = readTables(tables, writes);
     const resourcePath = path.resolve(cwd, filePath);
-    const source = options.sources?.[resourcePath] ?? readSource(resourcePath);
+    const provided = options.sources?.[resourcePath];
+    const source =
+      provided === undefined
+        ? readSource(resourcePath)
+        : (desugar(provided, resourcePath, styleProp) ?? provided);
     const extractedSheets: string[] = [];
 
     const ast = parseSync(source, {
