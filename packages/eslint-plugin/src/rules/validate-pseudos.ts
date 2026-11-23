@@ -5,6 +5,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { Rule } from 'eslint';
 import { styleObjectFromValue } from '../util/styleObject';
+import { styledRule } from '../util/styledCall';
 import { staticValueResolver } from '../util/staticValue';
 
 const VALID_STATIC_PSEUDOS = new Set([
@@ -257,6 +258,11 @@ export const validatePseudos: Rule.RuleModule = {
       },
 
       CallExpression(node) {
+        const styled = styledRule(context, node);
+        if (styled) {
+          checkProperties(styled as unknown as TSESTree.ObjectExpression);
+          return;
+        }
         let isCssCreate = false;
 
         if (node.callee.type === 'MemberExpression') {
