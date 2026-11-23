@@ -1116,3 +1116,103 @@ export const App = ({ size }) => <div sx={[sizes[size], styles[size]]} />;
     ],
   },
 );
+
+const compositionFile = (name: string, code: string) => {
+  const filename = path.join(DIR, name + '.tsx');
+  fs.writeFileSync(filename, code);
+  return { filename, code };
+};
+
+fs.writeFileSync(
+  path.join(DIR, 'defaultStyles.ts'),
+  `import * as css from '@plumeria/core';
+const defaults = css.create({ edge: { paddingTop: 4 } });
+export default defaults;`,
+);
+
+composedTester.run(
+  'no-order-dependent-overlap composition inputs',
+  noOrderDependentOverlap,
+  {
+    valid: [
+      compositionFile(
+        'Unresolved',
+        `
+      import * as tokens from './shared';
+      import { absent } from './shared';
+      import missing from './missing';
+      const plain = {};
+      export function App(props) {
+        return <div sx={[unknown.edge, props.edge, plain.edge, tokens.edge,
+          missing.edge, absent.edge, tokens[props.key].edge, getStyles().edge]} />;
+      }
+    `,
+      ),
+      compositionFile(
+        'NonStyles',
+        `
+      import { bp } from './breakpoints';
+      import { shared } from './shared';
+      class View {
+        #edge;
+        render() {
+          return <div title="view" sx={[bp.medium, shared.absent, shared.#edge]} />;
+        }
+      }
+    `,
+      ),
+      compositionFile(
+        'IgnoredAttributes',
+        `
+      import { shared } from './shared';
+      export const App = () => <div data:styles={[shared.edge, shared.edge]} sx={shared.edge} />;
+    `,
+      ),
+      component(
+        'DistinctContainerProperties',
+        `{
+      first: { '@container (min-width: 600px) and (max-width: 900px)': { color: 'red', '--tone': 'red' } },
+      second: { '@container (min-width: 700px) and (max-width: 1000px)': { margin: 0, '--tone': 'blue' } }
+    }`,
+        '[styles.first, styles.second]',
+      ),
+    ],
+    invalid: [
+      {
+        ...compositionFile(
+          'NamedFactory',
+          `
+        import { create } from '@plumeria/core';
+        import defaults from './defaultStyles';
+        const styles = create({ box: { paddingBlockStart: 10 } });
+        export const App = () => <div sx={[defaults['edge'] || null, styles.box]} />;
+      `,
+        ),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...compositionFile(
+          'QuotedImport',
+          `
+        import { "shared" as shared } from './shared';
+        import * as css from '@plumeria/core';
+        const styles = css.create({ box: { paddingBlockStart: 10 } });
+        export const App = () => <div sx={[shared.edge, styles.box]} />;
+      `,
+        ),
+        errors: [{ messageId: 'composedProperty' }],
+      },
+      {
+        ...component(
+          'ContainerAliases',
+          `{
+        first: { '@container (min-width: 600px) and (max-width: 900px)': { paddingTop: 4 } },
+        second: { '@container (min-width: 700px) and (max-width: 1000px)': { paddingBlockStart: 10 } }
+      }`,
+          '[styles.first, styles.second]',
+        ),
+        errors: [{ messageId: 'composedCondition' }],
+      },
+    ],
+  },
+);
