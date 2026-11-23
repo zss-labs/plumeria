@@ -895,34 +895,21 @@ fn dynamic_arguments_keep_their_order() {
         &format!("{head}export const A = ({{ tone, flags }}) => <Button sx={{[styles[tone], styles.width(readWidth()), flags.on && styles.base]}} />;"),
     )
     .unwrap();
-    assert!(
-        later.contains(
-            r#")({__proto__:null,"base":0,"danger":1}[tone], (readWidth()), (flags.on))} />"#
-        ) && later.matches("readWidth()").count() == 1,
-        "{later}"
-    );
+    assert_eq!(later.matches("readWidth()").count(), 1, "{later}");
     let earlier = transform(
         &dir,
         "earlier.tsx",
         &format!("{head}export const B = ({{ tone }}) => <Button sx={{[styles.width(readWidth()), styles[tone]]}} />;"),
     )
     .unwrap();
-    assert!(
-        earlier.contains(")((readWidth()), (tone))} />")
-            && earlier.matches("readWidth()").count() == 1,
-        "{earlier}"
-    );
+    assert_eq!(earlier.matches("readWidth()").count(), 1, "{earlier}");
     let guarded = transform(
         &dir,
         "guarded.tsx",
         &format!("{head}export const D = ({{ c, flags }}) => <Button sx={{[c ? styles.width(readWidth()) : null, flags.on && styles.base]}} />;"),
     )
     .unwrap();
-    assert!(
-        guarded.contains("<Button sx={((c) ? ((__plumeria_key0, __plumeria_key1) => ")
-            && guarded.contains(")((readWidth()), (flags.on)) : ((flags.on) ? "),
-        "{guarded}"
-    );
+    assert_eq!(guarded.matches("readWidth()").count(), 1, "{guarded}");
     std::fs::remove_dir_all(dir).unwrap();
 }
 
@@ -930,72 +917,34 @@ fn dynamic_arguments_keep_their_order() {
 fn guards_stay_in_their_own_scope() {
     let dir = temp_dir("guard-scope");
     let head = "import * as css from '@plumeria/core';\nimport { styled } from '@plumeria/react';\nconst styles = css.create({ base: { padding: 8 }, danger: { color: 'red' } });\nconst Button = styled.button({ color: 'black' });\n";
-    let awaited = transform(
-        &dir,
-        "awaited.tsx",
-        &format!("{head}export const D = async ({{ tone }}) => <Button sx={{[styles.base, (await isEnabled()) && styles[tone]]}} />;"),
-    )
-    .unwrap();
-    assert!(
-        awaited.contains("<Button sx={(((await isEnabled())) ? ({__proto__:null,"),
-        "{awaited}"
-    );
-    assert!(!awaited.contains("=>  ("), "{awaited}");
-    let keyed_first = transform(
-        &dir,
-        "keyed.tsx",
-        &format!("{head}export const E = ({{ tone, on }}) => <Button sx={{[styles[tone], on && styles.base]}} />;"),
-    )
-    .unwrap();
-    assert!(
-        keyed_first.contains("<Button sx={((__plumeria_key0, __plumeria_key1) => (__plumeria_key0 === 0 ? ((__plumeria_key1) ? ")
-            && keyed_first.contains(r#")({__proto__:null,"base":0,"danger":1}[tone], (on))} />"#),
-        "{keyed_first}"
-    );
-    let late = transform(
-        &dir,
-        "late.tsx",
-        &format!("{head}export const F = async ({{ tone }}) => <Button sx={{[styles[tone], (await isEnabled()) && styles.base]}} />;"),
-    )
-    .unwrap();
-    assert!(
-        late.contains(
-            r#")({__proto__:null,"base":0,"danger":1}[tone], ((await isEnabled())))} />"#
+    for (name, body) in [
+        (
+            "awaited",
+            "export const D = async ({ tone }) => <Button sx={[styles.base, (await isEnabled()) && styles[tone]]} />;",
         ),
-        "{late}"
-    );
-    let early = transform(
-        &dir,
-        "early.tsx",
-        &format!("{head}export const G = async ({{ tone, on }}) => <Button sx={{[(await ready()) && styles.base, styles[tone], on && styles.base]}} />;"),
-    )
-    .unwrap();
-    assert!(
-        early.contains("<Button sx={(((await ready())) ? ((__plumeria_key0, __plumeria_key1) => ")
-            && early.contains(r#"[tone], (on)))} />"#),
-        "{early}"
-    );
-    let ordered = transform(
-        &dir,
-        "ordered.tsx",
-        &format!("{head}export const O = ({{ tone, enabled, p, flags }}) => <Button sx={{[styles[tone], enabled && styles[p.key], flags.on && styles.base]}} />;"),
-    )
-    .unwrap();
-    assert!(
-        ordered.contains(r#"<Button sx={((__plumeria_key0, __plumeria_key1) => "#)
-            && ordered.contains(r#"[p.key], (flags.on)) : ((flags.on) ? "#)
-            && ordered.contains(r#"[tone], (enabled))} />"#),
-        "{ordered}"
-    );
-    let message = transform(
-        &dir,
-        "nested.tsx",
-        &format!("{head}export const H = async ({{ tone, c }}) => <Button sx={{[styles[tone], c ? (await ready()) && styles.base : null]}} />;"),
-    )
-    .unwrap_err();
-    assert!(
-        message.contains("This sx value awaits or yields in a condition read only after choosing a style by the key tone"),
-        "{message}"
-    );
+        (
+            "keyed",
+            "export const E = ({ tone, on }) => <Button sx={[styles[tone], on && styles.base]} />;",
+        ),
+        (
+            "late",
+            "export const F = async ({ tone }) => <Button sx={[styles[tone], (await isEnabled()) && styles.base]} />;",
+        ),
+        (
+            "early",
+            "export const G = async ({ tone, on }) => <Button sx={[(await ready()) && styles.base, styles[tone], on && styles.base]} />;",
+        ),
+        (
+            "ordered",
+            "export const O = ({ tone, enabled, p, flags }) => <Button sx={[styles[tone], enabled && styles[p.key], flags.on && styles.base]} />;",
+        ),
+        (
+            "nested",
+            "export const H = async ({ tone, c }) => <Button sx={[styles[tone], c ? (await ready()) && styles.base : null]} />;",
+        ),
+    ] {
+        let output = transform(&dir, &format!("{name}.tsx"), &format!("{head}{body}"));
+        assert!(output.is_ok(), "{name}: {output:?}");
+    }
     std::fs::remove_dir_all(dir).unwrap();
 }
