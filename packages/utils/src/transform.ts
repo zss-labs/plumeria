@@ -125,6 +125,7 @@ import { getLeadingCommentLength } from './ast';
 import { collectReferenceIdentifiers } from './references';
 import { resolveNamespaceMembers } from './namespaceImport';
 import { assertPropertyPolicy } from './propertyPolicy';
+import { desugar } from './styled';
 import type { PropertyPolicy } from './propertyPolicy';
 import type {
   StaticTable,
@@ -136,6 +137,7 @@ import type {
   CreateThemeHashTable,
   CreateStaticHashTable,
   CSSObject,
+  Condition,
   TableEntry,
 } from './types';
 
@@ -171,6 +173,120 @@ interface StyleConditional {
   order?: number;
   closed?: boolean;
 }
+
+interface KeyedRow {
+  conditions: Condition[];
+  key: string;
+  fixed: boolean;
+  calls?: Expression[];
+}
+
+type Span = [number, number];
+
+const spanOf = (node: any): Span => [node.span.start, node.span.end];
+const spanKey = ([start, end]: Span) => `${start}:${end}`;
+
+const reachable = (
+  sub: any,
+  target: Span,
+  path: Array<[string, boolean]>,
+): boolean => {
+  const decided = (node: any) =>
+    path.find(([key]) => key === spanKey(spanOf(node)))?.[1];
+  const holds = (node: any) =>
+    node.span.start <= target[0] && node.span.end >= target[1];
+  const reach = (node: any): boolean => {
+    if (!node?.span) return false;
+    if (node.span.start === target[0] && node.span.end === target[1])
+      return true;
+    if (!holds(node)) return false;
+    switch (node.type) {
+      case 'ParenthesisExpression':
+      case 'TsAsExpression':
+      case 'TsSatisfiesExpression':
+      case 'TsNonNullExpression':
+        return reach(node.expression);
+      case 'BinaryExpression': {
+        if (!['&&', '||', '??'].includes(node.operator)) return false;
+        if (holds(node.left)) return reach(node.left);
+        const needed =
+          node.operator === '&&'
+            ? true
+            : node.operator === '||'
+              ? false
+              : undefined;
+        return (
+          needed !== undefined &&
+          decided(node.left) === needed &&
+          reach(node.right)
+        );
+      }
+      case 'ConditionalExpression': {
+        if (holds(node.test)) return reach(node.test);
+        const [branch, needed] = holds(node.consequent)
+          ? [node.consequent, true]
+          : [node.alternate, false];
+        return decided(node.test) === needed && reach(branch);
+      }
+      case 'MemberExpression':
+        return (
+          node.property.type === 'Computed' && reach(node.property.expression)
+        );
+      case 'CallExpression':
+        return node.arguments.some(
+          (argument: any) => !argument.spread && reach(argument.expression),
+        );
+      case 'ObjectExpression':
+        return node.properties.some(
+          (property: any) =>
+            property.type === 'KeyValueProperty' && reach(property.value),
+        );
+      case 'ArrayExpression':
+        return node.elements.some(
+          (element: any) =>
+            element && !element.spread && reach(element.expression),
+        );
+      default:
+        return false;
+    }
+  };
+  return reach(sub);
+};
+
+const suspendsWithin = (sub: any, spans: Span[]): boolean => {
+  if (!spans.length) return false;
+  let found = false;
+  const visit = (node: any): void => {
+    if (found || !node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (
+      node.type === 'ArrowFunctionExpression' ||
+      node.type === 'FunctionExpression' ||
+      node.type === 'ClassExpression'
+    )
+      return;
+    if (
+      (node.type === 'AwaitExpression' || node.type === 'YieldExpression') &&
+      spans.some(
+        ([start, end]) => node.span.start >= start && node.span.end <= end,
+      )
+    ) {
+      found = true;
+      return;
+    }
+    for (const key in node) if (key !== 'span') visit(node[key]);
+  };
+  visit(sub);
+  return found;
+};
+
+const readOnce = (source: string, body: (value: string) => string): string =>
+  /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(source)
+    ? `(${body(source)})`
+    : `((__plumeria_value) => ${body('__plumeria_value')})(${source})`;
 
 const unwrapExport = (node: any): any => {
   if (node?.type === 'ExportDeclaration') return node.declaration;
@@ -297,7 +413,7 @@ export const transformSource = async (
   const { root, styleProp, propertyPolicy, isDev, addDependency } = env;
   const classProp = env.classProp ?? 'className';
   const id = env.moduleId;
-  const source = env.source;
+  const source = desugar(env.source, env.moduleId, styleProp) ?? env.source;
   const resourcePath = env.moduleId;
   const baseId = env.filePath;
   const ast = parseSync(source, {
@@ -1579,6 +1695,227 @@ export const transformSource = async (
     return index.get(spanStart);
   };
 
+  const textAt = ([start, end]: Span) =>
+    sourceBuffer
+      .subarray(start - baseByteOffset, end - baseByteOffset)
+      .toString('utf-8');
+
+  const bySource = (a: Span, b: Span) => a[0] - b[0] || a[1] - b[1];
+
+  const freshKeyName = (names: { next: number }) => {
+    let name = `__plumeria_key${names.next++}`;
+    while (source.includes(name)) name += '_';
+    return name;
+  };
+
+  const pushRead = (out: Span[], span: Span, bound: Map<string, string>) => {
+    const key = spanKey(span);
+    if (!bound.has(key) && !out.some((other) => spanKey(other) === key))
+      out.push(span);
+  };
+
+  const callArguments = (
+    sub: Expression,
+    rows: KeyedRow[],
+    bound: Map<string, string>,
+  ): Span[] => {
+    const out: Span[] = [];
+    const push = (argument: any) => {
+      if (
+        argument.type === 'StringLiteral' ||
+        argument.type === 'NumericLiteral' ||
+        argument.type === 'BooleanLiteral' ||
+        argument.type === 'Identifier'
+      )
+        return;
+      pushRead(out, spanOf(argument), bound);
+    };
+    for (const row of rows) {
+      if (row.fixed) continue;
+      for (const root of row.calls ?? [sub])
+        traverse(root, {
+          CallExpression({ node: call }: { node: CallExpression }) {
+            if (!isStyleFunctionCall(call)) return;
+            for (const argument of call.arguments) {
+              const expression = argument.expression as any;
+              if (expression.type === 'ObjectExpression') {
+                for (const property of expression.properties)
+                  if (property.type === 'KeyValueProperty')
+                    push(property.value);
+              } else push(expression);
+            }
+          },
+        });
+    }
+    return out.sort(bySource);
+  };
+
+  const bindReads = (
+    sub: Expression,
+    items: Span[],
+    bound: Map<string, string>,
+    path: Array<[string, boolean]>,
+    names: { next: number },
+  ) => {
+    const params: string[] = [];
+    const args: string[] = [];
+    const inside: Span[] = [];
+    const inner = new Map(bound);
+    let passing = true;
+    for (const item of items) {
+      passing = passing && reachable(sub, item, path);
+      if (passing) {
+        const param = freshKeyName(names);
+        args.push(`(${textAt(item)})`);
+        params.push(param);
+        inner.set(spanKey(item), param);
+      } else inside.push(item);
+    }
+    return { params, args, inner, inside };
+  };
+
+  const decideKeyed = (
+    sub: Expression,
+    rows: KeyedRow[],
+    names: { next: number },
+    bound: Map<string, string>,
+    path: Array<[string, boolean]>,
+    carrier: (
+      calls: Expression[] | undefined,
+      bound: Map<string, string>,
+    ) => string | null,
+  ): [string, boolean] => {
+    const first = rows[0];
+    if (!first) return ['""', true];
+    const condition = first.conditions[0];
+    if (!condition) {
+      const key = JSON.stringify(first.key);
+      if (first.fixed) return [key, true];
+      return [
+        `{ key: ${key}, vars: ${carrier(first.calls, bound) ?? '{}'} }`,
+        false,
+      ];
+    }
+    const test = spanOf(condition.test);
+    const testKey = spanKey(test);
+    const pending = callArguments(sub, rows, bound);
+    if (pending.some((argument) => argument[0] < test[0])) {
+      const items = [...pending];
+      for (const row of rows)
+        for (const other of row.conditions)
+          pushRead(items, spanOf(other.test), bound);
+      items.sort(bySource);
+      const { params, args, inner, inside } = bindReads(
+        sub,
+        items,
+        bound,
+        path,
+        names,
+      );
+      if (params.length) {
+        if (suspendsWithin(sub, inside))
+          throwCompilationError(
+            `[plumeria] This ${styleProp} value awaits or yields in a condition read only after a dynamic style argument, ` +
+              `which cannot be compiled in place. Read the awaited value into a variable before the JSX.`,
+            sub as HasSpan,
+          );
+        const [body] = decideKeyed(sub, rows, names, inner, path, carrier);
+        return [
+          `((${params.join(', ')}) => ${body})(${args.join(', ')})`,
+          false,
+        ];
+      }
+    }
+    const branch = (keep: (condition: Condition) => boolean): KeyedRow[] =>
+      rows.flatMap((row) => {
+        const position = row.conditions.findIndex(
+          (other) => spanKey(spanOf(other.test)) === testKey,
+        );
+        if (position < 0) return [row];
+        if (!keep(row.conditions[position])) return [];
+        return [
+          {
+            ...row,
+            conditions: row.conditions.filter((_, index) => index !== position),
+          },
+        ];
+      });
+    const text = bound.get(testKey) ?? textAt(test);
+    const keyed = condition.keyed;
+    if (!keyed) {
+      const [truthy] = decideKeyed(
+        sub,
+        branch((other) => other.truthy),
+        names,
+        bound,
+        [...path, [testKey, true]],
+        carrier,
+      );
+      const [falsy] = decideKeyed(
+        sub,
+        branch((other) => !other.truthy),
+        names,
+        bound,
+        [...path, [testKey, false]],
+        carrier,
+      );
+      return [`((${text}) ? ${truthy} : ${falsy})`, false];
+    }
+    const optionRows = [...keyed.options.map((_, index) => index), null].map(
+      (option) =>
+        branch(
+          (other) => other.keyed !== undefined && other.keyed.option === option,
+        ),
+    );
+    const start = names.next;
+    const branches = optionRows.map((optionRow) =>
+      decideKeyed(sub, optionRow, names, bound, path, carrier),
+    );
+    const [fallback] = branches.pop()!;
+    if (branches.every(([, fixed]) => fixed)) {
+      const pairs = keyed.options.map(
+        (option, index) => `${JSON.stringify(option)}:${branches[index][0]}`,
+      );
+      return [
+        `({__proto__:null,${pairs.join(',')}}[${text}] ?? ${fallback})`,
+        false,
+      ];
+    }
+    names.next = start;
+    const name = freshKeyName(names);
+    const laterRows = optionRows.flat();
+    const later = callArguments(sub, laterRows, bound);
+    for (const row of laterRows)
+      for (const other of row.conditions)
+        pushRead(later, spanOf(other.test), bound);
+    later.sort(bySource);
+    const pairs = keyed.options.map(
+      (option, index) => `${JSON.stringify(option)}:${index}`,
+    );
+    const { params, args, inner, inside } = bindReads(
+      sub,
+      later,
+      bound,
+      path,
+      names,
+    );
+    params.unshift(name);
+    args.unshift(`{__proto__:null,${pairs.join(',')}}[${text}]`);
+    if (suspendsWithin(sub, inside))
+      throwCompilationError(
+        `[plumeria] This ${styleProp} value awaits or yields in a condition read only after choosing a style by the key ${textAt(test)}, ` +
+          `which cannot be compiled in place. Read the awaited value into a variable before the JSX.`,
+        sub as HasSpan,
+      );
+    const innerBranches = optionRows.map((optionRow) =>
+      decideKeyed(sub, optionRow, names, inner, path, carrier),
+    );
+    let [body] = innerBranches.pop()!;
+    for (let index = innerBranches.length - 1; index >= 0; index--)
+      body = `(${name} === ${index} ? ${innerBranches[index][0]} : ${body})`;
+    return [`((${params.join(', ')}) => ${body})(${args.join(', ')})`, false];
+  };
+
   const componentParamNames = new Set<string>();
   const addFirstParamName = (fn: { params: unknown[] }) => {
     const first = fn.params[0] as any;
@@ -1721,6 +2058,7 @@ export const transformSource = async (
   const resolveDynamicCall = (
     expr: Expression,
     forceRuntime = false,
+    bound?: Map<string, string>,
   ): { style: CSSObject; vars: DynamicVar[] } | null => {
     if (!t.isCallExpression(expr) || !t.isMemberExpression(expr.callee))
       return null;
@@ -1850,11 +2188,13 @@ export const transformSource = async (
 
     const argSources = new Map<string, string>();
     runtime.forEach(({ param, source }) => {
-      const argStart = (source as HasSpan).span.start - baseByteOffset;
-      const argEnd = (source as HasSpan).span.end - baseByteOffset;
+      const { start, end } = (source as HasSpan).span;
       argSources.set(
         param,
-        sourceBuffer.subarray(argStart, argEnd).toString('utf-8'),
+        bound?.get(`${start}:${end}`) ??
+          sourceBuffer
+            .subarray(start - baseByteOffset, end - baseByteOffset)
+            .toString('utf-8'),
       );
     });
     const runtimeSources = runtime.map(({ param }) => ({
@@ -1867,10 +2207,14 @@ export const transformSource = async (
         argSource: pieces
           .map((piece) => {
             if (typeof piece === 'string') return piece;
-            const argument = `(${argSources.get(piece.param)})`;
+            const source = String(argSources.get(piece.param));
             return piece.fallback === undefined
-              ? argument
-              : `(${argument} === undefined ? ${piece.fallback} : ${argument})`;
+              ? `(${source})`
+              : readOnce(
+                  source,
+                  (value) =>
+                    `(${value}) === undefined ? ${piece.fallback} : (${value})`,
+                );
           })
           .join(''),
       });
@@ -1907,7 +2251,11 @@ export const transformSource = async (
           );
         } else {
           valueExpr = unit
-            ? `(typeof (${argSource}) === 'number' ? (${argSource}) + '${unit}' : (${argSource}))`
+            ? readOnce(
+                argSource,
+                (value) =>
+                  `typeof (${value}) === 'number' ? (${value}) + '${unit}' : (${value})`,
+              )
             : argSource;
         }
         vars.push({ cssVar, valueExpr });
@@ -3166,7 +3514,8 @@ export const transformSource = async (
             const expr = node.value.expression;
             const carrierFor = (
               subNode: Expression,
-              calls?: Expression[],
+              calls: Expression[] | undefined,
+              bound: Map<string, string>,
             ): string | null => {
               const vars: DynamicVar[] = [];
               let unresolved = false;
@@ -3174,7 +3523,7 @@ export const transformSource = async (
                 traverse(expression, {
                   CallExpression({ node: call }: { node: CallExpression }) {
                     if (!isStyleFunctionCall(call)) return;
-                    const resolved = resolveDynamicCall(call, true);
+                    const resolved = resolveDynamicCall(call, true, bound);
                     if (!resolved) {
                       unresolved = true;
                       return;
@@ -3191,25 +3540,30 @@ export const transformSource = async (
                 (subNode as HasSpan).span.start,
               );
               if (!entries) return false;
-              let content = '""';
-              for (const entry of [...entries].reverse()) {
-                let value = JSON.stringify(entry.key);
-                if (entry.hasVars) {
-                  const carrier = carrierFor(subNode, entry.dynamicCalls);
-                  if (!carrier) return false;
-                  value = `{ key: ${value}, vars: ${carrier} }`;
-                }
-                const condition = entry.conditions
-                  ?.map(
-                    ({ test, truthy }) =>
-                      `${truthy ? '' : '!'}(${getSource(test)})`,
-                  )
-                  .join(' && ');
-                content = condition
-                  ? `((${condition}) ? ${value} : ${content})`
-                  : value;
+              const none = new Map<string, string>();
+              const rows: KeyedRow[] = [];
+              for (const entry of entries) {
+                if (
+                  entry.hasVars &&
+                  !carrierFor(subNode, entry.dynamicCalls, none)
+                )
+                  return false;
+                rows.push({
+                  conditions: entry.conditions ?? [],
+                  key: entry.key,
+                  fixed: !entry.hasVars,
+                  calls: entry.dynamicCalls,
+                });
                 processStyleRecords(entry.styleObj);
               }
+              const content = decideKeyed(
+                subNode,
+                rows,
+                { next: 0 },
+                none,
+                [],
+                (calls, bound) => carrierFor(subNode, calls, bound),
+              )[0];
               replacements.push({
                 start: (subNode as HasSpan).span.start - baseByteOffset,
                 end: (subNode as HasSpan).span.end - baseByteOffset,
@@ -3377,14 +3731,20 @@ export const transformSource = async (
         const referenced = new Set(appliedStyleProps);
         for (const key of referenced) {
           const [owner, propName] = key.split(':');
+          const ownerKey = `${resourcePath}-${owner}`;
           if (
-            scannedTables.componentPropsTable?.[`${resourcePath}-${owner}`]?.[
-              propName
-            ]
+            scannedTables.componentPropsTable?.[ownerKey]?.[propName] ||
+            scannedTables.styleReceiverTable?.[ownerKey]?.includes(propName)
           ) {
+            const separator = compKey?.lastIndexOf('-') ?? -1;
+            const target =
+              compKey && separator >= 0
+                ? compKey.slice(separator + 1)
+                : 'the component';
             throwCompilationError(
-              `[plumeria] "${propName}" is a style received through a prop and cannot be passed on ` +
-                `to a component that declares ${styleProp}. Apply it on an element this component renders.`,
+              `[plumeria] "${propName}" is a style received through a prop, so it cannot be passed on ` +
+                `to <${target}>, which takes ${styleProp} too. Pass the style to <${target} ${styleProp}={...} /> ` +
+                `where it is chosen, or apply it to an element this component renders.`,
               node,
             );
           }
