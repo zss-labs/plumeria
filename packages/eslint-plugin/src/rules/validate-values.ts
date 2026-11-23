@@ -23,6 +23,7 @@ import type {
   SpreadElement,
 } from 'estree';
 import { styleObjectFromValue } from '../util/styleObject';
+import { styledRule } from '../util/styledCall';
 
 // --- Static Constants & Arrays ---
 const globalValues = ['inherit', 'initial', 'revert', 'revert-layer', 'unset'];
@@ -2831,6 +2832,11 @@ export const validateValues: Rule.RuleModule = {
         }
       },
       CallExpression(node) {
+        const styled = styledRule(context, node);
+        if (styled) {
+          checkStyleObject(styled as Rule.Node);
+          return;
+        }
         const calleeName =
           node.callee.type === 'MemberExpression'
             ? node.callee.object.type === 'Identifier' &&
