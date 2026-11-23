@@ -1,4 +1,5 @@
 import { readSource } from './sourceCache';
+import { setStyleProp } from './styled';
 import { resolveNamespaceMembers } from './namespaceImport';
 import { componentFunctions, wrappedBindings } from './component';
 import type {
@@ -21,6 +22,7 @@ import type {
   CreateStaticHashTable,
   CreateStaticObjectTable,
   CreateTheme,
+  Condition,
   TableEntry,
   SheetSink,
 } from './types';
@@ -2094,6 +2096,7 @@ export function scanAll(
 ): Tables {
   scanning = true;
   statMemo.clear();
+  setStyleProp(styleProp);
   try {
     return runScan(scanCwd, styleProp);
   } finally {
@@ -3120,8 +3123,66 @@ function runScan(scanCwd: string, styleProp: string): Tables {
 
       type PropAlternative = {
         styleObj: CSSObject;
-        conditions: Array<{ test: Expression; truthy: boolean }>;
+        conditions: Condition[];
         dynamicCalls: Expression[];
+      };
+      const keyedAlternatives = (
+        expr: Expression,
+      ): PropAlternative[] | null => {
+        if (
+          expr.type !== 'MemberExpression' ||
+          expr.object.type !== 'Identifier' ||
+          expr.property.type !== 'Computed'
+        )
+          return null;
+        const key = unwrapExpression(expr.property.expression);
+        if (
+          !(
+            key.type === 'Identifier' ||
+            key.type === 'StringLiteral' ||
+            key.type === 'NumericLiteral' ||
+            (key.type === 'MemberExpression' &&
+              key.property.type === 'Identifier')
+          )
+        )
+          return null;
+        const varName = expr.object.value;
+        const hash =
+          localCreateHashTable[varName] ??
+          localTables.createHashTable[`${filePath}-${varName}`];
+        if (!hash) return null;
+        const styles = localTables.createObjectTable[hash];
+        const atoms = localTables.createAtomicMapTable[hash];
+        if (!styles || !atoms) return null;
+        if (key.type === 'StringLiteral' || key.type === 'NumericLiteral') {
+          const option = String(key.value);
+          const style = styles[option];
+          if (!style || typeof style !== 'object' || !atoms[option])
+            return null;
+          return [
+            { styleObj: style as CSSObject, conditions: [], dynamicCalls: [] },
+          ];
+        }
+        const choices = Object.entries(styles).filter(
+          ([option, style]) =>
+            style && typeof style === 'object' && atoms[option],
+        );
+        if (!choices.length) return null;
+        const options = choices.map(([option]) => option);
+        const test = expr.property.expression;
+        const condition = (option: number | null): Condition => ({
+          test,
+          truthy: true,
+          keyed: { options, option },
+        });
+        return [
+          ...choices.map(([, style], index) => ({
+            styleObj: style as CSSObject,
+            conditions: [condition(index)],
+            dynamicCalls: [],
+          })),
+          { styleObj: {}, conditions: [condition(null)], dynamicCalls: [] },
+        ];
       };
       const containsStyleReference = (expr: Expression): boolean => {
         let found = false;
@@ -3207,6 +3268,8 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           }
           return result;
         }
+        const keyed = keyedAlternatives(expr);
+        if (keyed) return keyed;
         const resolved = resolveCallStylePropInScan(expr);
         return resolved
           ? [
@@ -3286,6 +3349,28 @@ function runScan(scanCwd: string, styleProp: string): Tables {
           throw new Error(
             '[plumeria] Style prop fallbacks using || or ?? cannot be resolved. Use a conditional expression with defined styles.',
           );
+        }
+
+        const keyed = keyedAlternatives(node);
+        if (keyed) {
+          const list = ((table[compKey] ??= {})[propName] ??= []);
+          for (const alternative of keyed) {
+            const atomMap: Record<string, string> = {};
+            getStyleRecords(alternative.styleObj as CSSProperties).forEach(
+              (record) => (atomMap[record.key] = record.hash),
+            );
+            const classString = Object.values(atomMap).join(' ');
+            list.push({
+              key: genBase36Hash(classString, 1, 8),
+              classString,
+              styleObj: alternative.styleObj,
+              spanStart: (node as HasSpan).span.start,
+              filePath,
+              conditions: alternative.conditions,
+              dynamicCalls: [],
+            });
+          }
+          return;
         }
 
         const resolved = resolveCallStylePropInScan(node);
