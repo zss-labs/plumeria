@@ -16,7 +16,7 @@ use crate::eval::{Env, argument_expr};
 use crate::js::json::quote;
 use crate::js::number::{number_to_string, parse_js_number};
 use crate::js::{Object, Value, deep_merge};
-use crate::project::TableEntry;
+use crate::project::{Condition, TableEntry};
 use crate::style::escalation::{StyleSource, get_state_weights};
 use crate::style::records::{Weights, class_string};
 use crate::syntax::expr::{E, K, Prop, root_identifier, unwrap};
@@ -480,6 +480,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         &self,
         expr: E<'b, 'a>,
         force_runtime: bool,
+        bound: Option<&FxHashMap<(u32, u32), String>>,
     ) -> TResult<Option<(Object, Vec<DynamicVar>)>> {
         let Some(call) = expr.call() else {
             return Ok(None);
@@ -630,7 +631,14 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
         let mut sources: Vec<(String, String)> = runtime
             .iter()
-            .map(|(param, source)| (param.clone(), self.source_of(*source)))
+            .map(|(param, source)| {
+                let span = source.span();
+                let text = bound
+                    .and_then(|bound| bound.get(&(span.start, span.end)))
+                    .cloned()
+                    .unwrap_or_else(|| self.source_of(*source));
+                (param.clone(), text)
+            })
             .collect();
         for entry in &resolved.derived {
             let mut rendered = String::new();
@@ -644,9 +652,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             .map(|(_, source)| source.as_str())
                             .unwrap_or("undefined");
                         match fallback {
-                            Some(fallback) => rendered.push_str(&format!(
-                                "(({argument}) === undefined ? {fallback} : ({argument}))"
-                            )),
+                            Some(fallback) => rendered.push_str(&read_once(argument, |value| {
+                                format!("({value}) === undefined ? {fallback} : ({value})")
+                            })),
                             None => rendered.push_str(&format!("({argument})")),
                         }
                     }
@@ -694,9 +702,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         &kebab_prop,
                     ))
                 } else if !unit.is_empty() {
-                    format!(
-                        "(typeof ({arg_source}) === 'number' ? ({arg_source}) + '{unit}' : ({arg_source}))"
-                    )
+                    read_once(arg_source, |value| {
+                        format!("typeof ({value}) === 'number' ? ({value}) + '{unit}' : ({value})")
+                    })
                 } else {
                     arg_source.clone()
                 };
@@ -1499,7 +1507,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let mut branch_style = self.resolve_style_object(node)?;
         if branch_style.is_none()
-            && let Some((style, vars)) = self.resolve_dynamic_call(node, false)?
+            && let Some((style, vars)) = self.resolve_dynamic_call(node, false, None)?
         {
             if !builder.is_style_prop {
                 return Err(self.fail(
@@ -1873,16 +1881,27 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         result?;
         let received = referenced.iter().find_map(|key| {
             let (owner, prop_name) = key.split_once(':')?;
-            self.tables
+            let owner_key = format!("{}-{owner}", self.resource);
+            let passed = self
+                .tables
                 .component_props
-                .get(&format!("{}-{owner}", self.resource))
-                .is_some_and(|props| props.contains_key(prop_name))
-                .then_some(prop_name)
+                .get(&owner_key)
+                .is_some_and(|props| props.contains_key(prop_name));
+            let declared = self
+                .tables
+                .style_receiver
+                .get(&owner_key)
+                .is_some_and(|props| props.iter().any(|prop| prop == prop_name));
+            (passed || declared).then_some(prop_name)
         });
         if let Some(prop_name) = received {
+            let target = comp_key
+                .as_deref()
+                .and_then(|key| key.rsplit_once('-'))
+                .map_or("the component", |(_, name)| name);
             return Err(self.fail(
                 format!(
-                    "[plumeria] \"{prop_name}\" is a style received through a prop and cannot be passed on to a component that declares {style_prop}. Apply it on an element this component renders."
+                    "[plumeria] \"{prop_name}\" is a style received through a prop, so it cannot be passed on to <{target}>, which takes {style_prop} too. Pass the style to <{target} {style_prop}={{...}} /> where it is chosen, or apply it to an element this component renders."
                 ),
                 Some(node.span),
             ));
@@ -2053,6 +2072,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         &self,
         sub: E<'b, 'a>,
         calls: Option<&Vec<(u32, u32)>>,
+        bound: &FxHashMap<(u32, u32), String>,
     ) -> TResult<Option<String>> {
         let mut vars: Vec<DynamicVar> = Vec::new();
         let mut roots: Vec<E<'b, 'a>> = Vec::new();
@@ -2074,7 +2094,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 if !self.is_style_function_call(call) {
                     continue;
                 }
-                match self.resolve_dynamic_call(call, true)? {
+                match self.resolve_dynamic_call(call, true, Some(bound))? {
                     Some((_, resolved)) => vars.extend(resolved),
                     None => unresolved = true,
                 }
@@ -2097,35 +2117,25 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let Some(entries) = index.get(&sub.start()) else {
             return Ok(false);
         };
-        let mut content = "\"\"".to_string();
-        for entry in entries.iter().rev() {
-            let mut value = quote(&entry.key);
-            if entry.has_vars {
-                let Some(carrier) = self.carrier_for(sub, entry.dynamic_calls.as_ref())? else {
-                    return Ok(false);
-                };
-                value = format!("{{ key: {value}, vars: {carrier} }}");
+        let none = FxHashMap::default();
+        let mut rows: Vec<Row> = Vec::new();
+        for entry in entries {
+            if entry.has_vars
+                && self
+                    .carrier_for(sub, entry.dynamic_calls.as_ref(), &none)?
+                    .is_none()
+            {
+                return Ok(false);
             }
-            let condition = entry
-                .conditions
-                .as_ref()
-                .map(|conditions| {
-                    conditions
-                        .iter()
-                        .map(|condition| {
-                            let text = self.text(Span::new(condition.test.0, condition.test.1));
-                            format!("{}({text})", if condition.truthy { "" } else { "!" })
-                        })
-                        .collect::<Vec<_>>()
-                        .join(" && ")
-                })
-                .unwrap_or_default();
-            content = if condition.is_empty() {
-                value
-            } else {
-                format!("(({condition}) ? {value} : {content})")
-            };
+            rows.push(Row {
+                conditions: entry.conditions.clone().unwrap_or_default(),
+                key: entry.key.clone(),
+                fixed: !entry.has_vars,
+                calls: entry.dynamic_calls.clone(),
+            });
         }
+        let mut names = 0;
+        let content = self.decide(sub, &rows, &mut names, &none, &[])?.0;
         let span = sub.span();
         self.replacements.push(Replacement {
             start: span.start,
@@ -2134,6 +2144,390 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         });
         Ok(true)
     }
+
+    fn decide(
+        &self,
+        sub: E<'b, 'a>,
+        rows: &[Row],
+        names: &mut usize,
+        bound: &FxHashMap<(u32, u32), String>,
+        path: &[((u32, u32), bool)],
+    ) -> TResult<(String, bool)> {
+        let Some(first) = rows.first() else {
+            return Ok(("\"\"".to_string(), true));
+        };
+        let Some(condition) = first.conditions.first() else {
+            let key = quote(&first.key);
+            if first.fixed {
+                return Ok((key, true));
+            }
+            let carrier = self
+                .carrier_for(sub, first.calls.as_ref(), bound)?
+                .unwrap_or_else(|| "{}".to_string());
+            return Ok((format!("{{ key: {key}, vars: {carrier} }}"), false));
+        };
+        let test = condition.test;
+        let arguments = self.call_arguments(sub, rows, bound);
+        if arguments.iter().any(|argument| argument.0 < test.0) {
+            let mut items = arguments;
+            for row in rows {
+                for condition in &row.conditions {
+                    if !bound.contains_key(&condition.test) && !items.contains(&condition.test) {
+                        items.push(condition.test);
+                    }
+                }
+            }
+            items.sort();
+            let (params, args, inner, inside) = self.bind(sub, items, bound, path, names);
+            if !params.is_empty() {
+                if suspends_within(sub, &inside) {
+                    return Err(self.fail(
+                        format!(
+                            "[plumeria] This {} value awaits or yields in a condition read only after a dynamic style argument, which cannot be compiled in place. Read the awaited value into a variable before the JSX.",
+                            self.env.style_prop
+                        ),
+                        Some(sub.span()),
+                    ));
+                }
+                let (body, _) = self.decide(sub, rows, names, &inner, path)?;
+                return Ok((
+                    format!("(({}) => {body})({})", params.join(", "), args.join(", ")),
+                    false,
+                ));
+            }
+        }
+        let branch = |keep: &dyn Fn(&Condition) -> bool| -> Vec<Row> {
+            rows.iter()
+                .filter_map(|row| {
+                    let Some(position) = row.conditions.iter().position(|c| c.test == test) else {
+                        return Some(row.clone());
+                    };
+                    keep(&row.conditions[position]).then(|| {
+                        let mut conditions = row.conditions.clone();
+                        conditions.remove(position);
+                        Row {
+                            conditions,
+                            ..row.clone()
+                        }
+                    })
+                })
+                .collect()
+        };
+        let text_of = |test: (u32, u32)| {
+            bound
+                .get(&test)
+                .cloned()
+                .unwrap_or_else(|| self.text(Span::new(test.0, test.1)).to_string())
+        };
+        let text = text_of(test);
+        let Some(keyed) = &condition.keyed else {
+            let mut taken = path.to_vec();
+            taken.push((test, true));
+            let (truthy, _) = self.decide(sub, &branch(&|c| c.truthy), names, bound, &taken)?;
+            taken.last_mut().unwrap().1 = false;
+            let (falsy, _) = self.decide(sub, &branch(&|c| !c.truthy), names, bound, &taken)?;
+            return Ok((format!("(({text}) ? {truthy} : {falsy})"), false));
+        };
+        let option_rows: Vec<Vec<Row>> = (0..keyed.options.len())
+            .map(Some)
+            .chain([None])
+            .map(|option| branch(&|c| c.keyed.as_ref().is_some_and(|k| k.option == option)))
+            .collect();
+        let start = *names;
+        let mut branches = Vec::new();
+        for rows in &option_rows {
+            branches.push(self.decide(sub, rows, names, bound, path)?);
+        }
+        let (fallback, _) = branches.pop().unwrap();
+        if branches.iter().all(|(_, fixed)| *fixed) {
+            let pairs: Vec<String> = keyed
+                .options
+                .iter()
+                .zip(&branches)
+                .map(|(option, (value, _))| format!("{}:{value}", quote(option)))
+                .collect();
+            return Ok((
+                format!(
+                    "({{__proto__:null,{}}}[{text}] ?? {fallback})",
+                    pairs.join(",")
+                ),
+                false,
+            ));
+        }
+        *names = start;
+        let name = self.fresh(names);
+        let later_rows: Vec<Row> = option_rows.iter().flatten().cloned().collect();
+        let mut later = self.call_arguments(sub, &later_rows, bound);
+        for row in &later_rows {
+            for condition in &row.conditions {
+                if !later.contains(&condition.test) && !bound.contains_key(&condition.test) {
+                    later.push(condition.test);
+                }
+            }
+        }
+        later.sort();
+        let pairs: Vec<String> = keyed
+            .options
+            .iter()
+            .enumerate()
+            .map(|(index, option)| format!("{}:{index}", quote(option)))
+            .collect();
+        let (mut params, mut args, inner, inside) = self.bind(sub, later, bound, path, names);
+        params.insert(0, name.clone());
+        args.insert(0, format!("{{__proto__:null,{}}}[{text}]", pairs.join(",")));
+        if suspends_within(sub, &inside) {
+            return Err(self.fail(
+                format!(
+                    "[plumeria] This {} value awaits or yields in a condition read only after choosing a style by the key {}, which cannot be compiled in place. Read the awaited value into a variable before the JSX.",
+                    self.env.style_prop,
+                    self.text(Span::new(test.0, test.1))
+                ),
+                Some(sub.span()),
+            ));
+        }
+        let mut branches = Vec::new();
+        for rows in &option_rows {
+            branches.push(self.decide(sub, rows, names, &inner, path)?);
+        }
+        let (mut body, _) = branches.pop().unwrap();
+        for (index, (value, _)) in branches.iter().enumerate().rev() {
+            body = format!("({name} === {index} ? {value} : {body})");
+        }
+        Ok((
+            format!("(({}) => {body})({})", params.join(", "), args.join(", ")),
+            false,
+        ))
+    }
+
+    fn fresh(&self, names: &mut usize) -> String {
+        let mut name = format!("__plumeria_key{}", *names);
+        *names += 1;
+        while self.source.contains(&name) {
+            name.push('_');
+        }
+        name
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn bind(
+        &self,
+        sub: E<'b, 'a>,
+        items: Vec<(u32, u32)>,
+        bound: &FxHashMap<(u32, u32), String>,
+        path: &[((u32, u32), bool)],
+        names: &mut usize,
+    ) -> (
+        Vec<String>,
+        Vec<String>,
+        FxHashMap<(u32, u32), String>,
+        Vec<(u32, u32)>,
+    ) {
+        let mut params = Vec::new();
+        let mut args = Vec::new();
+        let mut inner = bound.clone();
+        let mut inside = Vec::new();
+        let mut passing = true;
+        for item in items {
+            passing = passing && reachable(sub, item, path);
+            if passing {
+                let param = self.fresh(names);
+                args.push(format!("({})", self.text(Span::new(item.0, item.1))));
+                params.push(param.clone());
+                inner.insert(item, param);
+            } else {
+                inside.push(item);
+            }
+        }
+        (params, args, inner, inside)
+    }
+
+    fn call_arguments(
+        &self,
+        sub: E<'b, 'a>,
+        rows: &[Row],
+        bound: &FxHashMap<(u32, u32), String>,
+    ) -> Vec<(u32, u32)> {
+        let mut out: Vec<(u32, u32)> = Vec::new();
+        let mut push = |argument: E| {
+            if matches!(
+                argument.kind(),
+                K::Str(_) | K::Num(_) | K::Bool(_) | K::Ident(_)
+            ) {
+                return;
+            }
+            let span = argument.span();
+            let span = (span.start, span.end);
+            if !bound.contains_key(&span) && !out.contains(&span) {
+                out.push(span);
+            }
+        };
+        for row in rows.iter().filter(|row| !row.fixed) {
+            let roots: Vec<E<'b, 'a>> = match &row.calls {
+                Some(calls) => calls
+                    .iter()
+                    .filter_map(|(start, end)| find_expression(sub, *start, *end))
+                    .collect(),
+                None => vec![sub],
+            };
+            for root in roots {
+                let mut found: Vec<E<'b, 'a>> = Vec::new();
+                collect_calls(root, &mut found);
+                for call in found {
+                    if !self.is_style_function_call(call) {
+                        continue;
+                    }
+                    let Some(call) = call.call() else {
+                        continue;
+                    };
+                    for argument in &call.arguments {
+                        let argument = argument_expr(argument);
+                        match argument.object_expr() {
+                            Some(object) => {
+                                for property in &object.properties {
+                                    if let ObjectPropertyKind::ObjectProperty(property) = property {
+                                        push(E::new(&property.value));
+                                    }
+                                }
+                            }
+                            None => push(argument),
+                        }
+                    }
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+}
+
+fn read_once(source: &str, body: impl Fn(&str) -> String) -> String {
+    let mut chars = source.chars();
+    let plain = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '$')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
+    if plain {
+        return format!("({})", body(source));
+    }
+    let value = "__plumeria_value";
+    format!("(({value}) => {})({source})", body(value))
+}
+
+#[derive(Clone)]
+struct Row {
+    conditions: Vec<Condition>,
+    key: String,
+    fixed: bool,
+    calls: Option<Vec<(u32, u32)>>,
+}
+
+fn reachable(sub: E, target: (u32, u32), path: &[((u32, u32), bool)]) -> bool {
+    fn decided(path: &[((u32, u32), bool)], span: Span) -> Option<bool> {
+        path.iter()
+            .find(|(test, _)| *test == (span.start, span.end))
+            .map(|(_, truthy)| *truthy)
+    }
+    fn holds(expr: &Expression, target: (u32, u32)) -> bool {
+        let span = expr.span();
+        span.start <= target.0 && span.end >= target.1
+    }
+    fn reach(expr: &Expression, target: (u32, u32), path: &[((u32, u32), bool)]) -> bool {
+        let span = expr.span();
+        if (span.start, span.end) == target {
+            return true;
+        }
+        if !holds(expr, target) {
+            return false;
+        }
+        match expr {
+            Expression::ParenthesizedExpression(e) => reach(&e.expression, target, path),
+            Expression::TSAsExpression(e) => reach(&e.expression, target, path),
+            Expression::TSSatisfiesExpression(e) => reach(&e.expression, target, path),
+            Expression::TSNonNullExpression(e) => reach(&e.expression, target, path),
+            Expression::LogicalExpression(e) => {
+                if holds(&e.left, target) {
+                    return reach(&e.left, target, path);
+                }
+                let needed = match e.operator {
+                    LogicalOperator::And => Some(true),
+                    LogicalOperator::Or => Some(false),
+                    LogicalOperator::Coalesce => None,
+                };
+                needed.is_some()
+                    && decided(path, e.left.span()) == needed
+                    && reach(&e.right, target, path)
+            }
+            Expression::ConditionalExpression(e) => {
+                if holds(&e.test, target) {
+                    return reach(&e.test, target, path);
+                }
+                let (branch, needed) = if holds(&e.consequent, target) {
+                    (&e.consequent, true)
+                } else {
+                    (&e.alternate, false)
+                };
+                decided(path, e.test.span()) == Some(needed) && reach(branch, target, path)
+            }
+            Expression::ComputedMemberExpression(e) => reach(&e.expression, target, path),
+            Expression::CallExpression(e) => e.arguments.iter().any(|argument| {
+                argument
+                    .as_expression()
+                    .is_some_and(|argument| reach(argument, target, path))
+            }),
+            Expression::ObjectExpression(object) => object.properties.iter().any(|property| {
+                matches!(property, ObjectPropertyKind::ObjectProperty(p) if reach(&p.value, target, path))
+            }),
+            Expression::ArrayExpression(array) => array.elements.iter().any(|element| {
+                element
+                    .as_expression()
+                    .is_some_and(|element| reach(element, target, path))
+            }),
+            _ => false,
+        }
+    }
+    sub.expr().is_some_and(|expr| reach(expr, target, path))
+}
+
+fn suspends_within(sub: E, spans: &[(u32, u32)]) -> bool {
+    struct Suspends<'s> {
+        spans: &'s [(u32, u32)],
+        found: bool,
+    }
+    impl Suspends<'_> {
+        fn check(&mut self, span: Span) {
+            if self
+                .spans
+                .iter()
+                .any(|(start, end)| span.start >= *start && span.end <= *end)
+            {
+                self.found = true;
+            }
+        }
+    }
+    impl<'a> oxc_ast_visit::Visit<'a> for Suspends<'_> {
+        fn visit_await_expression(&mut self, it: &AwaitExpression<'a>) {
+            self.check(it.span);
+            oxc_ast_visit::walk::walk_await_expression(self, it);
+        }
+        fn visit_yield_expression(&mut self, it: &YieldExpression<'a>) {
+            self.check(it.span);
+            oxc_ast_visit::walk::walk_yield_expression(self, it);
+        }
+        fn visit_function(&mut self, _: &Function<'a>, _: oxc_syntax::scope::ScopeFlags) {}
+        fn visit_arrow_function_expression(&mut self, _: &ArrowFunctionExpression<'a>) {}
+    }
+    if spans.is_empty() {
+        return false;
+    }
+    let Some(expr) = sub.expr() else {
+        return false;
+    };
+    let mut visitor = Suspends {
+        spans,
+        found: false,
+    };
+    oxc_ast_visit::Visit::visit_expression(&mut visitor, expr);
+    visitor.found
 }
 
 fn same_reference(a: &Value, b: &Value) -> bool {
