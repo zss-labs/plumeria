@@ -3,6 +3,7 @@
   "title": "JavaScript API",
   "pages": [
     "create",
+    "styled",
     "createTheme",
     "createStatic",
     "keyframes",
