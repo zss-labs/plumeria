@@ -28,7 +28,6 @@ export const Article = styled.article\`
   border-radius: 12px;
   color: #2f3527;
   background: #e6ead9;
-
   &:hover {
     background: #dbe1ca;
   }
