@@ -1,0 +1,104 @@
+---
+title: 'styled'
+description: 'HTML 要素にスタイルを付けてコンポーネントを作ります。'
+stability: Frozen
+---
+
+`styled` は、スタイルを持たせること自体が目的のコンポーネントに使います。アプリ全体で使い回し、用途ごとに拡張するボタン、入力欄、レイアウト部品などです。
+
+ロジックを持つコンポーネントで、描画するものの一部にスタイルを当てるときは、`css.create` のスタイルを `sx` に渡します。
+
+```sh
+pnpm add -D @plumeria/react
+```
+
+## ボタンを作る
+
+```tsx
+import { styled } from '@plumeria/react';
+
+export const Button = styled.button({
+  padding: '8px',
+  color: 'navy',
+});
+
+export function SaveButton() {
+  return <Button type="submit">Save</Button>;
+}
+```
+
+**ビルド後の JavaScript**
+
+```tsx
+const Button = ({ sx, ...props }) => (
+  <button {...props} className="xymmdeuh xvbwmxqp" />
+);
+```
+
+**生成される CSS**
+
+```css
+.xymmdeuh {
+  padding: 8px;
+}
+.xvbwmxqp {
+  color: navy;
+}
+```
+
+疑似クラスや at-rule など、ルールには `css.create` と同じスタイルを書けます。実行時に `@plumeria/react` は何も残りません。
+
+## ボタンを拡張して props で色を渡す
+
+`styled(Button)` で元のスタイルを引き継ぎ、文字色を `accent` で指定できるようにします。ルール内では prop の値をそのまま返し、色の切り替えは呼び出し側で行います。
+
+```tsx
+const AccentButton = styled(Button)({
+  color: (props: { accent: string }) => props.accent,
+});
+
+export function StatusButton({ active }: { active: boolean }) {
+  return <AccentButton accent={active ? 'teal' : 'gray'}>Status</AccentButton>;
+}
+```
+
+型注釈により、`accent` は必須の文字列になります。注釈を省くと関数の引数は `any` です。色は CSS 変数で反映され、HTML に `accent` 属性は付きません。
+
+継承は最大 16 段です。
+
+## 呼び出し側の `sx` で上書きする
+
+呼び出し側の `sx` は、コンポーネント自身のスタイルを上書きします。
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  warning: {
+    color: 'maroon',
+  },
+});
+
+export function WarningButton() {
+  return <Button sx={styles.warning}>Warning</Button>;
+}
+```
+
+**ビルド後の JavaScript**
+
+```tsx
+const Button = ({ sx, ...props }) => (
+  <button
+    {...props}
+    className={'xymmdeuh ' + ({ xhii7wzb: 'xvnrjlqc' }[sx] ?? 'xvbwmxqp')}
+  />
+);
+
+<Button sx="xhii7wzb">Warning</Button>;
+```
+
+`Button` は `sx` を props から取り出すため、`sx` は要素には渡りません。表引きで navy が maroon に差し替わり、`sx` のない `Button` は navy のままです。
+
+## ほかの JSX フレームワーク
+
+`styled` はタグ、props、戻り値の型を React から取ります。ほかの JSX フレームワークで使う場合は [styled の型](/ja/docs/integration/frameworks#styled-の型) を参照してください。
