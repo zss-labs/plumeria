@@ -1,4 +1,6 @@
-**@plumeria/react** adds `styled` to [Plumeria](https://www.npmjs.com/package/@plumeria/core). At build time, the compiler first rewrites a styled definition using `css.create` and the configured style prop (`sx` by default). Plumeria then compiles those styles as usual.
+**@plumeria/react** adds `styled` to [Plumeria](https://www.npmjs.com/package/@plumeria/core). Use it for components whose job is to carry styles: a button, a text field, a layout primitive that the rest of the app reuses and extends for each use. When a component has its own logic and you only need to style part of what it renders, pass a `css.create` style to `sx` instead.
+
+At build time, the compiler first rewrites a styled definition using `css.create` and the configured style prop (`sx` by default). Plumeria then compiles those styles as usual.
 
 ## Installation
 
@@ -13,7 +15,6 @@ pnpm add -D @plumeria/react
 Define a styled element at module scope and use it with the native element's props.
 
 ```tsx
-import '@plumeria/core';
 import { styled } from '@plumeria/react';
 
 export const Button = styled.button({
@@ -31,7 +32,6 @@ export function SaveButton() {
 Read a prop directly in a style value. Its parameter type tells TypeScript which props the component requires.
 
 ```tsx
-import '@plumeria/core';
 import { styled } from '@plumeria/react';
 
 const Swatch = styled.div({
