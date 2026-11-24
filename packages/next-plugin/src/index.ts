@@ -107,7 +107,7 @@ export function withPlumeria(
   const start = /^\w/.test(styleProp) ? '(?:^|[^\\w.])' : '';
   const end = /\w$/.test(styleProp) ? '\\b' : '';
   const content = new RegExp(
-    `@plumeria/core|${start}${escapedStyleProp}${end}`,
+    `@plumeria/core|@plumeria/react|${start}${escapedStyleProp}${end}`,
   );
 
   const ruleItem = {
