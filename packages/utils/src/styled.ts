@@ -1039,6 +1039,13 @@ function encodeName(name: string): string {
   return out;
 }
 
+const MAX_STYLED_DEPTH = 16;
+
+const tooDeep = (): never =>
+  fail(
+    `Styled inheritance exceeds ${MAX_STYLED_DEPTH} levels (including the base component).`,
+  );
+
 const layerName = (prefix: string, component: string, index: number) =>
   `${prefix}_${encodeName(component)}__${index}`;
 
@@ -1051,9 +1058,13 @@ class Chains {
     private imports: Imports | undefined,
   ) {}
 
-  chain(name: string): Chain {
+  chain(name: string, depth: number): Chain {
+    if (depth > MAX_STYLED_DEPTH) tooDeep();
     const memo = this.memo.get(name);
-    if (memo) return structuredClone(memo);
+    if (memo) {
+      if (depth - 1 + memo.layers.length > MAX_STYLED_DEPTH) tooDeep();
+      return structuredClone(memo);
+    }
     const file = this.analysis.file;
     if (this.visiting.some(([f, n]) => f === file && n === name))
       fail(`"${name}" extends itself.`);
@@ -1066,13 +1077,14 @@ class Chains {
     let base: Chain;
     const target = def.target;
     if (target.kind === 'tag') base = { tag: target.tag, layers: [] };
-    else if (target.kind === 'local') base = this.chain(target.name);
+    else if (target.kind === 'local') base = this.chain(target.name, depth + 1);
     else {
       const foreign = foreignChain(
         target.source,
         target.name,
         file,
         this.visiting,
+        depth + 1,
       );
       const layers: Layer[] = [];
       foreign.chain.layers.forEach((layer, index) => {
@@ -1259,6 +1271,7 @@ function foreignChain(
   exported: string,
   importer: string,
   visiting: [string, string][],
+  depth: number,
 ): Foreign {
   const notStyled = () =>
     fail(
@@ -1290,7 +1303,7 @@ function foreignChain(
   const analysis = analyze(parsed, defining) ?? notStyled();
   const local = localForExport(analysis, exportedThere) ?? notStyled();
   const chains = new Chains(analysis, visiting, undefined);
-  const chain = chains.chain(local);
+  const chain = chains.chain(local, depth);
   return {
     chain,
     prefix: analysis.prefix,
@@ -1374,7 +1387,7 @@ export function desugar(
 
   const imports = new Imports();
   const chains = new Chains(analysis, [], imports);
-  const chainsOf = analysis.defs.map((def) => chains.chain(def.name));
+  const chainsOf = analysis.defs.map((def) => chains.chain(def.name, 1));
 
   const prefix = analysis.prefix;
   const edits: [number, number, string][] = [];
