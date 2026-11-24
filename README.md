@@ -113,6 +113,12 @@ Plumeria publishes frequently. To make that legible, every public API is rated f
 | `css.extended`            | ★★★★☆  | Stable |
 | `css.use`                 | ★★★★★  | Frozen |
 
+### Styled API — `@plumeria/react`
+
+| API      | Rating | Label     |
+| -------- | ------ | --------- |
+| `styled` | ★★★★★  | Frozen    |
+
 ### Bundler Integrations
 
 | Package                      | Rating | Label  |
@@ -165,6 +171,7 @@ Every package is released under the same version.
   - [init](https://github.com/zss-labs/plumeria/tree/main/packages/init)
   - [inspector](https://github.com/zss-labs/plumeria/tree/main/packages/inspector)
   - [next-plugin](https://github.com/zss-labs/plumeria/tree/main/packages/next-plugin)
+  - [react](https://github.com/zss-labs/plumeria/tree/main/packages/react)
   - [swc-jest](https://github.com/zss-labs/plumeria/tree/main/packages/swc-jest)
   - [turbopack-loader](https://github.com/zss-labs/plumeria/tree/main/packages/turbopack-loader)
   - [unplugin](https://github.com/zss-labs/plumeria/tree/main/packages/unplugin)
