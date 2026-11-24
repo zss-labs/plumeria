@@ -32,7 +32,9 @@ type Reads<R> =
   R extends AtomicClassNameFor<string, infer V>
     ? Reads<V>
     : R extends (props: infer A) => any
-      ? A
+      ? 0 extends 1 & A
+        ? Record<string, any>
+        : A
       : R extends object
         ? { [K in keyof R]: Reads<R[K]> }[keyof R]
         : never;
@@ -85,7 +87,7 @@ type Known<T> = {
 export type StyledProps<T extends StyledTarget, P> = P &
   Omit<
     Framework['useReactProps'] extends true ? PropsOf<T> : Known<PropsOf<T>>,
-    keyof P | 'sx'
+    keyof Known<P> | 'sx'
   > & {
     sx?: Style;
   };
@@ -101,7 +103,7 @@ export type StyledComponent<T extends StyledTarget, R> = ((
 };
 
 export type StyledFactory<T extends StyledTarget> = {
-  <const R extends StyledRule<never>>(
+  <const R extends StyledRule<any>>(
     rule: R,
   ): StyledComponent<T, AtomicStyle<R>>;
   new (rule: never): never;
@@ -110,7 +112,7 @@ export type StyledFactory<T extends StyledTarget> = {
 export type styled = {
   <C extends ((props: any) => any) & Branded>(component: C): StyledFactory<C>;
 } & {
-  [T in keyof Intrinsic & string]: StyledFactory<T>;
+  [T in keyof Intrinsic]: StyledFactory<T>;
 };
 
 export const styled: styled;
