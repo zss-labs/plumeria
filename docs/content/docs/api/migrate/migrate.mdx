@@ -4,7 +4,7 @@ description: 'Move styles from another library to Plumeria in one command.'
 stability: Candidate
 ---
 
-[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) rewrites an existing project's styles as Plumeria styles, and the call sites that read them as the `sx` prop. Set the project up with [`@plumeria/init`](/docs/api/migrate/init) first: without `@plumeria/core` and a bundler plugin in `dependencies` or `devDependencies`, the CLI stops before writing.
+[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) rewrites an existing project's styles as Plumeria styles, and the call sites that read them as the `sx` prop. styled-components move to [`styled`](/docs/api/javascript/styled) from `@plumeria/react` instead, so install it before that run. Set the project up with [`@plumeria/init`](/docs/api/migrate/init) first: without `@plumeria/core` and a bundler plugin in `dependencies` or `devDependencies`, the CLI stops before writing.
 
 ```sh title="Terminal"
 npx @plumeria/migrate from vanilla-extract --dry-run
@@ -26,6 +26,7 @@ Commit before migrating so you can use Git to undo the changes. The CLI has no r
 | --- | --- |
 | `--dry-run` | Report what would change without writing |
 | `--style-prop <name>` | The styling prop. Defaults to `styleProp` in the bundler config, else `sx` |
+| `--to sx` | styled-components only. Write `css.create` and the styling prop instead of `@plumeria/react` |
 
 ## Holds
 
@@ -77,7 +78,14 @@ For emotion, styled-components, stylex and tailwindcss, a hold leaves the whole 
 - `styled(Link)` and other wrapped components
 - `.attrs()` and `createGlobalStyle`
 - An interpolation that calls a runtime helper
-- A call site that leaves out a prop the styles read
+- A style that reads props, or that composes a `css` style (converted with `--to sx`)
+- A custom element tag that is not a JavaScript identifier, such as `styled('my-button')`
+- A styled component with type arguments, such as `` styled.button<{ $compact?: boolean }>`…` ``
+- A styled component rendered with `as` or `forwardedAs` anywhere in the project
+- A styled component rendered with spread props from a variable, such as `{...props}`. Only an object literal written in place, such as `{...{ id: 'x' }}`, is read
+- A styled component used as a value instead of a JSX tag, such as `component={Box}`, `createElement(Box)` or `const B = Box`, and every styled component in a module imported with `import()`, a bare `require()` or a namespace passed as a value
+- A stylesheet whose `.tsx` or `.jsx` name is taken, that does not parse after the rename, or whose old path is passed to another call such as `jest.mock()`
+- With `--to sx`, a call site that leaves out a prop the styles read
 
 ### stylex
 
