@@ -38,7 +38,7 @@ export const validateAtRules: Rule.RuleModule = {
       unexpectedCondition:
         "'@starting-style' takes no condition. Use '@starting-style' alone.",
       unsupportedAtRule:
-        "'{{ name }}' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+        "'{{ name }}' is not supported here. Use @media, @container, @supports or @starting-style.",
     },
     schema: [],
   },
