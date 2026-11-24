@@ -315,7 +315,7 @@ describe('withPlumeria', () => {
       expect(ruleFor(withPlumeria()).condition).toEqual({
         all: [
           { not: 'foreign' },
-          { content: /@plumeria\/core|(?:^|[^\w.])sx\b/ },
+          { content: /@plumeria\/core|@plumeria\/react|(?:^|[^\w.])sx\b/ },
         ],
       });
     });
