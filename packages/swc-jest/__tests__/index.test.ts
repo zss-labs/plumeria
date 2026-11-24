@@ -41,6 +41,17 @@ it('compiles the styling prop away and emits CommonJS', () => {
   expect(code).not.toMatch(/^import /m);
 });
 
+it('compiles styled components away', () => {
+  const { code } = run(`import { styled } from '@plumeria/react';
+const Box = styled.div({ padding: 16, color: 'red' });
+export const A = ({ n }: { n: number }) => <Box>{n}</Box>;
+`);
+
+  expect(code).toMatch(/className: "\S+ \S+"/);
+  expect(code).not.toMatch(/@plumeria\/react|styled\.div/);
+  expect(code).not.toMatch(/^import /m);
+});
+
 it('passes a file without Plumeria to swc unchanged in meaning', () => {
   const { code } = run('export const n: number = 1;\n');
 
