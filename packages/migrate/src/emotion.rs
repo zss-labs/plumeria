@@ -32,6 +32,7 @@ pub struct Library {
     configs: &'static [&'static str],
     missing: &'static str,
     leftover: &'static str,
+    to_styled: bool,
 }
 
 pub const EMOTION: Library = Library {
@@ -43,6 +44,7 @@ pub const EMOTION: Library = Library {
     configs: &["@emotion/"],
     missing: "No @emotion/react or @emotion/styled import found.",
     leftover: "These configs still name @emotion. Remove the jsxImportSource and the Emotion Babel plugin once nothing is left:",
+    to_styled: false,
 };
 
 pub const STYLED_COMPONENTS: Library = Library {
@@ -54,7 +56,10 @@ pub const STYLED_COMPONENTS: Library = Library {
     configs: &["styled-components", "styledComponents"],
     missing: "No styled-components import found.",
     leftover: "These configs still name styled-components. Remove the styled-components compiler option or Babel plugin once nothing is left:",
+    to_styled: true,
 };
+
+pub const STYLED_COMPONENTS_SX: Library = Library { to_styled: false, ..STYLED_COMPONENTS };
 
 const AT_RULES: &[&str] = &["@media", "@container", "@supports"];
 const PLACEHOLDER: &str = "__emotion_";
@@ -87,7 +92,9 @@ pub struct Hold {
 #[derive(Default)]
 pub struct Outcome {
     pub rewritten: Option<String>,
+    pub renamed: Option<String>,
     pub holds: Vec<Hold>,
+    components: Vec<String>,
     depends: Vec<(String, String)>,
     shared: FxHashMap<String, Shared>,
 }
@@ -315,6 +322,9 @@ pub struct Module {
     forwards: FxHashMap<String, (String, String)>,
     imports: Vec<(String, String)>,
     reexports: Vec<String>,
+    locals: FxHashMap<String, String>,
+    namespaces: FxHashMap<String, String>,
+    stars: Vec<String>,
 }
 
 pub fn module(file: &str, text: &str) -> Module {
@@ -358,6 +368,9 @@ pub fn module(file: &str, text: &str) -> Module {
         .map(|(local, _)| *local)
         .collect();
     let export = |exported: &str, local: &str, out: &mut Module| {
+        if !imports.contains_key(local) {
+            out.locals.insert(exported.to_string(), local.to_string());
+        }
         let shape = match inits.get(local) {
             Some(init) if frames_of(init, &frames) => Some(Shape::Frames),
             Some(_) => constant(local, &inits, &mut Vec::new()),
@@ -389,14 +402,27 @@ pub fn module(file: &str, text: &str) -> Module {
                 }
             }
             Statement::ExportDefaultDeclaration(declaration) => {
-                if let ExportDefaultDeclarationKind::Identifier(identifier) = &declaration.declaration
-                    && let Some((source, _)) = imports.get(identifier.name.as_str())
-                {
-                    out.reexports.push(source.clone());
+                if let ExportDefaultDeclarationKind::Identifier(identifier) = &declaration.declaration {
+                    match imports.get(identifier.name.as_str()) {
+                        Some(forward) => {
+                            out.reexports.push(forward.0.clone());
+                            out.forwards.insert("default".to_string(), forward.clone());
+                        }
+                        None => {
+                            out.locals.insert("default".to_string(), identifier.name.to_string());
+                        }
+                    }
                 }
             }
             Statement::ExportAllDeclaration(declaration) => {
-                out.reexports.push(declaration.source.value.as_str().unwrap_or_default().to_string());
+                let source = declaration.source.value.as_str().unwrap_or_default().to_string();
+                match &declaration.exported {
+                    Some(exported) => {
+                        out.namespaces.insert(exported.name().to_string(), source.clone());
+                    }
+                    None => out.stars.push(source.clone()),
+                }
+                out.reexports.push(source);
             }
             Statement::ExportFromDeclaration(declaration) => {
                 let source = declaration.source.value.as_str().unwrap_or_default();
@@ -420,6 +446,295 @@ pub fn resolve_kind(
     name: &str,
 ) -> Option<Shape> {
     resolve_site(modules, paths, importer, specifier, name).map(|(_, shape)| shape)
+}
+
+#[derive(Default)]
+struct Specifiers(Vec<(Span, String)>, Vec<(Span, String)>);
+
+impl Specifiers {
+    fn push(&mut self, literal: &StringLiteral) {
+        self.0.push((literal.span, literal.value.as_str().unwrap_or_default().to_string()));
+    }
+}
+
+impl<'a> Visit<'a> for Specifiers {
+    fn visit_import_declaration(&mut self, declaration: &ImportDeclaration<'a>) {
+        self.push(&declaration.source);
+    }
+
+    fn visit_export_from_declaration(&mut self, declaration: &ExportFromDeclaration<'a>) {
+        self.push(&declaration.source);
+    }
+
+    fn visit_export_all_declaration(&mut self, declaration: &ExportAllDeclaration<'a>) {
+        self.push(&declaration.source);
+    }
+
+    fn visit_import_expression(&mut self, expression: &ImportExpression<'a>) {
+        if let Expression::StringLiteral(literal) = &expression.source {
+            self.push(literal);
+        }
+        walk::walk_import_expression(self, expression);
+    }
+
+    fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
+        let require = matches!(call.callee.get_inner_expression(), Expression::Identifier(callee) if callee.name == "require");
+        match call.arguments.as_slice() {
+            [argument] if require => {
+                if let Some(Expression::StringLiteral(literal)) = argument.as_expression() {
+                    self.push(literal);
+                }
+            }
+            arguments => {
+                for argument in arguments {
+                    if let Some(Expression::StringLiteral(literal)) = argument.as_expression() {
+                        self.1.push((literal.span, literal.value.as_str().unwrap_or_default().to_string()));
+                    }
+                }
+            }
+        }
+        walk::walk_call_expression(self, call);
+    }
+}
+
+enum Reach {
+    Local(String),
+    Import(String, String),
+    Component(String, String),
+    Module(String),
+    Anywhere(String),
+}
+
+enum Used {
+    Name(String),
+    Member(String, usize, String),
+    Module(String),
+}
+
+#[derive(Default)]
+struct AsUses {
+    imports: FxHashMap<String, (String, String)>,
+    uses: Vec<(Used, u32, &'static str)>,
+    required: FxHashSet<u32>,
+}
+
+fn required(call: &CallExpression) -> Option<String> {
+    let Expression::Identifier(callee) = call.callee.get_inner_expression() else { return None };
+    let [argument] = call.arguments.as_slice() else { return None };
+    let Some(Expression::StringLiteral(literal)) = argument.as_expression() else { return None };
+    (callee.name == "require").then(|| literal.value.as_str().unwrap_or_default().to_string())
+}
+
+fn member_root<'b>(member: &'b StaticMemberExpression) -> Option<(&'b str, usize)> {
+    let mut object = member.object.get_inner_expression();
+    let mut depth = 1;
+    loop {
+        match object {
+            Expression::Identifier(identifier) => return Some((identifier.name.as_str(), depth)),
+            Expression::StaticMemberExpression(inner) => {
+                object = inner.object.get_inner_expression();
+                depth += 1;
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn jsx_member_root<'b>(member: &'b JSXMemberExpression) -> Option<(&'b str, usize)> {
+    let mut object = &member.object;
+    let mut depth = 1;
+    loop {
+        match object {
+            JSXMemberExpressionObject::IdentifierReference(identifier) => return Some((identifier.name.as_str(), depth)),
+            JSXMemberExpressionObject::MemberExpression(inner) => {
+                object = &inner.object;
+                depth += 1;
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn object_as(object: &ObjectExpression) -> Option<bool> {
+    let mut found = false;
+    for property in &object.properties {
+        let ObjectPropertyKind::ObjectProperty(property) = property else { return None };
+        let key = key_name(&property.key).filter(|_| !property.computed)?;
+        found |= key == "as" || key == "forwardedAs";
+    }
+    Some(found)
+}
+
+impl<'a> Visit<'a> for AsUses {
+    fn visit_import_declaration(&mut self, declaration: &ImportDeclaration<'a>) {
+        let source = declaration.source.value.as_str().unwrap_or_default();
+        for specifier in declaration.specifiers.iter().flatten() {
+            let (local, imported) = match specifier {
+                ImportDeclarationSpecifier::ImportSpecifier(named) => (&named.local, named.imported.name().to_string()),
+                ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => (&default.local, "default".to_string()),
+                ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => (&namespace.local, "*".to_string()),
+            };
+            self.imports.insert(local.name.to_string(), (source.to_string(), imported));
+        }
+    }
+
+    fn visit_jsx_opening_element(&mut self, opening: &JSXOpeningElement<'a>) {
+        let mut kind = None;
+        for item in &opening.attributes {
+            let found = match item {
+                JSXAttributeItem::Attribute(attribute) => matches!(&attribute.name, JSXAttributeName::Identifier(name)
+                    if name.name == "as" || name.name == "forwardedAs")
+                .then_some("styled-as"),
+                JSXAttributeItem::SpreadAttribute(spread) => match spread.argument.get_inner_expression() {
+                    Expression::ObjectExpression(object) => match object_as(object) {
+                        Some(true) => Some("styled-as"),
+                        Some(false) => None,
+                        None => Some("styled-spread"),
+                    },
+                    _ => Some("styled-spread"),
+                },
+            };
+            if found == Some("styled-as") || kind.is_none() {
+                kind = found.or(kind);
+            }
+        }
+        if let Some(kind) = kind {
+            let at = opening.span.start;
+            match &opening.name {
+                JSXElementName::IdentifierReference(name) => self.uses.push((Used::Name(name.name.to_string()), at, kind)),
+                JSXElementName::MemberExpression(member) => {
+                    if let Some((root, depth)) = jsx_member_root(member) {
+                        self.uses.push((Used::Member(root.to_string(), depth, member.property.name.to_string()), at, kind));
+                    }
+                }
+                _ => {}
+            }
+        }
+        for item in &opening.attributes {
+            self.visit_jsx_attribute_item(item);
+        }
+    }
+
+    fn visit_jsx_closing_element(&mut self, _: &JSXClosingElement<'a>) {}
+
+    fn visit_export_specifier(&mut self, _: &ExportSpecifier<'a>) {}
+
+    fn visit_export_default_declaration(&mut self, declaration: &ExportDefaultDeclaration<'a>) {
+        if !matches!(declaration.declaration, ExportDefaultDeclarationKind::Identifier(_)) {
+            walk::walk_export_default_declaration(self, declaration);
+        }
+    }
+
+    fn visit_ts_type_query(&mut self, _: &TSTypeQuery<'a>) {}
+
+    fn visit_identifier_reference(&mut self, identifier: &IdentifierReference<'a>) {
+        self.uses.push((Used::Name(identifier.name.to_string()), identifier.span.start, "styled-value"));
+    }
+
+    fn visit_static_member_expression(&mut self, member: &StaticMemberExpression<'a>) {
+        match member_root(member) {
+            Some((root, depth)) => {
+                self.uses.push((Used::Member(root.to_string(), depth, member.property.name.to_string()), member.span.start, "styled-value"));
+            }
+            None => walk::walk_static_member_expression(self, member),
+        }
+    }
+
+    fn visit_import_expression(&mut self, expression: &ImportExpression<'a>) {
+        if let Expression::StringLiteral(literal) = &expression.source {
+            self.uses.push((Used::Module(literal.value.as_str().unwrap_or_default().to_string()), expression.span.start, "styled-value"));
+        }
+        walk::walk_import_expression(self, expression);
+    }
+
+    fn visit_variable_declarator(&mut self, declarator: &VariableDeclarator<'a>) {
+        if let BindingPattern::ObjectPattern(pattern) = &declarator.id
+            && let Some(Expression::CallExpression(call)) = declarator.init.as_ref().map(|init| init.get_inner_expression())
+            && let Some(source) = required(call)
+            && pattern.rest.is_none()
+        {
+            let names: Option<Vec<(String, String)>> = pattern
+                .properties
+                .iter()
+                .map(|property| match (&property.value, key_name(&property.key).filter(|_| !property.computed)) {
+                    (BindingPattern::BindingIdentifier(local), Some(key)) => Some((local.name.to_string(), key)),
+                    _ => None,
+                })
+                .collect();
+            if let Some(names) = names {
+                self.required.insert(call.span.start);
+                for (local, key) in names {
+                    self.imports.insert(local, (source.clone(), key));
+                }
+            }
+        }
+        walk::walk_variable_declarator(self, declarator);
+    }
+
+    fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
+        if !self.required.contains(&call.span.start)
+            && let Some(source) = required(call)
+        {
+            self.uses.push((Used::Module(source), call.span.start, "styled-value"));
+        }
+        walk::walk_call_expression(self, call);
+    }
+}
+
+fn as_uses(file: &str, text: &str) -> Vec<(Reach, u32, &'static str)> {
+    let Ok(source_type) = SourceType::from_path(file) else { return Vec::new() };
+    let allocator = Allocator::default();
+    let parsed = Parser::new(&allocator, text, source_type).parse();
+    let mut found = AsUses::default();
+    found.visit_program(&parsed.program);
+    let imports = std::mem::take(&mut found.imports);
+    let name = |name: String| match imports.get(&name) {
+        Some((source, imported)) if imported == "*" => Reach::Module(source.clone()),
+        Some((source, imported)) => Reach::Import(source.clone(), imported.clone()),
+        None => Reach::Local(name),
+    };
+    let mut reaches = Vec::new();
+    for (used, at, kind) in std::mem::take(&mut found.uses) {
+        match used {
+            Used::Module(source) => reaches.push((Reach::Module(source), at, kind)),
+            Used::Name(used) => reaches.push((name(used), at, kind)),
+            Used::Member(root, depth, property) => match imports.get(&root) {
+                Some((source, imported)) if imported == "*" && depth == 1 => {
+                    reaches.push((Reach::Import(source.clone(), property), at, kind));
+                }
+                Some((source, imported)) => {
+                    reaches.push((Reach::Anywhere(property), at, kind));
+                    if imported != "*" {
+                        reaches.push((Reach::Component(source.clone(), imported.clone()), at, "styled-value"));
+                    }
+                }
+                None => reaches.push((Reach::Local(root), at, "styled-value")),
+            },
+        }
+    }
+    reaches
+}
+
+fn explicit_imports(
+    modules: &FxHashMap<String, Module>,
+    paths: Option<&Paths>,
+    importer: &str,
+    text: &str,
+    target: &str,
+) -> (Vec<(Span, String)>, Vec<(Span, String)>) {
+    let Some((_, extension)) = target.rsplit_once('.') else { return Default::default() };
+    let Ok(source_type) = SourceType::from_path(importer) else { return Default::default() };
+    let allocator = Allocator::default();
+    let parsed = Parser::new(&allocator, text, source_type).parse();
+    let mut specifiers = Specifiers::default();
+    specifiers.visit_program(&parsed.program);
+    let names_target = |(_, specifier): &(Span, String)| {
+        specifier.ends_with(&format!(".{extension}"))
+            && resolve_file(modules, paths, importer, specifier).as_deref() == Some(target)
+    };
+    let rewrite = specifiers.0.into_iter().filter(names_target).collect();
+    let pinned = specifiers.1.into_iter().filter(names_target).collect();
+    (rewrite, pinned)
 }
 
 fn resolve_file(modules: &FxHashMap<String, Module>, paths: Option<&Paths>, importer: &str, specifier: &str) -> Option<String> {
@@ -743,6 +1058,15 @@ impl<'s> Scan<'s> {
             }),
             _ => None,
         }
+    }
+
+    fn styled_local(&self, tag: &Expression) -> String {
+        let callee = match tag.get_inner_expression() {
+            Expression::StaticMemberExpression(member) => &member.object,
+            Expression::CallExpression(call) => &call.callee,
+            other => return self.source(other.span()).to_string(),
+        };
+        self.source(callee.get_inner_expression().span()).to_string()
     }
 
     fn styled_element(&mut self, element: &JSXElement, tag: &str, sx: &str, props: &[String]) {
@@ -1645,6 +1969,7 @@ pub fn scan_file(
         }
     }
     let mut removals: Vec<Span> = Vec::new();
+    let mut styled_locals: Vec<String> = Vec::new();
     for statement in &program.body {
         let (declaration, exported) = match statement {
             Statement::VariableDeclaration(declaration) => (declaration, false),
@@ -1691,6 +2016,81 @@ pub fn scan_file(
             continue;
         }
         scan.handled.extend(calls.iter().map(|(_, init)| init.span().start));
+        let styled_tag_of = |init: &Expression| match init {
+            Expression::TaggedTemplateExpression(tagged) => scan.styled_tag(&tagged.tag),
+            Expression::CallExpression(call) => scan.styled_tag(&call.callee),
+            _ => None,
+        };
+        let styled_count = calls.iter().filter(|(_, init)| styled_tag_of(init).is_some()).count();
+        if lib.to_styled && styled_count > 0 {
+            if styled_count != declaration.declarations.len() {
+                scan.hold("mixed-declaration", "styled", statement.span().start);
+                continue;
+            }
+            for (declarator, init) in calls {
+                let BindingPattern::BindingIdentifier(identifier) = &declarator.id else {
+                    scan.hold("destructured-style", "styled", declarator.span.start);
+                    continue;
+                };
+                let name = identifier.name.as_str();
+                let (tag, local, items) = match init {
+                    Expression::TaggedTemplateExpression(tagged) => {
+                        (scan.styled_tag(&tagged.tag), scan.styled_local(&tagged.tag), None)
+                    }
+                    Expression::CallExpression(call) => {
+                        (scan.styled_tag(&call.callee), scan.styled_local(&call.callee), Some(call))
+                    }
+                    _ => continue,
+                };
+                let tag = match tag {
+                    Some(Ok(tag)) => tag,
+                    Some(Err(kind)) => {
+                        scan.hold(kind, name, declarator.span.start);
+                        continue;
+                    }
+                    None => continue,
+                };
+                if !is_identifier(&tag) {
+                    scan.hold("styled-tag", tag, declarator.span.start);
+                    continue;
+                }
+                let typed = match init {
+                    Expression::TaggedTemplateExpression(tagged) => tagged.type_arguments.is_some(),
+                    Expression::CallExpression(call) => call.type_arguments.is_some(),
+                    _ => false,
+                };
+                if typed {
+                    scan.hold("styled-type-arguments", name, declarator.span.start);
+                    continue;
+                }
+                let items = match (init, items) {
+                    (Expression::TaggedTemplateExpression(tagged), _) => scan.template(tagged, Some(name), true),
+                    (_, Some(call)) => scan.arguments(call, Some(name)),
+                    _ => None,
+                };
+                let Some(items) = items else { continue };
+                let key = format!("styles.{name}");
+                let body = match items.as_slice() {
+                    [only] if *only == key => scan.styles.iter().position(|(k, _)| k == name).map(|i| scan.styles.remove(i).1),
+                    [only] if only.starts_with(&format!("{key}(")) => {
+                        scan.hold("styled-props", name, declarator.span.start);
+                        continue;
+                    }
+                    _ => None,
+                };
+                let Some(body) = body else {
+                    scan.hold("styled-mixin", name, declarator.span.start);
+                    continue;
+                };
+                let body = body.replace("\n  ", "\n");
+                scan.edits.push((init.span().start, init.span().end, format!("{local}.{tag}({body})")));
+                out.components.push(name.to_string());
+                if !styled_locals.contains(&local) {
+                    styled_locals.push(local);
+                }
+            }
+            continue;
+        }
         if exported && !links.share {
             scan.hold("exported-style", "css", statement.span().start);
             continue;
@@ -1815,8 +2215,16 @@ pub fn scan_file(
         create.push_str(&format!("  {key}: {body},\n"));
     }
     create.push_str("});");
-    let header = "import * as css from '@plumeria/core';";
-    let uses = !scan.styles.is_empty() || !scan.animations.is_empty();
+    let core = (!scan.styles.is_empty() || !scan.animations.is_empty()).then(|| "import * as css from '@plumeria/core';".to_string());
+    let react = (!styled_locals.is_empty()).then(|| {
+        let names: Vec<String> = styled_locals
+            .iter()
+            .map(|local| if local == "styled" { local.clone() } else { format!("styled as {local}") })
+            .collect();
+        format!("import {{ {} }} from '@plumeria/react';", names.join(", "))
+    });
+    let header = core.into_iter().chain(react).collect::<Vec<_>>().join("\n");
+    let uses = !header.is_empty();
     let mut edits = Vec::new();
     for (index, span) in imports.iter().enumerate() {
         if index == 0 && uses {
@@ -1869,7 +2277,27 @@ pub fn scan_file(
         edits.push((after, after, format!("\n{create}")));
     }
     edits.sort_by_key(|(start, end, _)| (*start, *end));
-    out.rewritten = Some(apply(text, &edits));
+    let rewritten = apply(text, &edits);
+    if !styled_locals.is_empty() {
+        let renamed = match file.rsplit_once('.') {
+            Some((_, "tsx" | "jsx")) => None,
+            Some((stem, "ts")) => Some(format!("{stem}.tsx")),
+            Some((stem, "js")) => Some(format!("{stem}.jsx")),
+            _ => {
+                out.holds.push(Hold { kind: "styled-extension", detail: file.to_string(), at: 0 });
+                return out;
+            }
+        };
+        let target = renamed.as_deref().unwrap_or(file);
+        let parsed = Parser::new(&allocator, &rewritten, SourceType::from_path(target).unwrap_or_default()).parse();
+        if parsed.fatal_error || !parsed.diagnostics.is_empty() {
+            let kind = if renamed.is_some() { "styled-extension" } else { "rewrite-parse" };
+            out.holds.push(Hold { kind, detail: target.to_string(), at: 0 });
+            return out;
+        }
+        out.renamed = renamed;
+    }
+    out.rewritten = Some(rewritten);
     out
 }
 
@@ -1941,6 +2369,98 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
             scan_file(file, text, style_prop, lib, &exports, &links)
         })
         .collect();
+    if outcomes.iter().any(|outcome| !outcome.components.is_empty()) {
+        let components: Vec<Vec<String>> = outcomes.iter().map(|outcome| outcome.components.clone()).collect();
+        let defining = |file: &str, specifier: &str, name: &str| -> Option<usize> {
+            let mut queue = vec![(resolve_file(&modules, paths, file, specifier)?, name.to_string())];
+            let mut seen = FxHashSet::default();
+            while let Some((file, name)) = queue.pop() {
+                if !seen.insert((file.clone(), name.clone())) {
+                    continue;
+                }
+                let module = &modules[&file];
+                if let Some(local) = module.locals.get(&name) {
+                    if components[index[file.as_str()]].contains(local) {
+                        return Some(index[file.as_str()]);
+                    }
+                } else if let Some((source, imported)) = module.forwards.get(&name) {
+                    queue.extend(resolve_file(&modules, paths, &file, source).map(|next| (next, imported.clone())));
+                } else if name != "default" {
+                    for source in &module.stars {
+                        queue.extend(resolve_file(&modules, paths, &file, source).map(|next| (next, name.clone())));
+                    }
+                }
+            }
+            None
+        };
+        let reachable = |file: &str, specifier: &str| -> Vec<usize> {
+            let mut queue: Vec<String> = resolve_file(&modules, paths, file, specifier).into_iter().collect();
+            let mut seen: FxHashSet<String> = FxHashSet::default();
+            while let Some(file) = queue.pop() {
+                if !seen.insert(file.clone()) {
+                    continue;
+                }
+                let module = &modules[&file];
+                for source in module.reexports.iter().chain(module.forwards.values().map(|(source, _)| source)) {
+                    queue.extend(resolve_file(&modules, paths, &file, source));
+                }
+            }
+            seen.iter().map(|file| index[file.as_str()]).filter(|&i| !components[i].is_empty()).collect()
+        };
+        let namespace = |file: &str, specifier: &str, name: &str| -> Option<(String, String)> {
+            let target = resolve_file(&modules, paths, file, specifier)?;
+            let source = modules[&target].namespaces.get(name)?.clone();
+            Some((target, source))
+        };
+        for (j, (file, text)) in sources.iter().enumerate() {
+            for (reach, at, kind) in as_uses(file, text) {
+                let (name, targets): (String, Vec<usize>) = match &reach {
+                    Reach::Local(name) => (name.clone(), components[j].contains(name).then_some(j).into_iter().collect()),
+                    Reach::Import(source, name) => match defining(file, source, name) {
+                        Some(i) => (name.clone(), vec![i]),
+                        None => match namespace(file, source, name) {
+                            Some((from, inner)) => (name.clone(), reachable(&from, &inner)),
+                            None => continue,
+                        },
+                    },
+                    Reach::Component(source, name) => (name.clone(), defining(file, source, name).into_iter().collect()),
+                    Reach::Module(source) => (source.clone(), reachable(file, source)),
+                    Reach::Anywhere(name) => {
+                        (name.clone(), (0..components.len()).filter(|&i| components[i].contains(name)).collect())
+                    }
+                };
+                let (line, column) = position(text, at);
+                for i in targets {
+                    outcomes[i].rewritten = None;
+                    outcomes[i].renamed = None;
+                    outcomes[i].holds.push(Hold { kind, detail: format!("{name} at {file}:{line}:{column}"), at: 0 });
+                }
+            }
+        }
+    }
+    for i in 0..outcomes.len() {
+        if outcomes[i].renamed.is_none() {
+            continue;
+        }
+        let pinned = sources.iter().enumerate().filter(|&(j, _)| j != i).find_map(|(_, (file, text))| {
+            let (span, _) = explicit_imports(&modules, paths, file, text, &sources[i].0).1.into_iter().next()?;
+            let (line, column) = position(text, span.start);
+            Some(format!("{file}:{line}:{column}"))
+        });
+        if let Some(site) = pinned {
+            outcomes[i].rewritten = None;
+            outcomes[i].renamed = None;
+            outcomes[i].holds.push(Hold { kind: "styled-extension", detail: format!("path named at {site}"), at: 0 });
+        }
+    }
+    for outcome in &mut outcomes {
+        if let Some(renamed) = outcome.renamed.as_deref().filter(|renamed| index.contains_key(renamed)) {
+            let detail = format!("{renamed} exists");
+            outcome.renamed = None;
+            outcome.rewritten = None;
+            outcome.holds.push(Hold { kind: "styled-extension", detail, at: 0 });
+        }
+    }
     loop {
         let mut fresh = false;
         for i in 0..outcomes.len() {
@@ -1984,10 +2504,49 @@ pub fn plan(sources: &[(String, String)], paths: Option<&Paths>, style_prop: &st
                 }
             }
         }
+        for i in 0..outcomes.len() {
+            if outcomes[i].rewritten.is_none() || outcomes[i].renamed.is_none() {
+                continue;
+            }
+            let blocked = (0..sources.len()).find(|&j| {
+                j != i
+                    && outcomes[j].rewritten.is_none()
+                    && !outcomes[j].holds.is_empty()
+                    && !explicit_imports(&modules, paths, &sources[j].0, &sources[j].1, &sources[i].0).0.is_empty()
+            });
+            if let Some(j) = blocked {
+                outcomes[i].rewritten = None;
+                outcomes[i].holds.push(Hold { kind: "linked-to-held", detail: sources[j].0.clone(), at: 0 });
+                fresh = true;
+            }
+        }
         if !fresh {
-            return outcomes;
+            break;
         }
     }
+    for i in 0..outcomes.len() {
+        let Some(renamed) = outcomes[i].renamed.clone().filter(|_| outcomes[i].rewritten.is_some()) else { continue };
+        let (_, extension) = renamed.rsplit_once('.').unwrap_or_default();
+        for j in 0..sources.len() {
+            if j == i || (outcomes[j].rewritten.is_none() && !outcomes[j].holds.is_empty()) {
+                continue;
+            }
+            let text = outcomes[j].rewritten.clone().unwrap_or_else(|| sources[j].1.clone());
+            let edits: Vec<(u32, u32, String)> = explicit_imports(&modules, paths, &sources[j].0, &text, &sources[i].0)
+                .0
+                .into_iter()
+                .map(|(span, specifier)| {
+                    let (stem, _) = specifier.rsplit_once('.').unwrap_or_default();
+                    let quote = &text[span.start as usize..span.start as usize + 1];
+                    (span.start, span.end, format!("{quote}{stem}.{extension}{quote}"))
+                })
+                .collect();
+            if !edits.is_empty() {
+                outcomes[j].rewritten = Some(apply(&text, &edits));
+            }
+        }
+    }
+    outcomes
 }
 
 pub fn run(options: &Options, lib: &Library) -> ExitCode {
@@ -2010,19 +2569,33 @@ pub fn run(options: &Options, lib: &Library) -> ExitCode {
     for (i, outcome) in plan(&sources, paths.as_ref(), &options.style_prop, lib).into_iter().enumerate() {
         let (file, text) = &sources[i];
         if let Some(rewritten) = outcome.rewritten {
-            converted.push((file, rewritten));
+            converted.push((file, rewritten, outcome.renamed));
         } else if !outcome.holds.is_empty() {
             held.push((file, text, outcome.holds));
         }
     }
-    for (file, _) in &converted {
-        println!("  {file}");
+    for (file, _, renamed) in &converted {
+        match renamed {
+            Some(renamed) => println!("  {file} → {renamed}"),
+            None => println!("  {file}"),
+        }
     }
     if options.dry_run {
         println!("\n{} file(s) would be converted.\nRun without --dry-run to apply.", converted.len());
     } else {
-        for (file, text) in &converted {
-            if let Err(error) = fs::write(file, text) {
+        let taken: Vec<&String> = converted.iter().filter_map(|(_, _, renamed)| renamed.as_ref()).filter(|r| fs::metadata(r).is_ok()).collect();
+        if !taken.is_empty() {
+            for renamed in taken {
+                eprintln!("✖ {renamed} exists. Nothing was written.");
+            }
+            return ExitCode::FAILURE;
+        }
+        for (file, text, renamed) in &converted {
+            let written = match renamed {
+                Some(renamed) => fs::write(renamed, text).and_then(|_| fs::remove_file(file)),
+                None => fs::write(file, text),
+            };
+            if let Err(error) = written {
                 eprintln!("✖ {file}: {error}");
                 return ExitCode::FAILURE;
             }
