@@ -1,5 +1,13 @@
 # Release Notes
 
+## 22.3.1 (Nov 24, 2026)
+
+- Update: Say when to use styled in the README
+
+- Update: Drop the @plumeria/core side-effect import from the README examples
+
+- Update: Add styled-components to keywords
+
 ## 22.3.0 (Nov 24, 2026)
 
 Release @plumeria/react
