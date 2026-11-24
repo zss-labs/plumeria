@@ -1127,15 +1127,6 @@ importers:
         specifier: 'catalog:'
         version: 5.109.2(@swc/core@1.15.47(@swc/helpers@0.5.23))
 
-  packages/react:
-    devDependencies:
-      '@plumeria/core':
-        specifier: workspace:*
-        version: link:../core
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.3.0
-
   packages/swc-jest:
     dependencies:
       '@plumeria/compiler':
