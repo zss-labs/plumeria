@@ -711,6 +711,14 @@ fn encode_name(name: &str) -> String {
     out
 }
 
+const MAX_STYLED_DEPTH: usize = 16;
+
+fn too_deep() -> String {
+    error(format!(
+        "Styled inheritance exceeds {MAX_STYLED_DEPTH} levels (including the base component)."
+    ))
+}
+
 fn layer_name(prefix: &str, component: &str, index: usize) -> String {
     format!("{prefix}_{}__{index}", encode_name(component))
 }
@@ -723,8 +731,14 @@ struct Chains<'s> {
 }
 
 impl Chains<'_> {
-    fn chain(&mut self, name: &str) -> R<Chain> {
+    fn chain(&mut self, name: &str, depth: usize) -> R<Chain> {
+        if depth > MAX_STYLED_DEPTH {
+            return Err(too_deep());
+        }
         if let Some(chain) = self.memo.get(name) {
+            if depth - 1 + chain.layers.len() > MAX_STYLED_DEPTH {
+                return Err(too_deep());
+            }
             return Ok(chain.clone());
         }
         let key = (self.analysis.file.clone(), name.to_string());
@@ -742,13 +756,18 @@ impl Chains<'_> {
                 tag: tag.clone(),
                 layers: Vec::new(),
             },
-            Target::Local(base) => self.chain(base)?,
+            Target::Local(base) => self.chain(base, depth + 1)?,
             Target::Import {
                 source,
                 name: imported,
             } => {
-                let foreign =
-                    foreign_chain(source, imported, &self.analysis.file, &mut self.visiting)?;
+                let foreign = foreign_chain(
+                    source,
+                    imported,
+                    &self.analysis.file,
+                    &mut self.visiting,
+                    depth + 1,
+                )?;
                 let mut layers = Vec::new();
                 for (index, layer) in foreign.chain.layers.iter().enumerate() {
                     let local = layer_name(&self.analysis.prefix, &def.name, index);
@@ -1043,6 +1062,7 @@ fn foreign_chain(
     exported: &str,
     importer: &str,
     visiting: &mut Vec<(String, String)>,
+    depth: usize,
 ) -> R<Foreign> {
     let not_styled = || {
         error(format!(
@@ -1083,7 +1103,7 @@ fn foreign_chain(
         visiting: std::mem::take(visiting),
         imports: None,
     };
-    let result = chains.chain(&local);
+    let result = chains.chain(&local, depth);
     *visiting = chains.visiting;
     let specifier = if defining == file {
         source.to_string()
@@ -1208,7 +1228,7 @@ pub fn desugar(source: &str, file: &str, style_prop: &str) -> R<Option<String>> 
             imports: Some(&mut imports),
         };
         for def in &analysis.defs {
-            chains_of.push(chains.chain(&def.name)?);
+            chains_of.push(chains.chain(&def.name, 1)?);
         }
     }
 
