@@ -1,5 +1,11 @@
 # @plumeria/headlessui
 
+## 22.3.2
+
+### Patch Changes
+
+- 0d6bb5f: Bump version to 22.3.2
+
 ## 22.3.1
 
 ### Patch Changes
