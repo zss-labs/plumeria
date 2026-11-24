@@ -1146,7 +1146,7 @@ fn emotion_shares_styles_exported_from_another_file() {
 
     let styled_sheet = "import styled from 'styled-components';\n\nexport const Article = styled.article`\n  padding: 24px;\n`;\n";
     let styled_user = "import { Article } from './Card.styles';\n\nexport const Card = () => <Article>Card</Article>;\n";
-    let out = plan(&crate::emotion::STYLED_COMPONENTS, styled_sheet, styled_user);
+    let out = plan(&crate::emotion::STYLED_COMPONENTS_SX, styled_sheet, styled_user);
     assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
     assert!(out[0].rewritten.as_deref().unwrap().contains("export const styles = css.create({"));
     assert_eq!(
@@ -1282,7 +1282,7 @@ export const A = () => <div css={[a, { gap: space }]} />;
 }
 
 fn styled_scan(code: &str) -> crate::emotion::Outcome {
-    library_scan(&format!("import styled, {{ css, keyframes }} from 'styled-components';\n{code}"), &crate::emotion::STYLED_COMPONENTS)
+    library_scan(&format!("import styled, {{ css, keyframes }} from 'styled-components';\n{code}"), &crate::emotion::STYLED_COMPONENTS_SX)
 }
 
 fn styled_holds(code: &str) -> Vec<&'static str> {
@@ -1335,7 +1335,7 @@ fn styled_components_holds_runtime_forms() {
     assert_eq!(styled_holds("const A = styled(Link)`color: red;`;\n<A />"), ["styled-component"]);
     assert_eq!(styled_holds("const A = styled.div`color: red;`;\n<A $tone=\"quiet\" />"), ["custom-prop"]);
     let one = |code: &str| {
-        let outcome = library_scan(code, &crate::emotion::STYLED_COMPONENTS);
+        let outcome = library_scan(code, &crate::emotion::STYLED_COMPONENTS_SX);
         outcome.holds.iter().map(|h| h.kind).collect::<Vec<_>>()
     };
     assert_eq!(one("import { createGlobalStyle } from 'styled-components';"), ["unsupported-api"]);
@@ -1584,4 +1584,343 @@ fn vanilla_keeps_what_a_held_sheet_imports() {
     assert_eq!(kinds_of(&sheets, "src/tokens.css.mjs"), ["unsupported-extension"]);
     assert_eq!(kinds_of(&sheets, "src/theme.css.ts"), ["imported-by-sheet"]);
     assert_eq!(sheets.len(), 2);
+}
+
+fn to_styled(code: &str) -> crate::emotion::Outcome {
+    library_scan(&format!("import styled, {{ css }} from 'styled-components';\n{code}"), &crate::emotion::STYLED_COMPONENTS)
+}
+
+#[test]
+fn styled_components_move_to_plumeria_styled() {
+    let outcome = to_styled("export const Box = styled.div`\n  padding: 8px;\n  &:hover { color: blue; }\n`;\nexport const App = () => <Box id=\"a\" {...rest} />;\n");
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    assert_eq!(
+        outcome.rewritten.as_deref().unwrap(),
+        "import { styled } from '@plumeria/react';\nexport const Box = styled.div({\n  padding: '8px',\n  ':hover': {\n    color: 'blue',\n  },\n});\nexport const App = () => <Box id=\"a\" {...rest} />;\n"
+    );
+    assert_eq!(outcome.renamed, None);
+
+    let aliased = library_scan("import sc from 'styled-components';\nconst Box = sc('section')({ margin: 0 });\n", &crate::emotion::STYLED_COMPONENTS);
+    assert_eq!(
+        aliased.rewritten.as_deref().unwrap(),
+        "import { styled as sc } from '@plumeria/react';\nconst Box = sc.section({\n  margin: 0,\n});\n"
+    );
+
+    let holds = |code: &str| to_styled(code).holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+    assert_eq!(holds("const Box = styled.div`color: ${(p) => p.tone};`;\n<Box tone=\"red\" />"), ["styled-props"]);
+    assert_eq!(holds("const base = css`color: red;`;\nconst Box = styled.div`${base}; padding: 0;`;"), ["styled-mixin"]);
+    assert_eq!(holds("const Box = styled(Link)`color: red;`;"), ["styled-component"]);
+    assert_eq!(holds("const a = 1, Box = styled.div`color: red;`;"), ["mixed-declaration"]);
+}
+
+#[test]
+fn styled_components_rename_the_sheet_to_tsx() {
+    let plan = |file: &str, sheet: &str| {
+        let user = "import { Article } from './Card.styles';\n\nexport const Card = () => <Article>Card</Article>;\n";
+        let sources = vec![(file.to_string(), sheet.to_string()), ("src/Card.tsx".to_string(), user.to_string())];
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let sheet = "import styled from 'styled-components';\n\nexport const Article = styled.article`\n  padding: 24px;\n`;\n";
+    let out = plan("src/Card.styles.ts", sheet);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?} {:?}", out[0].holds, out[1].holds);
+    assert_eq!(out[0].renamed.as_deref(), Some("src/Card.styles.tsx"));
+    assert_eq!(
+        out[0].rewritten.as_deref().unwrap(),
+        "import { styled } from '@plumeria/react';\n\nexport const Article = styled.article({\n  padding: '24px',\n});\n"
+    );
+    assert!(out[1].rewritten.is_none());
+
+    assert_eq!(plan("src/Card.styles.js", sheet)[0].renamed.as_deref(), Some("src/Card.styles.jsx"));
+    let kinds = |file: &str, sheet: &str| plan(file, sheet)[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+    assert_eq!(kinds("src/Card.styles.mts", sheet), ["styled-extension"]);
+    assert_eq!(kinds("src/Card.styles.ts", &format!("{sheet}export const id = <T,>(x: T) => x;\nexport const n = <number>1;\n")), ["styled-extension"]);
+}
+
+#[test]
+fn styled_components_follow_the_rename_in_explicit_imports() {
+    let plan = |files: &[(&str, &str)]| {
+        let sources: Vec<(String, String)> = files.iter().map(|(f, t)| (f.to_string(), t.to_string())).collect();
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let sheet = "import styled from 'styled-components';\n\nexport const Article = styled.article`\n  padding: 24px;\n`;\n";
+    let out = plan(&[
+        ("src/Card.styles.ts", sheet),
+        ("src/Card.tsx", "import { Article } from './Card.styles.ts';\n\nexport const Card = () => <Article>Card</Article>;\n"),
+        ("src/index.ts", "export * from \"./Card.styles.ts\";\nexport { Article as A } from './Card.styles.ts';\n"),
+        ("src/Other.tsx", "import { Article } from './Card.styles';\nimport type { X } from './Card.styles.js';\n"),
+    ]);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?}", out.iter().map(|o| &o.holds).collect::<Vec<_>>());
+    assert_eq!(out[0].renamed.as_deref(), Some("src/Card.styles.tsx"));
+    assert_eq!(
+        out[1].rewritten.as_deref().unwrap(),
+        "import { Article } from './Card.styles.tsx';\n\nexport const Card = () => <Article>Card</Article>;\n"
+    );
+    assert_eq!(
+        out[2].rewritten.as_deref().unwrap(),
+        "export * from \"./Card.styles.tsx\";\nexport { Article as A } from './Card.styles.tsx';\n"
+    );
+    assert!(out[3].rewritten.is_none());
+
+    let out = plan(&[("src/Card.styles.js", sheet), ("src/Card.jsx", "import { Article } from './Card.styles.js';\n")]);
+    assert_eq!(out[0].renamed.as_deref(), Some("src/Card.styles.jsx"));
+    assert_eq!(out[1].rewritten.as_deref().unwrap(), "import { Article } from './Card.styles.jsx';\n");
+
+    let out = plan(&[
+        ("src/Card.styles.ts", sheet),
+        ("src/Card.tsx", "import { createGlobalStyle } from 'styled-components';\nimport { Article } from './Card.styles.ts';\n"),
+    ]);
+    assert!(out.iter().all(|file| file.rewritten.is_none()));
+    assert_eq!(out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["linked-to-held"]);
+}
+
+#[test]
+fn styled_components_hold_a_rename_onto_an_existing_file() {
+    let sources: Vec<(String, String)> = [
+        ("src/Button.ts", "import styled from 'styled-components';\n\nexport const Button = styled.button`\n  padding: 8px;\n`;\n"),
+        ("src/Button.tsx", "export const Other = () => null;\n"),
+        ("src/App.tsx", "import { Button } from './Button.ts';\n\nexport const App = () => <Button>Go</Button>;\n"),
+    ]
+    .iter()
+    .map(|(f, t)| (f.to_string(), t.to_string()))
+    .collect();
+    let out = crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS);
+    assert!(out[0].rewritten.is_none() && out[0].renamed.is_none());
+    assert_eq!(out[0].holds.iter().map(|h| (h.kind, h.detail.as_str())).collect::<Vec<_>>(), [("styled-extension", "src/Button.tsx exists")]);
+    assert!(out[1].rewritten.is_none());
+    assert!(out[2].rewritten.is_none(), "{:?}", out[2].rewritten);
+}
+
+#[test]
+fn styled_components_hold_a_component_rendered_with_as() {
+    let plan = |files: &[(&str, &str)]| {
+        let sources: Vec<(String, String)> = files.iter().map(|(f, t)| (f.to_string(), t.to_string())).collect();
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+    let kinds = |out: &[crate::emotion::Outcome]| out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+
+    let out = plan(&[("src/Box.styles.ts", sheet), ("src/App.tsx", "import { Box } from './Box.styles';\nexport const App = () => <Box as=\"a\" href=\"/\" />;\n")]);
+    assert_eq!(kinds(&out), ["styled-as"]);
+    assert_eq!(out[0].holds[0].detail, "Box at src/App.tsx:2:26");
+    assert!(out.iter().all(|file| file.rewritten.is_none() && file.renamed.is_none()));
+
+    let out = plan(&[("src/Box.styles.ts", sheet), ("src/App.tsx", "import { Box as B } from './Box.styles';\nexport const App = () => <B forwardedAs=\"a\" />;\n")]);
+    assert_eq!(kinds(&out), ["styled-as"]);
+
+    let out = plan(&[("src/Box.styles.ts", sheet), ("src/App.tsx", "import * as S from './Box.styles';\nexport const App = () => <S.Box as=\"a\" />;\n")]);
+    assert_eq!(kinds(&out), ["styled-as"]);
+
+    let local = format!("{sheet}export const App = () => <Box as=\"a\" />;\n");
+    let out = plan(&[("src/Box.styles.tsx", &local)]);
+    assert_eq!(kinds(&out), ["styled-as"]);
+
+    let out = plan(&[
+        ("src/Box.styles.ts", sheet),
+        ("src/App.tsx", "import { Box } from './Box.styles';\nimport { Link } from './Link';\nexport const App = () => <><Box id=\"a\" /><Link as=\"a\" /></>;\n"),
+    ]);
+    assert!(out[0].holds.is_empty(), "{:?}", out[0].holds);
+    assert_eq!(out[0].renamed.as_deref(), Some("src/Box.styles.tsx"));
+}
+
+#[test]
+fn styled_components_hold_type_arguments() {
+    let holds = |code: &str| to_styled(code).holds.iter().map(|h| (h.kind, h.detail.clone())).collect::<Vec<_>>();
+    let held = vec![("styled-type-arguments", "Button".to_string())];
+    assert_eq!(holds("const Button = styled.button<{ $compact?: boolean }>`color: red;`;"), held);
+    assert_eq!(holds("const Button = styled('button')<{ $compact?: boolean }>`color: red;`;"), held);
+    assert_eq!(holds("const Button = styled.button<{ $compact?: boolean }>({ color: 'red' });"), held);
+    assert!(to_styled("const Button = styled.button`color: red;`;").holds.is_empty());
+}
+
+#[test]
+fn styled_components_follow_the_rename_in_require() {
+    let plan = |files: &[(&str, &str)]| {
+        let sources: Vec<(String, String)> = files.iter().map(|(f, t)| (f.to_string(), t.to_string())).collect();
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let sheet = "import styled from 'styled-components';\n\nexport const Article = styled.article`\n  padding: 24px;\n`;\n";
+    let out = plan(&[("src/Card.styles.js", sheet), ("src/Card.js", "const { Article } = require('./Card.styles.js');\n")]);
+    assert!(out.iter().all(|file| file.holds.is_empty()), "{:?}", out[0].holds);
+    assert_eq!(out[0].renamed.as_deref(), Some("src/Card.styles.jsx"));
+    assert_eq!(out[1].rewritten.as_deref().unwrap(), "const { Article } = require('./Card.styles.jsx');\n");
+
+    let out = plan(&[
+        ("src/Card.styles.js", sheet),
+        ("src/Card.test.js", "jest.mock('./Card.styles.js');\nconst { Article } = require('./Card.styles.js');\n"),
+    ]);
+    assert!(out.iter().all(|file| file.rewritten.is_none() && file.renamed.is_none()));
+    assert_eq!(
+        out[0].holds.iter().map(|h| (h.kind, h.detail.as_str())).collect::<Vec<_>>(),
+        [("styled-extension", "path named at src/Card.test.js:1:11")]
+    );
+}
+
+#[test]
+fn styled_components_hold_a_tag_that_is_not_an_identifier() {
+    let outcome = to_styled("export const Button = styled('my-button')`color: red;`;\n");
+    assert_eq!(outcome.holds.iter().map(|h| (h.kind, h.detail.as_str())).collect::<Vec<_>>(), [("styled-tag", "my-button")]);
+    assert!(outcome.rewritten.is_none());
+
+    let sources = vec![("src/Button.styles.ts".to_string(), "import styled from 'styled-components';\nexport const Button = styled('my-button')`color: red;`;\n".to_string())];
+    let out = crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS);
+    assert_eq!(out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["styled-tag"]);
+    assert!(out[0].rewritten.is_none() && out[0].renamed.is_none());
+
+    assert!(to_styled("export const Button = styled('button')`color: red;`;\n").holds.is_empty());
+}
+
+#[test]
+fn styled_components_follow_as_through_reexports_and_spreads() {
+    let plan = |files: &[(&str, &str)]| {
+        let sources: Vec<(String, String)> = files.iter().map(|(f, t)| (f.to_string(), t.to_string())).collect();
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+    let held = |out: &[crate::emotion::Outcome]| out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>() == ["styled-as"];
+    let user = "import { Box } from './ui';\nexport const App = () => <Box as=\"a\" />;\n";
+
+    assert!(held(&plan(&[("src/ui/Box.ts", sheet), ("src/ui/index.ts", "export { Box } from './Box';\n"), ("src/App.tsx", user)])));
+    assert!(held(&plan(&[("src/ui/Box.ts", sheet), ("src/ui/index.ts", "export * from './Box';\n"), ("src/App.tsx", user)])));
+    assert!(held(&plan(&[
+        ("src/ui/Box.ts", sheet),
+        ("src/ui/index.ts", "import { Box } from './Box';\nexport { Box };\n"),
+        ("src/App.tsx", user),
+    ])));
+
+    let default_sheet = "import styled from 'styled-components';\n\nconst Box = styled.div`\n  padding: 8px;\n`;\nexport default Box;\n";
+    assert!(held(&plan(&[("src/Box.ts", default_sheet), ("src/App.tsx", "import Box from './Box';\nexport const App = () => <Box as=\"a\" />;\n")])));
+
+    let spread = "import { Box } from './Box';\nexport const App = () => <Box {...{ as: 'a', href: '/' }} />;\n";
+    assert!(held(&plan(&[("src/Box.ts", sheet), ("src/App.tsx", spread)])));
+    let plain = "import { Box } from './Box';\nexport const App = () => <Box {...{ href: '/' }} />;\n";
+    assert!(plan(&[("src/Box.ts", sheet), ("src/App.tsx", plain)])[0].holds.is_empty());
+}
+
+#[test]
+fn styled_components_import_every_styled_alias() {
+    let outcome = library_scan(
+        "import styled from 'styled-components';\nimport sc from 'styled-components';\nconst A = styled.div({ margin: 0 });\nconst B = sc.button({ margin: 0 });\n",
+        &crate::emotion::STYLED_COMPONENTS,
+    );
+    assert!(outcome.holds.is_empty(), "{:?}", outcome.holds);
+    assert!(
+        outcome.rewritten.as_deref().unwrap().starts_with("import { styled, styled as sc } from '@plumeria/react';\n"),
+        "{}",
+        outcome.rewritten.as_deref().unwrap()
+    );
+}
+
+#[test]
+fn styled_components_resolve_spread_props_for_as() {
+    let plan = |user: &str| {
+        let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+        let sources = vec![("src/Box.ts".to_string(), sheet.to_string()), ("src/App.tsx".to_string(), user.to_string())];
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let kinds = |user: &str| plan(user)[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+    let head = "import { Box } from './Box';\n";
+
+    for spread in [
+        "const linkProps = { as: 'a', href: '/' } as const;\nexport const App = () => <Box {...linkProps} />;\n",
+        "const p = { href: '/', id: 'x' };\nexport const App = () => <Box {...p} />;\n",
+        "const props = {};\nexport function Link(props: object) {\n  return <Box {...props} />;\n}\n",
+        "const props = {};\nObject.assign(props, { as: 'a' });\nexport const App = () => <Box {...props} />;\n",
+        "export const App = (o: object) => <Box {...{ ...o }} />;\n",
+        "export const App = (o: object) => <Box {...(o as object)} />;\n",
+    ] {
+        assert_eq!(kinds(&format!("{head}{spread}")), ["styled-spread"], "{spread}");
+    }
+    assert_eq!(kinds(&format!("{head}export const App = () => <Box {{...{{ as: 'a' }}}} {{...rest}} />;\n")), ["styled-as"]);
+
+    let fine = plan(&format!("{head}export const App = () => <Box {{...{{ id: 'x' }}}} />;\n"));
+    assert!(fine[0].holds.is_empty(), "{:?}", fine[0].holds);
+    assert_eq!(fine[0].renamed.as_deref(), Some("src/Box.tsx"));
+}
+
+#[test]
+fn styled_components_hold_a_component_used_as_a_value() {
+    let plan = |files: &[(&str, &str)]| {
+        let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+        let mut sources = vec![("src/Box.ts".to_string(), sheet.to_string())];
+        sources.extend(files.iter().map(|(f, t)| (f.to_string(), t.to_string())));
+        crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS)
+    };
+    let kinds = |files: &[(&str, &str)]| plan(files)[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+    let user = |code: &str| kinds(&[("src/App.tsx", code)]);
+
+    for code in [
+        "import { Box } from './Box';\nexport const App = () => <Route component={Box} />;\n",
+        "import { Box } from './Box';\nconst B = Box;\nexport const App = () => <B as=\"a\" />;\n",
+        "import { createElement } from 'react';\nimport { Box } from './Box';\nexport const App = () => createElement(Box, { as: 'a' });\n",
+        "import { Box } from './Box';\nexport const parts = { Box };\n",
+        "import { Box } from './Box';\nBox.displayName = 'Box';\n",
+        "import * as S from './Box';\nexport const App = () => <Route component={S.Box} />;\n",
+        "import * as S from './Box';\nexport const all = S;\n",
+        "export const App = () => import('./Box');\n",
+        "const ui = require('./Box');\nexport const App = () => <ui.Box />;\n",
+    ] {
+        assert_eq!(user(code), ["styled-value"], "{code}");
+    }
+    assert_eq!(user("const { Box } = require('./Box');\nexport const App = () => <Box as=\"a\" />;\n"), ["styled-as"]);
+    assert_eq!(
+        kinds(&[("src/ui.ts", "export * as ui from './Box';\n"), ("src/App.tsx", "import { ui } from './ui';\nexport const App = () => <ui.Box as=\"a\" />;\n")]),
+        ["styled-as"]
+    );
+    assert_eq!(
+        kinds(&[("src/ui.ts", "export * as ui from './Box';\n"), ("src/App.tsx", "import { ui } from './ui';\nexport const all = ui;\n")]),
+        ["styled-value"]
+    );
+
+    let fine = plan(&[
+        ("src/index.ts", "export { Box } from './Box';\nexport { Box as Panel } from './Box';\n"),
+        (
+            "src/App.tsx",
+            "import type { ComponentProps } from 'react';\nimport { Box } from './index';\nimport * as S from './Box';\nconst { Box: Same } = require('./Box');\ntype P = ComponentProps<typeof Box>;\nconst theme = { colors: { Box: 'red' } };\nexport const color = theme.colors.Box;\nexport const App = () => <><Box id=\"a\" /><S.Box /><Same /></>;\n",
+        ),
+    ]);
+    assert!(fine[0].holds.is_empty(), "{:?}", fine[0].holds);
+    assert_eq!(fine[0].renamed.as_deref(), Some("src/Box.tsx"));
+}
+
+#[test]
+fn styled_components_follow_as_through_default_and_wide_reexports() {
+    let plan = |files: Vec<(String, String)>| crate::emotion::plan(&files, None, "sx", &crate::emotion::STYLED_COMPONENTS);
+    let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+    let kinds = |out: &[crate::emotion::Outcome]| out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>();
+
+    let out = plan(vec![
+        ("src/Box.ts".to_string(), sheet.to_string()),
+        ("src/entry.ts".to_string(), "import { Box } from './Box';\nexport default Box;\n".to_string()),
+        ("src/App.tsx".to_string(), "import Link from './entry';\nexport const App = () => <Link as=\"a\" />;\n".to_string()),
+    ]);
+    assert_eq!(kinds(&out), ["styled-as"]);
+
+    let mut files = vec![("src/Box.ts".to_string(), sheet.to_string())];
+    let mut index = String::from("export * from './Box';\n");
+    for i in 0..100 {
+        files.push((format!("src/m{i}.ts"), format!("export const m{i} = {i};\n")));
+        index.push_str(&format!("export * from './m{i}';\n"));
+    }
+    files.push(("src/index.ts".to_string(), index));
+    files.push(("src/App.tsx".to_string(), "import { Box } from './index';\nexport const App = () => <Box as=\"a\" />;\n".to_string()));
+    assert_eq!(kinds(&plan(files)), ["styled-as"]);
+}
+
+#[test]
+fn styled_components_prefer_an_explicit_reexport_over_export_star() {
+    let sheet = "import styled from 'styled-components';\n\nexport const Box = styled.div`\n  padding: 8px;\n`;\n";
+    let sources: Vec<(String, String)> = [
+        ("src/A.ts", sheet),
+        ("src/B.ts", sheet),
+        ("src/index.ts", "export { Box } from './A';\nexport * from './B';\n"),
+        ("src/App.tsx", "import { Box } from './index';\nexport const App = () => <Box as=\"a\" />;\n"),
+    ]
+    .iter()
+    .map(|(f, t)| (f.to_string(), t.to_string()))
+    .collect();
+    let out = crate::emotion::plan(&sources, None, "sx", &crate::emotion::STYLED_COMPONENTS);
+    assert_eq!(out[0].holds.iter().map(|h| h.kind).collect::<Vec<_>>(), ["styled-as"]);
+    assert!(out[0].rewritten.is_none());
+    assert!(out[1].holds.is_empty(), "{:?}", out[1].holds);
+    assert_eq!(out[1].renamed.as_deref(), Some("src/B.tsx"));
 }
