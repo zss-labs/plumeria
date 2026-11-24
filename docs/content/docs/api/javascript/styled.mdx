@@ -1,0 +1,104 @@
+---
+title: 'styled'
+description: 'Create a component by styling an HTML element.'
+stability: Frozen
+---
+
+Use `styled` for components whose job is to carry styles: a button, a text field, a layout primitive that the rest of the app reuses and extends for each use.
+
+When a component has its own logic and you only need to style part of what it renders, pass a `css.create` style to `sx` instead.
+
+```sh
+pnpm add -D @plumeria/react
+```
+
+## Create a button
+
+```tsx
+import { styled } from '@plumeria/react';
+
+export const Button = styled.button({
+  padding: '8px',
+  color: 'navy',
+});
+
+export function SaveButton() {
+  return <Button type="submit">Save</Button>;
+}
+```
+
+**Compiled:**
+
+```tsx
+const Button = ({ sx, ...props }) => (
+  <button {...props} className="xymmdeuh xvbwmxqp" />
+);
+```
+
+**Generated CSS:**
+
+```css
+.xymmdeuh {
+  padding: 8px;
+}
+.xvbwmxqp {
+  color: navy;
+}
+```
+
+The rule accepts the same styles as `css.create`, including pseudo-classes and at-rules. Nothing from `@plumeria/react` is left at runtime.
+
+## Extend a button and read a prop
+
+Use `styled(Button)` to keep the base styles. Here, `accent` sets the text color. Read the prop directly in the rule and choose its value where you render the button.
+
+```tsx
+const AccentButton = styled(Button)({
+  color: (props: { accent: string }) => props.accent,
+});
+
+export function StatusButton({ active }: { active: boolean }) {
+  return <AccentButton accent={active ? 'teal' : 'gray'}>Status</AccentButton>;
+}
+```
+
+The annotation makes `accent` a required string. Without an annotation, the callback parameter is `any`. Plumeria applies the color through a CSS variable and omits the `accent` attribute from the HTML.
+
+You can extend a styled component up to 16 levels deep.
+
+## Override a style with `sx`
+
+`sx` at the call site overrides the component's own styles.
+
+```tsx
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  warning: {
+    color: 'maroon',
+  },
+});
+
+export function WarningButton() {
+  return <Button sx={styles.warning}>Warning</Button>;
+}
+```
+
+**Compiled:**
+
+```tsx
+const Button = ({ sx, ...props }) => (
+  <button
+    {...props}
+    className={'xymmdeuh ' + ({ xhii7wzb: 'xvnrjlqc' }[sx] ?? 'xvbwmxqp')}
+  />
+);
+
+<Button sx="xhii7wzb">Warning</Button>;
+```
+
+`Button` takes `sx` out of its props, so it never reaches the element. The lookup swaps navy for maroon, and a `Button` without `sx` stays navy.
+
+## Other JSX frameworks
+
+`styled` takes its tags, props and return type from React. For another JSX framework, see [Typing styled](/docs/integration/frameworks#typing-styled).
