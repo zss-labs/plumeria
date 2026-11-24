@@ -116,20 +116,52 @@ const styles = css.create({
 
 ## styled-components
 
-`npx @plumeria/migrate from styled-components` converts styled HTML elements, the props their styles read, and `keyframes`.
+`npx @plumeria/migrate from styled-components` moves styled HTML elements to [`styled`](/docs/api/javascript/styled) from `@plumeria/react`, and converts `keyframes`. Install `@plumeria/react` first. JSX that renders them, such as `<Button />`, stays as written.
 
-A styled component becomes a plain element with the `sx` prop. A prop that changes a value becomes a function key, and a prop that picks a style becomes a lookup.
+A styled component compiles to JSX, so a stylesheet ending in `.ts` or `.js` is renamed to `.tsx` or `.jsx`. Imports and `require()` calls that name the old extension follow the rename.
 
 | styled-components | Plumeria |
 | :-- | :-- |
-| `` styled.button`…` `` | `<button sx={styles.button}>` |
-| `` `color: ${(p) => p.color}` `` | A [function key](/docs/api/javascript/create#dynamic-values) |
-| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
+| `` styled.button`…` `` | `styled.button({ … })` |
 | `` `&:hover { … }` `` | `':hover': { … }` |
 | `` `& > span { … }` `` | A style on the `span`, or [`css.marker`](/docs/api/javascript/marker) |
 | `ThemeProvider` | [`css.createTheme`](/docs/api/javascript/createTheme), with no provider |
 | `keyframes` | [`css.keyframes`](/docs/api/javascript/keyframes) |
 | `createGlobalStyle` | A plain `.css` file |
+
+```tsx title="Before: Button.styles.ts"
+import styled from 'styled-components';
+
+export const Button = styled.button`
+  padding: 8px 16px;
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+```
+
+```tsx title="After: Button.styles.tsx"
+import { styled } from '@plumeria/react';
+
+export const Button = styled.button({
+  padding: '8px 16px',
+  ':hover': {
+    opacity: '0.8',
+  },
+});
+```
+
+A style that reads props is held for now. Pass `--to sx` to convert it.
+
+### `--to sx` [#to-sx]
+
+`--to sx` writes `css.create` and the `sx` prop instead. Each call site becomes a plain element. A prop that changes a value becomes a function key, and a prop that picks a style becomes a lookup.
+
+| styled-components | Plumeria with `--to sx` |
+| :-- | :-- |
+| `` styled.button`…` `` | `<button sx={styles.button}>` |
+| `` `color: ${(p) => p.color}` `` | A [function key](/docs/api/javascript/create#dynamic-values) |
+| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
 
 ```tsx title="Before"
 import styled from 'styled-components';
@@ -175,7 +207,7 @@ Styles are compiled at build time, so nothing is injected into the page while it
 
 `npx @plumeria/migrate from emotion` converts the `css` prop, `css` styles, `@emotion/styled` elements and `keyframes`.
 
-Object styles are already close to Plumeria styles: the properties stay camelCase, and `'&:hover'` drops the `&`. `@emotion/styled` follows the [styled-components](#styled-components) table.
+Object styles are already close to Plumeria styles: the properties stay camelCase, and `'&:hover'` drops the `&`. `@emotion/styled` follows the [`--to sx`](#to-sx) table of styled-components.
 
 | Emotion | Plumeria |
 | :-- | :-- |
