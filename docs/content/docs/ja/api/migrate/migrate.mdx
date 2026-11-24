@@ -4,7 +4,7 @@ description: 'ほかのライブラリのスタイルを、1 つのコマンド�
 stability: Candidate
 ---
 
-[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) は既存プロジェクトのスタイルを Plumeria スタイルに書き換え、それらを `sx` プロパティとして読み取る呼び出し場所を設定します。まず [`@plumeria/init`](/ja/docs/api/migrate/init) でプロジェクトを設定してください。`dependencies` または `devDependencies` に `@plumeria/core` やバンドラープラグインがない場合、CLI は書き込み前に停止します。
+[`@plumeria/migrate`](https://www.npmjs.com/package/@plumeria/migrate) は既存プロジェクトのスタイルを Plumeria スタイルに書き換え、それらを `sx` プロパティとして読み取る呼び出し場所を設定します。styled-components は代わりに `@plumeria/react` の [`styled`](/ja/docs/api/javascript/styled) に移すので、実行前に `@plumeria/react` をインストールしてください。まず [`@plumeria/init`](/ja/docs/api/migrate/init) でプロジェクトを設定してください。`dependencies` または `devDependencies` に `@plumeria/core` やバンドラープラグインがない場合、CLI は書き込み前に停止します。
 
 ```sh title="Terminal"
 npx @plumeria/migrate from vanilla-extract --dry-run
@@ -26,6 +26,7 @@ npx @plumeria/migrate from vanilla-extract
 | --- | --- |
 | `--dry-run` | 書くことなく何が変わるかを報告してください。 |
 | `--style-prop <name>` | スタイリングプロップ。バンドラー構成ではデフォルトで `styleProp` に設定され、それ以外は `sx` に設定されます。 |
+| `--to sx` | styled-components のみ。`@plumeria/react` の代わりに `css.create` とスタイリングプロップで書き出します。 |
 
 ## 保留 [#holds]
 
@@ -77,7 +78,14 @@ emotion、styled-components、stylex、tailwindcss は、保留箇所があれ�
 - `styled(Link)`およびその他のラップされたコンポーネント
 - `.attrs()`と`createGlobalStyle`
 - ランタイムヘルパーを呼び出す間接補間
-- スタイルが読み取るプロップを省略するコールサイト
+- prop を読むスタイルや、`css` のスタイルを合成するスタイル（`--to sx` なら変換されます）
+- `styled('my-button')` のように、JavaScript の識別子として書けないカスタム要素名
+- `` styled.button<{ $compact?: boolean }>`…` `` のように型引数を付けた styled コンポーネント
+- プロジェクト内のどこかで `as` や `forwardedAs` を付けて描画している styled コンポーネント
+- `{...props}` のように、変数を spread して描画している styled コンポーネント。中身を読むのは `{...{ id: 'x' }}` のようにその場で書いたオブジェクトリテラルだけです
+- `component={Box}`、`createElement(Box)`、`const B = Box` のように、JSX のタグ以外で値として使っている styled コンポーネント。`import()`、分割代入しない `require()`、値として渡した namespace で読み込んだモジュールの styled コンポーネントはすべて保留になります
+- 改名先の `.tsx` や `.jsx` が既にあるファイル、改名すると構文として読めなくなるファイル、`jest.mock()` などほかの関数に元のパスを渡しているファイル
+- `--to sx` のとき、スタイルが読み取るプロップを省略するコールサイト
 
 ### stylex [#stylex]
 
