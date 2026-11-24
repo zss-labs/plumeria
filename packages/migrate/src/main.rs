@@ -49,24 +49,31 @@ Sources:
 Options:
       --dry-run     report what would change without writing
       --style-prop  the styling prop (default: styleProp in the bundler config, else sx)
+      --to sx       styled-components: write css.create and the styling prop instead of @plumeria/react
   -h, --help        show this help";
 
 struct Options {
     source: &'static str,
     dry_run: bool,
     style_prop: String,
+    to_sx: bool,
 }
 
 fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     let mut from = Vec::new();
     let mut dry_run = false;
     let mut style_prop = None;
+    let mut to_sx = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "-h" | "--help" => return Ok(None),
             "--dry-run" => dry_run = true,
             "--style-prop" => style_prop = Some(iter.next().cloned().ok_or("--style-prop needs a name")?),
+            "--to" => match iter.next().map(String::as_str) {
+                Some("sx") => to_sx = true,
+                _ => return Err("--to takes sx".to_string()),
+            },
             flag if flag.starts_with('-') => return Err(format!("Unknown option {flag}")),
             name => from.push(name),
         }
@@ -85,7 +92,10 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
         Some(name) => name,
         None => configured_style_prop()?.unwrap_or_else(|| DEFAULT_STYLE_PROP.to_string()),
     };
-    Ok(Some(Options { source, dry_run, style_prop }))
+    if to_sx && source != "styled-components" {
+        return Err("--to sx applies to styled-components only.".to_string());
+    }
+    Ok(Some(Options { source, dry_run, style_prop, to_sx }))
 }
 
 struct StyleProps(Vec<String>);
@@ -184,8 +194,13 @@ fn target_of(sheet: &str) -> String {
 
 const PLUGINS: &[&str] = &["@plumeria/next-plugin", "@plumeria/unplugin", "@plumeria/turbopack-loader"];
 const SETUP: &str = "Plumeria is not set up here yet. Run `npx @plumeria/init` first, then migrate.";
+const REACT: &str = "styled components migrate to @plumeria/react. Install it first, or pass --to sx to write css.create and the styling prop instead.";
 
 fn set_up(manifest: Option<&str>) -> bool {
+    declares(manifest, "@plumeria/core") && PLUGINS.iter().any(|plugin| declares(manifest, plugin))
+}
+
+fn declares(manifest: Option<&str>, name: &str) -> bool {
     let Some(text) = manifest else { return false };
     let allocator = Allocator::default();
     let source = format!("({text})");
@@ -194,12 +209,9 @@ fn set_up(manifest: Option<&str>) -> bool {
         Expression::ParenthesizedExpression(inner) => &inner.expression,
         other => other,
     };
-    let declared = |name: &str| {
-        ["dependencies", "devDependencies"]
-            .iter()
-            .any(|group| field(manifest, group).is_some_and(|deps| field(deps, name).is_some()))
-    };
-    declared("@plumeria/core") && PLUGINS.iter().any(|plugin| declared(plugin))
+    ["dependencies", "devDependencies"]
+        .iter()
+        .any(|group| field(manifest, group).is_some_and(|deps| field(deps, name).is_some()))
 }
 
 fn main() -> ExitCode {
@@ -215,15 +227,24 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    if !set_up(fs::read_to_string("package.json").ok().as_deref()) {
+    let manifest = fs::read_to_string("package.json").ok();
+    let missing = if !set_up(manifest.as_deref()) {
+        Some(SETUP)
+    } else if options.source == "styled-components" && !options.to_sx && !declares(manifest.as_deref(), "@plumeria/react") {
+        Some(REACT)
+    } else {
+        None
+    };
+    if let Some(message) = missing {
         if !options.dry_run {
-            eprintln!("✖ {SETUP}");
+            eprintln!("✖ {message}");
             return ExitCode::FAILURE;
         }
-        println!("{SETUP}\n");
+        println!("{message}\n");
     }
     match options.source {
         "emotion" => emotion::run(&options, &emotion::EMOTION),
+        "styled-components" if options.to_sx => emotion::run(&options, &emotion::STYLED_COMPONENTS_SX),
         "styled-components" => emotion::run(&options, &emotion::STYLED_COMPONENTS),
         "stylex" => stylex::run(&options),
         "tailwindcss" => tailwind::run(&options),
