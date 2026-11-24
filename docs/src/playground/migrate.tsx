@@ -36,6 +36,11 @@ function sourceFromSearch(search: string) {
   return SOURCES.find((source) => source === from);
 }
 
+function firstFile(source: Source) {
+  const paths = Object.keys(SAMPLES[source]);
+  return paths[1] ?? paths[0];
+}
+
 function fileName(path: string) {
   return path.slice(path.lastIndexOf('/') + 1);
 }
@@ -352,7 +357,7 @@ export function Migrate() {
   const [typed, setTyped] = useState<string>();
   const [cursor, setCursor] = useState(0);
   const [files, setFiles] = useState<Record<string, string>>(SAMPLES[SOURCES[0]]);
-  const [input, setInput] = useState(Object.keys(SAMPLES[SOURCES[0]])[0]);
+  const [input, setInput] = useState(firstFile(SOURCES[0]));
   const [result, setResult] = useState<Result>();
   const [good, setGood] = useState<Result>();
   const [editor, setEditor] = useState<MigrateEditor>();
@@ -375,7 +380,7 @@ export function Migrate() {
       setStage('done');
       setView('plumeria');
       setFiles(SAMPLES[next]);
-      setInput(Object.keys(SAMPLES[next])[0]);
+      setInput(firstFile(next));
     } else {
       setPicking(true);
     }
@@ -457,7 +462,8 @@ export function Migrate() {
     setCursor(index);
     const paths = Object.keys(SAMPLES[SOURCES[index]]);
     setFiles(SAMPLES[SOURCES[index]]);
-    setInput(paths[Object.keys(files).indexOf(input)] ?? paths[0]);
+    const previous = Object.keys(files);
+    setInput((previous.length > 1 && paths[previous.indexOf(input)]) || firstFile(SOURCES[index]));
   }
 
   function point(index: number) {
@@ -511,11 +517,20 @@ export function Migrate() {
     }
   }
 
-  const outputs = Object.keys(good?.files ?? {}).sort(
-    (a, b) => Number(b.endsWith('.tsx')) - Number(a.endsWith('.tsx')) || a.localeCompare(b),
-  );
   const paths = Object.keys(files);
-  const shown = outputs.includes(input) ? input : (outputs[paths.indexOf(input)] ?? outputs[0]);
+  const stem = (path: string) => path.replace(/\.[^./]+$/, '');
+  const rank = (path: string) => {
+    const index = paths.findIndex((p) => p === path || stem(p) === stem(path));
+    return index === -1 ? paths.length : index;
+  };
+  const outputs = Object.keys(good?.files ?? {}).sort(
+    (a, b) => rank(a) - rank(b) || Number(b.endsWith('.tsx')) - Number(a.endsWith('.tsx')) || a.localeCompare(b),
+  );
+  const shown = outputs.includes(input)
+    ? input
+    : (outputs.find((path) => stem(path) === stem(input)) ?? outputs[paths.indexOf(input)] ?? outputs[0]);
+  const inputOf = (path: string, index: number) =>
+    paths.includes(path) ? path : (paths.find((p) => stem(p) === stem(path)) ?? paths[index] ?? paths[0]);
   const shownText = shown && good ? good.files[shown] : '';
   const ready = stage === 'done';
 
@@ -611,7 +626,7 @@ export function Migrate() {
                     type="button"
                     role="tab"
                     aria-selected={shown === path}
-                    onClick={() => setInput(paths.includes(path) ? path : (paths[index] ?? paths[0]))}
+                    onClick={() => setInput(inputOf(path, index))}
                     sx={[styles.file, shown === path && styles.fileActive]}
                   >
                     {fileName(path)}
