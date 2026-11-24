@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/codemod",
-  "version": "22.2.5",
+  "version": "22.3.0",
   "description": "Codemods for Plumeria: rename the styling prop or an API, move css.use onto the prop",
   "author": "zss-labs",
   "license": "MIT",
