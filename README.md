@@ -193,6 +193,7 @@ We welcome contributions of all kinds — bug reports, feature ideas, pull reque
 - [React Native for Web](https://necolas.github.io/react-native-web/) - for generating atomic CSS from CSS-in-JS
 - [StyleX](https://stylexjs.com/) - for the design philosophy Plumeria inherits
 - [Tailwind CSS](https://tailwindcss.com/) - for the design values `@plumeria/wind` carries
+- [yak](https://yak.style/) - for extending styled components with `styled()`
 
 ## License
 
