@@ -686,6 +686,46 @@ export const A = () => <div style={style} sx={[flags.on && styles.track(1, read(
     expect(message).toContain('is not a styled component');
   });
 
+  const tooDeep =
+    'Styled inheritance exceeds 16 levels (including the base component).';
+
+  const sameFile = (levels: number) => {
+    const lines = [head, `const C1 = styled.button({ color: 'red' });`];
+    for (let i = 2; i <= levels; i++)
+      lines.push(`const C${i} = styled(C${i - 1})({ padding: ${i} });`);
+    lines.push(`export const Last = C${levels};`);
+    return lines.join('\n');
+  };
+
+  const crossFile = (dir: string, levels: number) => {
+    write(
+      `${dir}/c1.tsx`,
+      `${head}\nexport const C1 = styled.button({ color: 'red' });`,
+    );
+    for (let i = 2; i < levels; i++)
+      write(
+        `${dir}/c${i}.tsx`,
+        `${head}\nimport { C${i - 1} } from './c${i - 1}';\nexport const C${i} = styled(C${i - 1})({ padding: ${i} });`,
+      );
+    return `${head}\nimport { C${levels - 1} } from './${dir}/c${levels - 1}';\nexport const C${levels} = styled(C${levels - 1})({ padding: ${levels} });`;
+  };
+
+  it('accepts 16 levels of inheritance in one file', async () => {
+    expect(await run(sameFile(16))).toContain('C16');
+  });
+
+  it('rejects 17 levels of inheritance in one file through the memo', async () => {
+    expect(await failure(sameFile(17))).toContain(tooDeep);
+  });
+
+  it('accepts 16 levels of inheritance across files', async () => {
+    expect(await run(crossFile('deep16', 16))).toContain('C16');
+  });
+
+  it('rejects 17 levels of inheritance across files', async () => {
+    expect(await failure(crossFile('deep17', 17))).toContain(tooDeep);
+  });
+
   it('skips type-only re-exports when resolving', async () => {
     write(
       'types/button.tsx',
