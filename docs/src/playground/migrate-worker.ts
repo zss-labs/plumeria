@@ -8,7 +8,7 @@ export type MigrateResponse =
   | { id: number; error: string };
 
 const MANIFEST = JSON.stringify({
-  dependencies: { '@plumeria/core': '*', '@plumeria/unplugin': '*' },
+  dependencies: { '@plumeria/core': '*', '@plumeria/react': '*', '@plumeria/unplugin': '*' },
 });
 
 let compiled: Promise<WebAssembly.Module> | undefined;
