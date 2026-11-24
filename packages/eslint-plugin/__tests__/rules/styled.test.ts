@@ -30,7 +30,7 @@ ruleTester.run(
         },
       };
     },
-  },
+  } satisfies Rule.RuleModule,
   {
     valid: [
       `${head}\nstyled.div;`,
