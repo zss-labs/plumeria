@@ -109,7 +109,7 @@ pre {
   display: none !important;
 }
 
-:focus-visible {
+:where(:focus-visible) {
   outline: 2px solid var(--plumeria-accent);
   outline-offset: 2px;
 }
