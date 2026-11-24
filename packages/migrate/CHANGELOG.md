@@ -1,5 +1,11 @@
 # @plumeria/migrate
 
+## 22.3.0
+
+### Minor Changes
+
+- cd31419: Bump version to 22.3.0
+
 ## 22.2.5
 
 ### Patch Changes
