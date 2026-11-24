@@ -10,6 +10,8 @@ pnpm add -D @plumeria/react
 
 `@plumeria/react` contains type definitions only. It needs `@plumeria/core` and a bundler integration — see the [installation guide](https://plumeria.dev/docs/installation).
 
+A styled component compiles to JSX, so define it in a `.tsx` or `.jsx` file. Export it from there and import it anywhere.
+
 ## Example
 
 Define a styled element at module scope and use it with the native element's props.
