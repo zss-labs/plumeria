@@ -77,11 +77,11 @@ ruleTester.run('validate-at-rules', validateAtRules, {
       errors: [
         {
           message:
-            "'@unknown' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+            "'@unknown' is not supported here. Use @media, @container, @supports or @starting-style.",
         },
         {
           message:
-            "'@mediafoo' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+            "'@mediafoo' is not supported here. Use @media, @container, @supports or @starting-style.",
         },
         {
           message:
@@ -89,11 +89,11 @@ ruleTester.run('validate-at-rules', validateAtRules, {
         },
         {
           message:
-            "'@layer' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+            "'@layer' is not supported here. Use @media, @container, @supports or @starting-style.",
         },
         {
           message:
-            "'@scope' is not supported in css.create. Use @media, @container, @supports or @starting-style.",
+            "'@scope' is not supported here. Use @media, @container, @supports or @starting-style.",
         },
         {
           message:
