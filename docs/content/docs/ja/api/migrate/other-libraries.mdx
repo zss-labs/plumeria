@@ -116,20 +116,52 @@ const styles = css.create({
 
 ## styled-components [#styled-components]
 
-`npx @plumeria/migrate from styled-components` は、styled で作った HTML 要素、スタイルが読む prop、`keyframes` を変換します。
+`npx @plumeria/migrate from styled-components` は、styled で作った HTML 要素を `@plumeria/react` の [`styled`](/ja/docs/api/javascript/styled) に移し、`keyframes` を変換します。先に `@plumeria/react` をインストールしてください。`<Button />` のような JSX の呼び出し方はそのままです。
 
-styled コンポーネントは `sx` を持つ通常の要素に変わります。値を変える prop は関数の引数に、スタイルを選ぶ prop はキーで候補を選ぶ式になります。
+styled コンポーネントは JSX にコンパイルされるため、`.ts` や `.js` のスタイルファイルは `.tsx` や `.jsx` に改名されます。古い拡張子を書いた import や `require()` も一緒に書き換わります。
 
 | styled-components | Plumeria |
 | :-- | :-- |
-| `` styled.button`…` `` | `<button sx={styles.button}>` |
-| `` `color: ${(p) => p.color}` `` | [関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values) |
-| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
+| `` styled.button`…` `` | `styled.button({ … })` |
 | `` `&:hover { … }` `` | `':hover': { … }` |
 | `` `& > span { … }` `` | `span` 自体にスタイルを付けるか、[css.marker](/ja/docs/api/javascript/marker) を使う |
 | `ThemeProvider` | [css.createTheme](/ja/docs/api/javascript/createTheme) を使う。プロバイダーは不要 |
 | `keyframes` | [`css.keyframes`](/ja/docs/api/javascript/keyframes) |
 | `createGlobalStyle` | 通常の `.css` ファイル |
+
+```tsx title="Before: Button.styles.ts"
+import styled from 'styled-components';
+
+export const Button = styled.button`
+  padding: 8px 16px;
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+```
+
+```tsx title="After: Button.styles.tsx"
+import { styled } from '@plumeria/react';
+
+export const Button = styled.button({
+  padding: '8px 16px',
+  ':hover': {
+    opacity: '0.8',
+  },
+});
+```
+
+prop を読むスタイルは、今のところ保留になります。変換するには `--to sx` を付けてください。
+
+### `--to sx` [#to-sx]
+
+`--to sx` を付けると、代わりに `css.create` と `sx` で書き出します。呼び出し場所はそれぞれ `sx` を持つ通常の要素に変わります。値を変える prop は関数の引数に、スタイルを選ぶ prop はキーで候補を選ぶ式になります。
+
+| styled-components | `--to sx` の Plumeria |
+| :-- | :-- |
+| `` styled.button`…` `` | `<button sx={styles.button}>` |
+| `` `color: ${(p) => p.color}` `` | [関数で定義したスタイル](/ja/docs/api/javascript/create#動的な値-dynamic-values) |
+| `` `${(p) => p.primary && css`…`}` `` | `sx={[styles.base, primary && styles.primary]}` |
 
 ```tsx title="Before"
 import styled from 'styled-components';
@@ -175,7 +207,7 @@ export const Button = ({ primary, width, ...props }) => (
 
 `npx @plumeria/migrate from emotion` は `css` prop、`css` のスタイル、`@emotion/styled` の要素、`keyframes` を変換します。
 
-オブジェクト形式のプロパティは、そのまま camelCase が使えます。`'&:hover'` は `&` を外します。`@emotion/styled` の対応は [styled-components](#styled-components-styled-components) と同じです。
+オブジェクト形式のプロパティは、そのまま camelCase が使えます。`'&:hover'` は `&` を外します。`@emotion/styled` の対応は styled-components の [`--to sx`](#to-sx) の表と同じです。
 
 | Emotion | Plumeria |
 | :-- | :-- |
