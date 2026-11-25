@@ -1,6 +1,7 @@
 pub mod classes;
 pub mod context;
 pub mod dropped;
+pub mod hoist;
 pub mod overlay;
 pub mod passes;
 
@@ -128,6 +129,12 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
         ),
     >,
     pub shorthand_starts: FxHashSet<u32>,
+    pub decl_sites: FxHashMap<u32, hoist::DeclSite>,
+    pub site_stack: Vec<Option<u32>>,
+    pub site_temps: IndexMap<u32, Vec<String>, FxBuildHasher>,
+    pub temp_next: FxHashMap<u32, usize>,
+    pub arg_base: std::cell::Cell<Option<usize>>,
+    pub helpers: std::cell::RefCell<IndexMap<(String, String), String, FxBuildHasher>>,
 }
 
 pub type TResult<T> = Result<T, String>;
@@ -149,6 +156,19 @@ pub fn first_param_pattern<'b, 'a>(
 }
 
 impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
+    pub fn invoke(&self, params: &str, body: &str, args: &str) -> String {
+        if self.decl_sites.is_empty() {
+            return format!("(({params}) => {body})({args})");
+        }
+        let mut helpers = self.helpers.borrow_mut();
+        let next = helpers.len();
+        let name = helpers
+            .entry((params.to_string(), body.to_string()))
+            .or_insert_with(|| format!("__plumeria_fn{next}"))
+            .clone();
+        format!("{name}({args})")
+    }
+
     pub fn text(&self, span: Span) -> String {
         span_text(self.source, span)
     }
@@ -464,11 +484,27 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             element_reads: None,
             jsx_owner: FxHashMap::default(),
             shorthand_starts: FxHashSet::default(),
+            decl_sites: FxHashMap::default(),
+            site_stack: vec![Some(hoist::MODULE_SITE)],
+            site_temps: IndexMap::default(),
+            temp_next: FxHashMap::default(),
+            arg_base: std::cell::Cell::new(None),
+            helpers: std::cell::RefCell::new(IndexMap::default()),
         }
     }
 
     fn prepare(&mut self) -> TResult<()> {
         let program = self.program;
+        let reserved = |name: &str| name.starts_with("__plumeria_");
+        let collides = self.scoping.symbol_names().any(reserved)
+            || self
+                .scoping
+                .root_unresolved_references()
+                .keys()
+                .any(|name| reserved(name.as_str()));
+        if !collides {
+            self.decl_sites = hoist::collect_decl_sites(program);
+        }
         for (name, span, params) in component_functions(program) {
             self.components.push(Component {
                 name: name.clone(),
@@ -837,8 +873,44 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
 
+        if let Some(module) = self.decl_sites.get(&hoist::MODULE_SITE) {
+            let helpers: String = self
+                .helpers
+                .take()
+                .into_iter()
+                .map(|((params, body), name)| {
+                    format!("\nfunction {name}({params}) {{ return {body}; }}")
+                })
+                .collect();
+            if !helpers.is_empty() {
+                self.replacements.push(Replacement {
+                    start: module.at,
+                    end: module.at,
+                    content: format!("{helpers}\n"),
+                });
+            }
+        }
+
+        for (site, names) in std::mem::take(&mut self.site_temps) {
+            let Some(site) = self.decl_sites.get(&site).filter(|_| !names.is_empty()) else {
+                continue;
+            };
+            for (at, content) in site.insertions(&names) {
+                self.replacements.push(Replacement {
+                    start: at,
+                    end: at,
+                    content,
+                });
+            }
+        }
+
         self.replacements
-            .sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+            .sort_by(|a, b| {
+                a.start
+                    .cmp(&b.start)
+                    .then((a.end > a.start).cmp(&(b.end > b.start)))
+                    .then(b.end.cmp(&a.end))
+            });
 
         for (token, start, end) in self.deferred.clone() {
             let mut cursor = start;
@@ -866,7 +938,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         self.replacements.extend(elided);
         self.replacements
-            .sort_by(|a, b| a.start.cmp(&b.start).then(b.end.cmp(&a.end)));
+            .sort_by(|a, b| {
+                a.start
+                    .cmp(&b.start)
+                    .then((a.end > a.start).cmp(&(b.end > b.start)))
+                    .then(b.end.cmp(&a.end))
+            });
         Ok(splice(self.source, &self.replacements))
     }
 
