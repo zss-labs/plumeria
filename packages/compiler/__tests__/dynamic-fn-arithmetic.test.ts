@@ -55,7 +55,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
 
   let temps = 0;
   const once = (source: string, body: (value: string) => string) => {
-    if (/^\w+$/.test(source)) return `(${body(source)})`;
+    if (/^[\w$]+$/.test(source)) return `(${body(source)})`;
     const temp = `\u0001${temps++}\u0001`;
     return `(${temp} = (${source}), ${body(temp)})`;
   };
@@ -77,7 +77,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
       .replace(/\u0001(\d+)\u0001/g, (_, id: string) => {
         if (seen.has(id)) return `\\k<t${id}>`;
         seen.add(id);
-        return `(?<t${id}>__plumeria_arg\\d+)`;
+        return `(?<t${id}>__plumeria__\\$\\$a\\d+)`;
       });
   };
 
@@ -88,17 +88,17 @@ export const A = (p: any) => <div sx={${call}} />;`;
 
   describe('function key arithmetic: the element computes it', () => {
     it.each([
-      ['n + GAP', '(__plumeria_arg0) + 4'],
-      ['GAP + n', '4 + (__plumeria_arg0)'],
-      ['n - 4', '(__plumeria_arg0) - 4'],
-      ['n * 2', '(__plumeria_arg0) * 2'],
-      ['n / 2', '(__plumeria_arg0) / 2'],
-      ['n % 3', '(__plumeria_arg0) % 3'],
-      ['n ** 2', '(__plumeria_arg0) ** 2'],
-      ['-n', '-((__plumeria_arg0))'],
-      ['+n', '+((__plumeria_arg0))'],
-      ['n + n', '(__plumeria_arg0) + (__plumeria_arg0)'],
-      ['(n as number) + GAP', '(__plumeria_arg0) + 4'],
+      ['n + GAP', '(__plumeria__$$a0) + 4'],
+      ['GAP + n', '4 + (__plumeria__$$a0)'],
+      ['n - 4', '(__plumeria__$$a0) - 4'],
+      ['n * 2', '(__plumeria__$$a0) * 2'],
+      ['n / 2', '(__plumeria__$$a0) / 2'],
+      ['n % 3', '(__plumeria__$$a0) % 3'],
+      ['n ** 2', '(__plumeria__$$a0) ** 2'],
+      ['-n', '-((__plumeria__$$a0))'],
+      ['+n', '+((__plumeria__$$a0))'],
+      ['n + n', '(__plumeria__$$a0) + (__plumeria__$$a0)'],
+      ['(n as number) + GAP', '(__plumeria__$$a0) + 4'],
     ])('hands %s to the element as one variable', async (written, computed) => {
       const { code, css } = await local(`{ width: ${written} }`);
       expect(code).toMatch(sets('n-1', numeric(computed)));
@@ -106,9 +106,9 @@ export const A = (p: any) => <div sx={${call}} />;`;
     });
 
     it.each([
-      ['BASE ** n', '(-2) ** (__plumeria_arg0)'],
-      ['n - BASE', '(__plumeria_arg0) - (-2)'],
-      ['BASE * n', '(-2) * (__plumeria_arg0)'],
+      ['BASE ** n', '(-2) ** (__plumeria__$$a0)'],
+      ['n - BASE', '(__plumeria__$$a0) - (-2)'],
+      ['BASE * n', '(-2) * (__plumeria__$$a0)'],
     ])(
       'keeps a negative constant in %s apart from the operator',
       async (written, computed) => {
@@ -124,7 +124,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
         lead: 'const GAP = 4;\nconst T = { gap: 8 };',
       });
       expect(code).toMatch(
-        sets('n-1', numeric('(((__plumeria_arg0) + 8) * 2) - (-(4))')),
+        sets('n-1', numeric('(((__plumeria__$$a0) + 8) * 2) - (-(4))')),
       );
     });
 
@@ -132,15 +132,15 @@ export const A = (p: any) => <div sx={${call}} />;`;
       const { code, css } = await local(
         '{ lineHeight: n + GAP, opacity: n / 100 }',
       );
-      expect(code).toMatch(sets('n-1', '(__plumeria_arg0) + 4'));
-      expect(code).toMatch(sets('n-2', '(__plumeria_arg0) / 100'));
+      expect(code).toMatch(sets('n-1', '(__plumeria__$$a0) + 4'));
+      expect(code).toMatch(sets('n-2', '(__plumeria__$$a0) / 100'));
       expect(css).toMatch(/line-height: var\(--[a-z0-9]+-n-1\);/);
       expect(css).toMatch(/opacity: var\(--[a-z0-9]+-n-2\);/);
     });
 
     it('reaches a nested selector', async () => {
       const { code, css } = await local(`{ ':hover': { width: n + GAP } }`);
-      expect(code).toMatch(sets('n-1', numeric('(__plumeria_arg0) + 4')));
+      expect(code).toMatch(sets('n-1', numeric('(__plumeria__$$a0) + 4')));
       expect(css).toMatch(/:hover \{ width: var\(--[a-z0-9]+-n-1\); \}/);
     });
   });
@@ -151,7 +151,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
       ['a concatenation', `n + 4 + 'px'`],
     ])('joins the unit to the result in %s', async (_name, written) => {
       const { code, css } = await local(`{ width: ${written} }`);
-      expect(code).toMatch(sets('n-1', `(((__plumeria_arg0) + 4) + 'px')`));
+      expect(code).toMatch(sets('n-1', `(((__plumeria__$$a0) + 4) + 'px')`));
       expect(css).toMatch(/\{ width: var\(--[a-z0-9]+-n-1\); \}/);
     });
 
@@ -160,7 +160,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
       ['a concatenation', `'calc(' + (n * 2) + 'px + 1rem)'`, '1rem'],
     ])('keeps the result inside calc() in %s', async (_name, written, rest) => {
       const { code, css } = await local(`{ width: ${written} }`);
-      expect(code).toMatch(sets('n-1', `(((__plumeria_arg0) * 2) + 'px')`));
+      expect(code).toMatch(sets('n-1', `(((__plumeria__$$a0) * 2) + 'px')`));
       expect(css).toMatch(
         new RegExp(
           `\\{ width: calc\\(var\\(--[a-z0-9]+-n-1\\) \\+ ${rest}\\); \\}`,
@@ -175,7 +175,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
       'still reads + beside %s as the unit of the parameter',
       async (_name, written, lead, unit) => {
         const { code, css } = await local(`{ width: ${written} }`, { lead });
-        expect(code).toMatch(sets('n', `((__plumeria_arg0) + '${unit}')`));
+        expect(code).toMatch(sets('n', `((__plumeria__$$a0) + '${unit}')`));
         expect(css).toMatch(/\{ width: var\(--[a-z0-9]+-n\); \}/);
       },
     );
@@ -186,8 +186,8 @@ export const A = (p: any) => <div sx={${call}} />;`;
       const { code, css } = await local(
         '{ width: n + GAP, height: n + GAP, margin: n }',
       );
-      expect(code).toMatch(sets('n', numeric('__plumeria_arg0')));
-      expect(code).toMatch(sets('n-1', numeric('(__plumeria_arg0) + 4')));
+      expect(code).toMatch(sets('n', numeric('__plumeria__$$a0')));
+      expect(code).toMatch(sets('n-1', numeric('(__plumeria__$$a0) + 4')));
       expect(code).not.toMatch(/-n-2"/);
       expect(css).toMatch(/width: var\(--[a-z0-9]+-n-1\);/);
       expect(css).toMatch(/height: var\(--[a-z0-9]+-n-1\);/);
@@ -196,8 +196,8 @@ export const A = (p: any) => <div sx={${call}} />;`;
 
     it('gives each expression its own variable', async () => {
       const { code } = await local('{ width: n + GAP, height: n * 2 }');
-      expect(code).toMatch(sets('n-1', numeric('(__plumeria_arg0) + 4')));
-      expect(code).toMatch(sets('n-2', numeric('(__plumeria_arg0) * 2')));
+      expect(code).toMatch(sets('n-1', numeric('(__plumeria__$$a0) + 4')));
+      expect(code).toMatch(sets('n-2', numeric('(__plumeria__$$a0) * 2')));
     });
 
     it('reads two parameters in one expression', async () => {
@@ -206,9 +206,9 @@ export const A = (p: any) => <div sx={${call}} />;`;
         params: '(a: number, b: number)',
       });
       expect(code).toMatch(
-        sets('a-1', numeric('(__plumeria_arg0) + (__plumeria_arg1)')),
+        sets('a-1', numeric('(__plumeria__$$a0) + (__plumeria__$$a1)')),
       );
-      expect(code).toMatch(sets('a-2', numeric('(__plumeria_arg0) - 4')));
+      expect(code).toMatch(sets('a-2', numeric('(__plumeria__$$a0) - 4')));
     });
   });
 
@@ -229,7 +229,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
         call: 'st.fn({ size: p.n })',
         params: NAMED,
       });
-      expect(code).toMatch(sets('size-1', numeric('(__plumeria_arg0) + 4')));
+      expect(code).toMatch(sets('size-1', numeric('(__plumeria__$$a0) + 4')));
     });
 
     it('computes a parameter left to its default', async () => {
@@ -248,7 +248,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
         lead: '',
         params: '({ a, b = 10 }: { a: number; b?: number })',
       });
-      expect(code).toMatch(sets('a-1', numeric('(__plumeria_arg0) + 10')));
+      expect(code).toMatch(sets('a-1', numeric('(__plumeria__$$a0) + 10')));
     });
 
     it.each([
@@ -262,7 +262,10 @@ export const A = (p: any) => <div sx={${call}} />;`;
           params: `(n: number | string = ${written})`,
         });
         expect(code).toMatch(
-          sets('n-1', numeric(`${defaulted('__plumeria_arg0', fallback)} + 4`)),
+          sets(
+            'n-1',
+            numeric(`${defaulted('__plumeria__$$a0', fallback)} + 4`),
+          ),
         );
       },
     );
@@ -273,7 +276,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
         params: '({ size = 10 }: { size?: number })',
       });
       expect(code).toMatch(
-        sets('size-1', numeric(`${defaulted('__plumeria_arg0', '10')} + 4`)),
+        sets('size-1', numeric(`${defaulted('__plumeria__$$a0', '10')} + 4`)),
       );
     });
 
@@ -293,8 +296,10 @@ export const st = css.create({ fn: (n: number) => ({ width: (n + GAP) * 2, heigh
 import { st } from './styles';
 export const A = (p: any) => <div sx={st.fn(p.n)} />;`,
       });
-      expect(code).toMatch(sets('n-1', numeric('((__plumeria_arg0) + 4) * 2')));
-      expect(code).toMatch(sets('n-2', `(((__plumeria_arg0) / 2) + '%')`));
+      expect(code).toMatch(
+        sets('n-1', numeric('((__plumeria__$$a0) + 4) * 2')),
+      );
+      expect(code).toMatch(sets('n-2', `(((__plumeria__$$a0) / 2) + '%')`));
       expect(css).toMatch(/width: var\(--[a-z0-9]+-n-1\);/);
       expect(css).toMatch(/height: var\(--[a-z0-9]+-n-2\);/);
     });
@@ -310,7 +315,7 @@ export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`,
       expect(code).toContain('style={{ ...(cardStyle && cardStyle.vars) }}');
       expect(code).toMatch(
         new RegExp(
-          `<Card cardStyle=\\{\\{ key: "x[a-z0-9]+", vars: \\(__plumeria_arg0 = p\\.n, \\{ "--[a-z0-9]+-n-1": ${escape(numeric('(__plumeria_arg0) + 4'))} \\}\\) \\}\\} />`,
+          `<Card cardStyle=\\{\\{ key: "x[a-z0-9]+", vars: \\(__plumeria__\\$\\$a0 = p\\.n, \\{ "--[a-z0-9]+-n-1": ${escape(numeric('(__plumeria__$$a0) + 4'))} \\}\\) \\}\\} />`,
         ),
       );
     });
