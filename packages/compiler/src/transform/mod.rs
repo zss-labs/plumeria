@@ -135,6 +135,7 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub temp_next: FxHashMap<u32, usize>,
     pub arg_base: std::cell::Cell<Option<usize>>,
     pub helpers: std::cell::RefCell<IndexMap<(String, String), String, FxBuildHasher>>,
+    pub removable_attrs: FxHashSet<(u32, u32)>,
 }
 
 pub type TResult<T> = Result<T, String>;
@@ -490,6 +491,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             temp_next: FxHashMap::default(),
             arg_base: std::cell::Cell::new(None),
             helpers: std::cell::RefCell::new(IndexMap::default()),
+            removable_attrs: FxHashSet::default(),
         }
     }
 
@@ -901,6 +903,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     end: at,
                     content,
                 });
+            }
+        }
+
+        let bytes = self.source.as_bytes();
+        for replacement in &mut self.replacements {
+            let (start, end) = (replacement.start as usize, replacement.end as usize);
+            if replacement.content.is_empty()
+                && self.removable_attrs.contains(&(replacement.start, replacement.end))
+                && start > 0
+                && bytes[start - 1] == b' '
+                && bytes.get(end) == Some(&b' ')
+            {
+                replacement.start -= 1;
             }
         }
 
