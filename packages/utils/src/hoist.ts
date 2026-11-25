@@ -5,13 +5,14 @@ export const MODULE_SITE = -1;
 export type DeclSite = {
   at: number;
   bodyEnd?: number;
-  afterDirective?: boolean;
+  directiveStart?: number;
   module?: boolean;
 };
 
 export const insertions = (
   site: DeclSite,
   names: string[],
+  source: Buffer,
 ): Array<[number, string]> => {
   const list = names.join(', ');
   if (site.bodyEnd !== undefined)
@@ -21,21 +22,31 @@ export const insertions = (
     ];
   if (site.module && site.at === 0) return [[site.at, `var ${list};\n`]];
   if (site.module) return [[site.at, `\nvar ${list};`]];
-  if (site.afterDirective) return [[site.at, `\nlet ${list};`]];
+  if (site.directiveStart !== undefined) {
+    const lineStart =
+      source.subarray(0, site.directiveStart).lastIndexOf(0x0a) + 1;
+    let end = lineStart;
+    while (source[end] === 0x20 || source[end] === 0x09) end++;
+    const indent = source.toString('utf8', lineStart, end);
+    const crlf =
+      (source[site.at] === 0x0d && source[site.at + 1] === 0x0a) ||
+      source[lineStart - 2] === 0x0d;
+    return [[site.at, `${crlf ? '\r\n' : '\n'}${indent}let ${list};`]];
+  }
   return [[site.at, ` let ${list};`]];
 };
 
-const directiveEnd = (statements: any[]): number | undefined => {
-  let end: number | undefined;
+const lastDirective = (statements: any[]) => {
+  let span: { start: number; end: number } | undefined;
   for (const statement of statements) {
     if (
       statement.type !== 'ExpressionStatement' ||
       statement.expression.type !== 'StringLiteral'
     )
       break;
-    end = statement.span.end;
+    span = statement.span;
   }
-  return end;
+  return span;
 };
 
 const isFunction = (node: any) =>
@@ -67,12 +78,15 @@ export const collectDeclSites = (
 ): Map<number, DeclSite> => {
   const sites = new Map<number, DeclSite>();
   const body = (block: any): DeclSite => {
-    const end = directiveEnd(block.stmts);
-    return end === undefined
+    const directive = lastDirective(block.stmts);
+    return directive === undefined
       ? { at: block.span.start + 1 - offset }
-      : { at: end - offset, afterDirective: true };
+      : {
+          at: directive.end - offset,
+          directiveStart: directive.start - offset,
+        };
   };
-  const directive = directiveEnd(ast.body);
+  const directive = lastDirective(ast.body)?.end;
   const hashbang = source.startsWith('#!')
     ? Buffer.byteLength(source.split(/[\r\n]/, 1)[0])
     : undefined;
