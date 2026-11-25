@@ -7,6 +7,7 @@ use super::overlay::{Chain, Map};
 use crate::eval::{Env, Lookup};
 use crate::js::{Object, Value};
 use crate::syntax::expr::{E, K};
+use crate::syntax::module::Aliases;
 
 pub fn extend<'b, T: ?Sized>(value: &T) -> &'b T {
     unsafe { &*(value as *const T) }
@@ -24,6 +25,7 @@ impl Lookup<Value> for StaticStack<'_> {
 }
 
 pub struct EnvParts<'x> {
+    pub aliases: &'x Aliases,
     pub statics: StaticStack<'x>,
     pub keyframes: Chain<'x, String>,
     pub view_transitions: Chain<'x, String>,
@@ -39,6 +41,7 @@ pub struct EnvParts<'x> {
 impl EnvParts<'_> {
     pub fn env(&self) -> Env<'_> {
         Env {
+            aliases: Some(self.aliases),
             statics: &self.statics,
             keyframes: &self.keyframes,
             view_transitions: &self.view_transitions,
