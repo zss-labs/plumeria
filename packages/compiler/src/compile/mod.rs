@@ -645,6 +645,7 @@ impl<'t, 'p, 'w, 'b, 'a> Extractor<'t, 'p, 'w, 'b, 'a> {
 
     fn env_parts(&self) -> EnvParts<'_> {
         EnvParts {
+            aliases: &self.aliases,
             statics: StaticStack {
                 own: &self.merged_static,
                 base: &self.tables.static_table,
