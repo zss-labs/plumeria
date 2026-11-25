@@ -16,3 +16,88 @@ The scanner finds the `css.create` call in `button.ts` and hashes the entire sty
 When transforming `Card.tsx`, the compiler follows the import of `btn` back to `button.ts`. It retrieves the definition and selects `base`, which contains one declaration, `padding: 16`.
 
 That declaration produces the atomic class `xqqbxt1d`. The compiler places the class name on the element and emits the matching rule, `.xqqbxt1d { padding: 16px; }`. By the time the component renders, the lookup is complete.
+
+## Keep the runtime part
+
+A condition or a function key argument is only known at runtime. The compiler leaves it on the element as plain JavaScript and reads each value once, in the order you wrote it.
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: {
+    fontSize: 12,
+    color: 'gray',
+  },
+  active: {
+    color: 'navy',
+  },
+  width: (size) => ({
+    width: size,
+  }),
+});
+```
+
+### Static style
+
+```tsx title="JSX"
+export const A = () => <div sx={styles.text} />;
+```
+
+```tsx title="Compiled"
+export const A = () => <div className="xhrr6ses xuifcaas" />;
+```
+
+### Condition
+
+```tsx title="JSX"
+export const A = ({ active }) => (
+  <div sx={[styles.text, active && styles.active]} />
+);
+```
+
+```tsx title="Compiled"
+export const A = ({ active }) => (
+  <div className={((active) ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas")} />
+);
+```
+
+### Function key
+
+```tsx title="JSX"
+export const A = ({ size }) => <div sx={styles.width(size * 2)} />;
+```
+
+```tsx title="Compiled"
+export const A = ({ size }) => { let __plumeria__$$a0; return <div className="x8a1qw3u" style={(__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })} />; };
+```
+
+```css title="CSS"
+.x8a1qw3u {
+  width: var(--xga54edu-size);
+}
+```
+
+### Condition and function key
+
+```tsx title="JSX"
+export function App({ active, size }) {
+  return (
+    <div sx={[styles.text, active && styles.active, styles.width(size * 2)]} />
+  );
+}
+```
+
+```tsx title="Compiled"
+export function App({ active, size }) { let __plumeria__$$v0, __plumeria__$$a0;
+  return (
+    <div className={((__plumeria__$$v0 = (__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })), ((active) ? "xhrr6ses x8a1qw3u xvbwmxqp" : "xhrr6ses x8a1qw3u xuifcaas"))} style={__plumeria__$$v0} />
+  );
+}
+```
+
+The minifier then renames the temporaries like any other local.
+
+```js title="next build"
+function e({active:a,size:c}){let d,f;return(0,b.jsx)("div",{className:(d={"--xga54edu-size":"number"==typeof(f=2*c)?f+"px":f},a?"xhrr6ses x8a1qw3u xvbwmxqp":"xhrr6ses x8a1qw3u xuifcaas"),style:d})}
+```
