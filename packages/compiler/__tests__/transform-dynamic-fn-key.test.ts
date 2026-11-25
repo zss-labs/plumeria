@@ -334,7 +334,12 @@ export function App({ active, size }) {
   return <div sx={${sx}} />;
 }`;
         const { code } = await run(source, 'stable-condition.tsx');
-        const { App } = await execute(source, 'stable-condition-run.tsx');
+        const { App } = (await execute(source, 'stable-condition-run.tsx')) as {
+          App: (props: { active: boolean; size: number }) => {
+            className: string;
+            style: unknown;
+          };
+        };
         expect(code).not.toMatch(/__plumeria__\$\$t\d/);
         const on = App({ active: true, size: 3 });
         const off = App({ active: false, size: 3 });
