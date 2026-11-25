@@ -2625,6 +2625,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
 
+        for span in [Some(node.span), class_attr.map(|attr| attr.span), style_attr.map(|attr| attr.span)]
+            .into_iter()
+            .flatten()
+        {
+            self.removable_attrs.insert((span.start, span.end));
+        }
         let style_arg = if !existing_style.is_empty() {
             Some(existing_style.trim_start_matches("...").to_string())
         } else if style_object {
