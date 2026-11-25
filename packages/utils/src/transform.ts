@@ -50,6 +50,14 @@ import {
 import { componentFunctions, wrappedBindings } from './component';
 import { assertNoDroppedValues } from './unresolvableValue';
 import { checkedVarTypeHash } from './varType';
+import {
+  MODULE_SITE,
+  collectDeclSites,
+  collectSiteScopes,
+  insertions,
+  usesReservedName,
+} from './hoist';
+import type { DeclSite } from './hoist';
 
 const spreadValues = (
   tables: Parameters<typeof objectExpressionToObject> extends [
@@ -182,6 +190,8 @@ interface KeyedRow {
 }
 
 type Span = [number, number];
+type Place = { start: number; end: number };
+type Host = { at: number; open: number; close: number; braces: boolean };
 
 const spanOf = (node: any): Span => [node.span.start, node.span.end];
 const spanKey = ([start, end]: Span) => `${start}:${end}`;
@@ -202,11 +212,6 @@ const isLiteralSource = (source: string) => {
     )
   );
 };
-
-const readOnce = (source: string, body: (value: string) => string): string =>
-  isIdentifierSource(source)
-    ? `(${body(source)})`
-    : `((__plumeria_value) => ${body('__plumeria_value')})(${source})`;
 
 const unwrapExport = (node: any): any => {
   if (node?.type === 'ExportDeclaration') return node.declaration;
@@ -292,7 +297,163 @@ type DynamicVar = {
   call?: CallBinding;
 };
 
-const foldDynamicVars = (vars: DynamicVar[]): string[] => {
+const staticClass = (part: string): string | undefined => {
+  if (part.length < 2 || !part.startsWith('"') || !part.endsWith('"'))
+    return undefined;
+  const inner = part.slice(1, -1);
+  return /["\\]/.test(inner) ? undefined : inner;
+};
+
+const classTernary = (part: string) => {
+  if (part.length < 2 || !part.startsWith('(') || !part.endsWith(')'))
+    return undefined;
+  const body = part.slice(1, -1);
+  const colon = body.lastIndexOf(' : ');
+  if (colon < 0) return undefined;
+  const falsy = staticClass(body.slice(colon + 3));
+  if (falsy === undefined) return undefined;
+  const left = body.slice(0, colon);
+  const question = left.lastIndexOf(' ? ');
+  if (question < 0) return undefined;
+  const truthy = staticClass(left.slice(question + 3));
+  if (truthy === undefined) return undefined;
+  return { test: left.slice(0, question), truthy, falsy };
+};
+
+const generatedTest = (test: string, generated: string[]) => {
+  const negated = test.startsWith('!');
+  const base = negated ? test.slice(1) : test;
+  const name =
+    base.length >= 2 && base.startsWith('(') && base.endsWith(')')
+      ? base.slice(1, -1)
+      : base;
+  return generated.includes(name) ? { name, negated } : undefined;
+};
+
+const joinClassParts = (parts: string[], generated: string[]): string => {
+  if (!parts.length) return '""';
+  const joined = () => parts.join(' + " " + ');
+  const ternaries: Array<{
+    index: number;
+    test: string;
+    truthy: string;
+    falsy: string;
+  }> = [];
+  for (const [index, part] of parts.entries()) {
+    if (staticClass(part) !== undefined) continue;
+    const ternary = classTernary(part);
+    if (!ternary) return joined();
+    ternaries.push({ index, ...ternary });
+  }
+  let keys: Array<{ name: string; negated: boolean }>;
+  if (ternaries.length === 1) {
+    const { test } = ternaries[0];
+    keys = [generatedTest(test, generated) ?? { name: test, negated: false }];
+  } else {
+    const found = ternaries.map(({ test }) => generatedTest(test, generated));
+    if (
+      found.some((key) => !key) ||
+      found.some((key, index) => index > 0 && key!.name !== found[0]!.name)
+    )
+      return joined();
+    keys = found as Array<{ name: string; negated: boolean }>;
+  }
+  const yes: string[] = [];
+  const no: string[] = [];
+  let pending = 0;
+  parts.forEach((part, index) => {
+    const ternary = ternaries[pending];
+    if (ternary && ternary.index === index) {
+      const [whenTrue, whenFalse] = keys[pending].negated
+        ? [ternary.falsy, ternary.truthy]
+        : [ternary.truthy, ternary.falsy];
+      if (whenTrue) yes.push(whenTrue);
+      if (whenFalse) no.push(whenFalse);
+      pending++;
+      return;
+    }
+    const className = staticClass(part);
+    if (className) {
+      yes.push(className);
+      no.push(className);
+    }
+  });
+  return keys.length
+    ? `(${keys[0].name} ? ${JSON.stringify(yes.join(' '))} : ${JSON.stringify(no.join(' '))})`
+    : JSON.stringify(yes.join(' '));
+};
+
+const isWordChar = (char: string | undefined) =>
+  char !== undefined && /[A-Za-z0-9_$]/.test(char);
+
+const mentions = (text: string, name: string): boolean => {
+  for (let at = text.indexOf(name); at >= 0; ) {
+    if (!isWordChar(text[at - 1]) && !isWordChar(text[at + name.length]))
+      return true;
+    at = text.indexOf(name, at + name.length);
+  }
+  return false;
+};
+
+const assignedCall = (call: CallBinding, value: string): string =>
+  `(${call.params.map((param, index) => `${param} = ${call.args[index]}`).join(', ')}, ${value})`;
+
+type Invoke = (params: string, body: string, args: string) => string;
+
+const PARAM = '__plumeria';
+
+const paramMatches = (text: string) => {
+  const matches: Array<{ start: number; index: number; end: number }> = [];
+  let at = 0;
+  while (at < text.length) {
+    const char = text[at];
+    if (char === '"' || char === "'" || char === '`') {
+      at++;
+      while (at < text.length && text[at] !== char)
+        at += text[at] === '\\' ? 2 : 1;
+      at++;
+      continue;
+    }
+    const before = at > 0 ? text[at - 1] : undefined;
+    if (
+      text.startsWith(PARAM, at) &&
+      !(
+        before !== undefined &&
+        (isWordChar(before) || before.charCodeAt(0) >= 0x80)
+      )
+    ) {
+      const digits = /^\d+/.exec(text.slice(at + PARAM.length))?.[0];
+      if (!digits) {
+        at += PARAM.length;
+        continue;
+      }
+      const end = at + PARAM.length + digits.length;
+      matches.push({ start: at, index: Number(digits), end });
+      at = end;
+      continue;
+    }
+    at++;
+  }
+  return matches;
+};
+
+const inlineParams = (text: string, bound: string[]): string => {
+  let out = '';
+  let last = 0;
+  for (const { start, index, end } of paramMatches(text)) {
+    const source = bound[index];
+    if (source === undefined) continue;
+    out += text.slice(last, start) + source;
+    last = end;
+  }
+  return out + text.slice(last);
+};
+
+const foldDynamicVars = (
+  vars: DynamicVar[],
+  assign: boolean,
+  invoke: Invoke,
+): string[] => {
   const sorted = [...vars].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   if (sorted.some((entry) => entry.call)) {
     const parts: string[] = [];
@@ -306,9 +467,15 @@ const foldDynamicVars = (vars: DynamicVar[]): string[] => {
         .slice(index, end)
         .filter((entry) => entry.cssVar)
         .map((entry) => `"${entry.cssVar}": ${entry.valueExpr}`);
-      const object = first.call
-        ? `((${first.call.params.join(', ')}) => ({ ${pairs.join(', ')} }))(${first.call.args.join(', ')})`
-        : `{ ${pairs.join(', ')} }`;
+      const object = !first.call
+        ? `{ ${pairs.join(', ')} }`
+        : assign
+          ? assignedCall(first.call, `{ ${pairs.join(', ')} }`)
+          : invoke(
+              first.call.params.join(', '),
+              `({ ${pairs.join(', ')} })`,
+              first.call.args.join(', '),
+            );
       parts.push(
         first.test ? `...((${first.test}) ? ${object} : null)` : `...${object}`,
       );
@@ -749,6 +916,73 @@ export const transformSource = async (
     end: number;
     content: string;
   }> = [];
+
+  const setReplacement = (
+    span: { start: number; end: number },
+    content: string,
+  ) => {
+    const start = span.start - baseByteOffset;
+    const end = span.end - baseByteOffset;
+    const existing = replacements.find(
+      (replacement) => replacement.start === start && replacement.end === end,
+    );
+    if (existing) existing.content = content;
+    else replacements.push({ start, end, content });
+  };
+
+  const declSites = usesReservedName(ast)
+    ? new Map<number, DeclSite>()
+    : collectDeclSites(ast, source, baseByteOffset);
+  const siteAt = collectSiteScopes(ast);
+  const siteTemps = new Map<number, string[]>();
+  const tempNext = new Map<number, number>();
+  let argBase: number | null = null;
+  const helpers = new Map<
+    string,
+    { name: string; params: string; body: string }
+  >();
+
+  const siteOf = (node: HasSpan): number | undefined => {
+    const site = siteAt(node.span.start);
+    return site !== null && declSites.has(site) ? site : undefined;
+  };
+
+  const declareTemps = (site: number, temps: string[], unique = true) => {
+    let declared = siteTemps.get(site);
+    if (!declared) siteTemps.set(site, (declared = []));
+    for (const temp of temps)
+      if (!unique || !declared.includes(temp)) declared.push(temp);
+  };
+
+  const argNames = (from: number, to: number) =>
+    Array.from(
+      { length: Math.max(0, to - from) },
+      (_, index) => `__plumeria_arg${from + index}`,
+    );
+
+  const invoke: Invoke = (params, body, args) => {
+    if (declSites.size === 0) return `((${params}) => ${body})(${args})`;
+    const key = `${params}\u0000${body}`;
+    let helper = helpers.get(key);
+    if (!helper) {
+      helper = { name: `__plumeria_fn${helpers.size}`, params, body };
+      helpers.set(key, helper);
+    }
+    return `${helper.name}(${args})`;
+  };
+
+  const readOnce = (
+    source: string,
+    body: (value: string) => string,
+  ): string => {
+    if (isIdentifierSource(source)) return `(${body(source)})`;
+    if (argBase !== null) {
+      const temp = `__plumeria_arg${argBase++}`;
+      return `(${temp} = (${source}), ${body(temp)})`;
+    }
+    const value = '__plumeria_value';
+    return invoke(value, body(value), source);
+  };
 
   const deferredSources: Array<{
     token: string;
@@ -1655,6 +1889,8 @@ export const transformSource = async (
     reads: Map<string, string>,
     calls: string[],
     names: { next: number },
+    keys: string[],
+    assign: boolean,
   ): [string, boolean] => {
     const first = rows[0];
     if (!first) return ['""', true];
@@ -1697,12 +1933,16 @@ export const transformSource = async (
         reads,
         calls,
         names,
+        keys,
+        assign,
       );
       const [falsy] = decideKeyed(
         branch((other) => !other.truthy),
         reads,
         calls,
         names,
+        keys,
+        assign,
       );
       return [`((${text}) ? ${truthy} : ${falsy})`, false];
     }
@@ -1716,6 +1956,8 @@ export const transformSource = async (
           reads,
           calls,
           names,
+          keys,
+          assign,
         ),
     );
     const [fallback] = branches.pop()!;
@@ -1735,6 +1977,13 @@ export const transformSource = async (
     let body = fallback;
     for (let index = branches.length - 1; index >= 0; index--)
       body = `(${name} === ${index} ? ${branches[index][0]} : ${body})`;
+    if (assign) {
+      keys.push(name);
+      return [
+        `(${name} = {__proto__:null,${pairs.join(',')}}[${text}], ${body})`,
+        false,
+      ];
+    }
     return [
       `((${name}) => ${body})({__proto__:null,${pairs.join(',')}}[${text}])`,
       false,
@@ -2046,7 +2295,9 @@ export const transformSource = async (
       }))
       .filter(({ text }) => !isLiteralSource(text))
       .sort((a, b) => a.start - b.start);
-    const names = reads.map((_, index) => `__plumeria_arg${index}`);
+    const base = argBase ?? 0;
+    if (argBase !== null) argBase += reads.length;
+    const names = reads.map((_, index) => `__plumeria_arg${base + index}`);
     const argSources = new Map<string, string>();
     runtime.forEach(({ param, source }) => {
       const index = reads.findIndex((read) => read.param === param);
@@ -2261,22 +2512,29 @@ export const transformSource = async (
     reads: Map<string, string>;
     classRuntime: boolean;
     styleRuntime: boolean;
+    assign: boolean;
+    base: number;
   }
 
-  const newPlan = (): ElementPlan => ({
+  const newPlan = (assign = false, base = 0): ElementPlan => ({
     params: [],
     vars: [],
     folds: [],
     reads: new Map(),
     classRuntime: false,
     styleRuntime: false,
+    assign,
+    base,
   });
 
   const slot = (plan: ElementPlan, kind: string) => {
-    const name = `__plumeria_${kind}${plan.params.length}`;
+    const name = `__plumeria_${kind}${plan.base + plan.params.length}`;
     plan.params.push(name);
     return name;
   };
+
+  const planItem = (plan: ElementPlan, name: string, value: string) =>
+    plan.assign ? `(${name} = ${value})` : value;
 
   const readsNothing = (node: any): boolean => {
     switch (node.type) {
@@ -2305,6 +2563,7 @@ export const transformSource = async (
 
   const varsObject = (
     vars: DynamicVar[],
+    assign: boolean,
   ): { object: string; runtime: boolean; always: boolean } | null => {
     const first = vars[0];
     if (!first) return null;
@@ -2317,9 +2576,22 @@ export const transformSource = async (
         runtime: false,
         always: true,
       };
+    if (assign)
+      return {
+        object: assignedCall(
+          first.call,
+          pairs.length ? `{ ${pairs.join(', ')} }` : 'null',
+        ),
+        runtime: true,
+        always: pairs.length > 0,
+      };
     const body = pairs.length ? `({ ${pairs.join(', ')} })` : 'null';
     return {
-      object: `((${first.call.params.join(', ')}) => ${body})(${first.call.args.join(', ')})`,
+      object: invoke(
+        first.call.params.join(', '),
+        body,
+        first.call.args.join(', '),
+      ),
       runtime: true,
       always: pairs.length > 0,
     };
@@ -2339,15 +2611,17 @@ export const transformSource = async (
       resolveCreateObject(expr.object.value)
     ) {
       const dynExpr = expr.property.expression;
-      plan.reads.set(spanKey(spanOf(dynExpr)), slot(plan, 't'));
+      const name = slot(plan, 't');
+      plan.reads.set(spanKey(spanOf(dynExpr)), name);
       plan.classRuntime = true;
-      return [`(${getSource(dynExpr)})`];
+      return [planItem(plan, name, `(${getSource(dynExpr)})`)];
     }
     const decision = resolveDecision(expr);
     if (decision && (decision.hasGroup || decision.leaves > 2)) {
-      plan.reads.set(spanKey(spanOf(expr)), slot(plan, 't'));
+      const name = slot(plan, 't');
+      plan.reads.set(spanKey(spanOf(expr)), name);
       plan.classRuntime = true;
-      return [`(${decision.keyExpr})`];
+      return [planItem(plan, name, `(${decision.keyExpr})`)];
     }
     return planElement(expr, false, plan);
   };
@@ -2380,14 +2654,12 @@ export const transformSource = async (
     if (resolveStyleObject(node)) return [];
     const dynamic = resolveDynamicCall(node);
     if (dynamic) {
-      const vars = varsObject(dynamic.vars);
+      const vars = varsObject(dynamic.vars, plan.assign);
       if (!vars) return [];
-      plan.vars.push({
-        name: slot(plan, 'v'),
-        always: vars.always && !guarded,
-      });
+      const name = slot(plan, 'v');
+      plan.vars.push({ name, always: vars.always && !guarded });
       plan.styleRuntime ||= vars.runtime || guarded;
-      return [vars.object];
+      return [planItem(plan, name, vars.object)];
     }
     let test: Expression;
     let consequent: Expression;
@@ -2446,8 +2718,9 @@ export const transformSource = async (
       const literal = unwrapExpression(key);
       if (literal.type === 'StringLiteral' || literal.type === 'NumericLiteral')
         return [];
-      plan.reads.set(spanKey(spanOf(key)), slot(plan, 't'));
-      return [`(${getSource(key)})`];
+      const name = slot(plan, 't');
+      plan.reads.set(spanKey(spanOf(key)), name);
+      return [planItem(plan, name, `(${getSource(key)})`)];
     }
     if (isStyleFunctionCall(node)) {
       const dynamic = resolveDynamicCall(node, true);
@@ -2456,7 +2729,12 @@ export const transformSource = async (
       const name = slot(plan, 'v');
       plan.reads.set(spanKey(spanOf(node)), name);
       plan.vars.push({ name, always: true });
-      const fold = foldDynamicVars(dynamic.vars).join(', ');
+      if (plan.assign) {
+        const object = varsObject(dynamic.vars, true)?.object ?? '';
+        plan.folds.push(object);
+        return [planItem(plan, name, object)];
+      }
+      const fold = foldDynamicVars(dynamic.vars, false, invoke).join(', ');
       plan.folds.push(fold);
       return [`{ ${fold} }`];
     }
@@ -2470,7 +2748,8 @@ export const transformSource = async (
     plan: ElementPlan,
     recurse: (node: Expression, plan: ElementPlan) => string[] | null,
   ): string[] | null => {
-    plan.reads.set(spanKey(spanOf(test)), slot(plan, 't'));
+    const name = slot(plan, 't');
+    plan.reads.set(spanKey(spanOf(test)), name);
     plan.classRuntime = true;
     const start = plan.params.length;
     const yes = recurse(consequent, plan);
@@ -2479,7 +2758,18 @@ export const transformSource = async (
     const no = alternate ? recurse(alternate, plan) : [];
     if (!no) return null;
     const end = plan.params.length;
-    if (end === start) return [`(${getSource(test)})`];
+    if (end === start) return [planItem(plan, name, `(${getSource(test)})`)];
+    if (plan.assign) {
+      const reset = (params: string[]) =>
+        params.map((param) => `${param} = null`);
+      const truthy = [...yes, ...reset(plan.params.slice(middle, end))];
+      const falsy = [...reset(plan.params.slice(start, middle)), ...no];
+      const group = (steps: string[]) =>
+        steps.length ? steps.join(', ') : 'null';
+      return [
+        `((${name} = (${getSource(test)})) ? (${group(truthy)}) : (${group(falsy)}))`,
+      ];
+    }
     const nulls = (count: number) => Array<string>(count).fill('null');
     const truthy = ['true', ...yes, ...nulls(end - middle)];
     const falsy = ['false', ...nulls(middle - start), ...no];
@@ -2854,11 +3144,11 @@ export const transformSource = async (
     const isPlainRead = (source: string) => {
       const code = source.replace(/'[^'\\\n]*'|"[^"\\\n]*"/g, '""');
       return (
-        /^[\w$.\s()!=<>&|?:"-]*$/.test(code) &&
-        !/[\w$)]\s*\(|(?<!\d)\.|\.(?!\d)|\+\+|--|\b(?:new|await|yield|delete|void|import)\b/.test(
+        /^[\w$.\s()!=&|?:"]*$/.test(code) &&
+        !/[\w$)]\s*\(|(?<!\d)\.|\.(?!\d)|\b(?:new|await|yield|delete|void|import|in|instanceof)\b/.test(
           code,
         ) &&
-        !code.replace(/[=!]==?|[<>]=/g, '').includes('=')
+        !/[=&|]/.test(code.replace(/[=!]==|&&|\|\|/g, ''))
       );
     };
     const lookupTable = (entries: Array<[string, string]>, closed = false) =>
@@ -3212,25 +3502,26 @@ export const transformSource = async (
     if (bound.length > 0) {
       const parts = classParts.splice(boundFrom);
       const body = parts.join(' + " " + ') || '""';
-      const uses = [...body.matchAll(/__plumeria(\d+)/g)].map((m) =>
-        Number(m[1]),
-      );
+      const uses = paramMatches(body).map(({ index }) => index);
       const inline =
         uses.length === bound.length &&
         uses.every((use, index) => use === index) &&
         uses.every((use) => !skippable.has(`__plumeria${use}`));
       if (inline)
+        classParts.push(...parts.map((part) => inlineParams(part, bound)));
+      else if (argBase !== null) {
+        const names = argNames(argBase, argBase + bound.length);
+        argBase += bound.length;
         classParts.push(
-          ...parts.map((part) =>
-            part.replace(
-              /__plumeria(\d+)/g,
-              (_, index) => bound[Number(index)],
-            ),
-          ),
+          `(${names.map((name, index) => `${name} = (${bound[index]})`).join(', ')}, ${inlineParams(body, names)})`,
         );
-      else
+      } else
         classParts.push(
-          `((${bound.map((_, i) => `__plumeria${i}`).join(', ')}) => ${body})(${bound.join(', ')})`,
+          invoke(
+            bound.map((_, index) => `__plumeria${index}`).join(', '),
+            body,
+            bound.join(', '),
+          ),
         );
     }
 
@@ -3242,6 +3533,150 @@ export const transformSource = async (
       dynamicVars,
       propVarSpreads,
     };
+  };
+
+  const assignElement = (
+    node: JSXAttribute,
+    args: Array<{ expression: Expression; order?: number }>,
+    plan: ElementPlan,
+    plans: Array<{ params: string[]; items: string[] }>,
+    site: number,
+    classSpan: Place | undefined,
+    classPlace: Place | undefined,
+    existingClass: string,
+    style: { span: Place; value: string } | undefined,
+    hosts: Host[],
+  ) => {
+    const base = plan.base;
+    const argEnd = argBase ?? base;
+    argBase = null;
+    let temps = [...plan.params, ...argNames(base, argEnd)];
+    const sxAt = node.span.start;
+    const groups: Array<{ at: number; steps: string[] }> = [];
+    let classSource = existingClass;
+    if (classSpan) {
+      const name = `__plumeria_class${base}`;
+      groups.push({
+        at: classSpan.start,
+        steps: [`${name} = ${existingClass}`],
+      });
+      temps.push(name);
+      classSource = name;
+    }
+    let existingStyle: string | undefined;
+    if (style) {
+      const name = `__plumeria_style${base}`;
+      groups.push({
+        at: style.span.start,
+        steps: [`${name} = ${style.value}`],
+      });
+      temps.push(name);
+      existingStyle = name;
+    }
+    const sxSteps = plans.flatMap(({ items }) => items);
+    if (sxSteps.length) groups.push({ at: sxAt, steps: sxSteps });
+    groups.sort((a, b) => a.at - b.at);
+
+    elementReads = plan.reads;
+    let built;
+    try {
+      built = buildClassParts(args, [], classSource, true);
+    } finally {
+      elementReads = null;
+    }
+    const classValue = joinClassParts(built.classParts, plan.params);
+    const vars = plan.vars.map(({ name }) => name);
+    let styleValue: string | undefined;
+    if (!vars.length) styleValue = existingStyle;
+    else if (existingStyle === undefined && vars.length === 1)
+      styleValue = plan.vars[0].always ? vars[0] : `${vars[0]} || undefined`;
+    else {
+      const spread = [...(existingStyle ? [existingStyle] : []), ...vars].map(
+        (name) => `...${name}`,
+      );
+      const copy = `{ ${spread.join(', ')} }`;
+      styleValue = plan.vars.some(({ always }) => always)
+        ? copy
+        : `(${vars.join(' || ')}) ? ${copy} : ${existingStyle ?? 'undefined'}`;
+    }
+    const sequence = (steps: string[], value: string) =>
+      steps.length ? `(${steps.join(', ')}, ${value})` : value;
+    const later = (span: Place | undefined) =>
+      span && span.start > sxAt ? span : undefined;
+    const classAt = later(classPlace)?.start ?? sxAt;
+    const styleAt = later(style?.span)?.start ?? sxAt;
+    const classStatic = !classSpan && staticClass(classValue) !== undefined;
+    const targets: Array<[number, number]> = [];
+    if (styleValue !== undefined && classStatic) targets.push([styleAt, 1]);
+    targets.push([classAt, 0]);
+    if (styleValue !== undefined && !classStatic) targets.push([styleAt, 1]);
+    hosts.forEach((host, index) => targets.push([host.at, index + 2]));
+    const hosted: string[][] = Array.from(
+      { length: hosts.length + 2 },
+      () => [],
+    );
+    for (const { at, steps } of groups) {
+      let target: [number, number] | undefined;
+      for (const candidate of targets)
+        if (candidate[0] >= at && (!target || candidate[0] < target[0]))
+          target = candidate;
+      hosted[target ? target[1] : 0].push(...steps);
+    }
+    const classText =
+      !hosted[0].length &&
+      staticClass(classValue) !== undefined &&
+      !classValue.includes('&')
+        ? classValue
+        : `{${sequence(hosted[0], classValue)}}`;
+    let styleText: string | undefined;
+    if (styleValue !== undefined) {
+      const prefix = `(${vars[0]} = `;
+      const [step] = hosted[1];
+      if (
+        hosted[1].length === 1 &&
+        vars.length === 1 &&
+        existingStyle === undefined &&
+        styleValue === vars[0] &&
+        step.startsWith(prefix) &&
+        step.endsWith(')')
+      ) {
+        temps = temps.filter((temp) => temp !== vars[0]);
+        styleText = step.slice(prefix.length, -1);
+      } else styleText = sequence(hosted[1], styleValue);
+    }
+    const atSx: string[] = [];
+    const classAttr = `${classProp}=${classText}`;
+    const laterClass = later(classPlace);
+    if (laterClass) setReplacement(laterClass, classAttr);
+    else atSx.push(classAttr);
+    if (styleText !== undefined) {
+      const styleAttr = `style={${styleText}}`;
+      const laterStyle = later(style?.span);
+      if (laterStyle) setReplacement(laterStyle, styleAttr);
+      else atSx.push(styleAttr);
+    }
+    replacements.push({
+      start: node.span.start - baseByteOffset,
+      end: node.span.end - baseByteOffset,
+      content: atSx.join(' '),
+    });
+    hosts.forEach((host, index) => {
+      const steps = hosted[index + 2];
+      if (!steps.length) return;
+      const [open, close] = host.braces ? ['{(', ')}'] : ['(', ')'];
+      replacements.push({
+        start: host.open - baseByteOffset,
+        end: host.open - baseByteOffset,
+        content: `${open}${steps.join(', ')}, `,
+      });
+      replacements.push({
+        start: host.close - baseByteOffset,
+        end: host.close - baseByteOffset,
+        content: close,
+      });
+    });
+    tempNext.set(site, Math.max(argEnd, base + plan.params.length, base + 1));
+    if (temps.length) declareTemps(site, temps);
   };
 
   const definitionTables = [
@@ -3618,8 +4053,18 @@ export const transformSource = async (
                 (subNode as HasSpan).span.start,
               );
               if (!entries) return false;
-              const plan = newPlan();
-              const items = planReceiver(subNode, plan);
+              const site = siteOf(node);
+              const base = site === undefined ? 0 : (tempNext.get(site) ?? 0);
+              argBase = site === undefined ? null : base;
+              const plan = newPlan(site !== undefined, base);
+              let items: string[] | null;
+              let argEnd = base;
+              try {
+                items = planReceiver(subNode, plan);
+              } finally {
+                argEnd = argBase ?? base;
+                argBase = null;
+              }
               if (!items) return false;
               const rows: KeyedRow[] = [];
               for (const entry of entries) {
@@ -3638,13 +4083,46 @@ export const transformSource = async (
                 });
                 processStyleRecords(entry.styleObj);
               }
+              const keys: string[] = [];
               const [body] = decideKeyed(
                 rows,
                 plan.reads,
                 plan.vars.map(({ name }) => name),
                 { next: 0 },
+                keys,
+                plan.assign,
               );
               const [row] = rows;
+              if (site !== undefined && plan.assign) {
+                const content =
+                  rows.length === 1 &&
+                  !row.conditions.length &&
+                  !row.fixed &&
+                  items.length === 1 &&
+                  plan.folds.length === 1
+                    ? `{ key: ${JSON.stringify(row.key)}, vars: ${plan.folds[0]} }`
+                    : !items.length
+                      ? body
+                      : `(${items.join(', ')}, ${body})`;
+                const temps = [
+                  ...(content.startsWith('{ key: ') ? [] : plan.params),
+                  ...argNames(base, argEnd),
+                  ...keys,
+                ];
+                if (temps.length) {
+                  tempNext.set(
+                    site,
+                    Math.max(argEnd, base + plan.params.length, base + 1),
+                  );
+                  declareTemps(site, temps);
+                }
+                replacements.push({
+                  start: (subNode as HasSpan).span.start - baseByteOffset,
+                  end: (subNode as HasSpan).span.end - baseByteOffset,
+                  content,
+                });
+                return true;
+              }
               const key = JSON.stringify(row.key);
               const folds = plan.folds.join(', ');
               const content = !plan.params.length
@@ -3775,7 +4253,10 @@ export const transformSource = async (
         attr?.value?.type === 'JSXExpressionContainer' &&
         attr.value.expression.type !== 'JSXEmptyExpression' &&
         !readsNothing(attr.value.expression);
-      let plan = newPlan();
+      const site = siteOf(node);
+      const base = site === undefined ? 0 : (tempNext.get(site) ?? 0);
+      argBase = site === undefined ? null : base;
+      let plan = newPlan(site !== undefined, base);
       const plans: Array<{ params: string[]; items: string[] }> = [];
       for (const arg of args) {
         const start = plan.params.length;
@@ -3787,11 +4268,76 @@ export const transformSource = async (
         }
         plans.push({ params: plan.params.slice(start), items });
       }
-      if (
-        plans.length === args.length &&
+      const planned = plans.length === args.length;
+      const wraps =
         (plan.classRuntime || attributeReads(classNameAttr)) &&
-        (plan.styleRuntime || attributeReads(styleAttrExisting))
+        (plan.styleRuntime || attributeReads(styleAttrExisting));
+      const moved = [node, classNameAttr, styleAttrExisting].flatMap((attr) =>
+        attr ? [attr.span.start] : [],
+      );
+      const hosts: Host[] = [];
+      for (const item of attributes) {
+        if (item.type === 'SpreadElement') {
+          hosts.push({
+            at: item.spread.start,
+            open: (item.arguments as HasSpan).span.start,
+            close: (item.arguments as HasSpan).span.end,
+            braces: false,
+          });
+          continue;
+        }
+        if (moved.includes(item.span.start)) continue;
+        const value = item.value;
+        if (value?.type === 'JSXExpressionContainer') {
+          const inner = value.expression;
+          if (inner.type !== 'JSXEmptyExpression' && !readsNothing(inner))
+            hosts.push({
+              at: item.span.start,
+              open: (inner as HasSpan).span.start,
+              close: (inner as HasSpan).span.end,
+              braces: false,
+            });
+        } else if (
+          value?.type === 'JSXElement' ||
+          value?.type === 'JSXFragment'
+        )
+          hosts.push({
+            at: item.span.start,
+            open: value.span.start,
+            close: value.span.end,
+            braces: true,
+          });
+      }
+      const positions = [
+        node.span.start,
+        classNameAttr?.span.start,
+        styleArg !== null ? styleAttrExisting?.span.start : undefined,
+      ].filter((position) => position !== undefined);
+      const first = Math.min(...positions);
+      const last = Math.max(...positions);
+      const crossing = hosts.some((host) => host.at > first && host.at < last);
+      if (
+        site !== undefined &&
+        planned &&
+        plan.assign &&
+        (wraps || plan.styleRuntime || crossing)
       ) {
+        assignElement(
+          node,
+          args,
+          plan,
+          plans,
+          site,
+          classIsExpr ? classNameAttr?.span : undefined,
+          classNameAttr?.span,
+          existingClassExpr,
+          styleArg !== null && styleAttrExisting
+            ? { span: styleAttrExisting.span, value: styleArg }
+            : undefined,
+          hosts,
+        );
+      } else if (planned && wraps) {
+        argBase = null;
         const entries: Array<{
           order: [number, number];
           param: string;
@@ -3837,9 +4383,7 @@ export const transformSource = async (
         } finally {
           elementReads = null;
         }
-        const classValue = built.classParts.length
-          ? built.classParts.join(' + " " + ')
-          : '""';
+        const classValue = joinClassParts(built.classParts, plan.params);
         const existing = styleArg !== null ? '__plumeria_style' : undefined;
         const spread = [
           ...(existing ? [existing] : []),
@@ -3848,15 +4392,61 @@ export const transformSource = async (
         const copy = `{ ${spread.join(', ')} }`;
         const styleValue = !plan.vars.length
           ? (existing ?? 'undefined')
-          : plan.vars.some(({ always }) => always)
-            ? copy
-            : `(${plan.vars.map(({ name }) => name).join(' || ')}) ? ${copy} : ${existing ?? 'undefined'}`;
-        replacements.push({
-          start: node.span.start - baseByteOffset,
-          end: node.span.end - baseByteOffset,
-          content: `{...((${entries.map(({ param }) => param).join(', ')}) => ({ ${classProp}: ${classValue}, style: ${styleValue} }))(${entries.map(({ arg }) => arg).join(', ')})}`,
+          : plan.vars.length === 1 && !existing
+            ? plan.vars[0].always
+              ? plan.vars[0].name
+              : `${plan.vars[0].name} || undefined`
+            : plan.vars.some(({ always }) => always)
+              ? copy
+              : `(${plan.vars.map(({ name }) => name).join(' || ')}) ? ${copy} : ${existing ?? 'undefined'}`;
+        const sides = entries.map(({ param }) => {
+          const inClass = mentions(classValue, param);
+          const inStyle = mentions(styleValue, param);
+          return !param.startsWith('[') && inClass !== inStyle
+            ? inClass
+            : undefined;
         });
+        if (
+          sides.every((side) => side !== undefined) &&
+          sides.every((side, index) => index === 0 || sides[index - 1] || !side)
+        ) {
+          const side = (want: boolean, value: string) => {
+            const picked = entries.filter((_, index) => sides[index] === want);
+            if (!picked.length) return value;
+            if (picked.length === 1 && picked[0].param === value)
+              return picked[0].arg;
+            return invoke(
+              picked.map(({ param }) => param).join(', '),
+              value,
+              picked.map(({ arg }) => arg).join(', '),
+            );
+          };
+          const classText = side(true, classValue);
+          const styleText = side(false, styleValue);
+          const classAttr =
+            staticClass(classText) !== undefined && !classText.includes('&')
+              ? classText
+              : `{${classText}}`;
+          const styleAttr =
+            styleText === 'undefined' ? '' : ` style={${styleText}}`;
+          replacements.push({
+            start: node.span.start - baseByteOffset,
+            end: node.span.end - baseByteOffset,
+            content: `${classProp}=${classAttr}${styleAttr}`,
+          });
+        } else
+          replacements.push({
+            start: node.span.start - baseByteOffset,
+            end: node.span.end - baseByteOffset,
+            content: `{...${invoke(
+              entries.map(({ param }) => param).join(', '),
+              `({ ${classProp}: ${classValue}, style: ${styleValue} })`,
+              entries.map(({ arg }) => arg).join(', '),
+            )}}`,
+          });
       } else {
+        const foldBase = site === undefined ? 0 : (tempNext.get(site) ?? 0);
+        argBase = site === undefined ? null : foldBase;
         const {
           classParts,
           isOptimizable,
@@ -3864,6 +4454,12 @@ export const transformSource = async (
           dynamicVars,
           propVarSpreads,
         } = buildClassParts(args, dynamicClassParts, existingClassExpr, true);
+        const folded = foldDynamicVars(dynamicVars, site !== undefined, invoke);
+        if (site !== undefined && argBase !== null && argBase > foldBase) {
+          tempNext.set(site, argBase);
+          declareTemps(site, argNames(foldBase, argBase), false);
+        }
+        argBase = null;
 
         if (!isOptimizable) {
           throwCompilationError(
@@ -3874,13 +4470,19 @@ export const transformSource = async (
 
         const styleParts = [
           ...existingStyleParts,
-          ...foldDynamicVars(dynamicVars),
+          ...folded,
           ...propVarSpreads,
         ];
-        const styleAttr =
-          styleParts.length > 0 || existingStyleExpr
-            ? ` style={{ ${[existingStyleExpr, ...styleParts].filter(Boolean).join(', ')} }}`
-            : '';
+        const generatedOnly =
+          !styleObject && !existingStyleExpr && !propVarSpreads.length;
+        const allStyles = [existingStyleExpr, ...styleParts].filter(Boolean);
+        const styleAttr = !(styleParts.length > 0 || existingStyleExpr)
+          ? ''
+          : allStyles.length === 1 &&
+              generatedOnly &&
+              allStyles[0].startsWith('...')
+            ? ` style={${allStyles[0].slice(3)}}`
+            : ` style={{ ${allStyles.join(', ')} }}`;
 
         if (
           isOptimizable &&
@@ -3888,19 +4490,30 @@ export const transformSource = async (
             Object.keys(baseStyle).length > 0 ||
             dynamicClassParts.length > 0)
         ) {
-          const replacement =
-            classParts.length > 0 ? classParts.join(' + " " + ') : '""';
+          const replacement = joinClassParts(classParts, []);
+          const fixed = staticClass(replacement) !== undefined;
           const value =
-            classParts.length <= 1 &&
-            replacement.startsWith('"') &&
-            !/[\\&]/.test(replacement)
+            fixed && !replacement.includes('&')
               ? replacement
               : `{${replacement}}`;
-          replacements.push({
-            start: node.span.start - baseByteOffset,
-            end: node.span.end - baseByteOffset,
-            content: `${classProp}=${value}${styleAttr}`,
-          });
+          if (
+            classNameAttr &&
+            classNameAttr.span.start > node.span.start &&
+            fixed &&
+            !styleAttr
+          ) {
+            setReplacement(classNameAttr.span, `${classProp}=${value}`);
+            replacements.push({
+              start: node.span.start - baseByteOffset,
+              end: node.span.end - baseByteOffset,
+              content: '',
+            });
+          } else
+            replacements.push({
+              start: node.span.start - baseByteOffset,
+              end: node.span.end - baseByteOffset,
+              content: `${classProp}=${value}${styleAttr}`,
+            });
         } else {
           const keptClass = existingClassExpr
             ? `${classProp}={${existingClassExpr}}`
@@ -3994,12 +4607,10 @@ export const transformSource = async (
       const { classParts, isOptimizable } = buildClassParts(args);
 
       if (isOptimizable) {
-        const replacement =
-          classParts.length > 0 ? classParts.join(' + " " + ') : '""';
         replacements.push({
           start: node.span.start - baseByteOffset,
           end: node.span.end - baseByteOffset,
-          content: replacement,
+          content: joinClassParts(classParts, []),
         });
       } else {
         throwCompilationError(
@@ -4090,7 +4701,34 @@ export const transformSource = async (
     }
   });
 
-  replacements.sort((a, b) => a.start - b.start || b.end - a.end);
+  const moduleSite = declSites.get(MODULE_SITE);
+  if (moduleSite && helpers.size)
+    replacements.push({
+      start: moduleSite.at,
+      end: moduleSite.at,
+      content: `${[...helpers.values()]
+        .map(
+          ({ name, params, body }) =>
+            `\nfunction ${name}(${params}) { return ${body}; }`,
+        )
+        .join('')}\n`,
+    });
+
+  for (const [site, names] of siteTemps) {
+    const declared = declSites.get(site);
+    if (!declared || !names.length) continue;
+    for (const [at, content] of insertions(declared, names))
+      replacements.push({ start: at, end: at, content });
+  }
+
+  const byPosition = (
+    a: { start: number; end: number },
+    b: { start: number; end: number },
+  ) =>
+    a.start - b.start ||
+    Number(a.end > a.start) - Number(b.end > b.start) ||
+    b.end - a.end;
+  replacements.sort(byPosition);
 
   for (const deferred of deferredSources) {
     let cursor = deferred.start;
@@ -4136,7 +4774,7 @@ export const transformSource = async (
   if (elided.length === 0) return { code: transformedSource };
 
   replacements.push(...elided);
-  replacements.sort((a, b) => a.start - b.start || b.end - a.end);
+  replacements.sort(byPosition);
 
   return { code: splice(replacements) };
 };
