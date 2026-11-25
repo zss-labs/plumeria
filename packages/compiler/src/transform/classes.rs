@@ -2345,11 +2345,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let (test, consequent, alternate) = match node.kind() {
             K::Conditional(cond) => (
-                cond.test.span(),
+                E::new(&cond.test),
                 E::new(&cond.consequent),
                 Some(E::new(&cond.alternate)),
             ),
-            K::Binary(left, op, right) if op.is_and() => (left.span(), right, None),
+            K::Binary(left, op, right) if op.is_and() => (left, right, None),
             _ => return Ok(None),
         };
         self.plan_guard(test, consequent, alternate, plan, |this, node, plan| {
@@ -2392,7 +2392,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     return self.plan_receiver(E::new(taken), plan);
                 }
                 return self.plan_guard(
-                    cond.test.span(),
+                    E::new(&cond.test),
                     E::new(&cond.consequent),
                     Some(E::new(&cond.alternate)),
                     plan,
@@ -2407,7 +2407,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         Ok(Some(Vec::new()))
                     };
                 }
-                return self.plan_guard(left.span(), right, None, plan, Self::plan_receiver);
+                return self.plan_guard(left, right, None, plan, Self::plan_receiver);
             }
             _ => {}
         }
@@ -2447,14 +2447,18 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
     #[allow(clippy::type_complexity)]
     fn plan_guard(
         &mut self,
-        test: Span,
+        test_expr: E<'b, 'a>,
         consequent: E<'b, 'a>,
         alternate: Option<E<'b, 'a>>,
         plan: &mut ElementPlan,
         recurse: fn(&mut Self, E<'b, 'a>, &mut ElementPlan) -> TResult<Option<Vec<String>>>,
     ) -> TResult<Option<Vec<String>>> {
-        let name = plan.slot("t");
-        plan.reads.insert((test.start, test.end), name.clone());
+        let test = test_expr.span();
+        let name = (!plan.assign || !self.can_skip_test(test_expr)).then(|| {
+            let name = plan.slot("t");
+            plan.reads.insert((test.start, test.end), name.clone());
+            name
+        });
         plan.class_runtime = true;
         let start = plan.params.len();
         let Some(yes) = recurse(self, consequent, plan)? else {
@@ -2470,8 +2474,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         let end = plan.params.len();
         if end == start {
+            let Some(name) = &name else {
+                return Ok(Some(Vec::new()));
+            };
             let read = format!("({})", self.text(test));
-            return Ok(Some(vec![plan.item(&name, read)]));
+            return Ok(Some(vec![plan.item(name, read)]));
         }
         if plan.assign {
             let reset = |params: &[String]| -> Vec<String> {
@@ -2492,9 +2499,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     steps.join(", ")
                 }
             };
+            let read = match &name {
+                Some(name) => format!("({name} = ({}))", self.text(test)),
+                None => format!("({})", self.text(test)),
+            };
             return Ok(Some(vec![format!(
-                "(({name} = ({})) ? ({}) : ({}))",
-                self.text(test),
+                "({read} ? ({}) : ({}))",
                 group(truthy),
                 group(falsy)
             )]));
