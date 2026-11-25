@@ -281,6 +281,54 @@ export const U = (proxy) => css.use(('active' in proxy) && s.red, s.blue);`,
       expect(has).toHaveBeenCalledTimes(1);
     });
 
+    const branches = async (sx: string, name: string) => {
+      const source = `import * as css from '@plumeria/core';
+const s = css.create({ w: (n) => ({ width: n }) });
+export const A = ({ next, a, b }) => <div sx={${sx}} />;`;
+      const { code } = await run(source, name);
+      const { A } = await execute(source, name);
+      const render = (flag: boolean) => {
+        const calls = {
+          next: jest.fn(() => flag),
+          a: jest.fn(() => 1),
+          b: jest.fn(() => 2),
+        };
+        const props = A(calls as never) as {
+          className: string;
+          style: Record<string, unknown>;
+        };
+        return { calls, props };
+      };
+      return { code, render };
+    };
+
+    it('writes one class for a condition whose branches share it', async () => {
+      const { code, render } = await branches(
+        'next() ? s.w(a()) : s.w(b())',
+        'shared-branch.tsx',
+      );
+      expect(code).toMatch(/className="\w+"/);
+      const on = render(true);
+      const off = render(false);
+      expect(on.props.className).toBe(off.props.className);
+      expect(on.calls.next).toHaveBeenCalledTimes(1);
+      expect(on.calls.a).toHaveBeenCalledTimes(1);
+      expect(on.calls.b).not.toHaveBeenCalled();
+      expect(Object.values(on.props.style)).toEqual(['1px']);
+      expect(off.calls.next).toHaveBeenCalledTimes(1);
+      expect(off.calls.a).not.toHaveBeenCalled();
+      expect(off.calls.b).toHaveBeenCalledTimes(1);
+      expect(Object.values(off.props.style)).toEqual(['2px']);
+    });
+
+    it('keeps two separately written conditions apart', async () => {
+      const { render } = await branches(
+        '[next() && s.w(a()), !next() && s.w(b())]',
+        'separate-branch.tsx',
+      );
+      expect(render(true).calls.next).toHaveBeenCalledTimes(2);
+    });
+
     it.each([`className="base"`, `className={"base"}`])(
       'lets %s after a spread win over it',
       async (attribute) => {
