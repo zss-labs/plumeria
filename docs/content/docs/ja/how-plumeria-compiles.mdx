@@ -16,3 +16,88 @@ description: "別のファイルにあるスタイルが、クラス名と CSS �
 `Card.tsx` を変換するとき、コンパイラは `btn` の import をたどって `button.ts` の定義を読みます。その中の `base` には `padding: 16` が一つだけあります。
 
 この宣言から `xqqbxt1d` というクラスが生成されます。要素にはそのクラス名を入れ、CSS に `.xqqbxt1d { padding: 16px; }` を出力します。コンポーネントを描画する時点で、定義の探索はすでに完了しています。
+
+## 実行時の値を残す
+
+条件や関数キーの引数は、実行時にしか決まりません。コンパイラはそれを普通の JavaScript として要素に残し、それぞれの値を書いた順に一度だけ読みます。
+
+```tsx title="TypeScript"
+import * as css from '@plumeria/core';
+
+const styles = css.create({
+  text: {
+    fontSize: 12,
+    color: 'gray',
+  },
+  active: {
+    color: 'navy',
+  },
+  width: (size) => ({
+    width: size,
+  }),
+});
+```
+
+### 静的なスタイル
+
+```tsx title="JSX"
+export const A = () => <div sx={styles.text} />;
+```
+
+```tsx title="Compiled"
+export const A = () => <div className="xhrr6ses xuifcaas" />;
+```
+
+### 条件
+
+```tsx title="JSX"
+export const A = ({ active }) => (
+  <div sx={[styles.text, active && styles.active]} />
+);
+```
+
+```tsx title="Compiled"
+export const A = ({ active }) => (
+  <div className={((active) ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas")} />
+);
+```
+
+### 関数キー
+
+```tsx title="JSX"
+export const A = ({ size }) => <div sx={styles.width(size * 2)} />;
+```
+
+```tsx title="Compiled"
+export const A = ({ size }) => { let __plumeria__$$a0; return <div className="x8a1qw3u" style={(__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })} />; };
+```
+
+```css title="CSS"
+.x8a1qw3u {
+  width: var(--xga54edu-size);
+}
+```
+
+### 条件と関数キー
+
+```tsx title="JSX"
+export function App({ active, size }) {
+  return (
+    <div sx={[styles.text, active && styles.active, styles.width(size * 2)]} />
+  );
+}
+```
+
+```tsx title="Compiled"
+export function App({ active, size }) { let __plumeria__$$v0, __plumeria__$$a0;
+  return (
+    <div className={((__plumeria__$$v0 = (__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })), ((active) ? "xhrr6ses x8a1qw3u xvbwmxqp" : "xhrr6ses x8a1qw3u xuifcaas"))} style={__plumeria__$$v0} />
+  );
+}
+```
+
+そのあと、ミニファイアーが一時変数をほかのローカル変数と同じように短い名前に変えます。
+
+```js title="next build"
+function e({active:a,size:c}){let d,f;return(0,b.jsx)("div",{className:(d={"--xga54edu-size":"number"==typeof(f=2*c)?f+"px":f},a?"xhrr6ses x8a1qw3u xvbwmxqp":"xhrr6ses x8a1qw3u xuifcaas"),style:d})}
+```
