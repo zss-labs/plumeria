@@ -56,7 +56,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
   let temps = 0;
   const once = (source: string, body: (value: string) => string) => {
     if (/^[\w$]+$/.test(source)) return `(${body(source)})`;
-    const temp = `\u0001${temps++}\u0001`;
+    const temp = `${temps++}`;
     return `(${temp} = (${source}), ${body(temp)})`;
   };
 
@@ -74,7 +74,7 @@ export const A = (p: any) => <div sx={${call}} />;`;
     const seen = new Set<string>();
     return text
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\u0001(\d+)\u0001/g, (_, id: string) => {
+      .replace(/(\d+)/g, (_, id: string) => {
         if (seen.has(id)) return `\\k<t${id}>`;
         seen.add(id);
         return `(?<t${id}>__plumeria__\\$\\$a\\d+)`;
