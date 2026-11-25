@@ -21,6 +21,7 @@ pub struct NamedParam {
 
 #[derive(Clone)]
 pub struct StyleFunction<'b, 'a> {
+    pub bindings: Vec<String>,
     pub params: Vec<String>,
     pub unsupported_params: bool,
     pub named: Option<Vec<NamedParam>>,
@@ -238,6 +239,12 @@ pub fn style_functions_of<'b, 'a>(object: &'b ObjectExpression<'a>) -> StyleFunc
         functions.insert(
             key.name.to_string(),
             StyleFunction {
+                bindings: views
+                    .iter()
+                    .filter_map(|view| view.pattern)
+                    .flat_map(|pattern| pattern.get_binding_identifiers())
+                    .map(|ident| ident.name.to_string())
+                    .collect(),
                 params: names,
                 unsupported_params: unsupported,
                 named,
@@ -486,6 +493,17 @@ pub fn resolve_dynamic_style(
                 .to_string(),
         );
     }
+    let aliases = tables.aliases.map(|aliases| {
+        let mut aliases = aliases.clone();
+        for name in &func.bindings {
+            aliases.remove(name);
+        }
+        aliases
+    });
+    let tables = Env {
+        aliases: aliases.as_ref(),
+        ..tables
+    };
     let mut temp: Layer<Value> = Layer::over(statics);
 
     let with_default: Vec<(String, &Expression)> = func
