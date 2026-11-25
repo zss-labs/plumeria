@@ -67,37 +67,43 @@ const FUNCTION_TYPES = new Set([
   'ArrowFunctionExpression',
 ]);
 
-const collectPatternNames = (pat: any, out: Set<string>) => {
+export const forEachPatternIdentifier = (
+  pat: any,
+  visit: (id: any) => void,
+) => {
   if (!pat || typeof pat !== 'object') return;
   switch (pat.type) {
     case 'Identifier':
-      out.add(pat.value);
+      visit(pat);
       return;
     case 'Parameter':
-      collectPatternNames(pat.pat, out);
+      forEachPatternIdentifier(pat.pat, visit);
       return;
     case 'AssignmentPattern':
-      collectPatternNames(pat.left, out);
+      forEachPatternIdentifier(pat.left, visit);
       return;
     case 'RestElement':
-      collectPatternNames(pat.argument, out);
+      forEachPatternIdentifier(pat.argument, visit);
       return;
     case 'ArrayPattern':
-      pat.elements?.forEach((el: any) => collectPatternNames(el, out));
+      pat.elements?.forEach((el: any) => forEachPatternIdentifier(el, visit));
       return;
     case 'ObjectPattern':
       pat.properties?.forEach((prop: any) => {
         if (prop?.type === 'KeyValuePatternProperty') {
-          collectPatternNames(prop.value, out);
+          forEachPatternIdentifier(prop.value, visit);
         } else if (prop?.type === 'AssignmentPatternProperty') {
-          collectPatternNames(prop.key, out);
+          forEachPatternIdentifier(prop.key, visit);
         } else if (prop?.type === 'RestElement') {
-          collectPatternNames(prop.argument, out);
+          forEachPatternIdentifier(prop.argument, visit);
         }
       });
       return;
   }
 };
+
+const collectPatternNames = (pat: any, out: Set<string>) =>
+  forEachPatternIdentifier(pat, (id) => out.add(id.value));
 
 // let/const/class/function declared directly in a statement list.
 const collectLexicalNames = (stmts: any[] | undefined, out: Set<string>) => {
