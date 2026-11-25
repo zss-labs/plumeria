@@ -997,7 +997,38 @@ struct FirstPass<'x, 't, 'p, 'b, 'a> {
     error: Option<String>,
 }
 
+impl FirstPass<'_, '_, '_, '_, '_> {
+    fn record_initialized_consts(&mut self, statements: &[Statement<'_>]) {
+        if let Some((Statement::ReturnStatement(ret), previous)) = statements.split_last() {
+            for statement in previous {
+                if let Statement::VariableDeclaration(decl) = statement
+                    && decl.kind == VariableDeclarationKind::Const
+                {
+                    for declarator in &decl.declarations {
+                        if declarator.init.is_some()
+                            && let BindingPattern::BindingIdentifier(id) = &declarator.id
+                            && let Some(symbol) = id.symbol_id.get()
+                        {
+                            self.t.initialized_const_returns.insert(symbol, ret.span);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl<'x, 't, 'p, 'b, 'a> Visit<'a> for FirstPass<'x, 't, 'p, 'b, 'a> {
+    fn visit_block_statement(&mut self, block: &BlockStatement<'a>) {
+        self.record_initialized_consts(&block.body);
+        walk::walk_block_statement(self, block);
+    }
+
+    fn visit_function_body(&mut self, body: &FunctionBody<'a>) {
+        self.record_initialized_consts(&body.statements);
+        walk::walk_function_body(self, body);
+    }
+
     fn visit_import_declaration(&mut self, it: &ImportDeclaration<'a>) {
         if self.error.is_some() {
             return;
