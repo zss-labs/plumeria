@@ -1,5 +1,6 @@
 import { parseSync } from '@swc/core';
 import type {
+  BlockStatement,
   Expression,
   HasSpan,
   ImportSpecifier,
@@ -649,6 +650,13 @@ export const transformSource = async (
   const propAliases = new Map<string, Map<string, string>>();
   const propDefaults = new Map<string, Map<string, Expression>>();
   const declaredProps = new Map<string, Set<string>>();
+  const initializedConstReturns = new Map<string, HasSpan['span']>();
+  const isInitializedConst = (expr: Expression) => {
+    if (!t.isIdentifier(expr)) return false;
+    const { ctxt } = expr as Identifier & { ctxt: number };
+    const ret = initializedConstReturns.get(`${ctxt}:${expr.value}`);
+    return !!ret && ret.start <= expr.span.start && expr.span.end <= ret.end;
+  };
   const parameterBodies = new Map<string, HasSpan['span']>();
   const addComponent = (name: string, fn: HasSpan & { params: unknown[] }) => {
     components.push({ name, node: fn });
@@ -1493,6 +1501,20 @@ export const transformSource = async (
   };
 
   traverse(ast, {
+    BlockStatement({ node }: { node: BlockStatement }) {
+      const ret = node.stmts[node.stmts.length - 1];
+      if (ret?.type !== 'ReturnStatement') return;
+      for (const stmt of node.stmts) {
+        if (stmt.type !== 'VariableDeclaration' || stmt.kind !== 'const')
+          continue;
+        for (const { id, init } of stmt.declarations) {
+          if (!init || id.type !== 'Identifier') continue;
+          const { ctxt } = id as Identifier & { ctxt: number };
+          if (ctxt)
+            initializedConstReturns.set(`${ctxt}:${id.value}`, ret.span);
+        }
+      }
+    },
     ImportDeclaration({ node }: { node: ImportDeclaration }) {
       if (node.source.value === '@plumeria/core') {
         if (node.typeOnly) return;
@@ -2307,6 +2329,12 @@ export const transformSource = async (
         .subarray(start - baseByteOffset, end - baseByteOffset)
         .toString('utf-8');
     };
+    const inlineArgument =
+      runtime.length === 1 &&
+      !extra.length &&
+      !derived.length &&
+      isInitializedConst(runtime[0].source) &&
+      varGroups.get(runtime[0].param)?.every((g) => !g.written && !g.unit);
     const reads = [
       ...runtime.map(({ param, source }) => ({ source, param })),
       ...extra.map((source) => ({ source, param: undefined })),
@@ -2316,7 +2344,7 @@ export const transformSource = async (
         param,
         text: textOf(source),
       }))
-      .filter(({ text }) => !isLiteralSource(text))
+      .filter(({ text }) => !inlineArgument && !isLiteralSource(text))
       .sort((a, b) => a.start - b.start);
     const base = argBase ?? 0;
     if (argBase !== null) argBase += reads.length;
@@ -2812,7 +2840,8 @@ export const transformSource = async (
       case 'Identifier': {
         const body = parameterBodies.get(`${node.ctxt}:${node.value}`);
         return (
-          !!body && body.start <= node.span.start && node.span.end <= body.end
+          isInitializedConst(node) ||
+          (!!body && body.start <= node.span.start && node.span.end <= body.end)
         );
       }
       case 'BinaryExpression':
@@ -4141,7 +4170,7 @@ export const transformSource = async (
               argBase = site === undefined ? null : base;
               const plan = newPlan(site !== undefined, base);
               let items: string[] | null;
-              let argEnd = base;
+              let argEnd: number;
               try {
                 items = planReceiver(subNode, plan);
               } finally {
