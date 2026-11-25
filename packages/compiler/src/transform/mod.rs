@@ -511,13 +511,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         if !collides {
             self.decl_sites = hoist::collect_decl_sites(program);
         }
+        let stable_parameters = program.body.iter().any(Statement::is_module_declaration)
+            && !self.scoping.root_scope_flags().contains_direct_eval();
         for (name, span, params) in component_functions(program) {
             let body = Span::new(params.span.end, span.end);
             let patterns = params.items.iter().map(|param| &param.pattern)
                 .chain(params.rest.iter().map(|param| &param.rest.argument));
             for pattern in patterns {
                 for binding in pattern.get_binding_identifiers() {
-                    if let Some(symbol) = binding.symbol_id.get() {
+                    if let Some(symbol) = binding.symbol_id.get()
+                        && stable_parameters
+                        && self.scoping.symbol_redeclarations(symbol).is_empty()
+                        && !self.scoping.symbol_is_mutated(symbol)
+                    {
                         self.parameter_bodies.insert(symbol, body);
                     }
                 }
