@@ -858,7 +858,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let text_of = |source: E<'b, 'a>| self.source_of(source);
         let inline_argument = extra.is_empty() && resolved.derived.is_empty()
             && matches!(runtime.as_slice(), [(param, source)]
-                if self.is_initialized_const(*source) && resolved.var_groups.get(param)
+                if self.is_stable_read(*source) && resolved.var_groups.get(param)
                     .is_some_and(|groups| groups.iter().all(|g| !g.written && g.unit.is_empty())));
         let mut reads: Vec<(u32, Option<&String>, String)> = runtime
             .iter()
@@ -1787,11 +1787,14 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         self.build_decision(node, &prefix, &off, &mut counter, scoped)
     }
 
-    fn is_initialized_const(&self, expr: E) -> bool {
+    fn is_stable_read(&self, expr: E) -> bool {
         let K::Ident(id) = expr.kind() else { return false };
         self.visibility().symbol_of(id)
-            .and_then(|symbol| self.initialized_const_returns.get(&symbol))
-            .is_some_and(|ret| ret.start <= id.span.start && id.span.end <= ret.end)
+            .and_then(|symbol| {
+                self.initialized_const_returns.get(&symbol)
+                    .or_else(|| self.parameter_bodies.get(&symbol))
+            })
+            .is_some_and(|scope| scope.start <= id.span.start && id.span.end <= scope.end)
     }
 
     fn can_skip_test(&self, expr: E) -> bool {
@@ -1800,10 +1803,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
         match unwrap(expr).kind() {
             K::Str(_) | K::Num(_) | K::Bool(_) | K::Null => true,
-            K::Ident(ident) => self.is_initialized_const(unwrap(expr)) || self.visibility()
-                .symbol_of(ident)
-                .and_then(|symbol| self.parameter_bodies.get(&symbol))
-                .is_some_and(|body| body.start <= ident.span.start && ident.span.end <= body.end),
+            K::Ident(_) => self.is_stable_read(unwrap(expr)),
             K::Binary(left, BinOp::Logical(_) | BinOp::Binary(StrictEquality | StrictInequality), right) => {
                 self.can_skip_test(left) && self.can_skip_test(right)
             }
