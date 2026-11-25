@@ -1,4 +1,5 @@
 import {
+  bindMarkerCalls,
   objectExpressionToObject,
   t,
   getRootIdentifier,
@@ -942,9 +943,10 @@ describe('parser', () => {
     });
 
     it('should handle css.marker used as spread', () => {
-      const source = `const obj = { ...css.marker('id', ':hover') }`;
+      const source = `import * as css from "@plumeria/core"; const obj = { ...css.marker('id', ':hover') }`;
       const ast = parseSync(source, { syntax: 'typescript' });
-      const varDecl = ast.body[0] as any;
+      bindMarkerCalls(ast);
+      const varDecl = ast.body[1] as any;
       const objectExpr = varDecl.declarations[0].init as ObjectExpression;
 
       const result = objectExpressionToObject(
@@ -969,9 +971,10 @@ describe('parser', () => {
     });
 
     it('should handle css.extended used as computed key', () => {
-      const source = `const obj = { [css.extended('id', ':hover')]: { op: 1 } }`;
+      const source = `import * as css from "@plumeria/core"; const obj = { [css.extended('id', ':hover')]: { op: 1 } }`;
       const ast = parseSync(source, { syntax: 'typescript' });
-      const varDecl = ast.body[0] as any;
+      bindMarkerCalls(ast);
+      const varDecl = ast.body[1] as any;
       const objectExpr = varDecl.declarations[0].init as ObjectExpression;
 
       const result = objectExpressionToObject(
