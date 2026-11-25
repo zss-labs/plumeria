@@ -48,8 +48,7 @@ export default function App({ active }) {
 
 ```tsx
 <div
-  className={'xhrr6ses xhxthtyw' + ' ' + (active ? 'xvbwmxqp' : 'xuifcaas')}
-  style={{ '--xfuma1qq-value': scale }}
+  className={((active) ? "xhrr6ses xhxthtyw xvbwmxqp" : "xhrr6ses xhxthtyw xuifcaas")} style={{ "--xfuma1qq-value": scale }}
 />
 ```
 
