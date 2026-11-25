@@ -3,7 +3,7 @@ import type {
   ImportNamespaceSpecifier,
   Module,
 } from '@swc/core';
-import { exportNames } from './parser';
+import { bindMarkerCalls, exportNames } from './parser';
 import { collectReferenceIdentifiers } from './references';
 import { resolveImportPath } from './resolver';
 
@@ -13,6 +13,7 @@ const unwrap = (node: any): any => {
 };
 
 export function resolveNamespaceMembers(ast: Module, filePath: string): void {
+  bindMarkerCalls(ast);
   const targets = new Map<
     string,
     {
