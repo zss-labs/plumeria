@@ -1350,12 +1350,20 @@ function evaluateBinaryExpression(
   );
 }
 
-const coreCalls = new WeakMap<CallExpression, string>();
+const coreCalls = new WeakMap<
+  CallExpression,
+  { method: string; root: string }
+>();
+let shadowedNames: ReadonlySet<string> = new Set();
+
+export const setShadowedNames = (names: ReadonlySet<string>) => {
+  const previous = shadowedNames;
+  shadowedNames = names;
+  return previous;
+};
 
 export function bindMarkerCalls(ast: Module) {
   const aliases = new Map<string, string>();
-  const binding = (id: Identifier) =>
-    `${(id as Identifier & { ctxt: number }).ctxt}:${id.value}`;
   for (const stmt of ast.body) {
     if (
       stmt.type !== 'ImportDeclaration' ||
@@ -1364,7 +1372,7 @@ export function bindMarkerCalls(ast: Module) {
       continue;
     for (const spec of stmt.specifiers)
       aliases.set(
-        binding(spec.local),
+        spec.local.value,
         spec.type === 'ImportSpecifier'
           ? (spec.imported ?? spec.local).value
           : 'NAMESPACE',
@@ -1374,15 +1382,19 @@ export function bindMarkerCalls(ast: Module) {
   traverse(ast, {
     CallExpression({ node }: { node: CallExpression }) {
       const { callee } = node;
-      const method = t.isIdentifier(callee)
-        ? aliases.get(binding(callee))
-        : t.isMemberExpression(callee) &&
-            t.isIdentifier(callee.object) &&
-            t.isIdentifier(callee.property) &&
-            aliases.get(binding(callee.object)) === 'NAMESPACE'
-          ? callee.property.value
-          : undefined;
-      if (method) coreCalls.set(node, method);
+      if (t.isIdentifier(callee)) {
+        const method = aliases.get(callee.value);
+        if (method) coreCalls.set(node, { method, root: callee.value });
+      } else if (
+        t.isMemberExpression(callee) &&
+        t.isIdentifier(callee.object) &&
+        t.isIdentifier(callee.property) &&
+        aliases.get(callee.object.value) === 'NAMESPACE'
+      )
+        coreCalls.set(node, {
+          method: callee.property.value,
+          root: callee.object.value,
+        });
     },
   });
 }
@@ -1392,7 +1404,9 @@ function evaluateCallExpression(
   node: CallExpression,
   staticTable: StaticTable,
 ): string | CSSObject | null {
-  const method = coreCalls.get(node);
+  const call = coreCalls.get(node);
+  const method =
+    call && !shadowedNames.has(call.root) ? call.method : undefined;
 
   if (!method) return null;
 
