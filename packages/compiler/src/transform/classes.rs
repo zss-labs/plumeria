@@ -36,6 +36,13 @@ pub struct CallBinding {
     pub args: Vec<String>,
 }
 
+pub(super) struct Host {
+    at: u32,
+    open: u32,
+    close: u32,
+    braces: bool,
+}
+
 #[derive(Default)]
 pub(super) struct ElementPlan {
     params: Vec<String>,
@@ -44,13 +51,23 @@ pub(super) struct ElementPlan {
     reads: FxHashMap<(u32, u32), String>,
     class_runtime: bool,
     style_runtime: bool,
+    assign: bool,
+    base: usize,
 }
 
 impl ElementPlan {
     fn slot(&mut self, kind: &str) -> String {
-        let name = format!("__plumeria_{kind}{}", self.params.len());
+        let name = format!("__plumeria_{kind}{}", self.base + self.params.len());
         self.params.push(name.clone());
         name
+    }
+
+    fn item(&self, name: &str, value: String) -> String {
+        if self.assign {
+            format!("({name} = {value})")
+        } else {
+            value
+        }
     }
 }
 
@@ -73,7 +90,116 @@ fn reads_nothing(expr: &Expression) -> bool {
     }
 }
 
-fn vars_object(vars: &[DynamicVar]) -> Option<(String, bool, bool)> {
+fn static_class(part: &str) -> Option<&str> {
+    let inner = part.strip_prefix('"')?.strip_suffix('"')?;
+    (!inner.contains(['"', '\\'])).then_some(inner)
+}
+
+fn class_ternary(part: &str) -> Option<(&str, &str, &str)> {
+    let body = part.strip_prefix('(')?.strip_suffix(')')?;
+    let (left, falsy) = body.rsplit_once(" : ")?;
+    let falsy = static_class(falsy)?;
+    let (test, truthy) = left.rsplit_once(" ? ")?;
+    let truthy = static_class(truthy)?;
+    Some((test, truthy, falsy))
+}
+
+fn generated_test<'s>(test: &'s str, generated: &[String]) -> Option<(&'s str, bool)> {
+    let (base, negated) = match test.strip_prefix('!') {
+        Some(inner) => (inner, true),
+        None => (test, false),
+    };
+    let name = base
+        .strip_prefix('(')
+        .and_then(|name| name.strip_suffix(')'))
+        .unwrap_or(base);
+    generated
+        .iter()
+        .any(|generated| generated == name)
+        .then_some((name, negated))
+}
+
+pub fn join_class_parts(parts: &[String], generated: &[String]) -> String {
+    if parts.is_empty() {
+        return "\"\"".to_string();
+    }
+    let mut ternaries: Vec<(usize, &str, &str, &str)> = Vec::new();
+    for (index, part) in parts.iter().enumerate() {
+        if static_class(part).is_some() {
+            continue;
+        }
+        let Some((test, truthy, falsy)) = class_ternary(part) else {
+            return parts.join(" + \" \" + ");
+        };
+        ternaries.push((index, test, truthy, falsy));
+    }
+    let keys: Vec<(&str, bool)> = if ternaries.len() == 1 {
+        let (_, test, _, _) = ternaries[0];
+        vec![generated_test(test, generated).unwrap_or((test, false))]
+    } else {
+        let keys: Option<Vec<(&str, bool)>> = ternaries
+            .iter()
+            .map(|(_, test, _, _)| generated_test(test, generated))
+            .collect();
+        match keys {
+            Some(keys) if keys.windows(2).all(|pair| pair[0].0 == pair[1].0) => keys,
+            _ => return parts.join(" + \" \" + "),
+        }
+    };
+    let mut yes: Vec<&str> = Vec::new();
+    let mut no: Vec<&str> = Vec::new();
+    let mut pending = ternaries.iter().zip(&keys).peekable();
+    for (index, part) in parts.iter().enumerate() {
+        if let Some(((at, _, truthy, falsy), (_, negated))) = pending.peek()
+            && *at == index
+        {
+            let (when_true, when_false) = if *negated {
+                (*falsy, *truthy)
+            } else {
+                (*truthy, *falsy)
+            };
+            yes.extend((!when_true.is_empty()).then_some(when_true));
+            no.extend((!when_false.is_empty()).then_some(when_false));
+            pending.next();
+        } else if let Some(class) = static_class(part)
+            && !class.is_empty()
+        {
+            yes.push(class);
+            no.push(class);
+        }
+    }
+    match keys.first() {
+        Some((test, _)) => format!(
+            "({test} ? {} : {})",
+            quote(&yes.join(" ")),
+            quote(&no.join(" "))
+        ),
+        None => quote(&yes.join(" ")),
+    }
+}
+
+fn mentions(text: &str, name: &str) -> bool {
+    text.match_indices(name).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + name.len()..].chars().next();
+        let word = |c: Option<char>| c.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
+        !word(before) && !word(after)
+    })
+}
+
+fn assigned_call(call: &CallBinding, value: &str) -> String {
+    let assignments: Vec<String> = call
+        .params
+        .iter()
+        .zip(&call.args)
+        .map(|(param, arg)| format!("{param} = {arg}"))
+        .collect();
+    format!("({}, {value})", assignments.join(", "))
+}
+
+type Invoke<'f> = &'f dyn Fn(&str, &str, &str) -> String;
+
+fn vars_object(vars: &[DynamicVar], assign: bool, invoke: Invoke) -> Option<(String, bool, bool)> {
     let first = vars.first()?;
     let pairs: Vec<String> = vars
         .iter()
@@ -83,23 +209,27 @@ fn vars_object(vars: &[DynamicVar]) -> Option<(String, bool, bool)> {
     let Some(call) = &first.call else {
         return Some((format!("{{ {} }}", pairs.join(", ")), false, true));
     };
+    if assign {
+        let value = if pairs.is_empty() {
+            "null".to_string()
+        } else {
+            format!("{{ {} }}", pairs.join(", "))
+        };
+        return Some((assigned_call(call, &value), true, !pairs.is_empty()));
+    }
     let body = if pairs.is_empty() {
         "null".to_string()
     } else {
         format!("({{ {} }})", pairs.join(", "))
     };
     Some((
-        format!(
-            "(({}) => {body})({})",
-            call.params.join(", "),
-            call.args.join(", ")
-        ),
+        invoke(&call.params.join(", "), &body, &call.args.join(", ")),
         true,
         !pairs.is_empty(),
     ))
 }
 
-pub fn fold_dynamic_vars(vars: &[DynamicVar]) -> Vec<String> {
+pub fn fold_dynamic_vars(vars: &[DynamicVar], assign: bool, invoke: Invoke) -> Vec<String> {
     let mut sorted: Vec<&DynamicVar> = vars.iter().collect();
     sorted.sort_by_key(|entry| entry.order.unwrap_or(0));
     if sorted.iter().any(|entry| entry.call.is_some()) {
@@ -124,11 +254,13 @@ pub fn fold_dynamic_vars(vars: &[DynamicVar]) -> Vec<String> {
                 .map(|entry| format!("\"{}\": {}", entry.css_var, entry.value_expr))
                 .collect();
             let object = match &first.call {
-                Some(call) => format!(
-                    "(({}) => ({{ {} }}))({})",
-                    call.params.join(", "),
-                    pairs.join(", "),
-                    call.args.join(", ")
+                Some(call) if assign => {
+                    assigned_call(call, &format!("{{ {} }}", pairs.join(", ")))
+                }
+                Some(call) => invoke(
+                    &call.params.join(", "),
+                    &format!("({{ {} }})", pairs.join(", ")),
+                    &call.args.join(", "),
                 ),
                 None => format!("{{ {} }}", pairs.join(", ")),
             };
@@ -197,7 +329,7 @@ fn is_plain_read(source: &str) -> bool {
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
     if !code
         .iter()
-        .all(|&c| word(c) || c.is_whitespace() || "$.()!=<>&|?:\"-".contains(c))
+        .all(|&c| word(c) || c.is_whitespace() || "$.()!=&|?:\"".contains(c))
     {
         return false;
     }
@@ -224,7 +356,7 @@ fn is_plain_read(source: &str) -> bool {
     if text.split(|c: char| !word(c)).any(|token| {
         matches!(
             token,
-            "new" | "await" | "yield" | "delete" | "void" | "import"
+            "new" | "await" | "yield" | "delete" | "void" | "import" | "in" | "instanceof"
         )
     }) {
         return false;
@@ -233,19 +365,21 @@ fn is_plain_read(source: &str) -> bool {
     while index < code.len() {
         let c = code[index];
         if (c == '=' || c == '!') && code.get(index + 1) == Some(&'=') {
-            index += if code.get(index + 2) == Some(&'=') {
-                3
-            } else {
-                2
-            };
-            continue;
-        }
-        if (c == '<' || c == '>') && code.get(index + 1) == Some(&'=') {
-            index += 2;
+            if code.get(index + 2) != Some(&'=') {
+                return false;
+            }
+            index += 3;
             continue;
         }
         if c == '=' {
             return false;
+        }
+        if c == '&' || c == '|' {
+            if code.get(index + 1) != Some(&c) {
+                return false;
+            }
+            index += 2;
+            continue;
         }
         index += 1;
     }
@@ -269,22 +403,51 @@ fn param_at(text: &str, start: usize) -> Option<(usize, usize)> {
         .map(|index| (index, end))
 }
 
+fn param_matches(text: &str) -> Vec<(usize, usize, usize)> {
+    let bytes = text.as_bytes();
+    let mut matches = Vec::new();
+    let mut at = 0;
+    while at < bytes.len() {
+        match bytes[at] {
+            quote @ (b'"' | b'\'' | b'`') => {
+                at += 1;
+                while at < bytes.len() && bytes[at] != quote {
+                    at += if bytes[at] == b'\\' { 2 } else { 1 };
+                }
+                at += 1;
+            }
+            _ if bytes[at..].starts_with(PARAM.as_bytes())
+                && !(at > 0 && {
+                    let before = bytes[at - 1];
+                    before.is_ascii_alphanumeric() || before == b'_' || before == b'$' || before >= 0x80
+                }) =>
+            {
+                match param_at(text, at) {
+                    Some((index, end)) => {
+                        matches.push((at, index, end));
+                        at = end;
+                    }
+                    None => at += PARAM.len(),
+                }
+            }
+            _ => at += 1,
+        }
+    }
+    matches
+}
+
 fn param_uses(text: &str) -> Vec<usize> {
-    text.match_indices(PARAM)
-        .filter_map(|(start, _)| param_at(text, start).map(|(index, _)| index))
+    param_matches(text)
+        .into_iter()
+        .map(|(_, index, _)| index)
         .collect()
 }
 
 fn inline_params(text: &str, bound: &[String]) -> String {
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
-    for (start, _) in text.match_indices(PARAM) {
-        if start < last {
-            continue;
-        }
-        if let Some((index, end)) = param_at(text, start)
-            && let Some(source) = bound.get(index)
-        {
+    for (start, index, end) in param_matches(text) {
+        if let Some(source) = bound.get(index) {
             out.push_str(&text[last..start]);
             out.push_str(source);
             last = end;
@@ -775,8 +938,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .filter(|(_, _, text)| !is_literal_source(text))
             .collect();
         reads.sort_by_key(|(start, _, _)| *start);
+        let base = self.arg_base.get().unwrap_or(0);
+        if let Some(base) = self.arg_base.get() {
+            self.arg_base.set(Some(base + reads.len()));
+        }
         let names: Vec<String> = (0..reads.len())
-            .map(|index| format!("__plumeria_arg{index}"))
+            .map(|index| format!("__plumeria_arg{}", base + index))
             .collect();
         let mut sources: Vec<(String, String)> = runtime
             .iter()
@@ -806,7 +973,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                             .map(|(_, source)| source.as_str())
                             .unwrap_or("undefined");
                         match fallback {
-                            Some(fallback) => rendered.push_str(&read_once(argument, |value| {
+                            Some(fallback) => rendered.push_str(&self.read_once(argument, |value| {
                                 format!("({value}) === undefined ? {fallback} : ({value})")
                             })),
                             None => rendered.push_str(&format!("({argument})")),
@@ -856,7 +1023,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         &kebab_prop,
                     ))
                 } else if !unit.is_empty() {
-                    read_once(arg_source, |value| {
+                    self.read_once(arg_source, |value| {
                         format!("typeof ({value}) === 'number' ? ({value}) + '{unit}' : ({value})")
                     })
                 } else {
@@ -1442,12 +1609,23 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .all(|use_| !skippable.contains(&format!("__plumeria{use_}")));
             if inline {
                 class_parts.extend(parts.iter().map(|part| inline_params(part, &bound)));
-            } else {
+            } else if let Some(base) = self.arg_base.get() {
+                self.arg_base.set(Some(base + bound.len()));
+                let names: Vec<String> = (0..bound.len())
+                    .map(|index| format!("__plumeria_arg{}", base + index))
+                    .collect();
+                let assignments: Vec<String> = names
+                    .iter()
+                    .zip(&bound)
+                    .map(|(name, source)| format!("{name} = ({source})"))
+                    .collect();
                 class_parts.push(format!(
-                    "(({}) => {body})({})",
-                    params.join(", "),
-                    bound.join(", ")
+                    "({}, {})",
+                    assignments.join(", "),
+                    inline_params(&body, &names)
                 ));
+            } else {
+                class_parts.push(self.invoke(&params.join(", "), &body, &bound.join(", ")));
             }
         }
 
@@ -2106,16 +2284,18 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             plan.reads
                 .insert((dyn_expr.span().start, dyn_expr.span().end), name.clone());
             plan.class_runtime = true;
-            return Ok(Some(vec![format!("({})", self.source_of(dyn_expr))]));
+            let read = format!("({})", self.source_of(dyn_expr));
+            return Ok(Some(vec![plan.item(&name, read)]));
         }
         if let Some(decision) = self.resolve_decision(expr)?
             && (decision.has_group || decision.leaves > 2)
         {
             let name = plan.slot("t");
             plan.reads
-                .insert((expr.span().start, expr.span().end), name);
+                .insert((expr.span().start, expr.span().end), name.clone());
             plan.class_runtime = true;
-            return Ok(Some(vec![format!("({})", decision.key_expr)]));
+            let read = format!("({})", decision.key_expr);
+            return Ok(Some(vec![plan.item(&name, read)]));
         }
         self.plan_element(expr, false, plan)
     }
@@ -2158,13 +2338,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             return Ok(Some(Vec::new()));
         }
         if let Some((_, vars)) = self.resolve_dynamic_call(node, false)? {
-            let Some((object, runtime, always)) = vars_object(&vars) else {
+            let Some((object, runtime, always)) = vars_object(&vars, plan.assign, &|p, b, a| self.invoke(p, b, a)) else {
                 return Ok(Some(Vec::new()));
             };
             let name = plan.slot("v");
-            plan.vars.push((name, always && !guarded));
+            plan.vars.push((name.clone(), always && !guarded));
             plan.style_runtime |= runtime || guarded;
-            return Ok(Some(vec![object]));
+            return Ok(Some(vec![plan.item(&name, object)]));
         }
         let (test, consequent, alternate) = match node.kind() {
             K::Conditional(cond) => (
@@ -2239,8 +2419,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 return Ok(Some(Vec::new()));
             }
             let name = plan.slot("t");
-            plan.reads.insert((key.span().start, key.span().end), name);
-            return Ok(Some(vec![format!("({})", self.source_of(key))]));
+            plan.reads
+                .insert((key.span().start, key.span().end), name.clone());
+            let read = format!("({})", self.source_of(key));
+            return Ok(Some(vec![plan.item(&name, read)]));
         }
         if self.is_style_function_call(node) {
             let Some((_, vars)) = self.resolve_dynamic_call(node, true)? else {
@@ -2252,8 +2434,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let name = plan.slot("v");
             plan.reads
                 .insert((node.span().start, node.span().end), name.clone());
-            plan.vars.push((name, true));
-            let fold = fold_dynamic_vars(&vars).join(", ");
+            plan.vars.push((name.clone(), true));
+            if plan.assign {
+                let (object, _, _) = vars_object(&vars, true, &|p, b, a| self.invoke(p, b, a)).unwrap_or_default();
+                plan.folds.push(object.clone());
+                return Ok(Some(vec![plan.item(&name, object)]));
+            }
+            let fold = fold_dynamic_vars(&vars, false, &|p, b, a| self.invoke(p, b, a)).join(", ");
             plan.folds.push(fold.clone());
             return Ok(Some(vec![format!("{{ {fold} }}")]));
         }
@@ -2270,7 +2457,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         recurse: fn(&mut Self, E<'b, 'a>, &mut ElementPlan) -> TResult<Option<Vec<String>>>,
     ) -> TResult<Option<Vec<String>>> {
         let name = plan.slot("t");
-        plan.reads.insert((test.start, test.end), name);
+        plan.reads.insert((test.start, test.end), name.clone());
         plan.class_runtime = true;
         let start = plan.params.len();
         let Some(yes) = recurse(self, consequent, plan)? else {
@@ -2286,7 +2473,34 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         let end = plan.params.len();
         if end == start {
-            return Ok(Some(vec![format!("({})", self.text(test))]));
+            let read = format!("({})", self.text(test));
+            return Ok(Some(vec![plan.item(&name, read)]));
+        }
+        if plan.assign {
+            let reset = |params: &[String]| -> Vec<String> {
+                params.iter().map(|param| format!("{param} = null")).collect()
+            };
+            let truthy: Vec<String> = yes
+                .into_iter()
+                .chain(reset(&plan.params[middle..end]))
+                .collect();
+            let falsy: Vec<String> = reset(&plan.params[start..middle])
+                .into_iter()
+                .chain(no)
+                .collect();
+            let group = |steps: Vec<String>| {
+                if steps.is_empty() {
+                    "null".to_string()
+                } else {
+                    steps.join(", ")
+                }
+            };
+            return Ok(Some(vec![format!(
+                "(({name} = ({})) ? ({}) : ({}))",
+                self.text(test),
+                group(truthy),
+                group(falsy)
+            )]));
         }
         let nulls = |count: usize| std::iter::repeat_n("null".to_string(), count);
         let truthy: Vec<String> = std::iter::once("true".to_string())
@@ -2401,7 +2615,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         let class_reads = attribute_reads(class_attr.map(|attr| &**attr));
         let style_reads = attribute_reads(style_attr.map(|attr| &**attr));
-        let mut plan = ElementPlan::default();
+        let site = self
+            .site_stack
+            .last()
+            .copied()
+            .flatten()
+            .filter(|site| self.decl_sites.contains_key(site));
+        let base = site.and_then(|site| self.temp_next.get(&site).copied()).unwrap_or(0);
+        self.arg_base.set(site.map(|_| base));
+        let mut plan = ElementPlan {
+            assign: site.is_some(),
+            base,
+            ..ElementPlan::default()
+        };
         let mut plans: Vec<(Vec<String>, Vec<String>)> = Vec::new();
         for (expr, _) in &args {
             let start = plan.params.len();
@@ -2414,10 +2640,91 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 }
             }
         }
-        if plans.len() == args.len()
-            && (plan.class_runtime || class_reads)
-            && (plan.style_runtime || style_reads)
-        {
+        let planned = plans.len() == args.len();
+        let wraps = (plan.class_runtime || class_reads) && (plan.style_runtime || style_reads);
+        'assign: {
+            let moved = [
+                Some(node.span),
+                class_attr.map(|attr| attr.span),
+                style_attr.map(|attr| attr.span),
+            ];
+            let hosts: Vec<Host> = items
+                .iter()
+                .filter_map(|item| match item {
+                    JSXAttributeItem::SpreadAttribute(spread) => {
+                        let span = spread.argument.span();
+                        Some(Host {
+                            at: spread.span.start,
+                            open: span.start,
+                            close: span.end,
+                            braces: false,
+                        })
+                    }
+                    JSXAttributeItem::Attribute(attr) if !moved.contains(&Some(attr.span)) => {
+                        match &attr.value {
+                            Some(JSXAttributeValue::ExpressionContainer(container)) => {
+                                let expr = container.expression.as_expression()?;
+                                (!reads_nothing(expr)).then(|| Host {
+                                    at: attr.span.start,
+                                    open: expr.span().start,
+                                    close: expr.span().end,
+                                    braces: false,
+                                })
+                            }
+                            Some(JSXAttributeValue::Element(element)) => Some(Host {
+                                at: attr.span.start,
+                                open: element.span.start,
+                                close: element.span.end,
+                                braces: true,
+                            }),
+                            Some(JSXAttributeValue::Fragment(fragment)) => Some(Host {
+                                at: attr.span.start,
+                                open: fragment.span.start,
+                                close: fragment.span.end,
+                                braces: true,
+                            }),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                })
+                .collect();
+            let class_span = class_attr.filter(|_| class_is_expr).map(|attr| attr.span);
+            let class_place = class_attr.map(|attr| attr.span);
+            let positions = [
+                Some(node.span.start),
+                class_place.map(|span| span.start),
+                style_attr
+                    .filter(|_| style_arg.is_some())
+                    .map(|attr| attr.span.start),
+            ];
+            let first = positions.iter().flatten().min().copied().unwrap_or(0);
+            let last = positions.iter().flatten().max().copied().unwrap_or(0);
+            let crossing = hosts.iter().any(|host| host.at > first && host.at < last);
+            let Some(site) = site.filter(|_| {
+                planned && plan.assign && (wraps || plan.style_runtime || crossing)
+            }) else {
+                break 'assign;
+            };
+            let style = style_attr.map(|attr| attr.span).zip(style_arg.clone());
+            return self.assign_element(
+                node,
+                args,
+                plan,
+                plans,
+                site,
+                (class_span, class_place, existing_class.clone()),
+                style,
+                hosts,
+            );
+        }
+        self.arg_base.set(None);
+        let mut plan = if plan.assign {
+            ElementPlan::default()
+        } else {
+            plan
+        };
+        if planned && wraps {
             let mut entries: Vec<((u32, usize), String, String)> = Vec::new();
             if class_is_expr && let Some(class_attr) = class_attr {
                 entries.push((
@@ -2459,11 +2766,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let built = self.build_class_parts(args, Vec::new(), class_source, true);
             self.element_reads = None;
             let built = built?;
-            let class_value = if built.class_parts.is_empty() {
-                "\"\"".to_string()
-            } else {
-                built.class_parts.join(" + \" \" + ")
-            };
+            let class_value = join_class_parts(&built.class_parts, &plan.params);
             let existing = style_arg.as_ref().map(|_| "__plumeria_style");
             let spread: Vec<String> = existing
                 .into_iter()
@@ -2473,6 +2776,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let copy = format!("{{ {} }}", spread.join(", "));
             let style_value = if plan.vars.is_empty() {
                 existing.unwrap_or("undefined").to_string()
+            } else if let ([(only, always)], None) = (plan.vars.as_slice(), existing) {
+                if *always {
+                    only.clone()
+                } else {
+                    format!("{only} || undefined")
+                }
             } else if plan.vars.iter().any(|(_, always)| *always) {
                 copy
             } else {
@@ -2483,22 +2792,94 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     existing.unwrap_or("undefined")
                 )
             };
+            let sides: Option<Vec<bool>> = entries
+                .iter()
+                .map(|(_, param, _)| {
+                    let class = mentions(&class_value, param);
+                    let style = mentions(&style_value, param);
+                    (!param.starts_with('[') && class != style).then_some(class)
+                })
+                .collect();
+            if let Some(sides) = sides
+                && sides.windows(2).all(|pair| pair[0] || !pair[1])
+            {
+                let side = |want: bool, value: &str| {
+                    let picked: Vec<&(_, String, String)> = entries
+                        .iter()
+                        .zip(&sides)
+                        .filter(|(_, side)| **side == want)
+                        .map(|(entry, _)| entry)
+                        .collect();
+                    if picked.is_empty() {
+                        return value.to_string();
+                    }
+                    let params: Vec<&str> = picked.iter().map(|(_, p, _)| p.as_str()).collect();
+                    let args: Vec<&str> = picked.iter().map(|(_, _, a)| a.as_str()).collect();
+                    if let ([param], [arg]) = (params.as_slice(), args.as_slice())
+                        && *param == value
+                    {
+                        return arg.to_string();
+                    }
+                    self.invoke(&params.join(", "), value, &args.join(", "))
+                };
+                let class_text = side(true, &class_value);
+                let style_text = side(false, &style_value);
+                let class_attr = if static_class(&class_text).is_some() && !class_text.contains('&')
+                {
+                    class_text
+                } else {
+                    format!("{{{class_text}}}")
+                };
+                let style_attr = if style_text == "undefined" {
+                    String::new()
+                } else {
+                    format!(" style={{{style_text}}}")
+                };
+                self.replacements.push(Replacement {
+                    start: node.span.start,
+                    end: node.span.end,
+                    content: format!("{class_prop}={class_attr}{style_attr}"),
+                });
+                return Ok(());
+            }
             let params: Vec<&str> = entries.iter().map(|(_, param, _)| param.as_str()).collect();
             let values: Vec<&str> = entries.iter().map(|(_, _, arg)| arg.as_str()).collect();
             self.replacements.push(Replacement {
                 start: node.span.start,
                 end: node.span.end,
                 content: format!(
-                    "{{...(({}) => ({{ {class_prop}: {class_value}, style: {style_value} }}))({})}}",
-                    params.join(", "),
-                    values.join(", ")
+                    "{{...{}}}",
+                    self.invoke(
+                        &params.join(", "),
+                        &format!("({{ {class_prop}: {class_value}, style: {style_value} }})"),
+                        &values.join(", ")
+                    )
                 ),
             });
             return Ok(());
         }
 
         let arg_count = args.len();
-        let built = self.build_class_parts(args, Vec::new(), existing_class.clone(), true)?;
+        let base = site
+            .and_then(|site| self.temp_next.get(&site).copied())
+            .unwrap_or(0);
+        self.arg_base.set(site.map(|_| base));
+        let built = self.build_class_parts(args, Vec::new(), existing_class.clone(), true);
+        let folded = built
+            .as_ref()
+            .ok()
+            .map(|built| fold_dynamic_vars(&built.dynamic_vars, site.is_some(), &|p, b, a| self.invoke(p, b, a)));
+        if let (Some(site), Some(end)) = (site, self.arg_base.get())
+            && end > base
+        {
+            self.temp_next.insert(site, end);
+            let declared = self.site_temps.entry(site).or_default();
+            for index in base..end {
+                declared.push(format!("__plumeria_arg{index}"));
+            }
+        }
+        self.arg_base.set(None);
+        let built = built?;
         if !built.is_optimizable {
             return Err(self.fail(
                 format!(
@@ -2509,33 +2890,47 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             ));
         }
         let mut style_parts = existing_style_parts;
-        style_parts.extend(fold_dynamic_vars(&built.dynamic_vars));
+        style_parts.extend(folded.unwrap_or_default());
         style_parts.extend(built.prop_var_spreads.clone());
         let style_attr_text = if !style_parts.is_empty() || !existing_style.is_empty() {
+            let generated_only = !style_object
+                && existing_style.is_empty()
+                && built.prop_var_spreads.is_empty();
             let mut all = Vec::new();
             if !existing_style.is_empty() {
                 all.push(existing_style);
             }
             all.extend(style_parts);
-            format!(" style={{{{ {} }}}}", all.join(", "))
+            match all.as_slice() {
+                [only] if generated_only && only.starts_with("...") => {
+                    format!(" style={{{}}}", &only[3..])
+                }
+                _ => format!(" style={{{{ {} }}}}", all.join(", ")),
+            }
         } else {
             String::new()
         };
 
         if arg_count > 0 || !built.base_style.is_empty() {
-            let replacement = if built.class_parts.is_empty() {
-                "\"\"".to_string()
-            } else {
-                built.class_parts.join(" + \" \" + ")
-            };
-            let value = if built.class_parts.len() <= 1
-                && replacement.starts_with('"')
-                && !replacement.contains(['\\', '&'])
-            {
+            let replacement = join_class_parts(&built.class_parts, &[]);
+            let fixed = static_class(&replacement).is_some();
+            let value = if fixed && !replacement.contains('&') {
                 replacement
             } else {
                 format!("{{{replacement}}}")
             };
+            if let Some(class_attr) = class_attr.filter(|attr| attr.span.start > node.span.start)
+                && fixed
+                && style_attr_text.is_empty()
+            {
+                self.set_replacement(class_attr.span, format!("{class_prop}={value}"));
+                self.replacements.push(Replacement {
+                    start: node.span.start,
+                    end: node.span.end,
+                    content: String::new(),
+                });
+                return Ok(());
+            }
             self.replacements.push(Replacement {
                 start: node.span.start,
                 end: node.span.end,
@@ -2554,6 +2949,191 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             });
         }
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn assign_element(
+        &mut self,
+        node: &'b JSXAttribute<'a>,
+        args: Vec<(E<'b, 'a>, Option<i64>)>,
+        mut plan: ElementPlan,
+        plans: Vec<(Vec<String>, Vec<String>)>,
+        site: u32,
+        class: (Option<Span>, Option<Span>, String),
+        style: Option<(Span, String)>,
+        hosts: Vec<Host>,
+    ) -> TResult<()> {
+        let class_prop = self.env.class_prop.clone();
+        let base = plan.base;
+        let arg_end = self.arg_base.get().unwrap_or(base);
+        self.arg_base.set(None);
+        let mut temps: Vec<String> = plan.params.clone();
+        temps.extend((base..arg_end).map(|index| format!("__plumeria_arg{index}")));
+        let sx_at = node.span.start;
+        let mut groups: Vec<(u32, Vec<String>)> = Vec::new();
+        let (class_span, class_place, existing_class) = class;
+        let class_source = match class_span {
+            Some(span) => {
+                let name = format!("__plumeria_class{base}");
+                groups.push((span.start, vec![format!("{name} = {existing_class}")]));
+                temps.push(name.clone());
+                name
+            }
+            None => existing_class,
+        };
+        let style_span = style.as_ref().map(|(span, _)| *span);
+        let existing_style = style.map(|(span, value)| {
+            let name = format!("__plumeria_style{base}");
+            groups.push((span.start, vec![format!("{name} = {value}")]));
+            temps.push(name.clone());
+            name
+        });
+        let sx_steps: Vec<String> = plans.into_iter().flat_map(|(_, items)| items).collect();
+        if !sx_steps.is_empty() {
+            groups.push((sx_at, sx_steps));
+        }
+        groups.sort_by_key(|(at, _)| *at);
+
+        self.element_reads = Some(std::mem::take(&mut plan.reads));
+        let built = self.build_class_parts(args, Vec::new(), class_source, true);
+        self.element_reads = None;
+        let built = built?;
+        let class_value = join_class_parts(&built.class_parts, &plan.params);
+        let vars: Vec<&str> = plan.vars.iter().map(|(name, _)| name.as_str()).collect();
+        let fallback = existing_style.as_deref().unwrap_or("undefined");
+        let style_value = match (existing_style.as_deref(), vars.as_slice()) {
+            (None, []) => None,
+            (Some(existing), []) => Some(existing.to_string()),
+            (None, [only]) if plan.vars[0].1 => Some(only.to_string()),
+            (None, [only]) => Some(format!("{only} || undefined")),
+            _ => {
+                let spread: Vec<String> = existing_style
+                    .iter()
+                    .map(String::as_str)
+                    .chain(vars.iter().copied())
+                    .map(|name| format!("...{name}"))
+                    .collect();
+                let copy = format!("{{ {} }}", spread.join(", "));
+                Some(if plan.vars.iter().any(|(_, always)| *always) {
+                    copy
+                } else {
+                    format!("({}) ? {copy} : {fallback}", vars.join(" || "))
+                })
+            }
+        };
+        let sequence = |steps: &[String], value: &str| {
+            if steps.is_empty() {
+                value.to_string()
+            } else {
+                format!("({}, {value})", steps.join(", "))
+            }
+        };
+        let later = |span: Option<Span>| span.filter(|span| span.start > sx_at);
+        let class_at = later(class_place).map_or(sx_at, |span| span.start);
+        let style_at = later(style_span).map_or(sx_at, |span| span.start);
+        let class_static = class_span.is_none() && static_class(&class_value).is_some();
+        let mut targets: Vec<(u32, usize)> = Vec::new();
+        if style_value.is_some() && class_static {
+            targets.push((style_at, 1));
+        }
+        targets.push((class_at, 0));
+        if style_value.is_some() && !class_static {
+            targets.push((style_at, 1));
+        }
+        targets.extend(hosts.iter().enumerate().map(|(index, host)| (host.at, index + 2)));
+        let mut hosted: Vec<Vec<String>> = vec![Vec::new(); hosts.len() + 2];
+        for (at, steps) in groups {
+            let target = targets
+                .iter()
+                .filter(|(position, _)| *position >= at)
+                .min_by_key(|(position, _)| *position)
+                .map_or(0, |(_, target)| *target);
+            hosted[target].extend(steps);
+        }
+        let class_text = if hosted[0].is_empty()
+            && static_class(&class_value).is_some()
+            && !class_value.contains('&')
+        {
+            class_value
+        } else {
+            format!("{{{}}}", sequence(&hosted[0], &class_value))
+        };
+        let style_text = style_value.map(|style| {
+            let alone = match (hosted[1].as_slice(), vars.as_slice()) {
+                ([step], [only]) if existing_style.is_none() && style == *only => step
+                    .strip_prefix(&format!("({only} = "))
+                    .and_then(|rest| rest.strip_suffix(')'))
+                    .map(|value| (only.to_string(), value.to_string())),
+                _ => None,
+            };
+            match alone {
+                Some((only, value)) => {
+                    temps.retain(|temp| *temp != only);
+                    value
+                }
+                None => sequence(&hosted[1], &style),
+            }
+        });
+        let mut at_sx: Vec<String> = Vec::new();
+        let class_attr = format!("{class_prop}={class_text}");
+        match later(class_place) {
+            Some(span) => self.set_replacement(span, class_attr),
+            None => at_sx.push(class_attr),
+        }
+        if let Some(style) = style_text {
+            let style_attr = format!("style={{{style}}}");
+            match later(style_span) {
+                Some(span) => self.set_replacement(span, style_attr),
+                None => at_sx.push(style_attr),
+            }
+        }
+        self.replacements.push(Replacement {
+            start: node.span.start,
+            end: node.span.end,
+            content: at_sx.join(" "),
+        });
+        for (host, steps) in hosts.iter().zip(&hosted[2..]) {
+            if steps.is_empty() {
+                continue;
+            }
+            let (open, close) = if host.braces { ("{(", ")}") } else { ("(", ")") };
+            self.replacements.push(Replacement {
+                start: host.open,
+                end: host.open,
+                content: format!("{open}{}, ", steps.join(", ")),
+            });
+            self.replacements.push(Replacement {
+                start: host.close,
+                end: host.close,
+                content: close.to_string(),
+            });
+        }
+        self.temp_next.insert(site, arg_end.max(base + plan.params.len()).max(base + 1));
+        if temps.is_empty() {
+            return Ok(());
+        }
+        let declared = self.site_temps.entry(site).or_default();
+        for temp in temps {
+            if !declared.contains(&temp) {
+                declared.push(temp);
+            }
+        }
+        Ok(())
+    }
+
+    fn set_replacement(&mut self, span: Span, content: String) {
+        match self
+            .replacements
+            .iter_mut()
+            .find(|replacement| replacement.start == span.start && replacement.end == span.end)
+        {
+            Some(replacement) => replacement.content = content,
+            None => self.replacements.push(Replacement {
+                start: span.start,
+                end: span.end,
+                content,
+            }),
+        }
     }
 
     fn relay_prop(&mut self, expr: &'b Expression<'a>, list: &[TableEntry]) -> TResult<bool> {
@@ -2588,8 +3168,25 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let Some(entries) = index.get(&sub.start()) else {
             return Ok(false);
         };
-        let mut plan = ElementPlan::default();
-        let Some(items) = self.plan_receiver(sub, &mut plan)? else {
+        let site = self
+            .site_stack
+            .last()
+            .copied()
+            .flatten()
+            .filter(|site| self.decl_sites.contains_key(site));
+        let base = site
+            .and_then(|site| self.temp_next.get(&site).copied())
+            .unwrap_or(0);
+        self.arg_base.set(site.map(|_| base));
+        let mut plan = ElementPlan {
+            assign: site.is_some(),
+            base,
+            ..ElementPlan::default()
+        };
+        let planned = self.plan_receiver(sub, &mut plan);
+        let arg_end = self.arg_base.get().unwrap_or(base);
+        self.arg_base.set(None);
+        let Some(items) = planned? else {
             return Ok(false);
         };
         let mut rows: Vec<Row> = Vec::new();
@@ -2611,7 +3208,49 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let calls: Vec<String> = plan.vars.iter().map(|(name, _)| name.clone()).collect();
         let mut names = 0;
-        let body = self.decide(&rows, &plan.reads, &calls, &mut names).0;
+        let mut keys: Vec<String> = Vec::new();
+        let body = self
+            .decide(&rows, &plan.reads, &calls, &mut names, &mut keys, plan.assign)
+            .0;
+        if let Some(site) = site
+            && plan.assign
+        {
+            let content = if let [row] = rows.as_slice()
+                && row.conditions.is_empty()
+                && !row.fixed
+                && items.len() == 1
+                && let [fold] = plan.folds.as_slice()
+            {
+                format!("{{ key: {}, vars: {fold} }}", quote(&row.key))
+            } else if items.is_empty() {
+                body
+            } else {
+                format!("({}, {body})", items.join(", "))
+            };
+            let mut temps: Vec<String> = plan.params.clone();
+            if content.starts_with("{ key: ") {
+                temps.clear();
+            }
+            temps.extend((base..arg_end).map(|index| format!("__plumeria_arg{index}")));
+            temps.extend(keys);
+            if !temps.is_empty() {
+                self.temp_next
+                    .insert(site, arg_end.max(base + plan.params.len()).max(base + 1));
+                let declared = self.site_temps.entry(site).or_default();
+                for temp in temps {
+                    if !declared.contains(&temp) {
+                        declared.push(temp);
+                    }
+                }
+            }
+            let span = sub.span();
+            self.replacements.push(Replacement {
+                start: span.start,
+                end: span.end,
+                content,
+            });
+            return Ok(true);
+        }
         let content = if plan.params.is_empty() {
             body
         } else if let [row] = rows.as_slice()
@@ -2646,6 +3285,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         reads: &FxHashMap<(u32, u32), String>,
         calls: &[String],
         names: &mut usize,
+        keys: &mut Vec<String>,
+        assign: bool,
     ) -> (String, bool) {
         let Some(first) = rows.first() else {
             return ("\"\"".to_string(), true);
@@ -2691,18 +3332,17 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .cloned()
             .unwrap_or_else(|| self.text(Span::new(test.0, test.1)).to_string());
         let Some(keyed) = &condition.keyed else {
-            let (truthy, _) = self.decide(&branch(&|c| c.truthy), reads, calls, names);
-            let (falsy, _) = self.decide(&branch(&|c| !c.truthy), reads, calls, names);
+            let (truthy, _) =
+                self.decide(&branch(&|c| c.truthy), reads, calls, names, keys, assign);
+            let (falsy, _) =
+                self.decide(&branch(&|c| !c.truthy), reads, calls, names, keys, assign);
             return (format!("(({text}) ? {truthy} : {falsy})"), false);
         };
-        let mut branches: Vec<(String, bool)> = (0..keyed.options.len())
-            .map(Some)
-            .chain([None])
-            .map(|option| {
-                let rows = branch(&|c| c.keyed.as_ref().is_some_and(|k| k.option == option));
-                self.decide(&rows, reads, calls, names)
-            })
-            .collect();
+        let mut branches: Vec<(String, bool)> = Vec::new();
+        for option in (0..keyed.options.len()).map(Some).chain([None]) {
+            let rows = branch(&|c| c.keyed.as_ref().is_some_and(|k| k.option == option));
+            branches.push(self.decide(&rows, reads, calls, names, keys, assign));
+        }
         let (fallback, _) = branches.pop().unwrap();
         if branches.iter().all(|(_, fixed)| *fixed) {
             let pairs: Vec<String> = keyed
@@ -2730,6 +3370,16 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         for (index, (value, _)) in branches.iter().enumerate().rev() {
             body = format!("({name} === {index} ? {value} : {body})");
         }
+        if assign {
+            keys.push(name.clone());
+            return (
+                format!(
+                    "({name} = {{__proto__:null,{}}}[{text}], {body})",
+                    pairs.join(",")
+                ),
+                false,
+            );
+        }
         (
             format!(
                 "(({name}) => {body})({{__proto__:null,{}}}[{text}])",
@@ -2737,6 +3387,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             ),
             false,
         )
+    }
+
+    fn read_once(&self, source: &str, body: impl Fn(&str) -> String) -> String {
+        if is_identifier(source) {
+            return format!("({})", body(source));
+        }
+        if let Some(base) = self.arg_base.get() {
+            self.arg_base.set(Some(base + 1));
+            let temp = format!("__plumeria_arg{base}");
+            return format!("({temp} = ({source}), {})", body(&temp));
+        }
+        let value = "__plumeria_value";
+        self.invoke(value, &body(value), source)
     }
 
     fn fresh(&self, names: &mut usize) -> String {
@@ -2766,14 +3429,6 @@ fn is_literal_source(source: &str) -> bool {
                 && trimmed.ends_with(*quote)
                 && !trimmed[1..trimmed.len() - 1].contains(*quote)
         })
-}
-
-fn read_once(source: &str, body: impl Fn(&str) -> String) -> String {
-    if is_identifier(source) {
-        return format!("({})", body(source));
-    }
-    let value = "__plumeria_value";
-    format!("(({value}) => {})({source})", body(value))
 }
 
 #[derive(Clone)]
