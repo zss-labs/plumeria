@@ -67,8 +67,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       'class',
     );
 
-    expect(code).toContain('class={');
-    expect(code).toContain('kept');
+    expect(code).toMatch(/class="kept x\w+"/);
     expect(code).not.toContain('className={');
   });
 });
