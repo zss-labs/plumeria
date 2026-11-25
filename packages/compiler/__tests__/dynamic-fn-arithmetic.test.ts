@@ -53,10 +53,12 @@ export const A = (p: any) => <div sx={${call}} />;`;
   const local = (body: string, options?: Options) =>
     transform({ 'app.tsx': source(body, options) });
 
-  const once = (source: string, body: (value: string) => string) =>
-    /^\w+$/.test(source)
-      ? `(${body(source)})`
-      : `((__plumeria_value) => ${body('__plumeria_value')})(${source})`;
+  let temps = 0;
+  const once = (source: string, body: (value: string) => string) => {
+    if (/^\w+$/.test(source)) return `(${body(source)})`;
+    const temp = `\u0001${temps++}\u0001`;
+    return `(${temp} = (${source}), ${body(temp)})`;
+  };
 
   const numeric = (expression: string) =>
     once(
@@ -68,7 +70,16 @@ export const A = (p: any) => <div sx={${call}} />;`;
   const defaulted = (source: string, value: string) =>
     once(source, (read) => `(${read}) === undefined ? ${value} : (${read})`);
 
-  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escape = (text: string) => {
+    const seen = new Set<string>();
+    return text
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\u0001(\d+)\u0001/g, (_, id: string) => {
+        if (seen.has(id)) return `\\k<t${id}>`;
+        seen.add(id);
+        return `(?<t${id}>__plumeria_arg\\d+)`;
+      });
+  };
 
   const sets = (name: string, value: string) =>
     new RegExp(`"--[a-z0-9]+-${name}": ${escape(value)}[,\\s]`);
@@ -299,7 +310,7 @@ export const A = (p: any) => <Card cardStyle={st.fn(p.n)} />;`,
       expect(code).toContain('style={{ ...(cardStyle && cardStyle.vars) }}');
       expect(code).toMatch(
         new RegExp(
-          `<Card cardStyle=\\{\\{ key: "x[a-z0-9]+", vars: \\{ \\.\\.\\.\\(\\(__plumeria_arg0\\) => \\(\\{ "--[a-z0-9]+-n-1": ${escape(numeric('(__plumeria_arg0) + 4'))} \\}\\)\\)\\(p\\.n\\) \\} \\}\\} />`,
+          `<Card cardStyle=\\{\\{ key: "x[a-z0-9]+", vars: \\(__plumeria_arg0 = p\\.n, \\{ "--[a-z0-9]+-n-1": ${escape(numeric('(__plumeria_arg0) + 4'))} \\}\\) \\}\\} />`,
         ),
       );
     });
