@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use rustc_hash::FxHashMap;
 
 use crate::js::{Object, Value};
+use crate::syntax::module::Aliases;
 
 pub trait Lookup<V: Clone> {
     fn lookup(&self, key: &str) -> Option<V>;
@@ -79,6 +80,7 @@ impl<V: Clone> Lookup<V> for Single<'_, V> {
 
 #[derive(Clone, Copy)]
 pub struct Env<'e> {
+    pub aliases: Option<&'e Aliases>,
     pub statics: &'e dyn Lookup<Value>,
     pub keyframes: &'e dyn Lookup<String>,
     pub view_transitions: &'e dyn Lookup<String>,
@@ -96,6 +98,7 @@ pub static NOTHING: Nothing = Nothing;
 impl<'e> Env<'e> {
     pub fn statics_only(statics: &'e dyn Lookup<Value>) -> Self {
         Env {
+            aliases: None,
             statics,
             keyframes: &NOTHING,
             view_transitions: &NOTHING,
