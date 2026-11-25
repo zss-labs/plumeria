@@ -6,6 +6,7 @@ use oxc_span::{GetSpan, Span};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
 use super::context::StaticStack;
+use super::hoist::PREFIX;
 use super::{Replacement, StyleKind, TResult, Transformer, is_static_arg_value};
 use crate::engine::hash::hash_str;
 use crate::engine::{apply_css_value, camel_to_kebab_case};
@@ -57,7 +58,7 @@ pub(super) struct ElementPlan {
 
 impl ElementPlan {
     fn slot(&mut self, kind: &str) -> String {
-        let name = format!("__plumeria_{kind}{}", self.base + self.params.len());
+        let name = format!("{PREFIX}{kind}{}", self.base + self.params.len());
         self.params.push(name.clone());
         name
     }
@@ -313,7 +314,7 @@ fn prop_default_message(source: &str) -> String {
     )
 }
 
-const PARAM: &str = "__plumeria";
+const PARAM: &str = PREFIX;
 
 fn param_at(text: &str, start: usize) -> Option<(usize, usize)> {
     let digits = text[start + PARAM.len()..]
@@ -871,7 +872,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             self.arg_base.set(Some(base + reads.len()));
         }
         let names: Vec<String> = (0..reads.len())
-            .map(|index| format!("__plumeria_arg{}", base + index))
+            .map(|index| format!("{PREFIX}a{}", base + index))
             .collect();
         let mut sources: Vec<(String, String)> = runtime
             .iter()
@@ -1205,7 +1206,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .and_then(|group| bound_groups.get(&group).cloned());
                 let param = name
                     .clone()
-                    .unwrap_or_else(|| format!("__plumeria{}", bound.len()));
+                    .unwrap_or_else(|| format!("{PREFIX}{}", bound.len()));
                 if name.is_none() {
                     bound.push(source.unwrap_or_default());
                 }
@@ -1550,7 +1551,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         if !bound.is_empty() {
             let parts = class_parts.split_off(bound_from);
             let params: Vec<String> = (0..bound.len())
-                .map(|index| format!("__plumeria{index}"))
+                .map(|index| format!("{PREFIX}{index}"))
                 .collect();
             let body = if parts.is_empty() {
                 "\"\"".to_string()
@@ -1562,13 +1563,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 && uses.iter().enumerate().all(|(index, use_)| *use_ == index)
                 && uses
                     .iter()
-                    .all(|use_| !skippable.contains(&format!("__plumeria{use_}")));
+                    .all(|use_| !skippable.contains(&format!("{PREFIX}{use_}")));
             if inline {
                 class_parts.extend(parts.iter().map(|part| inline_params(part, &bound)));
             } else if let Some(base) = self.arg_base.get() {
                 self.arg_base.set(Some(base + bound.len()));
                 let names: Vec<String> = (0..bound.len())
-                    .map(|index| format!("__plumeria_arg{}", base + index))
+                    .map(|index| format!("{PREFIX}a{}", base + index))
                     .collect();
                 let assignments: Vec<String> = names
                     .iter()
@@ -2720,14 +2721,14 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             if class_is_expr && let Some(class_attr) = class_attr {
                 entries.push((
                     (class_attr.span.start, 0),
-                    "__plumeria_class".to_string(),
+                    format!("{PREFIX}c"),
                     existing_class.clone(),
                 ));
             }
             if let (Some(style), Some(style_attr)) = (&style_arg, style_attr) {
                 entries.push((
                     (style_attr.span.start, 0),
-                    "__plumeria_style".to_string(),
+                    format!("{PREFIX}s"),
                     style.clone(),
                 ));
             }
@@ -2750,7 +2751,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
             self.element_reads = Some(std::mem::take(&mut plan.reads));
             let class_source = if class_is_expr {
-                "__plumeria_class".to_string()
+                format!("{PREFIX}c")
             } else {
                 existing_class.clone()
             };
@@ -2758,7 +2759,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             self.element_reads = None;
             let built = built?;
             let class_value = join_class_parts(&built.class_parts, &plan.params);
-            let existing = style_arg.as_ref().map(|_| "__plumeria_style");
+            let style_name = format!("{PREFIX}s");
+            let existing = style_arg.as_ref().map(|_| style_name.as_str());
             let spread: Vec<String> = existing
                 .into_iter()
                 .chain(plan.vars.iter().map(|(name, _)| name.as_str()))
@@ -2866,7 +2868,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             self.temp_next.insert(site, end);
             let declared = self.site_temps.entry(site).or_default();
             for index in base..end {
-                declared.push(format!("__plumeria_arg{index}"));
+                declared.push(format!("{PREFIX}a{index}"));
             }
         }
         self.arg_base.set(None);
@@ -2959,13 +2961,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let arg_end = self.arg_base.get().unwrap_or(base);
         self.arg_base.set(None);
         let mut temps: Vec<String> = plan.params.clone();
-        temps.extend((base..arg_end).map(|index| format!("__plumeria_arg{index}")));
+        temps.extend((base..arg_end).map(|index| format!("{PREFIX}a{index}")));
         let sx_at = node.span.start;
         let mut groups: Vec<(u32, Vec<String>)> = Vec::new();
         let (class_span, class_place, existing_class) = class;
         let class_source = match class_span {
             Some(span) => {
-                let name = format!("__plumeria_class{base}");
+                let name = format!("{PREFIX}c{base}");
                 groups.push((span.start, vec![format!("{name} = {existing_class}")]));
                 temps.push(name.clone());
                 name
@@ -2974,7 +2976,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         let style_span = style.as_ref().map(|(span, _)| *span);
         let existing_style = style.map(|(span, value)| {
-            let name = format!("__plumeria_style{base}");
+            let name = format!("{PREFIX}s{base}");
             groups.push((span.start, vec![format!("{name} = {value}")]));
             temps.push(name.clone());
             name
@@ -3222,7 +3224,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             if content.starts_with("{ key: ") {
                 temps.clear();
             }
-            temps.extend((base..arg_end).map(|index| format!("__plumeria_arg{index}")));
+            temps.extend((base..arg_end).map(|index| format!("{PREFIX}a{index}")));
             temps.extend(keys);
             if !temps.is_empty() {
                 self.temp_next
@@ -3386,15 +3388,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         if let Some(base) = self.arg_base.get() {
             self.arg_base.set(Some(base + 1));
-            let temp = format!("__plumeria_arg{base}");
+            let temp = format!("{PREFIX}a{base}");
             return format!("({temp} = ({source}), {})", body(&temp));
         }
-        let value = "__plumeria_value";
-        self.invoke(value, &body(value), source)
+        let value = format!("{PREFIX}a");
+        self.invoke(&value, &body(&value), source)
     }
 
     fn fresh(&self, names: &mut usize) -> String {
-        let mut name = format!("__plumeria_key{}", *names);
+        let mut name = format!("{PREFIX}k{}", *names);
         *names += 1;
         while self.source.contains(&name) {
             name.push('_');
