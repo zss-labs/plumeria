@@ -99,7 +99,8 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       export const A = ({ size, style }: any) =>
         <div style={style} sx={s.a(size)} />;
     `);
-      expect(result.code).toContain('...(style)');
+      expect(result.code).toContain('__plumeria_style0 = (style)');
+      expect(result.code).toContain('...__plumeria_style0, ...__plumeria_v0');
     });
 
     it('removes an empty style prop while retaining className', async () => {
