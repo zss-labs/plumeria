@@ -973,11 +973,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .collect();
         let built = self.build_class_parts(args, Vec::new(), String::new(), false)?;
         if built.is_optimizable {
-            let content = if built.class_parts.is_empty() {
-                "\"\"".to_string()
-            } else {
-                built.class_parts.join(" + \" \" + ")
-            };
+            let content = super::classes::join_class_parts(&built.class_parts, &[]);
             self.replacements.push(Replacement {
                 start: call.span.start,
                 end: call.span.end,
@@ -1201,6 +1197,42 @@ impl<'x, 't, 'p, 'b, 'a> Visit<'a> for SecondPass<'x, 't, 'p, 'b, 'a> {
             self.t.shorthand_starts.insert(it.value.span().start);
         }
         walk::walk_object_property(self, it);
+    }
+
+    fn visit_function(&mut self, it: &Function<'a>, flags: oxc_syntax::scope::ScopeFlags) {
+        self.t.site_stack.push(Some(it.span.start));
+        walk::walk_function(self, it, flags);
+        self.t.site_stack.pop();
+    }
+
+    fn visit_arrow_function_expression(&mut self, it: &ArrowFunctionExpression<'a>) {
+        self.t.site_stack.push(Some(it.span.start));
+        walk::walk_arrow_function_expression(self, it);
+        self.t.site_stack.pop();
+    }
+
+    fn visit_formal_parameters(&mut self, it: &FormalParameters<'a>) {
+        self.t.site_stack.push(None);
+        walk::walk_formal_parameters(self, it);
+        self.t.site_stack.pop();
+    }
+
+    fn visit_property_definition(&mut self, it: &PropertyDefinition<'a>) {
+        self.t.site_stack.push(None);
+        walk::walk_property_definition(self, it);
+        self.t.site_stack.pop();
+    }
+
+    fn visit_accessor_property(&mut self, it: &AccessorProperty<'a>) {
+        self.t.site_stack.push(None);
+        walk::walk_accessor_property(self, it);
+        self.t.site_stack.pop();
+    }
+
+    fn visit_static_block(&mut self, it: &StaticBlock<'a>) {
+        self.t.site_stack.push(Some(it.span.start));
+        walk::walk_static_block(self, it);
+        self.t.site_stack.pop();
     }
 
     fn visit_jsx_attribute(&mut self, it: &JSXAttribute<'a>) {
