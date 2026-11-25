@@ -23,7 +23,7 @@ use crate::style::theme::{checked_var_type_hash, theme_atomic_map, theme_hash_of
 use crate::syntax::component::{Wrapped, component_functions, wrapped_bindings};
 use crate::syntax::expr::{BinOp, E, K, Prop, unwrap};
 use crate::syntax::module::{
-    Aliases, CORE, SpecKind, add_core_aliases, import_specs, plumeria_method,
+    Aliases, CORE, SpecKind, add_core_aliases, core_aliases, import_specs, plumeria_method,
 };
 use crate::syntax::parse::parse_object_text;
 use crate::syntax::visit::{expression_has_identifier, jsx_openings};
@@ -354,6 +354,7 @@ pub fn scan_file_pass<'b, 'a>(
                 create_obj.get(hash).cloned().flatten()
             };
             let env = Env {
+                aliases: Some(&aliases),
                 statics: &scoped,
                 keyframes: &local.keyframes_hash,
                 view_transitions: &local.view_transition_hash,
@@ -529,6 +530,7 @@ pub fn scan_file_pass<'b, 'a>(
                             create_obj.get(hash).cloned().flatten()
                         };
                         let env = Env {
+                            aliases: Some(&aliases),
                             statics: &scoped,
                             keyframes: &local.keyframes_hash,
                             view_transitions: &local.view_transition_hash,
@@ -599,6 +601,7 @@ struct Resolved {
 
 struct JsxContext<'p, 'b, 'a> {
     file: &'p str,
+    aliases: Aliases,
     local: &'p LocalTables,
     global_create_hash: &'p Map<String>,
     global_create_obj: &'p Map<Value>,
@@ -718,6 +721,7 @@ impl<'p, 'b, 'a> JsxContext<'p, 'b, 'a> {
             }
         }
         let tables = Env {
+            aliases: Some(&self.aliases),
             statics: &crate::eval::NOTHING,
             keyframes: &self.local.keyframes_hash,
             view_transitions: &self.local.view_transition_hash,
@@ -1309,6 +1313,7 @@ pub fn jsx_phase<'b, 'a>(
     let outcome = (|| -> Result<(), String> {
         let context = JsxContext {
             file,
+            aliases: core_aliases(program),
             local: &local,
             global_create_hash: &tables.create_hash,
             global_create_obj: &tables.create_obj,
