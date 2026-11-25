@@ -52,6 +52,7 @@ import { assertNoDroppedValues } from './unresolvableValue';
 import { checkedVarTypeHash } from './varType';
 import {
   MODULE_SITE,
+  PREFIX,
   collectDeclSites,
   collectSiteScopes,
   insertions,
@@ -410,7 +411,7 @@ const assignedCall = (call: CallBinding, value: string): string =>
 
 type Invoke = (params: string, body: string, args: string) => string;
 
-const PARAM = '__plumeria';
+const PARAM = PREFIX;
 
 const paramMatches = (text: string) => {
   const matches: Array<{ start: number; index: number; end: number }> = [];
@@ -979,7 +980,7 @@ export const transformSource = async (
   const argNames = (from: number, to: number) =>
     Array.from(
       { length: Math.max(0, to - from) },
-      (_, index) => `__plumeria_arg${from + index}`,
+      (_, index) => `${PREFIX}a${from + index}`,
     );
 
   const invoke: Invoke = (params, body, args) => {
@@ -987,7 +988,7 @@ export const transformSource = async (
     const key = `${params}\u0000${body}`;
     let helper = helpers.get(key);
     if (!helper) {
-      helper = { name: `__plumeria_fn${helpers.size}`, params, body };
+      helper = { name: `${PREFIX}f${helpers.size}`, params, body };
       helpers.set(key, helper);
     }
     return `${helper.name}(${args})`;
@@ -999,10 +1000,10 @@ export const transformSource = async (
   ): string => {
     if (isIdentifierSource(source)) return `(${body(source)})`;
     if (argBase !== null) {
-      const temp = `__plumeria_arg${argBase++}`;
+      const temp = `${PREFIX}a${argBase++}`;
       return `(${temp} = (${source}), ${body(temp)})`;
     }
-    const value = '__plumeria_value';
+    const value = `${PREFIX}a`;
     return invoke(value, body(value), source);
   };
 
@@ -1901,7 +1902,7 @@ export const transformSource = async (
       .toString('utf-8');
 
   const freshKeyName = (names: { next: number }) => {
-    let name = `__plumeria_key${names.next++}`;
+    let name = `${PREFIX}k${names.next++}`;
     while (source.includes(name)) name += '_';
     return name;
   };
@@ -2319,7 +2320,7 @@ export const transformSource = async (
       .sort((a, b) => a.start - b.start);
     const base = argBase ?? 0;
     if (argBase !== null) argBase += reads.length;
-    const names = reads.map((_, index) => `__plumeria_arg${base + index}`);
+    const names = reads.map((_, index) => `${PREFIX}a${base + index}`);
     const argSources = new Map<string, string>();
     runtime.forEach(({ param, source }) => {
       const index = reads.findIndex((read) => read.param === param);
@@ -2550,7 +2551,7 @@ export const transformSource = async (
   });
 
   const slot = (plan: ElementPlan, kind: string) => {
-    const name = `__plumeria_${kind}${plan.base + plan.params.length}`;
+    const name = `${PREFIX}${kind}${plan.base + plan.params.length}`;
     plan.params.push(name);
     return name;
   };
@@ -3226,7 +3227,7 @@ export const transformSource = async (
       conditionals.forEach((c) => {
         const name =
           c.groupId === undefined ? undefined : boundGroups.get(c.groupId);
-        const param = name ?? `__plumeria${bound.length}`;
+        const param = name ?? `${PREFIX}${bound.length}`;
         if (name === undefined) bound.push(testSource(c) ?? '');
         if (c.groupId === undefined) c.testString = param;
         else {
@@ -3588,7 +3589,7 @@ export const transformSource = async (
       const inline =
         uses.length === bound.length &&
         uses.every((use, index) => use === index) &&
-        uses.every((use) => !skippable.has(`__plumeria${use}`));
+        uses.every((use) => !skippable.has(`${PREFIX}${use}`));
       if (inline)
         classParts.push(...parts.map((part) => inlineParams(part, bound)));
       else if (argBase !== null) {
@@ -3600,7 +3601,7 @@ export const transformSource = async (
       } else
         classParts.push(
           invoke(
-            bound.map((_, index) => `__plumeria${index}`).join(', '),
+            bound.map((_, index) => `${PREFIX}${index}`).join(', '),
             body,
             bound.join(', '),
           ),
@@ -3637,7 +3638,7 @@ export const transformSource = async (
     const groups: Array<{ at: number; steps: string[] }> = [];
     let classSource = existingClass;
     if (classSpan) {
-      const name = `__plumeria_class${base}`;
+      const name = `${PREFIX}c${base}`;
       groups.push({
         at: classSpan.start,
         steps: [`${name} = ${existingClass}`],
@@ -3647,7 +3648,7 @@ export const transformSource = async (
     }
     let existingStyle: string | undefined;
     if (style) {
-      const name = `__plumeria_style${base}`;
+      const name = `${PREFIX}s${base}`;
       groups.push({
         at: style.span.start,
         steps: [`${name} = ${style.value}`],
@@ -4433,13 +4434,13 @@ export const transformSource = async (
         if (classIsExpr && classNameAttr)
           entries.push({
             order: [classNameAttr.span.start, 0],
-            param: '__plumeria_class',
+            param: `${PREFIX}c`,
             arg: existingClassExpr,
           });
         if (styleArg !== null && styleAttrExisting)
           entries.push({
             order: [styleAttrExisting.span.start, 0],
-            param: '__plumeria_style',
+            param: `${PREFIX}s`,
             arg: styleArg,
           });
         plans.forEach(({ params, items }, index) => {
@@ -4464,14 +4465,14 @@ export const transformSource = async (
           built = buildClassParts(
             args,
             [],
-            classIsExpr ? '__plumeria_class' : existingClassExpr,
+            classIsExpr ? `${PREFIX}c` : existingClassExpr,
             true,
           );
         } finally {
           elementReads = null;
         }
         const classValue = joinClassParts(built.classParts, plan.params);
-        const existing = styleArg !== null ? '__plumeria_style' : undefined;
+        const existing = styleArg !== null ? `${PREFIX}s` : undefined;
         const spread = [
           ...(existing ? [existing] : []),
           ...plan.vars.map(({ name }) => name),
