@@ -59,6 +59,31 @@ const s = css.create({ stat: { color: 'red' }, palette: (color: string) => ({ co
   afterAll(() => fs.rmSync(DIR, { recursive: true, force: true }));
 
   describe('dynamic function keys', () => {
+    it.each([
+      ['spaces', '  ', '\n'],
+      ['tabs', '\t', '\r\n'],
+    ])(
+      'indents declarations after directives with %s',
+      async (name, indent, newline) => {
+        const source = [
+          "import * as css from '@plumeria/core';",
+          'const s = css.create({ w: (n) => ({ width: n }) });',
+          'export function A({ n }) {',
+          `${indent}'use client';`,
+          `${indent}return <div sx={s.w(n)} />;`,
+          '}',
+        ].join(newline);
+        const { code } = await run(source, `directive-${name}.tsx`);
+        expect(code).toContain(
+          [
+            `'use client';`,
+            `${indent}let __plumeria_arg0;`,
+            `${indent}return`,
+          ].join(newline),
+        );
+      },
+    );
+
     const defaults = `import * as css from '@plumeria/core';
 const d = css.create({
   tinted: (c = 'teal') => ({ color: c }),
