@@ -856,6 +856,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         })?;
 
         let text_of = |source: E<'b, 'a>| self.source_of(source);
+        let inline_argument = extra.is_empty() && resolved.derived.is_empty()
+            && matches!(runtime.as_slice(), [(param, source)]
+                if self.is_initialized_const(*source) && resolved.var_groups.get(param)
+                    .is_some_and(|groups| groups.iter().all(|g| !g.written && g.unit.is_empty())));
         let mut reads: Vec<(u32, Option<&String>, String)> = runtime
             .iter()
             .map(|(param, source)| (source.span().start, Some(param), text_of(*source)))
@@ -864,7 +868,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .iter()
                     .map(|source| (source.span().start, None, text_of(*source))),
             )
-            .filter(|(_, _, text)| !is_literal_source(text))
+            .filter(|(_, _, text)| !inline_argument && !is_literal_source(text))
             .collect();
         reads.sort_by_key(|(start, _, _)| *start);
         let base = self.arg_base.get().unwrap_or(0);
@@ -1783,13 +1787,20 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         self.build_decision(node, &prefix, &off, &mut counter, scoped)
     }
 
+    fn is_initialized_const(&self, expr: E) -> bool {
+        let K::Ident(id) = expr.kind() else { return false };
+        self.visibility().symbol_of(id)
+            .and_then(|symbol| self.initialized_const_returns.get(&symbol))
+            .is_some_and(|ret| ret.start <= id.span.start && id.span.end <= ret.end)
+    }
+
     fn can_skip_test(&self, expr: E) -> bool {
         use crate::syntax::expr::BinOp;
         use oxc_syntax::operator::BinaryOperator::{StrictEquality, StrictInequality};
 
         match unwrap(expr).kind() {
             K::Str(_) | K::Num(_) | K::Bool(_) | K::Null => true,
-            K::Ident(ident) => self.visibility()
+            K::Ident(ident) => self.is_initialized_const(unwrap(expr)) || self.visibility()
                 .symbol_of(ident)
                 .and_then(|symbol| self.parameter_bodies.get(&symbol))
                 .is_some_and(|body| body.start <= ident.span.start && ident.span.end <= body.end),
