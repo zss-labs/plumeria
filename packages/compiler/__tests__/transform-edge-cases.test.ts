@@ -311,22 +311,37 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a className without a value',
         `<div className sx={s.a} />`,
-        `<div  className="${RED}" />`,
+        `<div className="${RED}" />`,
       ],
       [
         'a className string',
         `<div className="x" sx={s.a} />`,
-        `<div  className="x ${RED}" />`,
+        `<div className="x ${RED}" />`,
       ],
       [
         'a className expression',
         `<div className={p.c} sx={s.a} />`,
-        `<div  className={(p.c) + " " + "${RED}"} />`,
+        `<div className={(p.c) + " " + "${RED}"} />`,
       ],
       [
         'a className beside a style that is not there',
         `<div className="x" sx={undefined} />`,
-        `<div  className="x" />`,
+        `<div className="x" />`,
+      ],
+      [
+        'a style after a spread',
+        `<div sx={s.a} {...p} className="x" />`,
+        `<div {...p} className="x ${RED}" />`,
+      ],
+      [
+        'two spaces inside a className value',
+        `<div className="a  b" sx={s.a} />`,
+        `<div className="a  b ${RED}" />`,
+      ],
+      [
+        'attributes on their own lines',
+        `<div\n      id="i"\n      className="x"\n      sx={s.a}\n    />`,
+        `<div\n      id="i"\n      \n      className="x ${RED}"\n    />`,
       ],
     ])('keeps %s', async (_name, element, expected) => {
       const { code } = await app(`export const A = (p: any) => ${element};`);
