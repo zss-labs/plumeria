@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { parseSync } from '@swc/core';
 import type { StaticTable } from './types';
 import {
+  bindMarkerCalls,
   collectLocalConstNodes,
   collectLocalConsts,
   objectExpressionToObject,
@@ -30,6 +31,7 @@ function readConstFile(filePath: string): ConstFile {
     tsx: true,
     target: 'es2022',
   });
+  bindMarkerCalls(ast);
   const values: Record<string, unknown> = { ...collectLocalConsts(ast) };
   const imports: ConstFile['imports'] = {};
   const createStaticNames = new Set<string>();
