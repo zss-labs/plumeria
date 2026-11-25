@@ -72,6 +72,18 @@ pub fn add_core_aliases(decl: &ImportDeclaration, aliases: &mut Aliases) {
     }
 }
 
+pub fn core_aliases(program: &Program) -> Aliases {
+    let mut aliases = Aliases::default();
+    for statement in &program.body {
+        if let Statement::ImportDeclaration(decl) = statement
+            && decl.source.value == CORE
+        {
+            add_core_aliases(decl, &mut aliases);
+        }
+    }
+    aliases
+}
+
 pub fn plumeria_method<'b>(callee: &'b Expression, aliases: &'b Aliases) -> Option<&'b str> {
     let callee = E::new(callee);
     match callee.kind() {
