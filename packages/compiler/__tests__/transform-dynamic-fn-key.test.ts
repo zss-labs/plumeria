@@ -294,6 +294,46 @@ export const B = (p) => <div sx={[p.on && s.stat, s.w(p.n)]} />`,
       return exports;
     };
 
+    const readmeStyles = `import * as css from '@plumeria/core';
+const styles = css.create({
+  text: { fontSize: 12, color: 'gray' },
+  active: { color: 'navy' },
+  scale: (value) => ({ scale: value }),
+});`;
+
+    it('inlines the initialized scale and the condition in the README example', async () => {
+      const { code } = await run(
+        readmeStyles +
+          `
+export default function App({ active }) {
+  const scale = useScale();
+  return <div sx={[styles.text, active && styles.active, styles.scale(scale)]} />;
+}`,
+        'readme-inline.tsx',
+      );
+      expect(code).not.toContain('__plumeria__$$');
+      expect(code).toContain(
+        'className={((active) ? "xhrr6ses xhxthtyw xvbwmxqp" : "xhrr6ses xhxthtyw xuifcaas")}',
+      );
+      expect(code).toMatch(/style=\{\{\s*"--xfuma1qq-value": scale\s*\}\}/);
+    });
+
+    it('reads the condition before a dynamic argument reassigns it', async () => {
+      const { App } = await execute(
+        readmeStyles +
+          `
+export function App(active = true) {
+  const change = () => { active = false; return 2; };
+  return <div sx={[styles.text, active && styles.active, styles.scale(change())]} />;
+}`,
+        'readme-condition-order.tsx',
+      );
+      expect(App()).toMatchObject({
+        className: 'xhrr6ses xhxthtyw xvbwmxqp',
+        style: { '--xfuma1qq-value': 2 },
+      });
+    });
+
     it('preserves a TDZ read when a later style overrides the conditional style', async () => {
       const { U } = await execute(
         `import * as css from '@plumeria/core';
