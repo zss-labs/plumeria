@@ -27,6 +27,7 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   const UNREADABLE = path.join(DIR, 'Unreadable.tsx');
   const USED_PLAIN = path.join(DIR, 'UsedPlain.tsx');
   const PARENT = path.join(DIR, 'Parent.tsx');
+  const CALLED_PLAIN = path.join(DIR, 'CalledPlain.tsx');
   const MIXED = path.join(DIR, 'Mixed.tsx');
 
   const env = (source: string, filePath: string) => ({
@@ -153,6 +154,15 @@ export const Parent = ({
     <UsedPlain plain={styles.unread(color)} />
     <Gated on styleArray={flag ? styles.tone(color) : styles.base} />
   </div>
+);
+`,
+    [CALLED_PLAIN]: `
+import '@plumeria/core';
+import { styles } from './styles';
+import { UsedPlain } from './UsedPlain';
+
+export const CalledPlain = ({ next }: { next: () => string }) => (
+  <UsedPlain plain={styles.unread(next())} />
 );
 `,
   };
@@ -327,13 +337,19 @@ export const Parent = ({
     it('leaves a parameter that reaches no declaration as a bare key', async () => {
       const code = await run(PARENT);
       const plain = code.match(/plain=\{([\s\S]*?)\}\s*\/>/)![1];
-      expect(typeof new Function('color', `return (${plain});`)('red')).toBe(
-        'string',
-      );
-      expect(() => new Function(`return (${plain});`)()).toThrow(
-        ReferenceError,
-      );
+      expect(typeof new Function(`return (${plain});`)()).toBe('string');
       await expect(run(USED_PLAIN)).resolves.toContain('className=');
+    });
+
+    it('still evaluates a call passed to a parameter that reaches no declaration', async () => {
+      const code = await run(CALLED_PLAIN);
+      const plain = code.match(/plain=\{([\s\S]*?)\}\s*\/>/)![1];
+      const temps = code.match(/\blet ([^;]+);/)?.[0] ?? '';
+      const next = jest.fn(() => 'red');
+      expect(
+        typeof new Function('next', `${temps} return (${plain});`)(next),
+      ).toBe('string');
+      expect(next).toHaveBeenCalledTimes(1);
     });
 
     it('rejects an uncalled dynamic function in a style prop array', async () => {
