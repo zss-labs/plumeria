@@ -318,6 +318,59 @@ export default function App({ active }) {
       expect(code).toMatch(/style=\{\{\s*"--xfuma1qq-value": scale\s*\}\}/);
     });
 
+    it.each([
+      'scale = 2',
+      'scale++',
+      '({ value: [scale] } = source)',
+      'for (scale of values) {}',
+      'for (scale in values) {}',
+    ])(
+      'isolates the parameter written by %s from a same-named parameter',
+      async (write) => {
+        const { code } = await run(
+          readmeStyles +
+            `
+export const A = ({ scale }) => <div sx={styles.scale(scale)} />;
+export function B({ scale }) {
+  const change = () => { ${write}; };
+  return <div sx={styles.scale(scale)} onClick={change} />;
+}`,
+          'parameter-writes.tsx',
+        );
+        expect(code).toContain('style={{ "--xfuma1qq-value": scale }}');
+        expect(code).toMatch(/__plumeria__\$\$a\d+ = scale/);
+      },
+    );
+
+    it.each(['var scale = 2;', 'function scale() {}'])(
+      'keeps a temporary for a parameter redeclared by %s',
+      async (redeclaration) => {
+        const { code } = await run(
+          readmeStyles +
+            `
+export function B({ scale }) {
+  ${redeclaration}
+  return <div sx={styles.scale(scale)} />;
+}`,
+          'parameter-redeclaration.tsx',
+        );
+        expect(code).toMatch(/__plumeria__\$\$a\d+ = scale/);
+      },
+    );
+
+    it('keeps parameter temporaries in a file with direct eval', async () => {
+      const { code } = await run(
+        readmeStyles +
+          `
+export function A({ scale }) {
+  const change = () => (eval)('scale = 2');
+  return <div sx={styles.scale(scale)} onClick={change} />;
+}`,
+        'parameter-eval.tsx',
+      );
+      expect(code).toMatch(/__plumeria__\$\$a\d+ = scale/);
+    });
+
     it('reads the condition before a dynamic argument reassigns it', async () => {
       const { App } = await execute(
         readmeStyles +
