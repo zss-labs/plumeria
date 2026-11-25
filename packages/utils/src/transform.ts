@@ -130,7 +130,10 @@ import type { StyleSource } from './escalation';
 import { themeHashOf } from './createTheme';
 import { resolveImportPath } from './resolver';
 import { getLeadingCommentLength } from './ast';
-import { collectReferenceIdentifiers } from './references';
+import {
+  collectReferenceIdentifiers,
+  forEachPatternIdentifier,
+} from './references';
 import { resolveNamespaceMembers } from './namespaceImport';
 import { assertPropertyPolicy } from './propertyPolicy';
 import { desugar } from './styled';
@@ -169,6 +172,7 @@ type CreateStyleValue = {
 };
 
 interface StyleConditional {
+  canSkipTest?: boolean;
   test: Expression;
   testString?: string;
   testLHS?: string;
@@ -644,6 +648,7 @@ export const transformSource = async (
   const propAliases = new Map<string, Map<string, string>>();
   const propDefaults = new Map<string, Map<string, Expression>>();
   const declaredProps = new Map<string, Set<string>>();
+  const parameterBodies = new Map<string, HasSpan['span']>();
   const addComponent = (name: string, fn: HasSpan & { params: unknown[] }) => {
     components.push({ name, node: fn });
     const first = fn.params[0] as any;
@@ -669,7 +674,17 @@ export const transformSource = async (
     }
     if (declared.size > 0) declaredProps.set(name, declared);
   };
-  for (const { name, fn } of componentFunctions(ast)) addComponent(name, fn);
+  for (const { name, fn } of componentFunctions(ast)) {
+    addComponent(name, fn);
+    if (fn.body) {
+      for (const param of fn.params) {
+        forEachPatternIdentifier(param, (id) => {
+          if (id.ctxt)
+            parameterBodies.set(`${id.ctxt}:${id.value}`, fn.body.span);
+        });
+      }
+    }
+  }
 
   const appliedStyleProps = new Set<string>();
   const ownerComponentOf = (at: HasSpan) =>
@@ -2785,6 +2800,33 @@ export const transformSource = async (
     ];
   };
 
+  const canSkipTest = (expr: Expression): boolean => {
+    const node = unwrapExpression(expr);
+    switch (node.type) {
+      case 'StringLiteral':
+      case 'NumericLiteral':
+      case 'BooleanLiteral':
+      case 'NullLiteral':
+        return true;
+      case 'Identifier': {
+        const body = parameterBodies.get(`${node.ctxt}:${node.value}`);
+        return (
+          !!body && body.start <= node.span.start && node.span.end <= body.end
+        );
+      }
+      case 'BinaryExpression':
+        return (
+          ['===', '!==', '&&', '||', '??'].includes(node.operator) &&
+          canSkipTest(node.left) &&
+          canSkipTest(node.right)
+        );
+      case 'UnaryExpression':
+        return node.operator === '!' && canSkipTest(node.argument);
+      default:
+        return false;
+    }
+  };
+
   const buildClassParts = (
     args: Array<{ expression: Expression; order?: number }>,
     dynamicClassParts: string[] = [],
@@ -2817,6 +2859,7 @@ export const transformSource = async (
       node: Expression,
       currentTestStrings: string[] = [],
       argOrder?: number,
+      canSkip = true,
     ): boolean => {
       node = unwrapExpression(node);
       node = resolveLocalStyleAlias(localStyleAliases, node);
@@ -2833,6 +2876,7 @@ export const transformSource = async (
             element.expression,
             currentTestStrings,
             argOrder,
+            canSkip,
           );
         });
       }
@@ -2869,6 +2913,7 @@ export const transformSource = async (
         } else {
           conditionals.push({
             test: node,
+            canSkipTest: canSkip,
             testString: currentTestStrings.join(' && '),
             truthy: staticStyle,
             falsy: {},
@@ -2879,6 +2924,7 @@ export const transformSource = async (
         return true;
       }
       if (node.type === 'ConditionalExpression') {
+        const skipBranches = canSkip && canSkipTest(node.test);
         const testSource = readText(node.test);
         if (currentTestStrings.length === 0) {
           const trueStyle = resolveStyleObject(node.consequent);
@@ -2886,6 +2932,7 @@ export const transformSource = async (
           if (trueStyle && falseStyle) {
             conditionals.push({
               test: node,
+              canSkipTest: skipBranches,
               testString: testSource,
               truthy: trueStyle,
               falsy: falseStyle,
@@ -2899,11 +2946,13 @@ export const transformSource = async (
           node.consequent,
           [...currentTestStrings, `(${testSource})`],
           argOrder,
+          skipBranches,
         );
         const alternateHandled = collectConditions(
           node.alternate,
           [...currentTestStrings, `!(${testSource})`],
           argOrder,
+          skipBranches,
         );
         return consequentHandled && alternateHandled;
       } else if (node.type === 'BinaryExpression' && node.operator === '&&') {
@@ -2911,9 +2960,15 @@ export const transformSource = async (
           node.right,
           [...currentTestStrings, `(${readText(node.left)})`],
           argOrder,
+          canSkip && canSkipTest(node.left),
         );
       } else if (node.type === 'ParenthesisExpression') {
-        return collectConditions(node.expression, currentTestStrings, argOrder);
+        return collectConditions(
+          node.expression,
+          currentTestStrings,
+          argOrder,
+          canSkip,
+        );
       }
 
       if (pushPropPossibilities(node, currentTestStrings)) return true;
@@ -3076,6 +3131,7 @@ export const transformSource = async (
           Object.entries(styleObj).forEach(([optionName, style]) => {
             conditionals.push({
               test: dynExpr,
+              canSkipTest: canSkipTest(dynExpr),
               testLHS: dynSource,
               testString: `${dynSource} === '${optionName}'`,
               truthy: style as CSSObject,
@@ -3148,16 +3204,6 @@ export const transformSource = async (
     });
     const stateWeights = getStateWeights(stateSources);
 
-    const isPlainRead = (source: string) => {
-      const code = source.replace(/'[^'\\\n]*'|"[^"\\\n]*"/g, '""');
-      return (
-        /^[\w$.\s()!=&|?:"]*$/.test(code) &&
-        !/[\w$)]\s*\(|(?<!\d)\.|\.(?!\d)|\b(?:new|await|yield|delete|void|import|in|instanceof)\b/.test(
-          code,
-        ) &&
-        !/[=&|]/.test(code.replace(/[=!]==|&&|\|\|/g, ''))
-      );
-    };
     const lookupTable = (entries: Array<[string, string]>, closed = false) =>
       `{${closed ? '' : '__proto__:null,'}${entries
         .map(
@@ -3165,13 +3211,16 @@ export const transformSource = async (
             `${key === '__proto__' ? '["__proto__"]' : JSON.stringify(key)}:${value}`,
         )
         .join(',')}}`;
+    const generated = [...(elementReads?.values() ?? [])];
     const testSource = (c: StyleConditional) =>
       c.groupId === undefined ? (c.testString ?? getSource(c.test)) : c.testLHS;
     const bound: string[] = [];
     const skippable = new Set<string>();
     if (
       conditionals.every((c) => testSource(c) !== undefined) &&
-      conditionals.some((c) => !isPlainRead(testSource(c) ?? ''))
+      conditionals.some(
+        (c) => !c.canSkipTest && !generatedTest(testSource(c) ?? '', generated),
+      )
     ) {
       const boundGroups = new Map<number, string>();
       conditionals.forEach((c) => {
@@ -3456,7 +3505,6 @@ export const transformSource = async (
         return picked;
       };
 
-      const generated = [...(elementReads?.values() ?? [])];
       chains.forEach((paths, id) => {
         const classes = new Map<number, Map<number, string>>();
         id.split(',').forEach((setter) => {
