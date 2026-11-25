@@ -187,7 +187,7 @@ export const Parent = ({
   const elementsOf = (code: string): Rendered[] =>
     [
       ...code.matchAll(
-        /className=(?:\{([\s\S]*?)\}|"([^"]*)")(?: style=\{\{([\s\S]*?)\}\})?\s*\/>/g,
+        /className=(?:\{([\s\S]*?)\}|"([^"]*)")(?: style=\{([\s\S]*?)\})?\s*\/>/g,
       ),
     ].map((match) => ({
       className: norm(
@@ -195,7 +195,7 @@ export const Parent = ({
           ? new Function('color', 'n', `return (${match[1]});`)('red', 8)
           : match[2],
       ),
-      style: new Function('color', 'n', `return ({${match[3] ?? ''}});`)(
+      style: new Function('color', 'n', `return (${match[3] ?? '{}'});`)(
         'red',
         8,
       ),
