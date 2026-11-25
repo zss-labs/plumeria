@@ -2819,8 +2819,9 @@ export const transformSource = async (
     plan: ElementPlan,
     recurse: (node: Expression, plan: ElementPlan) => string[] | null,
   ): string[] | null => {
-    const name = slot(plan, 't');
-    plan.reads.set(spanKey(spanOf(test)), name);
+    const stable = plan.assign && canSkipTest(test);
+    const name = stable ? undefined : slot(plan, 't');
+    if (name) plan.reads.set(spanKey(spanOf(test)), name);
     plan.classRuntime = true;
     const start = plan.params.length;
     const yes = recurse(consequent, plan);
@@ -2829,7 +2830,8 @@ export const transformSource = async (
     const no = alternate ? recurse(alternate, plan) : [];
     if (!no) return null;
     const end = plan.params.length;
-    if (end === start) return [planItem(plan, name, `(${getSource(test)})`)];
+    if (end === start)
+      return name ? [planItem(plan, name, `(${getSource(test)})`)] : [];
     if (plan.assign) {
       const reset = (params: string[]) =>
         params.map((param) => `${param} = null`);
@@ -2837,9 +2839,10 @@ export const transformSource = async (
       const falsy = [...reset(plan.params.slice(start, middle)), ...no];
       const group = (steps: string[]) =>
         steps.length ? steps.join(', ') : 'null';
-      return [
-        `((${name} = (${getSource(test)})) ? (${group(truthy)}) : (${group(falsy)}))`,
-      ];
+      const read = name
+        ? `(${name} = (${getSource(test)}))`
+        : `(${getSource(test)})`;
+      return [`(${read} ? (${group(truthy)}) : (${group(falsy)}))`];
     }
     const nulls = (count: number) => Array<string>(count).fill('null');
     const truthy = ['true', ...yes, ...nulls(end - middle)];
