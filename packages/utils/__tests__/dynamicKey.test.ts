@@ -224,7 +224,11 @@ describe('resolveDynamicStyle', () => {
       derived: [],
     });
     expect(staticTable).toEqual({ size: 10 });
-    const plain = { params: [], body: object('{ color: "red" }') };
+    const plain = {
+      params: [],
+      bindings: [],
+      body: object('{ color: "red" }'),
+    };
     expect(resolveDynamicStyle(plain, [], {}, tables).style).toEqual({
       color: 'red',
     });
