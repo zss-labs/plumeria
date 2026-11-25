@@ -4,6 +4,7 @@ use oxc_span::GetSpan;
 use rustc_hash::FxHashMap;
 
 pub const MODULE_SITE: u32 = u32::MAX;
+pub const PREFIX: &str = "__plumeria__$$";
 
 #[derive(Clone, Copy, Default)]
 pub struct DeclSite {
