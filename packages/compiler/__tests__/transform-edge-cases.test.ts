@@ -329,6 +329,16 @@ export const A = () => <Card cardStyle={s.a} />;`,
         `<div className="x" />`,
       ],
       [
+        'dollar patterns in a className expression',
+        `<div className={p.on ? "a$&b" : "c$'d"} sx={s.a} />`,
+        `<div className={(p.on ? "a$&b" : "c$'d") + " " + "${RED}"} />`,
+      ],
+      [
+        'dollar patterns in a style expression',
+        `<div style={p.on ? { content: "$$" } : p.st} sx={s.a} />`,
+        `style={{ ...(p.on ? { content: "$$" } : p.st) }}`,
+      ],
+      [
         'a style after a spread',
         `<div sx={s.a} {...p} className="x" />`,
         `<div {...p} className="x ${RED}" />`,
