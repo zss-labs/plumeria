@@ -7,6 +7,7 @@ use rustc_hash::{FxBuildHasher, FxHashSet};
 use super::{Env, Evaluator, Lookup};
 use crate::js::{Object, Value};
 use crate::syntax::expr::{E, K, unwrap};
+use crate::syntax::module::{Aliases, core_aliases};
 
 pub type ConstNodes<'b, 'a> = IndexMap<&'b str, &'b Expression<'a>, FxBuildHasher>;
 
@@ -44,6 +45,7 @@ pub fn collect_local_const_nodes<'b, 'a>(program: &'b Program<'a>) -> ConstNodes
 }
 
 struct Consts<'b, 'a> {
+    aliases: Aliases,
     decls: ConstNodes<'b, 'a>,
     values: RefCell<Object>,
     visiting: RefCell<FxHashSet<String>>,
@@ -69,7 +71,10 @@ impl<'b, 'a> Consts<'b, 'a> {
         self.visiting.borrow_mut().insert(name.to_string());
         let init = unwrap(E::new(init));
         let live = Live(&self.values);
-        let env = Env::statics_only(&live);
+        let env = Env {
+            aliases: Some(&self.aliases),
+            ..Env::statics_only(&live)
+        };
         let result = match init.kind() {
             K::Str(value) => value.value.as_str().map(Value::str),
             K::Num(value) => Some(Value::Num(value.value)),
@@ -97,6 +102,7 @@ impl<'b, 'a> Consts<'b, 'a> {
 
 pub fn collect_local_consts(program: &Program) -> Object {
     let consts = Consts {
+        aliases: core_aliases(program),
         decls: collect_local_const_nodes(program),
         values: RefCell::new(Object::new()),
         visiting: RefCell::new(FxHashSet::default()),
