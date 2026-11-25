@@ -44,7 +44,7 @@ pub fn marker_var(id: &str, pseudo: &str) -> String {
     source.insert(id, Value::str(pseudo));
     let hash = hash_object(&source);
     let head = pseudo.split('(').next().unwrap_or("");
-    format!("--{hash}-{}-{}", to_ident(id), to_ident(head))
+    format!("--{hash}-{id}-{}", to_ident(head))
 }
 
 fn is_marker_entry(name: &str, value: &Value, pseudo: &str) -> bool {
@@ -537,6 +537,11 @@ impl<'e, 'r> Evaluator<'e, 'r> {
             let id = statics_only.expression(argument_expr(&call.arguments[0]))?;
             let pseudo = statics_only.expression(argument_expr(&call.arguments[1]))?;
             if let (Value::Str(id), Value::Str(pseudo)) = (&id, &pseudo) {
+                if !id.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_')) {
+                    return Err(format!(
+                        "[plumeria] css.{method}() id {id:?} can only contain letters, digits, \"-\" and \"_\"."
+                    ));
+                }
                 let var_name = marker_var(id, pseudo);
                 if method == "marker" {
                     let mut inner = Object::new();
