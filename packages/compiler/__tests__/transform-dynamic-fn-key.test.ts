@@ -77,7 +77,7 @@ const s = css.create({ stat: { color: 'red' }, palette: (color: string) => ({ co
         expect(code).toContain(
           [
             `'use client';`,
-            `${indent}let __plumeria_arg0;`,
+            `${indent}let __plumeria__$$a0;`,
             `${indent}return`,
           ].join(newline),
         );
@@ -94,13 +94,13 @@ const d = css.create({
     const classOf = (code: string) => code.match(/className="([^"]+)"/)?.[1];
 
     it.each([
-      ['local', '__plumeria_arg0', '__plumeria_arg0'],
+      ['local', '__plumeria__$$a0', '__plumeria__$$a0'],
       [
         'escaped local',
-        String.raw`\u005f_plumeria_arg0`,
-        String.raw`\u005f_plumeria_arg0`,
+        String.raw`\u005f_plumeria__$$a0`,
+        String.raw`\u005f_plumeria__$$a0`,
       ],
-      ['global', '', '__plumeria_arg0'],
+      ['global', '', '__plumeria__$$a0'],
     ])(
       'preserves a reserved argument name (%s)',
       async (_, parameter, argument) => {
@@ -109,9 +109,9 @@ const d = css.create({
             `export function A(${parameter}) { return <div sx={s.palette(${argument})} />; }`,
           'reserved-argument.tsx',
         );
-        expect(code).toContain('style={((__plumeria_arg0) => (');
+        expect(code).toContain('style={((__plumeria__$$a0) => (');
         expect(code).toContain(argument);
-        expect(code).not.toMatch(/\bconst __plumeria_arg0\s*=/);
+        expect(code).not.toMatch(/\bconst __plumeria__\$\$a0\s*=/);
       },
     );
 
@@ -122,10 +122,10 @@ const d = css.create({
         'hoist-site.tsx',
       );
       expect(code).toMatch(
-        /export function A\(\{ c \}\) \{ let __plumeria_arg0;\n {2}return <div className="xokp0532" style=\{\(__plumeria_arg0 = c, /,
+        /export function A\(\{ c \}\) \{ let __plumeria__\$\$a0;\n {2}return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c, /,
       );
       expect(code).toMatch(
-        /export const B = \(\{ c \}\) => \{ let __plumeria_arg0; return <div className="xokp0532" style=\{\(__plumeria_arg0 = c, [^\n]*\)\} \/>; \};/,
+        /export const B = \(\{ c \}\) => \{ let __plumeria__\$\$a0; return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c, [^\n]*\)\} \/>; \};/,
       );
     });
 
@@ -335,7 +335,7 @@ export const A = ({ a, b }) => <div sx={[a && s.red, b && s.blue]} />;`,
       expect(code).toMatch(
         /className=\{\(\(b\) \? "\w+" : \(\(a\) \? "\w+" : ""\)\)\}/,
       );
-      expect(code).not.toContain('__plumeria_arg');
+      expect(code).not.toContain('__plumeria__$$a');
     });
 
     it('reads a condition that css.use folds away', async () => {
@@ -430,12 +430,12 @@ export const A = (props) => <div sx={s.red} {...props} className="base" />;`;
     it('keeps a style key that looks like a generated name', async () => {
       const { code } = await run(
         `import * as css from '@plumeria/core';
-const t = css.create({ __plumeria0: { color: 'red' }, b: { color: 'blue' }, c: { padding: 1 } });
+const t = css.create({ __plumeria__$$0: { color: 'red' }, b: { color: 'blue' }, c: { padding: 1 } });
 export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
         'generated-key.tsx',
       );
-      expect(code).toContain('"__plumeria0":"xq96bg3w"');
-      expect(code).not.toContain('"__plumeria_arg0":');
+      expect(code).toContain('"__plumeria__$$0":"xq96bg3w"');
+      expect(code).not.toContain('"__plumeria__$$a0":');
     });
 
     it('writes no wrapper when an attribute reads between sx and style', async () => {
@@ -446,7 +446,7 @@ export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
       );
       expect(code).not.toMatch(/=> \(\{/);
       expect(code).toContain(
-        'id={g()} style={(__plumeria_style0 = (f()), { ...__plumeria_style0, ...__plumeria_v0 })}',
+        'id={g()} style={(__plumeria__$$s0 = (f()), { ...__plumeria__$$s0, ...__plumeria__$$v0 })}',
       );
     });
 
@@ -652,7 +652,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
       );
       expect(code).toContain('className="xokp0532"');
       expect(code).toContain(
-        `style={(__plumeria_arg0 = p.c, { "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })}`,
+        `style={(__plumeria__$$a0 = p.c, { "--x80848wl-color": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })}`,
       );
     });
 
@@ -706,14 +706,14 @@ export const E = (p: any) => (<div><a sx={s.link(p.b, p.h)} /><i sx={s.deep(p.s)
       const vars = code.match(/"--[^"]+"/g) ?? [];
       expect(vars).toHaveLength(3);
       expect(code).toContain(
-        `(__plumeria_arg0 = p.b, __plumeria_arg1 = p.h, {`,
+        `(__plumeria__$$a0 = p.b, __plumeria__$$a1 = p.h, {`,
       );
       expect(code).toContain(
-        `(__plumeria_arg1) + 'px' : (__plumeria_arg1)) })}`,
+        `(__plumeria__$$a1) + 'px' : (__plumeria__$$a1)) })}`,
       );
-      expect(code).toContain(`(__plumeria_arg2 = p.s, {`);
+      expect(code).toContain(`(__plumeria__$$a2 = p.s, {`);
       expect(code).toContain(
-        `(__plumeria_arg2) + 'px' : (__plumeria_arg2)) })}`,
+        `(__plumeria__$$a2) + 'px' : (__plumeria__$$a2)) })}`,
       );
     });
 
@@ -725,7 +725,7 @@ export const F = (p: any) => <div sx={s.fade(p.o)} />;`,
         'unitless.tsx',
       );
       expect(code).toMatch(
-        /\(__plumeria_arg0 = p\.o, \{ "--[^"]+": __plumeria_arg0 \}\)\}/,
+        /\(__plumeria__\$\$a0 = p\.o, \{ "--[^"]+": __plumeria__\$\$a0 \}\)\}/,
       );
     });
 
@@ -740,7 +740,7 @@ export const F2 = (p: any) => (<div><i sx={s.grow(1)} /><b sx={s.weight(p.w)} />
       );
       expect(code).toMatch(/"--[^"]+-n": "1"/);
       expect(code).toMatch(
-        /\(__plumeria_arg0 = p\.w, \{ "--[^"]+-n": __plumeria_arg0 \}\)/,
+        /\(__plumeria__\$\$a0 = p\.w, \{ "--[^"]+-n": __plumeria__\$\$a0 \}\)/,
       );
     });
 
@@ -755,7 +755,7 @@ export const F3 = (p: any) => (<div><i sx={s.gap(4)} /><b sx={s.gap(p.n)} /></di
       );
       expect(code).toMatch(/"--[^"]+-n": "4"/);
       expect(code).toMatch(
-        /\(__plumeria_arg0 = p\.n, \{ "--[^"]+-n": __plumeria_arg0 \}\)/,
+        /\(__plumeria__\$\$a0 = p\.n, \{ "--[^"]+-n": __plumeria__\$\$a0 \}\)/,
       );
     });
 
@@ -769,7 +769,7 @@ export const U = (p: any) => <div sx={s.units(p.n)} />;`,
         'unit-split.tsx',
       );
       expect(code).toMatch(
-        /\(__plumeria_arg0 = p\.n, \{ "--([a-z0-9]+)-n": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\), "--\1-n-z-index": __plumeria_arg0 \}\)\}/,
+        /\(__plumeria__\$\$a0 = p\.n, \{ "--([a-z0-9]+)-n": \(typeof \(__plumeria__\$\$a0\) === 'number' \? \(__plumeria__\$\$a0\) \+ 'px' : \(__plumeria__\$\$a0\)\), "--\1-n-z-index": __plumeria__\$\$a0 \}\)\}/,
       );
     });
 
@@ -839,10 +839,10 @@ export const H = (p: any) => (<div>
         'named.tsx',
       );
       expect(code).toContain(
-        `(__plumeria_arg0 = p.c, { "--x4fa0uiv-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })`,
+        `(__plumeria__$$a0 = p.c, { "--x4fa0uiv-color": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })`,
       );
       expect(code).toContain(
-        `(__plumeria_arg1 = p.t, { "--xs7d3nvt-t": (typeof (__plumeria_arg1) === 'number' ? (__plumeria_arg1) + 'px' : (__plumeria_arg1)) })`,
+        `(__plumeria__$$a1 = p.t, { "--xs7d3nvt-t": (typeof (__plumeria__$$a1) === 'number' ? (__plumeria__$$a1) + 'px' : (__plumeria__$$a1)) })`,
       );
     });
 
@@ -863,7 +863,7 @@ export const K = (p: any) => (<div>
       expect(code).toContain('<i className="xymr32dw" />');
       expect(code).toContain('<b className="x2x7bpc1" />');
       expect(code).toContain(
-        "(__plumeria_arg0 = `rgb(${p.r} 0 0)`, { \"--xav007xm-color\": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })",
+        "(__plumeria__$$a0 = `rgb(${p.r} 0 0)`, { \"--xav007xm-color\": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })",
       );
     });
 
@@ -934,7 +934,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.fill(r)} />;`,
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\)/,
+        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
       );
     });
 
@@ -947,7 +947,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ 'px'\)/,
+        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ 'px'\)/,
       );
     });
 
@@ -962,7 +962,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         /width: calc\(100% - var\(--[a-z0-9-]+\)\);/,
       );
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ 'px'\)/,
+        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ 'px'\)/,
       );
     });
 
@@ -1011,7 +1011,7 @@ export const Bar = ({ p }: { p: { rating: number } }) => (
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+, 0%\);/);
       expect(styleOf(code)).toMatch(
-        /\(__plumeria_arg0 = \(p\.rating \/ 5\) \* 100, \{ "--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\) \}\)/,
+        /\(__plumeria__\$\$a0 = \(p\.rating \/ 5\) \* 100, \{ "--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ '%'\) \}\)/,
       );
     });
 
@@ -1039,10 +1039,10 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
       expect(css).toMatch(/margin: var\(--[a-z0-9-]+-margin\);/);
       expect(css).toMatch(/translate: var\(--[a-z0-9-]+-translate\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin": \(\(__plumeria_arg0\) \+ 'rem'\)/,
+        /"--[a-z0-9-]+-margin": \(\(__plumeria__\$\$a0\) \+ 'rem'\)/,
       );
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-translate": \(\(__plumeria_arg0\) \+ '%'\)/,
+        /"--[a-z0-9-]+-translate": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
       );
     });
 
@@ -1057,7 +1057,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
         /width: calc\(var\(--[a-z0-9-]+\) \+ var\(--[a-z0-9-]+-width\)\);/,
       );
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-width": \(\(__plumeria_arg0\) \+ '%'\)/,
+        /"--[a-z0-9-]+-width": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
       );
     });
 
@@ -1073,7 +1073,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       expect(css).toMatch(/margin-top: var\(--[a-z0-9-]+-margin-top\);/);
       expect(styleOf(code)).toContain("+ 'px'");
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin-top": \(\(__plumeria_arg0\) \+ '%'\)/,
+        /"--[a-z0-9-]+-margin-top": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
       );
     });
 
