@@ -1350,19 +1350,49 @@ function evaluateBinaryExpression(
   );
 }
 
+const coreCalls = new WeakMap<CallExpression, string>();
+
+export function bindMarkerCalls(ast: Module) {
+  const aliases = new Map<string, string>();
+  const binding = (id: Identifier) =>
+    `${(id as Identifier & { ctxt: number }).ctxt}:${id.value}`;
+  for (const stmt of ast.body) {
+    if (
+      stmt.type !== 'ImportDeclaration' ||
+      stmt.source.value !== '@plumeria/core'
+    )
+      continue;
+    for (const spec of stmt.specifiers)
+      aliases.set(
+        binding(spec.local),
+        spec.type === 'ImportSpecifier'
+          ? (spec.imported ?? spec.local).value
+          : 'NAMESPACE',
+      );
+  }
+  if (!aliases.size) return;
+  traverse(ast, {
+    CallExpression({ node }: { node: CallExpression }) {
+      const { callee } = node;
+      const method = t.isIdentifier(callee)
+        ? aliases.get(binding(callee))
+        : t.isMemberExpression(callee) &&
+            t.isIdentifier(callee.object) &&
+            t.isIdentifier(callee.property) &&
+            aliases.get(binding(callee.object)) === 'NAMESPACE'
+          ? callee.property.value
+          : undefined;
+      if (method) coreCalls.set(node, method);
+    },
+  });
+}
+
 /* istanbul ignore next */
 function evaluateCallExpression(
   node: CallExpression,
   staticTable: StaticTable,
 ): string | CSSObject | null {
-  const callee = node.callee;
-  let method: string | undefined;
-
-  if (t.isIdentifier(callee)) {
-    method = callee.value;
-  } else if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
-    method = callee.property.value;
-  }
+  const method = coreCalls.get(node);
 
   if (!method) return null;
 
