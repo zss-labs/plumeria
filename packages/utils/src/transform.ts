@@ -651,13 +651,18 @@ export const transformSource = async (
   const propDefaults = new Map<string, Map<string, Expression>>();
   const declaredProps = new Map<string, Set<string>>();
   const initializedConstReturns = new Map<string, HasSpan['span']>();
-  const isInitializedConst = (expr: Expression) => {
+  const parameterBodies = new Map<string, HasSpan['span']>();
+  const discardWrittenParameter = (target: unknown) =>
+    forEachPatternIdentifier(target, (id) =>
+      parameterBodies.delete(`${id.ctxt}:${id.value}`),
+    );
+  const isStableRead = (expr: Expression) => {
     if (!t.isIdentifier(expr)) return false;
     const { ctxt } = expr as Identifier & { ctxt: number };
-    const ret = initializedConstReturns.get(`${ctxt}:${expr.value}`);
+    const key = `${ctxt}:${expr.value}`;
+    const ret = initializedConstReturns.get(key) ?? parameterBodies.get(key);
     return !!ret && ret.start <= expr.span.start && expr.span.end <= ret.end;
   };
-  const parameterBodies = new Map<string, HasSpan['span']>();
   const addComponent = (name: string, fn: HasSpan & { params: unknown[] }) => {
     components.push({ name, node: fn });
     const first = fn.params[0] as any;
@@ -683,9 +688,13 @@ export const transformSource = async (
     }
     if (declared.size > 0) declaredProps.set(name, declared);
   };
+  const hasModuleDeclaration = ast.body.some(
+    (stmt) =>
+      stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export'),
+  );
   for (const { name, fn } of componentFunctions(ast)) {
     addComponent(name, fn);
-    if (fn.body) {
+    if (hasModuleDeclaration && fn.body) {
       for (const param of fn.params) {
         forEachPatternIdentifier(param, (id) => {
           if (id.ctxt)
@@ -1501,6 +1510,11 @@ export const transformSource = async (
   };
 
   traverse(ast, {
+    AssignmentExpression: ({ node }) => discardWrittenParameter(node.left),
+    UpdateExpression: ({ node }) => discardWrittenParameter(node.argument),
+    ForOfStatement: ({ node }) => discardWrittenParameter(node.left),
+    ForInStatement: ({ node }) => discardWrittenParameter(node.left),
+    FunctionDeclaration: ({ node }) => discardWrittenParameter(node.identifier),
     BlockStatement({ node }: { node: BlockStatement }) {
       const ret = node.stmts[node.stmts.length - 1];
       if (ret?.type !== 'ReturnStatement') return;
@@ -1566,6 +1580,8 @@ export const transformSource = async (
       }
     },
     VariableDeclaration({ node }: { node: VariableDeclaration }) {
+      if (node.kind === 'var')
+        for (const decl of node.declarations) discardWrittenParameter(decl.id);
       if (processedDecls.has(node)) return;
       node.declarations.forEach((decl) => {
         registerStyle(
@@ -1580,6 +1596,10 @@ export const transformSource = async (
 
     CallExpression({ node }: { node: CallExpression }) {
       const callee = node.callee;
+      let target = unwrapExpression(callee);
+      while (target?.type === 'TsInstantiation')
+        target = unwrapExpression(target.expression);
+      if (t.isIdentifier(target, { name: 'eval' })) parameterBodies.clear();
       let propName: string | undefined;
 
       if (
@@ -2333,7 +2353,7 @@ export const transformSource = async (
       runtime.length === 1 &&
       !extra.length &&
       !derived.length &&
-      isInitializedConst(runtime[0].source) &&
+      isStableRead(runtime[0].source) &&
       varGroups.get(runtime[0].param)?.every((g) => !g.written && !g.unit);
     const reads = [
       ...runtime.map(({ param, source }) => ({ source, param })),
@@ -2837,13 +2857,8 @@ export const transformSource = async (
       case 'BooleanLiteral':
       case 'NullLiteral':
         return true;
-      case 'Identifier': {
-        const body = parameterBodies.get(`${node.ctxt}:${node.value}`);
-        return (
-          isInitializedConst(node) ||
-          (!!body && body.start <= node.span.start && node.span.end <= body.end)
-        );
-      }
+      case 'Identifier':
+        return isStableRead(node);
       case 'BinaryExpression':
         return (
           ['===', '!==', '&&', '||', '??'].includes(node.operator) &&
