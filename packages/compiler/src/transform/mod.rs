@@ -897,7 +897,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let Some(site) = self.decl_sites.get(&site).filter(|_| !names.is_empty()) else {
                 continue;
             };
-            for (at, content) in site.insertions(&names) {
+            for (at, content) in site.insertions(&names, self.source) {
                 self.replacements.push(Replacement {
                     start: at,
                     end: at,
