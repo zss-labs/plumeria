@@ -119,6 +119,13 @@ fn generated_test<'s>(test: &'s str, generated: &[String]) -> Option<(&'s str, b
         .then_some((name, negated))
 }
 
+fn complementary(first: &str, second: &str, generated: &[String]) -> bool {
+    matches!(
+        (generated_test(first, generated), generated_test(second, generated)),
+        (Some((a, negated_a)), Some((b, negated_b))) if a == b && negated_a != negated_b
+    )
+}
+
 pub fn join_class_parts(parts: &[String], generated: &[String]) -> String {
     if parts.is_empty() {
         return "\"\"".to_string();
@@ -1525,6 +1532,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             for (path, setters) in leaves {
                 chains.entry(setters).or_default().push(path);
             }
+            let generated: Vec<String> = self
+                .element_reads
+                .iter()
+                .flat_map(|reads| reads.values().cloned())
+                .collect();
 
             for (setters, paths) in &chains {
                 let mut classes: Vec<(usize, Vec<(usize, String)>)> = Vec::new();
@@ -1542,7 +1554,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
                 let mut expr = "\"\"".to_string();
                 let mut tests: Vec<String> = Vec::new();
+                let mut last: Option<(String, String, String, String)> = None;
                 for (d, by_option) in &classes {
+                    let previous = last.take();
                     let dimension = &dimensions[*d];
                     let class_of = |option: usize| {
                         by_option
@@ -1560,11 +1574,26 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                         DimKind::Std => {
                             let truthy = class_of(1).unwrap_or_else(|| expr.clone());
                             let falsy = class_of(0).unwrap_or_else(|| expr.clone());
-                            if truthy == falsy {
+                            let complement = previous.filter(|(test, _, _, built)| {
+                                *built == expr
+                                    && complementary(test, &dimension.test_expr, &generated)
+                            });
+                            if let Some((test, yes, no, _)) = complement {
+                                let when_true = if falsy == expr { yes } else { falsy };
+                                let when_false = if truthy == expr { no } else { truthy };
+                                if when_true == when_false {
+                                    tests.pop();
+                                    expr = when_true;
+                                } else {
+                                    expr = format!("({test} ? {when_true} : {when_false})");
+                                    last = Some((test, when_true, when_false, expr.clone()));
+                                }
+                            } else if truthy == falsy {
                                 expr = truthy;
                             } else {
                                 expr = format!("({} ? {truthy} : {falsy})", dimension.test_expr);
                                 tests.push(dimension.test_expr.clone());
+                                last = Some((dimension.test_expr.clone(), truthy, falsy, expr.clone()));
                             }
                         }
                         DimKind::Var => {
