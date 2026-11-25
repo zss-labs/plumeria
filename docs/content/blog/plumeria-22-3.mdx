@@ -1,0 +1,60 @@
+---
+title: 'Plumeria 22.3'
+description: 'Define styled React components and migrate existing styled-components to Plumeria.'
+date: '2026-11-24'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+  <GitHubUser username="refirst11" subtext="Plumeria Core" />
+  <GitHubUser username="Anionix" subtext="Plumeria Core" />
+</div>
+
+Plumeria 22.3 introduces [`styled`](/docs/api/javascript/styled) from `@plumeria/react` for reusable React components such as buttons and text fields. The compiler rewrites each definition to `css.create` and the configured style prop at build time.
+
+## Define a styled component
+
+Install `@plumeria/react` as a dev dependency in a project configured for Plumeria. Define the component at module scope in a `.tsx` or `.jsx` file. For example, `styled.button` creates a component that accepts native button props, including `type="submit"`. The ESLint plugin checks its style object using the same rules as other Plumeria styles.
+
+## Migrate from styled-components
+
+Starting in 22.3.2, preview a migration with `npx @plumeria/migrate from styled-components --dry-run`. The default output uses `styled` and renames converted stylesheets to `.tsx` or `.jsx`. Pass `--to sx` to generate `css.create` styles and the styling prop instead. Check the report for components that need manual review, including those rendered with a polymorphic `as` prop.
+
+## Finishing touches
+
+In 22.3.3, a condition chooses between complete class strings, so `[styles.text, active && styles.active]` compiles to `active ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas"`. When both branches select the same class, it is emitted once. Each function key argument is evaluated once, in the order you wrote it. A parameter or a `const` that nothing reassigns is read in place, and any other argument is stored in a local variable first. [How Plumeria Compiles](/docs/how-plumeria-compiles) shows the compiled output.
+
+---
+
+## Release notes
+
+## 22.3.3 (Nov 25, 2026)
+
+- Perf: Compile dynamic sx arguments with local temporaries and shared helpers, preserving evaluation order.
+- Perf: Emit a shared class once when both branches of a condition select it.
+- Fix: Resolve marker, extended, and function keys through their import bindings and respect shadowed names.
+- Update: Show the current compiled output in the core README.
+
+## 22.3.2 (Nov 24, 2026)
+
+- Feat: Move styled-components to `styled` from @plumeria/react, renaming `.ts` and `.js` stylesheets to `.tsx` and `.jsx`.
+- Feat: Add `--to sx` to keep writing `css.create` and the styling prop for styled-components.
+- Feat: Hold styled components rendered with `as`, spread from a variable or used as a value, and those with type arguments or a custom element tag.
+- Update: Say styled components belong in `.tsx` or `.jsx` files in the React README.
+
+## 22.3.1 (Nov 24, 2026)
+
+- Update: Say when to use styled in the README.
+- Update: Drop the @plumeria/core side-effect import from the README examples.
+- Update: Add styled-components to keywords.
+
+## 22.3.0 (Nov 24, 2026)
+
+- Feat: Add styled components from @plumeria/react, compiled to the sx prop.
+- Feat: Lint styled objects in eslint-plugin rules.
+- Fix: Evaluate each dynamic style argument once in source order.
+- Fix: Read each sx element and received style once.
+- Fix: Reject a spread or a computed key in a named argument.
+- Fix: Cap styled inheritance at 16 levels.
+- Fix: Support at-rules and starting-style in eslint-plugin.
