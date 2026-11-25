@@ -11,9 +11,13 @@ describe.each(implementations)('$name', ({ transformSource }) => {
   afterAll(() => fs.rmSync(DIR, { recursive: true, force: true }));
   fs.writeFileSync(path.join(DIR, 'package.json'), '{ "name": "app" }');
 
-  const classesOf = async (primary: string, prelude = '') => {
+  const classesOf = async (
+    primary: string,
+    prelude = '',
+    expression = 's.p',
+  ) => {
     const { code } = await transformSource({
-      source: `import * as css from '@plumeria/core';\n${prelude}\nconst s = css.create({ p: ${primary} });\nexport const A = () => <a sx={s.p} />;`,
+      source: `import * as css from '@plumeria/core';\n${prelude}\nconst s = css.create({ p: ${primary} });\nexport const A = () => <a sx={${expression}} />;`,
       moduleId: `${DIR}/fixture.tsx`,
       filePath: `${DIR}/fixture.tsx`,
       root: DIR,
@@ -69,6 +73,72 @@ describe.each(implementations)('$name', ({ transformSource }) => {
       );
     },
   );
+
+  it('resolves renamed marker and extended imports', async () => {
+    const actual = await classesOf(
+      "{ ...mark('nav_item', ':hover'), [when('nav_item', ':hover')]: { opacity: 0.8 } }",
+      "import { marker as mark, extended as when } from '@plumeria/core';",
+    );
+    expect(actual).toEqual(
+      await classesOf(
+        "{ ...css.marker('nav_item', ':hover'), [css.extended('nav_item', ':hover')]: { opacity: 0.8 } }",
+      ),
+    );
+  });
+
+  const renamed = "import { marker as mark } from '@plumeria/core';";
+  it.each([
+    [
+      'a renamed import with a static argument',
+      renamed,
+      "(mark) => ({ ...mark('nav', ':hover') })",
+      's.p(1)',
+    ],
+    [
+      'a renamed import with a runtime argument',
+      renamed,
+      "(mark) => ({ ...mark('nav', ':hover') })",
+      's.p(globalThis.mark)',
+    ],
+    [
+      'a renamed import through destructuring',
+      renamed,
+      "({ mark }) => ({ ...mark('nav', ':hover') })",
+      's.p({ mark: globalThis.mark })',
+    ],
+    [
+      'the namespace',
+      '',
+      "(css) => ({ ...css.marker('nav', ':hover') })",
+      's.p(globalThis.css)',
+    ],
+  ])(
+    'rejects a parameter shadowing %s',
+    async (_, prelude, style, expression) => {
+      await expect(classesOf(style, prelude, expression)).rejects.toThrow(
+        /Cannot spread/,
+      );
+    },
+  );
+
+  it('keeps the import when destructuring renames the parameter', async () => {
+    const [marker] = await classesOf("{ ...mark('nav', ':hover') }", renamed);
+    const classes = await classesOf(
+      "({ mark: localMark }) => ({ ...mark('nav', ':hover') })",
+      renamed,
+      's.p({ mark: globalThis.mark })',
+    );
+    expect(classes.has(marker)).toBe(true);
+  });
+
+  it.each([
+    "{ ...helpers.marker('nav', ':hover') }",
+    "{ [helpers.extended('nav', ':hover')]: { opacity: 0.8 } }",
+  ])('rejects a foreign helper in %s', async (style) => {
+    await expect(
+      classesOf(style, "import * as helpers from 'other-library';"),
+    ).rejects.toThrow();
+  });
 
   it('handles a marker spread after pseudo-class styles', async () => {
     const classes = await classesOf(
