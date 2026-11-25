@@ -4843,7 +4843,7 @@ export const transformSource = async (
     for (const replacement of replacements)
       replacement.content = replacement.content.replaceAll(
         deferred.token,
-        content,
+        () => content,
       );
   }
 
