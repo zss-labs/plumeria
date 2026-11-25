@@ -27,13 +27,16 @@ import {
   expressionLabel,
   objectExpressionToObject,
   readsParams,
+  setShadowedNames,
   t,
   unwrapExpression,
 } from './parser';
+import { forEachPatternIdentifier } from './references';
 
 export type NamedParam = { key: string; local: string };
 
 export type StyleFunction = {
+  bindings: string[];
   params: string[];
   unsupportedParams?: boolean;
   named?: NamedParam[];
@@ -128,7 +131,11 @@ export const styleFunctionsOf = (objExpr: ObjectExpression): StyleFunctions => {
     }
 
     if (actualBody && actualBody.type === 'ObjectExpression') {
+      const bindings: string[] = [];
+      for (const param of func.params)
+        forEachPatternIdentifier(param, (id) => bindings.push(id.value));
       styleFunctions[prop.key.value] = {
+        bindings,
         params,
         unsupportedParams: func.params.some((p: any) => {
           const pattern = p?.pat ?? p;
@@ -561,7 +568,19 @@ const deriveArithmetic = (
 // element as custom properties, never by the values behind them. Both the file
 // that writes the call and the file that only knows the style through a prop
 // have to arrive at the same rule, so the derivation lives here once.
-export const resolveDynamicStyle = (
+export const resolveDynamicStyle: typeof resolveFunctionStyle = (
+  func,
+  ...rest
+) => {
+  const previous = setShadowedNames(new Set(func.bindings));
+  try {
+    return resolveFunctionStyle(func, ...rest);
+  } finally {
+    setShadowedNames(previous);
+  }
+};
+
+const resolveFunctionStyle = (
   func: StyleFunction,
   runtimeParams: string[],
   staticTable: StaticTable,
