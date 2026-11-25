@@ -1,6 +1,7 @@
 import type { Module } from '@swc/core';
 
 export const MODULE_SITE = -1;
+export const PREFIX = '__plumeria__$$';
 
 export type DeclSite = {
   at: number;
@@ -170,7 +171,7 @@ export const usesReservedName = (ast: Module): boolean => {
       node.type === 'Identifier' &&
       !(NAMES.has(field) && parent?.type !== 'AssignmentPatternProperty') &&
       !(field === 'name' && parent?.type === 'JSXAttribute') &&
-      String(node.value).startsWith('__plumeria_')
+      String(node.value).startsWith(PREFIX)
     ) {
       found = true;
       return;
