@@ -7,7 +7,7 @@ use crate::eval::consts::{collect_local_const_nodes, collect_local_consts};
 use crate::eval::{Env, Evaluator};
 use crate::js::{Object, Value};
 use crate::syntax::expr::{E, K, Prop, unwrap};
-use crate::syntax::module::{CORE, SpecKind, import_specs};
+use crate::syntax::module::{CORE, SpecKind, core_aliases, import_specs};
 use crate::syntax::parse::parse_program;
 
 #[derive(Clone)]
@@ -23,6 +23,7 @@ fn read_const_file(path: &str) -> Option<ConstFile> {
     let allocator = Allocator::default();
     let program = parse_program(&allocator, &source).ok()?;
     let mut values = collect_local_consts(&program);
+    let aliases = core_aliases(&program);
     let mut imports: Ordered<ImportRecord> = Ordered::default();
     let mut create_static_names: FxHashSet<String> = FxHashSet::default();
     let mut namespaces: FxHashSet<String> = FxHashSet::default();
@@ -83,7 +84,11 @@ fn read_const_file(path: &str) -> Option<ConstFile> {
             continue;
         }
         let snapshot = values.clone();
-        match Evaluator::new(Env::statics_only(&snapshot)).object(object) {
+        let env = Env {
+            aliases: Some(&aliases),
+            ..Env::statics_only(&snapshot)
+        };
+        match Evaluator::new(env).object(object) {
             Ok(obj) => values.insert(name, Value::obj(obj)),
             Err(_) => continue,
         }
