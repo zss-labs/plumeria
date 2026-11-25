@@ -319,6 +319,31 @@ export default function App({ active }) {
     });
 
     it.each([
+      [
+        'beside',
+        '[styles.text, active && styles.active, styles.scale(size * 2)]',
+      ],
+      ['guarding', '[styles.text, active && styles.scale(size * 2)]'],
+    ])(
+      'reads a stable condition %s a computed argument in place',
+      async (_, sx) => {
+        const source =
+          readmeStyles +
+          `
+export function App({ active, size }) {
+  return <div sx={${sx}} />;
+}`;
+        const { code } = await run(source, 'stable-condition.tsx');
+        const { App } = await execute(source, 'stable-condition-run.tsx');
+        expect(code).not.toMatch(/__plumeria__\$\$t\d/);
+        const on = App({ active: true, size: 3 });
+        const off = App({ active: false, size: 3 });
+        expect(on.style).toEqual({ '--xfuma1qq-value': 6 });
+        expect(off.className).not.toBe(on.className);
+      },
+    );
+
+    it.each([
       'scale = 2',
       'scale++',
       '({ value: [scale] } = source)',
