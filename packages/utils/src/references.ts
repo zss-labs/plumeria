@@ -76,6 +76,14 @@ export const forEachPatternIdentifier = (
     case 'Identifier':
       visit(pat);
       return;
+    case 'ParenthesisExpression':
+    case 'TsAsExpression':
+    case 'TsNonNullExpression':
+    case 'TsTypeAssertion':
+    case 'TsSatisfiesExpression':
+    case 'TsInstantiation':
+      forEachPatternIdentifier(pat.expression, visit);
+      return;
     case 'Parameter':
       forEachPatternIdentifier(pat.pat, visit);
       return;
