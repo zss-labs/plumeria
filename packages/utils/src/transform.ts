@@ -4756,7 +4756,7 @@ export const transformSource = async (
   for (const [site, names] of siteTemps) {
     const declared = declSites.get(site);
     if (!declared || !names.length) continue;
-    for (const [at, content] of insertions(declared, names))
+    for (const [at, content] of insertions(declared, names, sourceBuffer))
       replacements.push({ start: at, end: at, content });
   }
 
