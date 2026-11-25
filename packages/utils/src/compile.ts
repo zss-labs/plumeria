@@ -195,6 +195,7 @@ interface TraversalContext {
       functions?: Record<
         string,
         {
+          bindings: string[];
           params: string[];
           named?: NamedParam[];
           defaults?: Record<string, Expression>;
