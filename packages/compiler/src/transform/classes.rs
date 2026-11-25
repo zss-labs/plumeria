@@ -313,86 +313,6 @@ fn prop_default_message(source: &str) -> String {
     )
 }
 
-fn is_plain_read(source: &str) -> bool {
-    let chars: Vec<char> = source.chars().collect();
-    let mut code: Vec<char> = Vec::with_capacity(chars.len());
-    let mut index = 0;
-    while index < chars.len() {
-        let c = chars[index];
-        if (c == '\'' || c == '"')
-            && let Some(end) = chars[index + 1..]
-                .iter()
-                .position(|&next| next == c || next == '\\' || next == '\n')
-            && chars[index + 1 + end] == c
-        {
-            code.extend(['"', '"']);
-            index += end + 2;
-            continue;
-        }
-        code.push(c);
-        index += 1;
-    }
-
-    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
-    if !code
-        .iter()
-        .all(|&c| word(c) || c.is_whitespace() || "$.()!=&|?:\"".contains(c))
-    {
-        return false;
-    }
-    let mut previous: Option<char> = None;
-    for (index, &c) in code.iter().enumerate() {
-        if c == '(' && previous.is_some_and(|p| word(p) || p == '$' || p == ')') {
-            return false;
-        }
-        if c == '.'
-            && !(index > 0
-                && code[index - 1].is_ascii_digit()
-                && code.get(index + 1).is_some_and(char::is_ascii_digit))
-        {
-            return false;
-        }
-        if c == '-' && code.get(index + 1) == Some(&'-') {
-            return false;
-        }
-        if !c.is_whitespace() {
-            previous = Some(c);
-        }
-    }
-    let text: String = code.iter().collect();
-    if text.split(|c: char| !word(c)).any(|token| {
-        matches!(
-            token,
-            "new" | "await" | "yield" | "delete" | "void" | "import" | "in" | "instanceof"
-        )
-    }) {
-        return false;
-    }
-    let mut index = 0;
-    while index < code.len() {
-        let c = code[index];
-        if (c == '=' || c == '!') && code.get(index + 1) == Some(&'=') {
-            if code.get(index + 2) != Some(&'=') {
-                return false;
-            }
-            index += 3;
-            continue;
-        }
-        if c == '=' {
-            return false;
-        }
-        if c == '&' || c == '|' {
-            if code.get(index + 1) != Some(&c) {
-                return false;
-            }
-            index += 2;
-            continue;
-        }
-        index += 1;
-    }
-    true
-}
-
 const PARAM: &str = "__plumeria";
 
 fn param_at(text: &str, start: usize) -> Option<(usize, usize)> {
@@ -516,6 +436,7 @@ fn pick_path(target: &mut Object, source: &Object, path: &[String]) {
 
 #[derive(Clone)]
 struct Conditional {
+    can_skip_test: bool,
     test: Span,
     test_string: Option<String>,
     test_lhs: Option<String>,
@@ -1157,6 +1078,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     builder.source_order += 1;
                     for (option_name, style) in style_obj.iter() {
                         builder.conditionals.push(Conditional {
+                            can_skip_test: self.can_skip_test(dyn_expr),
                             test: dyn_expr.span(),
                             test_string: Some(format!("{dyn_source} === '{option_name}'")),
                             test_lhs: Some(dyn_source.clone()),
@@ -1188,6 +1110,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .unwrap_or(decision.key_expr);
                 for (value, style) in decision.options {
                     builder.conditionals.push(Conditional {
+                        can_skip_test: false,
                         test: expr.span(),
                         test_string: Some(format!("{key_expr} === '{value}'")),
                         test_lhs: Some(key_expr.clone()),
@@ -1202,7 +1125,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 continue;
             }
 
-            if self.collect_conditions(&mut builder, expr, &[], *order)? {
+            if self.collect_conditions(&mut builder, expr, &[], true, *order)? {
                 continue;
             }
             self.assert_resolvable(expr)?;
@@ -1248,6 +1171,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let state_weights = get_state_weights(&sources);
 
+        let generated: Vec<String> = self
+            .element_reads
+            .iter()
+            .flat_map(|reads| reads.values().cloned())
+            .collect();
+
         let test_sources: Vec<Option<String>> = conditionals
             .iter()
             .map(|c| {
@@ -1263,7 +1192,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         if test_sources.iter().all(Option::is_some)
             && test_sources
                 .iter()
-                .any(|source| !is_plain_read(source.as_deref().unwrap_or_default()))
+                .zip(&conditionals)
+                .any(|(source, c)| {
+                    !c.can_skip_test
+                        && source.as_deref().is_some_and(|s| generated_test(s, &generated).is_none())
+                })
         {
             let mut bound_groups: FxHashMap<u32, String> = FxHashMap::default();
             for (c, source) in conditionals.iter_mut().zip(test_sources) {
@@ -1532,12 +1465,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             for (path, setters) in leaves {
                 chains.entry(setters).or_default().push(path);
             }
-            let generated: Vec<String> = self
-                .element_reads
-                .iter()
-                .flat_map(|reads| reads.values().cloned())
-                .collect();
-
             for (setters, paths) in &chains {
                 let mut classes: Vec<(usize, Vec<(usize, String)>)> = Vec::new();
                 for &(d, o) in setters {
@@ -1855,11 +1782,32 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         self.build_decision(node, &prefix, &off, &mut counter, scoped)
     }
 
+    fn can_skip_test(&self, expr: E) -> bool {
+        use crate::syntax::expr::BinOp;
+        use oxc_syntax::operator::BinaryOperator::{StrictEquality, StrictInequality};
+
+        match unwrap(expr).kind() {
+            K::Str(_) | K::Num(_) | K::Bool(_) | K::Null => true,
+            K::Ident(ident) => self.visibility()
+                .symbol_of(ident)
+                .and_then(|symbol| self.parameter_bodies.get(&symbol))
+                .is_some_and(|body| body.start <= ident.span.start && ident.span.end <= body.end),
+            K::Binary(left, BinOp::Logical(_) | BinOp::Binary(StrictEquality | StrictInequality), right) => {
+                self.can_skip_test(left) && self.can_skip_test(right)
+            }
+            K::Unary(unary) if unary.operator.is_not() => {
+                self.can_skip_test(E::new(&unary.argument))
+            }
+            _ => false,
+        }
+    }
+
     fn collect_conditions(
         &mut self,
         builder: &mut Builder,
         node: E<'b, 'a>,
         tests: &[String],
+        can_skip: bool,
         arg_order: Option<i64>,
     ) -> TResult<bool> {
         let node = self.resolve_local_style_alias(unwrap(node));
@@ -1878,7 +1826,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     }
                     other => E::new(other.to_expression()),
                 };
-                if !self.collect_conditions(builder, inner, tests, arg_order)? {
+                if !self.collect_conditions(builder, inner, tests, can_skip, arg_order)? {
                     return Ok(false);
                 }
             }
@@ -1916,6 +1864,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 builder.base_chunks.push((builder.source_order, style));
             } else {
                 builder.conditionals.push(Conditional {
+                    can_skip_test: can_skip,
                     test: node.span(),
                     test_string: Some(tests.join(" && ")),
                     test_lhs: None,
@@ -1932,12 +1881,14 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         match node.kind() {
             K::Conditional(cond) => {
+                let can_skip = can_skip && self.can_skip_test(E::new(&cond.test));
                 let test_source = self.read_text(cond.test.span());
                 if tests.is_empty() {
                     let true_style = self.resolve_style_object(E::new(&cond.consequent))?;
                     let false_style = self.resolve_style_object(E::new(&cond.alternate))?;
                     if let (Some(true_style), Some(false_style)) = (true_style, false_style) {
                         builder.conditionals.push(Conditional {
+                            can_skip_test: can_skip,
                             test: node.span(),
                             test_string: Some(test_source),
                             test_lhs: None,
@@ -1958,6 +1909,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     builder,
                     E::new(&cond.consequent),
                     &consequent_tests,
+                    can_skip,
                     arg_order,
                 )?;
                 let mut alternate_tests = tests.to_vec();
@@ -1966,6 +1918,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     builder,
                     E::new(&cond.alternate),
                     &alternate_tests,
+                    can_skip,
                     arg_order,
                 )?;
                 return Ok(consequent && alternate);
@@ -1973,13 +1926,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             K::Binary(left, op, right) if op.is_and() => {
                 let mut next = tests.to_vec();
                 next.push(format!("({})", self.read_text(left.span())));
-                return self.collect_conditions(builder, right, &next, arg_order);
+                let can_skip = can_skip && self.can_skip_test(left);
+                return self.collect_conditions(builder, right, &next, can_skip, arg_order);
             }
             K::Paren(paren) => {
                 return self.collect_conditions(
                     builder,
                     E::new(&paren.expression),
                     tests,
+                    can_skip,
                     arg_order,
                 );
             }
@@ -2155,6 +2110,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let mut seen: FxHashSet<String> = FxHashSet::default();
         let push_option = |builder: &mut Builder, value_name: String, style: Object| {
             builder.conditionals.push(Conditional {
+                can_skip_test: false,
                 test: expr.span(),
                 test_string: Some(format!("{test_lhs} === {}", quote(&value_name))),
                 test_lhs: Some(test_lhs.clone()),
