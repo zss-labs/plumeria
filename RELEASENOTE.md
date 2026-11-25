@@ -1,5 +1,15 @@
 # Release Notes
 
+## 22.3.3 (Nov 25, 2026)
+
+- Perf: Compile dynamic sx arguments with local temporaries and shared helpers, preserving evaluation order.
+
+- Perf: Emit a shared class once when both branches of a condition select it.
+
+- Fix: Resolve marker, extended, and function keys through their import bindings and respect shadowed names.
+
+- Update: Show the current compiled output in the core README.
+
 ## 22.3.2 (Nov 24, 2026)
 
 - Feat: Move styled-components to `styled` from @plumeria/react, renaming `.ts` and `.js` stylesheets to `.tsx` and `.jsx`

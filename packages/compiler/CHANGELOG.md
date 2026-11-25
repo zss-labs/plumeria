@@ -1,5 +1,14 @@
 # @plumeria/compiler
 
+## 22.3.3
+
+### Patch Changes
+
+- b0c8583: - Perf: Compile dynamic sx arguments with local temporaries and shared helpers, preserving evaluation order.
+  - Perf: Emit a shared class once when both branches of a condition select it.
+  - Fix: Resolve marker, extended, and function keys through their import bindings and respect shadowed names.
+  - Update: Show the current compiled output in the core README.
+
 ## 22.3.2
 
 ### Patch Changes
