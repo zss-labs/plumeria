@@ -294,6 +294,50 @@ export const B = (p) => <div sx={[p.on && s.stat, s.w(p.n)]} />`,
       return exports;
     };
 
+    it('preserves a TDZ read when a later style overrides the conditional style', async () => {
+      const { U } = await execute(
+        `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+export function U(read) {
+  const result = css.use((read && flag) && s.red, s.blue);
+  let flag = true;
+  return result;
+}`,
+        'use-tdz.tsx',
+      );
+      expect(() => U(true as never)).toThrow(ReferenceError);
+      expect(typeof U(false as never)).toBe('string');
+    });
+
+    it('keeps a TDZ read that shadows an initialized parameter', async () => {
+      const { U } = await execute(
+        `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+export function U(flag) {
+  {
+    const value = css.use(flag && s.red, s.blue);
+    let flag = true;
+    return value;
+  }
+}`,
+        'use-shadowed-parameter.tsx',
+      );
+      expect(() => U(true as never)).toThrow(ReferenceError);
+    });
+
+    it('skips a parameter read that a later style overrides', async () => {
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+export const A = ({ a, b }) => <div sx={[a && s.red, b && s.blue]} />;`,
+        'skip-parameter.tsx',
+      );
+      expect(code).toMatch(
+        /className=\{\(\(b\) \? "\w+" : \(\(a\) \? "\w+" : ""\)\)\}/,
+      );
+      expect(code).not.toContain('__plumeria_arg');
+    });
+
     it('reads a condition that css.use folds away', async () => {
       const { U } = await execute(
         `import * as css from '@plumeria/core';
