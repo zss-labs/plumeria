@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { transformSync } from '@swc/core';
 import { DEFAULT_STYLE_PROP } from '@plumeria/utils';
 import { implementations } from '../compiler-implementations';
 
@@ -66,6 +67,297 @@ const d = css.create({
 });
 `;
     const classOf = (code: string) => code.match(/className="([^"]+)"/)?.[1];
+
+    it.each([
+      ['local', '__plumeria_arg0', '__plumeria_arg0'],
+      [
+        'escaped local',
+        String.raw`\u005f_plumeria_arg0`,
+        String.raw`\u005f_plumeria_arg0`,
+      ],
+      ['global', '', '__plumeria_arg0'],
+    ])(
+      'preserves a reserved argument name (%s)',
+      async (_, parameter, argument) => {
+        const { code } = await run(
+          header +
+            `export function A(${parameter}) { return <div sx={s.palette(${argument})} />; }`,
+          'reserved-argument.tsx',
+        );
+        expect(code).toContain('style={((__plumeria_arg0) => (');
+        expect(code).toContain(argument);
+        expect(code).not.toMatch(/\bconst __plumeria_arg0\s*=/);
+      },
+    );
+
+    it('declares the arguments in the function that returns the element', async () => {
+      const { code } = await run(
+        header +
+          `export function A({ c }) {\n  return <div sx={s.palette(c)} />;\n}\nexport const B = ({ c }) => <div sx={s.palette(c)} />;`,
+        'hoist-site.tsx',
+      );
+      expect(code).toMatch(
+        /export function A\(\{ c \}\) \{ let __plumeria_arg0;\n {2}return <div className="xokp0532" style=\{\(__plumeria_arg0 = c, /,
+      );
+      expect(code).toMatch(
+        /export const B = \(\{ c \}\) => \{ let __plumeria_arg0; return <div className="xokp0532" style=\{\(__plumeria_arg0 = c, [^\n]*\)\} \/>; \};/,
+      );
+    });
+
+    const compileComponent = async (body: string) => {
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ stat: { color: 'red' }, scale: (n) => ({ scale: n }), w: (n) => ({ width: n * 2 }) });
+function App(mark) { ${body} }`,
+        'evaluation-order.tsx',
+      );
+      const js = transformSync(code, {
+        jsc: {
+          target: 'es2022',
+          parser: { syntax: 'typescript', tsx: true },
+          transform: { react: { runtime: 'classic' } },
+        },
+      }).code;
+      return new Function('React', js + '\nreturn App;')({
+        createElement: (tag: unknown) => tag,
+      });
+    };
+
+    it('reads the component tag before its style arguments', async () => {
+      const app = await compileComponent(`
+        let Tag = 'before';
+        function changeTag() { Tag = 'after'; return 2; }
+        return <Tag sx={s.scale(changeTag())} />;
+      `);
+      expect(app()).toBe('before');
+    });
+
+    it('computes a variable from its argument before a later condition', async () => {
+      const app = await compileComponent(`
+        const n = { valueOf() { mark('valueOf'); return 1; } };
+        return <div sx={[s.w(n), mark('condition') && s.stat]} />;
+      `);
+      const mark = jest.fn();
+      app(mark);
+      expect(mark.mock.calls).toEqual([['valueOf'], ['condition']]);
+    });
+
+    it('computes a variable from its argument before the next argument', async () => {
+      const app = await compileComponent(`
+        const n = { valueOf() { mark('valueOf'); return 1; } };
+        return <div sx={[s.w(n), s.scale(mark('argument'))]} />;
+      `);
+      const mark = jest.fn();
+      app(mark);
+      expect(mark.mock.calls).toEqual([['valueOf'], ['argument']]);
+    });
+
+    it.each([
+      [
+        `sx={[s.w(n), mark('condition') && s.stat]} id={mark('id')} style={mark('style')}`,
+        ['valueOf', 'condition', 'id', 'style'],
+      ],
+      [
+        `style={mark('style')} id={mark('id')} sx={[s.w(n), mark('condition') && s.stat]}`,
+        ['style', 'id', 'valueOf', 'condition'],
+      ],
+      [
+        `className={mark('class')} {...mark('spread')} sx={[s.w(n), mark('condition') && s.stat]} title={mark('title')} style={mark('style')}`,
+        ['class', 'spread', 'valueOf', 'condition', 'title', 'style'],
+      ],
+      [
+        `sx={[s.w(n), mark('condition') && s.stat]} title={<b k={mark('element')} />} className={mark('class')}`,
+        ['valueOf', 'condition', 'element', 'class'],
+      ],
+    ])(
+      'evaluates each attribute where it is written: %s',
+      async (attributes, order) => {
+        const app = await compileComponent(`
+        const n = { valueOf() { mark('valueOf'); return 1; } };
+        return <div ${attributes} />;
+      `);
+        const mark = jest.fn((name: string) =>
+          name === 'spread' ? {} : name === 'style' ? { top: 1 } : name,
+        );
+        app(mark);
+        expect(mark.mock.calls.map(([name]) => name)).toEqual(order);
+      },
+    );
+
+    it.each([
+      [
+        'a default parameter',
+        `function P(x = <div sx={[mark('condition') && s.stat, s.w(n)]} />) { return x; }
+        return P();`,
+      ],
+      [
+        'a class field',
+        `class C { x = <div sx={[mark('condition') && s.stat, s.w(n)]} />; }
+        return new C().x;`,
+      ],
+      [
+        'a shared condition in a default parameter',
+        `function P(x = <div sx={[mark('condition') && s.w(n), s.stat]} />) { return x; }
+        return P();`,
+      ],
+    ])('reads %s once in order without a wrapper', async (_, body) => {
+      const source = `
+        const n = { valueOf() { mark('valueOf'); return 1; } };
+        ${body}
+      `;
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ stat: { color: 'red' }, w: (n) => ({ width: n * 2 }) });
+function App(mark) { ${source} }`,
+        'helper-site.tsx',
+      );
+      expect(code).not.toMatch(/\(\([\w, [\]]*\) => /);
+      const app = await compileComponent(source);
+      const mark = jest.fn(() => true);
+      app(mark);
+      expect(mark.mock.calls).toEqual([['condition'], ['valueOf']]);
+    });
+
+    it('declares the module temporaries outside an arrow that ends the file', async () => {
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ stat: { color: 'red' }, w: (n) => ({ width: n }) });
+const on = true, n = 1;
+export const el = <div sx={[on && s.stat, s.w(n)]} />;
+export const B = (p) => <div sx={[p.on && s.stat, s.w(p.n)]} />`,
+        'eof-arrow.tsx',
+      );
+      const js = transformSync(code, {
+        jsc: {
+          target: 'es2022',
+          parser: { syntax: 'typescript', tsx: true },
+          transform: { react: { runtime: 'classic' } },
+        },
+        module: { type: 'commonjs' },
+      }).code;
+      const exports: Record<string, unknown> = {};
+      new Function('React', 'exports', 'require', js)(
+        { createElement: (_: unknown, props: unknown) => props },
+        exports,
+        () => ({}),
+      );
+      type Props = { className: string; style: Record<string, unknown> };
+      const el = exports.el as Props;
+      const b = (exports.B as (p: object) => Props)({ on: false, n: 2 });
+      expect(el.className.split(' ')).toHaveLength(2);
+      expect(Object.values(el.style)).toEqual(['1px']);
+      expect(b.className.split(' ')).toHaveLength(1);
+      expect(Object.values(b.style)).toEqual(['2px']);
+    });
+
+    const execute = async (source: string, name: string) => {
+      const { code } = await run(source, name);
+      const js = transformSync(code, {
+        jsc: {
+          target: 'es2022',
+          parser: { syntax: 'typescript', tsx: true },
+          transform: { react: { runtime: 'classic' } },
+        },
+        module: { type: 'commonjs' },
+      }).code;
+      const exports: Record<string, (...args: never[]) => unknown> = {};
+      new Function('React', 'exports', 'require', js)(
+        { createElement: (_: unknown, props: unknown) => props },
+        exports,
+        () => ({}),
+      );
+      return exports;
+    };
+
+    it('reads a condition that css.use folds away', async () => {
+      const { U } = await execute(
+        `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+export const U = (proxy) => css.use(('active' in proxy) && s.red, s.blue);`,
+        'use-in.tsx',
+      );
+      const has = jest.fn(() => true);
+      U(new Proxy({}, { has }) as never);
+      expect(has).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([`className="base"`, `className={"base"}`])(
+      'lets %s after a spread win over it',
+      async (attribute) => {
+        const { A } = await execute(
+          `import * as css from '@plumeria/core';
+const s = css.create({ w: (n) => ({ width: n }) });
+export const A = ({ n, props }) => <div sx={s.w(n)} {...props} ${attribute} />;`,
+          'spread-order.tsx',
+        );
+        const props = A({ n: 1, props: { className: 'spread' } } as never) as {
+          className: string;
+        };
+        expect(props.className.split(' ')[0]).toBe('base');
+      },
+    );
+
+    it('moves a static style past a spread without declaring anything', async () => {
+      const source = `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' } });
+export const A = (props) => <div sx={s.red} {...props} className="base" />;`;
+      const { code } = await run(source, 'static-spread.tsx');
+      expect(code).not.toContain('let');
+      const { A } = await execute(source, 'static-spread.tsx');
+      const props = A({ className: 'spread' } as never) as {
+        className: string;
+      };
+      expect(props.className.split(' ')[0]).toBe('base');
+    });
+
+    it('keeps a style key that looks like a generated name', async () => {
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const t = css.create({ __plumeria0: { color: 'red' }, b: { color: 'blue' }, c: { padding: 1 } });
+export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
+        'generated-key.tsx',
+      );
+      expect(code).toContain('"__plumeria0":"xq96bg3w"');
+      expect(code).not.toContain('"__plumeria_arg0":');
+    });
+
+    it('writes no wrapper when an attribute reads between sx and style', async () => {
+      const { code } = await run(
+        header +
+          `export function A({ c, f, g }) {\n  return <div sx={[s.palette(c), f() && s.stat]} id={g()} style={f()} />;\n}`,
+        'hoist-between.tsx',
+      );
+      expect(code).not.toMatch(/=> \(\{/);
+      expect(code).toContain(
+        'id={g()} style={(__plumeria_style0 = (f()), { ...__plumeria_style0, ...__plumeria_v0 })}',
+      );
+    });
+
+    const element = '<div sx={[s.scale(n), mark() && s.stat]} />';
+    it.each([
+      ['local', `const el = ${element}; const n = 1; return el;`],
+      [
+        'switch case',
+        `switch (1) {
+        case 0: const n = 1;
+        case 1: return ${element};
+      }`,
+      ],
+      [
+        'outer',
+        `const el = render(); const n = 1; function render() { return ${element}; } return el;`,
+      ],
+      ['for...of', `for (const n of [${element}]) {}`],
+      ['for...in', `for (const n in { k: ${element} }) {}`],
+    ])(
+      'reads the uninitialized %s binding before the condition',
+      async (_, body) => {
+        const app = await compileComponent(body);
+        const mark = jest.fn();
+        expect(() => app(mark)).toThrow(ReferenceError);
+        expect(mark).not.toHaveBeenCalled();
+      },
+    );
 
     it('applies a parameter default without an inline style', async () => {
       const { code } = await run(
@@ -243,7 +535,7 @@ export const A = (p: any) => <div sx={named.tone({ color: p.c })} />;`,
       );
       expect(code).toContain('className="xokp0532"');
       expect(code).toContain(
-        `style={{ ...((__plumeria_arg0) => ({ "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.c) }}`,
+        `style={(__plumeria_arg0 = p.c, { "--x80848wl-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })}`,
       );
     });
 
@@ -297,10 +589,14 @@ export const E = (p: any) => (<div><a sx={s.link(p.b, p.h)} /><i sx={s.deep(p.s)
       const vars = code.match(/"--[^"]+"/g) ?? [];
       expect(vars).toHaveLength(3);
       expect(code).toContain(
-        `(__plumeria_arg1) + 'px' : (__plumeria_arg1)) }))(p.b, p.h)`,
+        `(__plumeria_arg0 = p.b, __plumeria_arg1 = p.h, {`,
       );
       expect(code).toContain(
-        `(__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.s)`,
+        `(__plumeria_arg1) + 'px' : (__plumeria_arg1)) })}`,
+      );
+      expect(code).toContain(`(__plumeria_arg2 = p.s, {`);
+      expect(code).toContain(
+        `(__plumeria_arg2) + 'px' : (__plumeria_arg2)) })}`,
       );
     });
 
@@ -312,7 +608,7 @@ export const F = (p: any) => <div sx={s.fade(p.o)} />;`,
         'unitless.tsx',
       );
       expect(code).toMatch(
-        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+": __plumeria_arg0 \}\)\)\(p\.o\) }}/,
+        /\(__plumeria_arg0 = p\.o, \{ "--[^"]+": __plumeria_arg0 \}\)\}/,
       );
     });
 
@@ -327,7 +623,7 @@ export const F2 = (p: any) => (<div><i sx={s.grow(1)} /><b sx={s.weight(p.w)} />
       );
       expect(code).toMatch(/"--[^"]+-n": "1"/);
       expect(code).toMatch(
-        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+-n": __plumeria_arg0 \}\)\)\(p\.w\)/,
+        /\(__plumeria_arg0 = p\.w, \{ "--[^"]+-n": __plumeria_arg0 \}\)/,
       );
     });
 
@@ -342,7 +638,7 @@ export const F3 = (p: any) => (<div><i sx={s.gap(4)} /><b sx={s.gap(p.n)} /></di
       );
       expect(code).toMatch(/"--[^"]+-n": "4"/);
       expect(code).toMatch(
-        /\(\(__plumeria_arg0\) => \(\{ "--[^"]+-n": __plumeria_arg0 \}\)\)\(p\.n\)/,
+        /\(__plumeria_arg0 = p\.n, \{ "--[^"]+-n": __plumeria_arg0 \}\)/,
       );
     });
 
@@ -356,7 +652,7 @@ export const U = (p: any) => <div sx={s.units(p.n)} />;`,
         'unit-split.tsx',
       );
       expect(code).toMatch(
-        /"--([a-z0-9]+)-n": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\), "--\1-n-z-index": __plumeria_arg0 \}\)\)\(p\.n\)/,
+        /\(__plumeria_arg0 = p\.n, \{ "--([a-z0-9]+)-n": \(typeof \(__plumeria_arg0\) === 'number' \? \(__plumeria_arg0\) \+ 'px' : \(__plumeria_arg0\)\), "--\1-n-z-index": __plumeria_arg0 \}\)\}/,
       );
     });
 
@@ -378,10 +674,18 @@ export const S = (p: any) => <div sx={s.same(p.c)} />;`,
           `export const G = (p: any) => (<div><i sx={p.on && s.palette(p.c)} /><b sx={p.on ? s.palette(p.a) : s.palette(p.b)} /></div>);`,
         'conditional.tsx',
       );
-      const [i, b] = [...code.matchAll(/<[ib] \{\.\.\.([\s\S]*?)\} \/>/g)].map(
-        ([, spread]) =>
+      const declared = code.match(/=> \{ (let [^;]+;)/)?.[1] ?? '';
+      const [i, b] = [
+        ...code.matchAll(
+          /<[ib] className=(?:\{([\s\S]*?)\}|("[^"]*")) style=\{([\s\S]*?)\} \/>/g,
+        ),
+      ].map(
+        ([, dynamic, fixed, style]) =>
           (p: object): { className: string; style?: Record<string, unknown> } =>
-            new Function('p', `return (${spread});`)(p),
+            new Function(
+              'p',
+              `${declared} const className = (${dynamic ?? fixed}); return { className, style: (${style}) };`,
+            )(p),
       );
       const on = { on: true, c: 'red', a: 'blue', b: 'green' };
       const off = { ...on, on: false };
@@ -418,10 +722,10 @@ export const H = (p: any) => (<div>
         'named.tsx',
       );
       expect(code).toContain(
-        `((__plumeria_arg0) => ({ "--x4fa0uiv-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.c)`,
+        `(__plumeria_arg0 = p.c, { "--x4fa0uiv-color": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })`,
       );
       expect(code).toContain(
-        `((__plumeria_arg0) => ({ "--xs7d3nvt-t": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(p.t)`,
+        `(__plumeria_arg1 = p.t, { "--xs7d3nvt-t": (typeof (__plumeria_arg1) === 'number' ? (__plumeria_arg1) + 'px' : (__plumeria_arg1)) })`,
       );
     });
 
@@ -442,7 +746,7 @@ export const K = (p: any) => (<div>
       expect(code).toContain('<i className="xymr32dw" />');
       expect(code).toContain('<b className="x2x7bpc1" />');
       expect(code).toContain(
-        "((__plumeria_arg0) => ({ \"--xav007xm-color\": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) }))(`rgb(${p.r} 0 0)`)",
+        "(__plumeria_arg0 = `rgb(${p.r} 0 0)`, { \"--xav007xm-color\": (typeof (__plumeria_arg0) === 'number' ? (__plumeria_arg0) + 'px' : (__plumeria_arg0)) })",
       );
     });
 
@@ -502,7 +806,7 @@ export const J = (p: any) => <div sx={s.named(p.c)} />;`,
   });
 
   describe('a unit the declaration already spells out', () => {
-    const styleOf = (code: string) => code.match(/style=\{\{[^\n]*?\}\}/)?.[0];
+    const styleOf = (code: string) => code.match(/style=\{[^\n]*?\} \/>/)?.[0];
 
     it('moves the unit into the value the element sets', async () => {
       const { code, sheets } = await run(
@@ -590,7 +894,7 @@ export const Bar = ({ p }: { p: { rating: number } }) => (
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+, 0%\);/);
       expect(styleOf(code)).toMatch(
-        /\(\(__plumeria_arg0\) => \(\{ "--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\) \}\)\)\(\(p\.rating \/ 5\) \* 100\)/,
+        /\(__plumeria_arg0 = \(p\.rating \/ 5\) \* 100, \{ "--[a-z0-9-]+": \(\(__plumeria_arg0\) \+ '%'\) \}\)/,
       );
     });
 
