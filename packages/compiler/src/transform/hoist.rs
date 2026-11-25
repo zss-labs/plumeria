@@ -9,22 +9,34 @@ pub const MODULE_SITE: u32 = u32::MAX;
 pub struct DeclSite {
     pub at: u32,
     pub body_end: Option<u32>,
-    pub after_directive: bool,
+    pub directive_start: Option<u32>,
     pub module: bool,
 }
 
 impl DeclSite {
-    pub fn insertions(&self, names: &[String]) -> Vec<(u32, String)> {
+    pub fn insertions(&self, names: &[String], source: &str) -> Vec<(u32, String)> {
         let names = names.join(", ");
-        match self.body_end {
-            Some(end) => vec![
+        match (self.body_end, self.directive_start) {
+            (Some(end), _) => vec![
                 (self.at, format!("{{ let {names}; return ")),
                 (end, "; }".to_string()),
             ],
-            None if self.module && self.at == 0 => vec![(self.at, format!("var {names};\n"))],
-            None if self.module => vec![(self.at, format!("\nvar {names};"))],
-            None if self.after_directive => vec![(self.at, format!("\nlet {names};"))],
-            None => vec![(self.at, format!(" let {names};"))],
+            (None, _) if self.module && self.at == 0 => vec![(self.at, format!("var {names};\n"))],
+            (None, _) if self.module => vec![(self.at, format!("\nvar {names};"))],
+            (None, Some(start)) => {
+                let before = &source[..start as usize];
+                let line = before.rsplit_once('\n').map_or(before, |(_, line)| line);
+                let indent = &line[..line.len() - line.trim_start_matches([' ', '\t']).len()];
+                let newline = if source[self.at as usize..].starts_with("\r\n")
+                    || before.strip_suffix(line).is_some_and(|prefix| prefix.ends_with("\r\n"))
+                {
+                    "\r\n"
+                } else {
+                    "\n"
+                };
+                vec![(self.at, format!("{newline}{indent}let {names};"))]
+            }
+            (None, None) => vec![(self.at, format!(" let {names};"))],
         }
     }
 }
@@ -57,7 +69,7 @@ fn body_site(body: &FunctionBody) -> DeclSite {
     match body.directives.last() {
         Some(directive) => DeclSite {
             at: directive.span.end,
-            after_directive: true,
+            directive_start: Some(directive.span.start),
             ..DeclSite::default()
         },
         None => DeclSite {
