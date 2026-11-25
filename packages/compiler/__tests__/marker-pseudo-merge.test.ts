@@ -41,6 +41,35 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(classes.size).toBe(3);
   });
 
+  it.each(['nav_item', 'nav-item'])(
+    'keeps marker %s through a pseudo-class merge',
+    async (id) => {
+      const marker = `...css.marker('${id}', ':hover')`;
+      const only = await classesOf(`{ ${marker} }`);
+      expect(only.size).toBe(1);
+      expect(
+        await classesOf(`{ ${marker}, ':hover': { opacity: 0.8 } }`),
+      ).toEqual(
+        new Set([
+          ...only,
+          ...(await classesOf("{ ':hover': { opacity: 0.8 } }")),
+        ]),
+      );
+    },
+  );
+
+  it.each([
+    "{ ...css.marker('nav.item', ':hover') }",
+    "{ [css.extended('項目', ':hover')]: { opacity: 0.8 } }",
+  ])(
+    'rejects a marker id outside letters, digits, - and _ in %s',
+    async (style) => {
+      await expect(classesOf(style)).rejects.toThrow(
+        /can only contain letters, digits, "-" and "_"/,
+      );
+    },
+  );
+
   it('handles a marker spread after pseudo-class styles', async () => {
     const classes = await classesOf(
       `{ color: 'red', ':hover': { opacity: 0.8 }, ...css.marker('p', ':hover') }`,
