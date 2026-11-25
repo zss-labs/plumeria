@@ -16,6 +16,7 @@ use crate::engine::specificity::{
 use crate::js::number::{number_to_string, to_int32, to_uint32};
 use crate::js::{Object, Value};
 use crate::style::theme::theme_var_reference;
+use crate::syntax::module::plumeria_method;
 use crate::syntax::expr::{
     BinOp, E, K, Member, Prop, expression_label, member_prop, root_identifier, unwrap,
 };
@@ -521,14 +522,10 @@ impl<'e, 'r> Evaluator<'e, 'r> {
     }
 
     fn call(&self, call: &CallExpression) -> EvalResult<Value> {
-        let method = match E::new(&call.callee).kind() {
-            K::Ident(ident) => Some(ident.name.as_str()),
-            K::Member(_) => match E::new(&call.callee).prop() {
-                Some(Prop::Name(name)) => Some(name),
-                _ => None,
-            },
-            _ => None,
-        };
+        let method = self
+            .env
+            .aliases
+            .and_then(|aliases| plumeria_method(&call.callee, aliases));
         let Some(method) = method else {
             return Ok(Value::Null);
         };
@@ -747,6 +744,7 @@ pub fn resolve_static_member(node: E, statics: &dyn Lookup<Value>) -> Option<Val
 
 pub fn resolve_theme_selector(node: E, env: Env) -> String {
     let limited = Env {
+        aliases: env.aliases,
         statics: env.statics,
         keyframes: &NOTHING,
         view_transitions: &NOTHING,
