@@ -942,6 +942,7 @@ export const transformSource = async (
   const siteAt = collectSiteScopes(ast);
   const siteTemps = new Map<number, string[]>();
   const tempNext = new Map<number, number>();
+  const removableAttrs = new Set<string>();
   let argBase: number | null = null;
   const helpers = new Map<
     string,
@@ -4276,6 +4277,11 @@ export const transformSource = async (
         }
       }
 
+      for (const attr of [node, classNameAttr, styleAttrExisting])
+        if (attr)
+          removableAttrs.add(
+            `${attr.span.start - baseByteOffset}:${attr.span.end - baseByteOffset}`,
+          );
       const styleArg = existingStyleExpr
         ? existingStyleExpr.slice(3)
         : styleObject
@@ -4753,6 +4759,15 @@ export const transformSource = async (
     for (const [at, content] of insertions(declared, names))
       replacements.push({ start: at, end: at, content });
   }
+
+  for (const replacement of replacements)
+    if (
+      !replacement.content &&
+      removableAttrs.has(`${replacement.start}:${replacement.end}`) &&
+      sourceBuffer[replacement.start - 1] === 0x20 &&
+      sourceBuffer[replacement.end] === 0x20
+    )
+      replacement.start -= 1;
 
   const byPosition = (
     a: { start: number; end: number },
