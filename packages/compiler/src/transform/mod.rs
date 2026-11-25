@@ -199,6 +199,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
     pub fn env_parts(&self) -> EnvParts<'_> {
         EnvParts {
+            aliases: &self.aliases,
             statics: StaticStack {
                 own: &self.merged_static,
                 base: &self.tables.static_table,
