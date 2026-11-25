@@ -330,6 +330,12 @@ const generatedTest = (test: string, generated: string[]) => {
   return generated.includes(name) ? { name, negated } : undefined;
 };
 
+const complementary = (first: string, second: string, generated: string[]) => {
+  const a = generatedTest(first, generated);
+  const b = generatedTest(second, generated);
+  return !!a && !!b && a.name === b.name && a.negated !== b.negated;
+};
+
 const joinClassParts = (parts: string[], generated: string[]): string => {
   if (!parts.length) return '""';
   const joined = () => parts.join(' + " " + ');
@@ -3449,6 +3455,7 @@ export const transformSource = async (
         return picked;
       };
 
+      const generated = [...(elementReads?.values() ?? [])];
       chains.forEach((paths, id) => {
         const classes = new Map<number, Map<number, string>>();
         id.split(',').forEach((setter) => {
@@ -3465,8 +3472,13 @@ export const transformSource = async (
 
         let expr = '""';
         const tests: string[] = [];
+        let last:
+          | { test: string; yes: string; no: string; built: string }
+          | undefined;
         classes.forEach((byOption, d) => {
           const dim = dimensions[d];
+          const previous = last;
+          last = undefined;
           if (dim.type === 'const') {
             const className = byOption.get(0);
             if (className !== undefined) {
@@ -3476,11 +3488,32 @@ export const transformSource = async (
           } else if (dim.type === 'std') {
             const truthy = byOption.get(1) ?? expr;
             const falsy = byOption.get(0) ?? expr;
-            if (truthy === falsy) {
+            const testExpr = dim.testExpr ?? '';
+            if (
+              previous &&
+              previous.built === expr &&
+              complementary(previous.test, testExpr, generated)
+            ) {
+              const whenTrue = falsy === expr ? previous.yes : falsy;
+              const whenFalse = truthy === expr ? previous.no : truthy;
+              if (whenTrue === whenFalse) {
+                tests.pop();
+                expr = whenTrue;
+              } else {
+                expr = `(${previous.test} ? ${whenTrue} : ${whenFalse})`;
+                last = {
+                  test: previous.test,
+                  yes: whenTrue,
+                  no: whenFalse,
+                  built: expr,
+                };
+              }
+            } else if (truthy === falsy) {
               expr = truthy;
             } else {
               expr = `(${dim.testExpr} ? ${truthy} : ${falsy})`;
-              tests.push(dim.testExpr ?? '');
+              tests.push(testExpr);
+              last = { test: testExpr, yes: truthy, no: falsy, built: expr };
             }
           } else {
             tests.push(dim.testExpr ?? '');
