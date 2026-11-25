@@ -166,7 +166,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let next = helpers.len();
         let name = helpers
             .entry((params.to_string(), body.to_string()))
-            .or_insert_with(|| format!("__plumeria_fn{next}"))
+            .or_insert_with(|| format!("{}f{next}", hoist::PREFIX))
             .clone();
         format!("{name}({args})")
     }
@@ -499,7 +499,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
     fn prepare(&mut self) -> TResult<()> {
         let program = self.program;
-        let reserved = |name: &str| name.starts_with("__plumeria_");
+        let reserved = |name: &str| name.starts_with(hoist::PREFIX);
         let collides = self.scoping.symbol_names().any(reserved)
             || self
                 .scoping
