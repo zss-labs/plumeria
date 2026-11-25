@@ -118,6 +118,7 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub prop_aliases: FxHashMap<String, FxHashMap<String, String>>,
     pub prop_defaults: FxHashMap<String, IndexMap<String, &'b Expression<'a>, FxBuildHasher>>,
     pub declared_props: FxHashMap<String, FxHashSet<String>>,
+    pub parameter_bodies: FxHashMap<SymbolId, Span>,
     pub component_param_names: FxHashSet<String>,
     pub applied_style_props: FxHashSet<String>,
     pub element_reads: Option<FxHashMap<(u32, u32), String>>,
@@ -480,6 +481,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             prop_aliases: FxHashMap::default(),
             prop_defaults: FxHashMap::default(),
             declared_props: FxHashMap::default(),
+            parameter_bodies: FxHashMap::default(),
             component_param_names: FxHashSet::default(),
             applied_style_props: FxHashSet::default(),
             element_reads: None,
@@ -508,6 +510,16 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             self.decl_sites = hoist::collect_decl_sites(program);
         }
         for (name, span, params) in component_functions(program) {
+            let body = Span::new(params.span.end, span.end);
+            let patterns = params.items.iter().map(|param| &param.pattern)
+                .chain(params.rest.iter().map(|param| &param.rest.argument));
+            for pattern in patterns {
+                for binding in pattern.get_binding_identifiers() {
+                    if let Some(symbol) = binding.symbol_id.get() {
+                        self.parameter_bodies.insert(symbol, body);
+                    }
+                }
+            }
             self.components.push(Component {
                 name: name.clone(),
                 span,
