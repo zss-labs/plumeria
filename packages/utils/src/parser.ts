@@ -154,7 +154,25 @@ const toIdent = (value: string): string => value.replace(/[^A-Za-z0-9-]/g, '');
 
 const getMarkerVar = (id: string, pseudo: string): string => {
   const hash = genBase36Hash({ [id]: pseudo }, 1, 8);
-  return `--${hash}-${toIdent(id)}-${toIdent(pseudo.split('(')[0])}`;
+  return `--${hash}-${id}-${toIdent(pseudo.split('(')[0])}`;
+};
+
+const markerVarOf = (method: string, id: string, pseudo: string): string => {
+  const valid = [...id].every((char) => {
+    const c = char.charCodeAt(0);
+    return (
+      (c >= 48 && c <= 57) ||
+      (c >= 65 && c <= 90) ||
+      (c >= 97 && c <= 122) ||
+      c === 45 ||
+      c === 95
+    );
+  });
+  if (!valid)
+    throw new Error(
+      `[plumeria] css.${method}() id ${JSON.stringify(id)} can only contain letters, digits, "-" and "_".`,
+    );
+  return getMarkerVar(id, pseudo);
 };
 
 const isMarkerEntry = (name: string, value: unknown, pseudo: string) => {
@@ -1376,7 +1394,7 @@ function evaluateCallExpression(
         {},
       );
       if (typeof id === 'string' && typeof pseudo === 'string') {
-        const varName = getMarkerVar(id, pseudo);
+        const varName = markerVarOf(method, id, pseudo);
         return {
           [pseudo]: {
             [varName]: 1,
@@ -1414,7 +1432,7 @@ function evaluateCallExpression(
         {},
       );
       if (typeof id === 'string' && typeof pseudo === 'string') {
-        const varName = getMarkerVar(id, pseudo);
+        const varName = markerVarOf(method, id, pseudo);
         return `@container style(${varName}: 1)`;
       }
     }
