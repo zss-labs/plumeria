@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/eslint-plugin",
-  "version": "22.3.2",
+  "version": "22.3.3",
   "description": "Plumeria ESLint plugin",
   "author": "zss-labs",
   "license": "MIT",

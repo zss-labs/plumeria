@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/core",
-  "version": "22.3.2",
+  "version": "22.3.3",
   "description": "React styling with predictable overrides",
   "author": "zss-labs",
   "license": "MIT",
