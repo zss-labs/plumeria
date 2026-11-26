@@ -86,10 +86,7 @@ fn desugared_components_compile_through_the_transform() {
     .unwrap();
     assert!(!ghost.contains("@plumeria/react"), "{ghost}");
     assert!(!ghost.contains("__styled_css.create"), "{ghost}");
-    assert!(
-        ghost.contains("<button {...__styled_props} className={"),
-        "{ghost}"
-    );
+    assert!(ghost.contains("<button className={"), "{ghost}");
     assert!(ghost.contains("[__styled_sx]"), "{ghost}");
     assert!(
         ghost.contains(
@@ -123,7 +120,7 @@ fn intrinsic_element_becomes_create_and_sx_component() {
     );
     assert_eq!(
         output,
-        "import * as __styled_css from '@plumeria/core';\nconst __styled_Button__0 = __styled_css.create({ base: { fontSize: 24, ':hover': { color: 'navy' } } });\nconst Button = ({ sx: __styled_sx, ...__styled_props }) => <button {...__styled_props} sx={[__styled_Button__0.base, __styled_sx]} />;"
+        "import * as __styled_css from '@plumeria/core';\nconst __styled_Button__0 = __styled_css.create({ base: { fontSize: 24, ':hover': { color: 'navy' } } });\nconst Button = ({ sx: __styled_sx, ...__styled_props }) => <button sx={[__styled_Button__0.base, __styled_sx]} {...__styled_props} />;"
     );
 }
 
@@ -138,7 +135,7 @@ fn dynamic_values_become_function_keys_and_are_not_forwarded() {
     assert!(output.contains("const __styled_Box__0$0 = (props) => props.tone;"));
     assert!(output.contains("const __styled_Box__0$1 = ({ edge }) => edge;"));
     assert!(output.contains(
-        "({ sx: __styled_sx, tone: __styled_prop0, edge: __styled_prop1, ...__styled_props }) => <div {...__styled_props} sx={[__styled_Box__0.base, __styled_Box__0.d0(__styled_Box__0$0({ tone: __styled_prop0 })), __styled_Box__0.d1(__styled_Box__0$1({ edge: __styled_prop1 })), __styled_sx]} />"
+        "({ sx: __styled_sx, tone: __styled_prop0, edge: __styled_prop1, ...__styled_props }) => <div sx={[__styled_Box__0.base, __styled_Box__0.d0(__styled_Box__0$0({ tone: __styled_prop0 })), __styled_Box__0.d1(__styled_Box__0$1({ edge: __styled_prop1 })), __styled_sx]} {...__styled_props} />"
     ));
 }
 
@@ -148,7 +145,7 @@ fn nested_styled_flattens_to_the_base_element() {
         "import { styled } from '@plumeria/react';\nconst A = styled.button({ color: 'red' });\nconst B = styled(A)({ fontSize: 12 });\nconst C = styled(B)({ color: 'blue' });",
     );
     assert!(output.contains(
-        "const C = ({ sx: __styled_sx, ...__styled_props }) => <button {...__styled_props} sx={[__styled_A__0.base, __styled_B__1.base, __styled_C__2.base, __styled_sx]} />;"
+        "const C = ({ sx: __styled_sx, ...__styled_props }) => <button sx={[__styled_A__0.base, __styled_B__1.base, __styled_C__2.base, __styled_sx]} {...__styled_props} />;"
     ));
 }
 
@@ -200,7 +197,7 @@ fn styled_from_another_file_imports_its_layers() {
         "import * as __styled_css from '@plumeria/core';\nimport { __styled_Base__0 as __styled_Ghost__0, __styled_Base__0$0 as __styled_Ghost__0$0 } from './base';"
     ));
     assert!(output.contains(
-        "<button {...__styled_props} sx={[__styled_Ghost__0.d0(__styled_Ghost__0$0({ c: __styled_prop0 })), __styled_Ghost__1.base, __styled_sx]} />"
+        "<button sx={[__styled_Ghost__0.d0(__styled_Ghost__0$0({ c: __styled_prop0 })), __styled_Ghost__1.base, __styled_sx]} {...__styled_props} />"
     ));
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -215,7 +212,7 @@ fn custom_style_prop_is_used() {
     .unwrap()
     .unwrap();
     assert!(output.contains(
-        "({ css: __styled_sx, ...__styled_props }) => <i {...__styled_props} css={[__styled_A__0.base, __styled_sx]} />"
+        "({ css: __styled_sx, ...__styled_props }) => <i css={[__styled_A__0.base, __styled_sx]} {...__styled_props} />"
     ));
 }
 
@@ -287,7 +284,7 @@ fn prop_names_do_not_shadow_generated_bindings() {
         "import { styled } from '@plumeria/react';\nconst Box = styled.div({ color: (p) => p.__styled_Box__0, margin: (p) => p.default });",
     );
     assert!(output.contains(
-        "({ sx: __styled_sx, __styled_Box__0: __styled_prop0, default: __styled_prop1, ...__styled_props }) => <div {...__styled_props} sx={[__styled_Box__0.d0(__styled_Box__0$0({ __styled_Box__0: __styled_prop0 })), __styled_Box__0.d1(__styled_Box__0$1({ default: __styled_prop1 })), __styled_sx]} />"
+        "({ sx: __styled_sx, __styled_Box__0: __styled_prop0, default: __styled_prop1, ...__styled_props }) => <div sx={[__styled_Box__0.d0(__styled_Box__0$0({ __styled_Box__0: __styled_prop0 })), __styled_Box__0.d1(__styled_Box__0$1({ default: __styled_prop1 })), __styled_sx]} {...__styled_props} />"
     ));
 }
 
@@ -339,7 +336,7 @@ fn generated_names_avoid_module_names() {
         "{output}"
     );
     assert!(
-        output.contains("({ sx: __styled1_sx, c: __styled1_prop0, ...__styled1_props }) => <div {...__styled1_props} sx={[__styled1_Box__0.d0(__styled1_Box__0$0({ c: __styled1_prop0 })), __styled1_sx]} />"),
+        output.contains("({ sx: __styled1_sx, c: __styled1_prop0, ...__styled1_props }) => <div sx={[__styled1_Box__0.d0(__styled1_Box__0$0({ c: __styled1_prop0 })), __styled1_sx]} {...__styled1_props} />"),
         "{output}"
     );
     assert!(
@@ -395,13 +392,15 @@ fn style_prop_is_bound_to_its_own_local() {
     let output = desugar(source, "/app/a.tsx", "__props").unwrap().unwrap();
     assert!(problems(&output).is_empty(), "{output}");
     assert!(
-        output.contains("({ __props: __styled_sx, c: __styled_prop0, ...__styled_props }) => <i {...__styled_props} __props={[__styled_A__0.d0(__styled_A__0$0({ c: __styled_prop0 })), __styled_sx]} />"),
+        output.contains("({ __props: __styled_sx, c: __styled_prop0, ...__styled_props }) => <i __props={[__styled_A__0.d0(__styled_A__0$0({ c: __styled_prop0 })), __styled_sx]} {...__styled_props} />"),
         "{output}"
     );
     let output = desugar(source, "/app/a.tsx", "data-sx").unwrap().unwrap();
     assert!(problems(&output).is_empty(), "{output}");
     assert!(
-        output.contains("({ \"data-sx\": __styled_sx, c: __styled_prop0, ...__styled_props }) => <i {...__styled_props} data-sx={["),
+        output.contains(
+            "({ \"data-sx\": __styled_sx, c: __styled_prop0, ...__styled_props }) => <i data-sx={["
+        ),
         "{output}"
     );
 }
@@ -459,7 +458,7 @@ fn barrels_lead_to_the_defining_file() {
         assert!(problems(&output).is_empty(), "{output}");
         assert!(output.contains(expected), "{from} {name}\n{output}");
         assert!(
-            output.contains("<button {...__styled_props} sx={[__styled_Ghost__0.d0(__styled_Ghost__0$0({ c: __styled_prop0 })), __styled_Ghost__1.base, __styled_sx]} />"),
+            output.contains("<button sx={[__styled_Ghost__0.d0(__styled_Ghost__0$0({ c: __styled_prop0 })), __styled_Ghost__1.base, __styled_sx]} {...__styled_props} />"),
             "{from} {name}\n{output}"
         );
     }
@@ -515,10 +514,7 @@ fn barrel_imports_compile_through_the_transform() {
     )
     .unwrap();
     assert!(ghost.contains("from './ui/Base.tsx';"), "{ghost}");
-    assert!(
-        ghost.contains("<button {...__styled_props} className={"),
-        "{ghost}"
-    );
+    assert!(ghost.contains("<button className={"), "{ghost}");
     assert!(ghost.contains("[__styled_sx]"), "{ghost}");
     std::fs::remove_dir_all(dir).unwrap();
 }
