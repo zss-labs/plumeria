@@ -561,7 +561,7 @@ export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
       expect(code).not.toContain('"__plumeria__$$a0":');
     });
 
-    it('writes no wrapper when an attribute reads between sx and style', async () => {
+    it('leaves an attribute that reads between sx and style in place', async () => {
       const { code } = await run(
         header +
           `export function A({ c, f, g }) {\n  return <div sx={[s.palette(c), f() && s.stat]} id={g()} style={f()} />;\n}`,
@@ -569,7 +569,7 @@ export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
       );
       expect(code).not.toMatch(/=> \(\{/);
       expect(code).toContain(
-        'id={g()} style={(__plumeria__$$s0 = (f()), { ...__plumeria__$$s0, ...__plumeria__$$v0 })}',
+        '{...{ "style": __plumeria__$$v0 }} id={g()} style={f()} />',
       );
     });
 
