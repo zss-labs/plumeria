@@ -61,13 +61,35 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(code).not.toContain('className=');
   });
 
-  it('merges an existing attribute written under the configured name', async () => {
+  it('leaves an existing attribute written under the configured name in place', async () => {
     const code = await run(
       `export const A = () => <div class="kept" sx={styles.a} />;`,
       'class',
     );
 
-    expect(code).toMatch(/class="kept x\w+"/);
-    expect(code).not.toContain('className={');
+    expect(code).toMatch(/class="kept" \{\.\.\.\{ "class": "x\w+" \}\}/);
+    expect(code).not.toContain('className');
+  });
+
+  it('writes a hyphenated name as a computed key when both attributes are spread', async () => {
+    const code = await run(
+      `const on = () => true;\nexport class K { el = <div sx={[styles.a, on() && styles.dyn(1)]} />; }`,
+      'data-class',
+    );
+
+    expect(code).toContain('{...');
+    expect(code).toContain('({ "data-class": ');
+    expect(code).not.toContain('data-class:');
+  });
+
+  it('writes a colliding attribute with a hyphenated name as a string key', async () => {
+    const code = await run(
+      `export const A = () => <div data-class="kept" sx={styles.a} />;`,
+      'data-class',
+    );
+
+    expect(code).toMatch(
+      /data-class="kept" \{\.\.\.\{ "data-class": "x\w+" \}\}/,
+    );
   });
 });
