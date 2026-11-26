@@ -25,9 +25,23 @@ Starting in 22.3.2, preview a migration with `npx @plumeria/migrate from styled-
 
 In 22.3.3, a condition chooses between complete class strings, so `[styles.text, active && styles.active]` compiles to `active ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas"`. When both branches select the same class, it is emitted once. Each function key argument is evaluated once, in the order you wrote it. A parameter or a `const` that nothing reassigns is read in place, and any other argument is stored in a local variable first. [How Plumeria Compiles](/docs/how-plumeria-compiles) shows the compiled output.
 
+## The later attribute wins
+
+Starting in 22.3.4, a `className` or `style` written beside `sx` is no longer merged into the generated one. An attribute added after it overrides it. `<div sx={styles.text} className="banner" />` compiles to `<div {...{ "className": "xvbwmxqp" }} className="banner" />` and renders only `banner`. The result follows the order of the attributes, so migrating existing code is predictable. The generated attribute is written as a spread so that the output has no duplicate JSX attributes.
+
+A styled component passes your props after its own, so a `className` given to `Button` replaces its styles. `no-mixed-styling-props` reports both cases, including a styled component imported from another module. Override a style with `sx` instead. `styled` now takes its style prop from the element props that `@plumeria/core/sx` declares, so a style prop you declare under another name carries over to styled components.
+
 ---
 
 ## Release notes
+
+## 22.3.4 (Nov 26, 2026)
+
+- Update: Leave className and style written beside sx in place, so an attribute added after them overrides them, instead of merging them.
+- Fix: Write a generated attribute that collides with a written one as a spread with a string key, so the output has no duplicate JSX attributes.
+- Update: Let the className and style passed to a styled component win over the generated ones.
+- Refactor: Take the style prop of a styled component from the element props that core declares.
+- Feat: Report className and style passed to a styled component in no-mixed-styling-props, including one imported from another module.
 
 ## 22.3.3 (Nov 25, 2026)
 
