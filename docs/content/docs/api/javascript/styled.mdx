@@ -33,7 +33,7 @@ export function SaveButton() {
 
 ```tsx
 const Button = ({ sx, ...props }) => (
-  <button {...props} className="xymmdeuh xvbwmxqp" />
+  <button className="xymmdeuh xvbwmxqp" {...props} />
 );
 ```
 
@@ -91,15 +91,15 @@ export function WarningButton() {
 ```tsx
 const Button = ({ sx, ...props }) => (
   <button
-    {...props}
     className={'xymmdeuh ' + ({ xhii7wzb: 'xvnrjlqc' }[sx] ?? 'xvbwmxqp')}
+    {...props}
   />
 );
 
 <Button sx="xhii7wzb">Warning</Button>;
 ```
 
-`Button` takes `sx` out of its props, so it never reaches the element. The lookup swaps navy for maroon, and a `Button` without `sx` stays navy.
+`Button` takes `sx` out of its props, so it never reaches the element. The lookup swaps navy for maroon, and a `Button` without `sx` stays navy. A `className` or `style` passed to `Button` comes after the generated one and replaces it, so `no-mixed-styling-props` reports it.
 
 ## Other JSX frameworks
 
