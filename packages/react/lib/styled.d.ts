@@ -15,7 +15,6 @@ import type {
   AtomicClassNameFor,
   AtomicStyle,
   CSSProperties,
-  Style,
 } from '@plumeria/core';
 
 type NestedKey = `:${string}` | `[${string}` | `@${string}`;
@@ -87,10 +86,8 @@ type Known<T> = {
 export type StyledProps<T extends StyledTarget, P> = P &
   Omit<
     Framework['useReactProps'] extends true ? PropsOf<T> : Known<PropsOf<T>>,
-    keyof Known<P> | 'sx'
-  > & {
-    sx?: Style;
-  };
+    keyof Known<P>
+  >;
 
 declare const styledBrand: unique symbol;
 
