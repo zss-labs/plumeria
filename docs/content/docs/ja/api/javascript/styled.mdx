@@ -33,7 +33,7 @@ export function SaveButton() {
 
 ```tsx
 const Button = ({ sx, ...props }) => (
-  <button {...props} className="xymmdeuh xvbwmxqp" />
+  <button className="xymmdeuh xvbwmxqp" {...props} />
 );
 ```
 
@@ -91,15 +91,15 @@ export function WarningButton() {
 ```tsx
 const Button = ({ sx, ...props }) => (
   <button
-    {...props}
     className={'xymmdeuh ' + ({ xhii7wzb: 'xvnrjlqc' }[sx] ?? 'xvbwmxqp')}
+    {...props}
   />
 );
 
 <Button sx="xhii7wzb">Warning</Button>;
 ```
 
-`Button` は `sx` を props から取り出すため、`sx` は要素には渡りません。表引きで navy が maroon に差し替わり、`sx` のない `Button` は navy のままです。
+`Button` は `sx` を props から取り出すため、`sx` は要素には渡りません。表引きで navy が maroon に差し替わり、`sx` のない `Button` は navy のままです。 `Button` に渡した `className` や `style` は生成された属性より後ろに来て置き換えるため、`no-mixed-styling-props` が報告します。
 
 ## ほかの JSX フレームワーク
 
