@@ -311,47 +311,47 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a className without a value',
         `<div className sx={s.a} />`,
-        `<div className="${RED}" />`,
+        `<div className {...{ "className": "${RED}" }} />`,
       ],
       [
         'a className string',
         `<div className="x" sx={s.a} />`,
-        `<div className="x ${RED}" />`,
+        `<div className="x" {...{ "className": "${RED}" }} />`,
       ],
       [
         'a className expression',
         `<div className={p.c} sx={s.a} />`,
-        `<div className={(p.c) + " " + "${RED}"} />`,
+        `<div className={p.c} {...{ "className": "${RED}" }} />`,
       ],
       [
         'a className beside a style that is not there',
         `<div className="x" sx={undefined} />`,
-        `<div className="x" />`,
+        `<div className="x" {...{ "className": "" }} />`,
       ],
       [
         'dollar patterns in a className expression',
         `<div className={p.on ? "a$&b" : "c$'d"} sx={s.a} />`,
-        `<div className={(p.on ? "a$&b" : "c$'d") + " " + "${RED}"} />`,
+        `<div className={p.on ? "a$&b" : "c$'d"} {...{ "className": "${RED}" }} />`,
       ],
       [
         'dollar patterns in a style expression',
         `<div style={p.on ? { content: "$$" } : p.st} sx={s.a} />`,
-        `style={{ ...(p.on ? { content: "$$" } : p.st) }}`,
+        `<div style={p.on ? { content: "$$" } : p.st} className="${RED}" />`,
       ],
       [
-        'a style after a spread',
+        'a className after a spread',
         `<div sx={s.a} {...p} className="x" />`,
-        `<div {...p} className="x ${RED}" />`,
+        `<div {...{ "className": "${RED}" }} {...p} className="x" />`,
       ],
       [
         'two spaces inside a className value',
         `<div className="a  b" sx={s.a} />`,
-        `<div className="a  b ${RED}" />`,
+        `<div className="a  b" {...{ "className": "${RED}" }} />`,
       ],
       [
         'attributes on their own lines',
         `<div\n      id="i"\n      className="x"\n      sx={s.a}\n    />`,
-        `<div\n      id="i"\n      \n      className="x ${RED}"\n    />`,
+        `<div\n      id="i"\n      className="x"\n      {...{ "className": "${RED}" }}\n    />`,
       ],
     ])('keeps %s', async (_name, element, expected) => {
       const { code } = await app(`export const A = (p: any) => ${element};`);
@@ -372,19 +372,19 @@ export const A = () => <Card cardStyle={s.a} />;`,
       },
     );
 
-    const merged = (kept: string) =>
-      `style=\\{\\(__plumeria__\\$\\$s0 = ${kept}, \\(__plumeria__\\$\\$v0 = ${SIZE}\\), \\{ \\.\\.\\.__plumeria__\\$\\$s0, \\.\\.\\.__plumeria__\\$\\$v0 \\}\\)\\}`;
+    const after = (kept: string) =>
+      `<div ${kept} className="x\\w+" \\{\\.\\.\\.\\{ "style": ${SIZE} \\}\\} />`;
 
     it.each([
-      ['a string', `style="color:red"`, `style=\\{${SIZE}\\}`],
+      ['a string', `style="color:red"`, after('style="color:red"')],
       [
         'an object',
         `style={{ top: 1, ...rest }}`,
-        merged('\\{ top: 1, \\.\\.\\.rest \\}'),
+        after('style=\\{\\{ top: 1, \\.\\.\\.rest \\}\\}'),
       ],
-      ['a name', `style={st}`, merged('\\(st\\)')],
+      ['a name', `style={st}`, after('style=\\{st\\}')],
     ])(
-      'merges the variables of a function key into a style attribute written as %s',
+      'writes the variables of a function key after a style attribute written as %s',
       async (_name, attribute, expected) => {
         const { code } = await app(
           FN +
