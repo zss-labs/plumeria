@@ -1365,7 +1365,7 @@ function componentText(
     ...reads.map((name) => `${name}: ${local(name)}`),
     `...${rest}`,
   ];
-  return `({ ${params.join(', ')} }) => <${chain.tag} {...${rest}} ${styleProp}={[${styles.join(', ')}]} />`;
+  return `({ ${params.join(', ')} }) => <${chain.tag} ${styleProp}={[${styles.join(', ')}]} {...${rest}} />`;
 }
 
 export function desugar(
