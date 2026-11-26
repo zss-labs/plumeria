@@ -112,6 +112,19 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(actual('Override')).toEqual(reference('Green'));
   });
 
+  it('lets the className and style of the caller win', async () => {
+    const actual = render(
+      await run(
+        `import * as css from '@plumeria/core';\n${head}\nconst Box = styled.div({ color: 'red', width: ({ w }: { w: number }) => w });\nexport const Caller = () => <Box w={4} className="c" style={{ top: 1 }} />;`,
+      ),
+    );
+    let node = actual.exports.Caller();
+    while (typeof node.type === 'function') node = node.type(node.props);
+
+    expect(node.props.className).toBe('c');
+    expect(node.props.style).toEqual({ top: 1 });
+  });
+
   it('applies a variant chosen by a dynamic key', async () => {
     const reference = render(
       await run(
@@ -266,7 +279,7 @@ export const flags = { value: true, get on() { reads.push('on'); return this.val
 ${body}`,
       ).then(render);
 
-    it('reads every attribute and element once in attribute order', async () => {
+    it('reads every attribute and element once and lets the later one win', async () => {
       const actual = await element(
         `export const A = () => <div style={read('style', { top: 1 })} sx={[tones[read('tone', 'x')], styles.w(read('w', 4)), flags.on && styles.base]} className={read('class', 'c')} />;`,
       );
@@ -279,8 +292,8 @@ ${body}`,
         'on',
         'class',
       ]);
-      expect(props.className).toMatch(/^c /);
-      expect(Object.values(props.style)).toEqual([1, '4px']);
+      expect(props.className).toBe('c');
+      expect(Object.values(props.style)).toEqual(['4px']);
     });
 
     it('passes a comma expression key as one argument', async () => {
@@ -329,7 +342,7 @@ export const B = ({ tone }: { tone: 'x' | 'y' }) => <div className={'fixed'} sx=
       expect(code).not.toContain('{...(');
     });
 
-    it('passes the style on untouched when a false guard leaves no variable', async () => {
+    it('overrides an earlier style when a false guard leaves no variable', async () => {
       const actual = await element(
         `export const style = { get top() { reads.push('top'); return 1; } };
 export const A = () => <div style={style} sx={[flags.on && styles.w(read('w', 4)), tones.x]} />;`,
@@ -338,10 +351,10 @@ export const A = () => <div style={style} sx={[flags.on && styles.w(read('w', 4)
       const { props } = actual.exports.A();
 
       expect(actual.exports.reads).toEqual(['on']);
-      expect(props.style).toBe(actual.exports.style);
+      expect(props.style).toBeUndefined();
     });
 
-    it('evaluates an unused argument without copying the style', async () => {
+    it('evaluates an unused argument and overrides an earlier style', async () => {
       const actual = await element(
         `export const style = { top: 1 };
 export const A = () => <div style={style} sx={[flags.on && styles.track(1, read('unused', 0)), tones.x]} />;`,
@@ -349,7 +362,7 @@ export const A = () => <div style={style} sx={[flags.on && styles.track(1, read(
       const { props } = actual.exports.A();
 
       expect(actual.exports.reads).toEqual(['on', 'unused']);
-      expect(props.style).toBe(actual.exports.style);
+      expect(props.style).toBeUndefined();
     });
 
     it('keeps an awaited argument behind its guard', async () => {
