@@ -37,13 +37,6 @@ pub struct CallBinding {
     pub args: Vec<String>,
 }
 
-pub(super) struct Host {
-    at: u32,
-    open: u32,
-    close: u32,
-    braces: bool,
-}
-
 #[derive(Default)]
 pub(super) struct ElementPlan {
     params: Vec<String>,
@@ -69,25 +62,6 @@ impl ElementPlan {
         } else {
             value
         }
-    }
-}
-
-fn reads_nothing(expr: &Expression) -> bool {
-    match expr {
-        Expression::StringLiteral(_)
-        | Expression::NumericLiteral(_)
-        | Expression::BooleanLiteral(_)
-        | Expression::NullLiteral(_) => true,
-        Expression::TemplateLiteral(template) => template.expressions.is_empty(),
-        Expression::ParenthesizedExpression(paren) => reads_nothing(&paren.expression),
-        Expression::UnaryExpression(unary) => {
-            matches!(unary.argument, Expression::NumericLiteral(_))
-        }
-        Expression::ObjectExpression(object) => object.properties.iter().all(|property| {
-            matches!(property, ObjectPropertyKind::ObjectProperty(p)
-                if !p.computed && !p.method && p.kind == PropertyKind::Init && reads_nothing(&p.value))
-        }),
-        _ => false,
     }
 }
 
@@ -183,6 +157,21 @@ pub fn join_class_parts(parts: &[String], generated: &[String]) -> String {
             quote(&no.join(" "))
         ),
         None => quote(&yes.join(" ")),
+    }
+}
+
+fn generated_style(vars: &[(String, bool)]) -> String {
+    let names: Vec<&str> = vars.iter().map(|(name, _)| name.as_str()).collect();
+    let copy = || {
+        let spread: Vec<String> = names.iter().map(|name| format!("...{name}")).collect();
+        format!("{{ {} }}", spread.join(", "))
+    };
+    match vars {
+        [] => "undefined".to_string(),
+        [(only, true)] => only.clone(),
+        [(only, false)] => format!("{only} || undefined"),
+        _ if vars.iter().any(|(_, always)| *always) => copy(),
+        _ => format!("({}) ? {} : undefined", names.join(" || "), copy()),
     }
 }
 
@@ -2218,12 +2207,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
             other => vec![(E::new(other), None)],
         };
-        let attributes = owner.as_ref().map(|(_, attributes)| *attributes);
         if !receives_style_prop {
-            return self.apply_style_attribute(node, E::new(expr), args, attributes);
+            return self.apply_style_attribute(node, E::new(expr), args);
         }
         let applied = std::mem::take(&mut self.applied_style_props);
-        let result = self.apply_style_attribute(node, E::new(expr), args, attributes);
+        let result = self.apply_style_attribute(node, E::new(expr), args);
         let referenced = std::mem::replace(&mut self.applied_style_props, applied);
         result?;
         let received = referenced.iter().find_map(|key| {
@@ -2531,103 +2519,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         node: &'b JSXAttribute<'a>,
         expr: E<'b, 'a>,
         args: Vec<(E<'b, 'a>, Option<i64>)>,
-        attributes: Option<&'b oxc_allocator::Vec<'a, JSXAttributeItem<'a>>>,
     ) -> TResult<()> {
         let class_prop = self.env.class_prop.clone();
-        let mut existing_style_parts: Vec<String> = Vec::new();
-        let mut existing_class = String::new();
-        let mut existing_style = String::new();
-        let mut style_object = false;
-        let empty: &[JSXAttributeItem] = &[];
-        let items: &[JSXAttributeItem] = attributes.map(|a| a.as_slice()).unwrap_or(empty);
-
-        let class_attr = items.iter().find_map(|item| match item {
-            JSXAttributeItem::Attribute(attr) => match &attr.name {
-                JSXAttributeName::Identifier(ident) if ident.name.as_str() == class_prop => {
-                    Some(attr)
-                }
-                _ => None,
-            },
-            _ => None,
-        });
-        if let Some(class_attr) = class_attr {
-            self.replacements.push(Replacement {
-                start: class_attr.span.start,
-                end: class_attr.span.end,
-                content: String::new(),
-            });
-            match &class_attr.value {
-                Some(JSXAttributeValue::StringLiteral(value)) => {
-                    existing_class = quote(value.value.as_str().unwrap_or_default())
-                }
-                Some(JSXAttributeValue::ExpressionContainer(container)) => {
-                    let span = container.expression.span();
-                    let token = self.defer_range(span.start, span.end);
-                    existing_class = format!("({token})");
-                }
-                _ => {}
-            }
-        }
-
-        let style_attr = items.iter().find_map(|item| match item {
-            JSXAttributeItem::Attribute(attr) => match &attr.name {
-                JSXAttributeName::Identifier(ident) if ident.name.as_str() == "style" => Some(attr),
-                _ => None,
-            },
-            _ => None,
-        });
-        if let Some(style_attr) = style_attr {
-            self.replacements.push(Replacement {
-                start: style_attr.span.start,
-                end: style_attr.span.end,
-                content: String::new(),
-            });
-            if let Some(JSXAttributeValue::ExpressionContainer(container)) = &style_attr.value {
-                match container.expression.as_expression() {
-                    Some(Expression::ObjectExpression(object)) => {
-                        style_object = true;
-                        for property in &object.properties {
-                            let span = match property {
-                                ObjectPropertyKind::ObjectProperty(p) => p.span,
-                                ObjectPropertyKind::SpreadProperty(spread) => spread.span,
-                            };
-                            existing_style_parts.push(self.defer_range(span.start, span.end));
-                        }
-                    }
-                    _ => {
-                        let span = container.expression.span();
-                        let token = self.defer_range(span.start, span.end);
-                        existing_style = format!("...({token})");
-                    }
-                }
-            }
-        }
-
-        for span in [Some(node.span), class_attr.map(|attr| attr.span), style_attr.map(|attr| attr.span)]
-            .into_iter()
-            .flatten()
-        {
-            self.removable_attrs.insert((span.start, span.end));
-        }
-        let style_arg = if !existing_style.is_empty() {
-            Some(existing_style.trim_start_matches("...").to_string())
-        } else if style_object {
-            Some(format!("{{ {} }}", existing_style_parts.join(", ")))
-        } else {
-            None
-        };
-        let class_is_expr = existing_class.starts_with('(');
-        let attribute_reads = |attr: Option<&JSXAttribute>| {
-            attr.is_some_and(|attr| match &attr.value {
-                Some(JSXAttributeValue::ExpressionContainer(container)) => container
-                    .expression
-                    .as_expression()
-                    .is_some_and(|expr| !reads_nothing(expr)),
-                _ => false,
-            })
-        };
-        let class_reads = attribute_reads(class_attr.map(|attr| &**attr));
-        let style_reads = attribute_reads(style_attr.map(|attr| &**attr));
+        self.removable_attrs.insert((node.span.start, node.span.end));
         let site = self
             .site_stack
             .last()
@@ -2654,82 +2548,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
         let planned = plans.len() == args.len();
-        let wraps = (plan.class_runtime || class_reads) && (plan.style_runtime || style_reads);
-        'assign: {
-            let moved = [
-                Some(node.span),
-                class_attr.map(|attr| attr.span),
-                style_attr.map(|attr| attr.span),
-            ];
-            let hosts: Vec<Host> = items
-                .iter()
-                .filter_map(|item| match item {
-                    JSXAttributeItem::SpreadAttribute(spread) => {
-                        let span = spread.argument.span();
-                        Some(Host {
-                            at: spread.span.start,
-                            open: span.start,
-                            close: span.end,
-                            braces: false,
-                        })
-                    }
-                    JSXAttributeItem::Attribute(attr) if !moved.contains(&Some(attr.span)) => {
-                        match &attr.value {
-                            Some(JSXAttributeValue::ExpressionContainer(container)) => {
-                                let expr = container.expression.as_expression()?;
-                                (!reads_nothing(expr)).then(|| Host {
-                                    at: attr.span.start,
-                                    open: expr.span().start,
-                                    close: expr.span().end,
-                                    braces: false,
-                                })
-                            }
-                            Some(JSXAttributeValue::Element(element)) => Some(Host {
-                                at: attr.span.start,
-                                open: element.span.start,
-                                close: element.span.end,
-                                braces: true,
-                            }),
-                            Some(JSXAttributeValue::Fragment(fragment)) => Some(Host {
-                                at: attr.span.start,
-                                open: fragment.span.start,
-                                close: fragment.span.end,
-                                braces: true,
-                            }),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                })
-                .collect();
-            let class_span = class_attr.filter(|_| class_is_expr).map(|attr| attr.span);
-            let class_place = class_attr.map(|attr| attr.span);
-            let positions = [
-                Some(node.span.start),
-                class_place.map(|span| span.start),
-                style_attr
-                    .filter(|_| style_arg.is_some())
-                    .map(|attr| attr.span.start),
-            ];
-            let first = positions.iter().flatten().min().copied().unwrap_or(0);
-            let last = positions.iter().flatten().max().copied().unwrap_or(0);
-            let crossing = hosts.iter().any(|host| host.at > first && host.at < last);
-            let Some(site) = site.filter(|_| {
-                planned && plan.assign && (wraps || plan.style_runtime || crossing)
-            }) else {
-                break 'assign;
-            };
-            let style = style_attr.map(|attr| attr.span).zip(style_arg.clone());
-            return self.assign_element(
-                node,
-                args,
-                plan,
-                plans,
-                site,
-                (class_span, class_place, existing_class.clone()),
-                style,
-                hosts,
-            );
+        let wraps = plan.class_runtime && plan.style_runtime;
+        if let Some(site) = site.filter(|_| planned && plan.assign && plan.style_runtime) {
+            return self.assign_element(node, args, plan, plans, site);
         }
         self.arg_base.set(None);
         let mut plan = if plan.assign {
@@ -2739,20 +2560,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         if planned && wraps {
             let mut entries: Vec<((u32, usize), String, String)> = Vec::new();
-            if class_is_expr && let Some(class_attr) = class_attr {
-                entries.push((
-                    (class_attr.span.start, 0),
-                    format!("{PREFIX}c"),
-                    existing_class.clone(),
-                ));
-            }
-            if let (Some(style), Some(style_attr)) = (&style_arg, style_attr) {
-                entries.push((
-                    (style_attr.span.start, 0),
-                    format!("{PREFIX}s"),
-                    style.clone(),
-                ));
-            }
             for (index, (params, items)) in plans.iter().enumerate() {
                 if params.is_empty() {
                     continue;
@@ -2768,44 +2575,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     };
                 entries.push(((node.span.start, index + 1), param, arg));
             }
-            entries.sort_by_key(|(order, _, _)| *order);
 
             self.element_reads = Some(std::mem::take(&mut plan.reads));
-            let class_source = if class_is_expr {
-                format!("{PREFIX}c")
-            } else {
-                existing_class.clone()
-            };
-            let built = self.build_class_parts(args, Vec::new(), class_source, true);
+            let built = self.build_class_parts(args, Vec::new(), String::new(), true);
             self.element_reads = None;
             let built = built?;
             let class_value = join_class_parts(&built.class_parts, &plan.params);
-            let style_name = format!("{PREFIX}s");
-            let existing = style_arg.as_ref().map(|_| style_name.as_str());
-            let spread: Vec<String> = existing
-                .into_iter()
-                .chain(plan.vars.iter().map(|(name, _)| name.as_str()))
-                .map(|name| format!("...{name}"))
-                .collect();
-            let copy = format!("{{ {} }}", spread.join(", "));
-            let style_value = if plan.vars.is_empty() {
-                existing.unwrap_or("undefined").to_string()
-            } else if let ([(only, always)], None) = (plan.vars.as_slice(), existing) {
-                if *always {
-                    only.clone()
-                } else {
-                    format!("{only} || undefined")
-                }
-            } else if plan.vars.iter().any(|(_, always)| *always) {
-                copy
-            } else {
-                let any: Vec<&str> = plan.vars.iter().map(|(name, _)| name.as_str()).collect();
-                format!(
-                    "({}) ? {copy} : {}",
-                    any.join(" || "),
-                    existing.unwrap_or("undefined")
-                )
-            };
+            let style_value = generated_style(&plan.vars);
             let sides: Option<Vec<bool>> = entries
                 .iter()
                 .map(|(_, param, _)| {
@@ -2844,15 +2620,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 } else {
                     format!("{{{class_text}}}")
                 };
-                let style_attr = if style_text == "undefined" {
-                    String::new()
-                } else {
-                    format!(" style={{{style_text}}}")
-                };
+                let mut content = self.written_attribute(node, &class_prop, &class_attr);
+                if style_text != "undefined" {
+                    content.push(' ');
+                    content.push_str(&self.written_attribute(node, "style", &format!("{{{style_text}}}")));
+                }
                 self.replacements.push(Replacement {
                     start: node.span.start,
                     end: node.span.end,
-                    content: format!("{class_prop}={class_attr}{style_attr}"),
+                    content,
                 });
                 return Ok(());
             }
@@ -2865,7 +2641,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     "{{...{}}}",
                     self.invoke(
                         &params.join(", "),
-                        &format!("({{ {class_prop}: {class_value}, style: {style_value} }})"),
+                        &format!("({{ {}: {class_value}, style: {style_value} }})", quote(&class_prop)),
                         &values.join(", ")
                     )
                 ),
@@ -2878,7 +2654,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .and_then(|site| self.temp_next.get(&site).copied())
             .unwrap_or(0);
         self.arg_base.set(site.map(|_| base));
-        let built = self.build_class_parts(args, Vec::new(), existing_class.clone(), true);
+        let built = self.build_class_parts(args, Vec::new(), String::new(), true);
         let folded = built
             .as_ref()
             .ok()
@@ -2903,69 +2679,56 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 Some(expr.span()),
             ));
         }
-        let mut style_parts = existing_style_parts;
-        style_parts.extend(folded.unwrap_or_default());
+        let mut style_parts = folded.unwrap_or_default();
         style_parts.extend(built.prop_var_spreads.clone());
-        let style_attr_text = if !style_parts.is_empty() || !existing_style.is_empty() {
-            let generated_only = !style_object
-                && existing_style.is_empty()
-                && built.prop_var_spreads.is_empty();
-            let mut all = Vec::new();
-            if !existing_style.is_empty() {
-                all.push(existing_style);
+        let style_value = match style_parts.as_slice() {
+            [] => None,
+            [only] if built.prop_var_spreads.is_empty() && only.starts_with("...") => {
+                Some(format!("{{{}}}", &only[3..]))
             }
-            all.extend(style_parts);
-            match all.as_slice() {
-                [only] if generated_only && only.starts_with("...") => {
-                    format!(" style={{{}}}", &only[3..])
-                }
-                _ => format!(" style={{{{ {} }}}}", all.join(", ")),
-            }
-        } else {
-            String::new()
+            _ => Some(format!("{{{{ {} }}}}", style_parts.join(", "))),
         };
 
+        let mut attributes = Vec::new();
         if arg_count > 0 || !built.base_style.is_empty() {
             let replacement = join_class_parts(&built.class_parts, &[]);
-            let fixed = static_class(&replacement).is_some();
-            let value = if fixed && !replacement.contains('&') {
+            let value = if static_class(&replacement).is_some() && !replacement.contains('&') {
                 replacement
             } else {
                 format!("{{{replacement}}}")
             };
-            if let Some(class_attr) = class_attr.filter(|attr| attr.span.start > node.span.start)
-                && fixed
-                && style_attr_text.is_empty()
-            {
-                self.set_replacement(class_attr.span, format!("{class_prop}={value}"));
-                self.replacements.push(Replacement {
-                    start: node.span.start,
-                    end: node.span.end,
-                    content: String::new(),
-                });
-                return Ok(());
-            }
-            self.replacements.push(Replacement {
-                start: node.span.start,
-                end: node.span.end,
-                content: format!("{class_prop}={value}{style_attr_text}"),
-            });
-        } else {
-            let kept = if existing_class.is_empty() {
-                String::new()
-            } else {
-                format!("{class_prop}={{{existing_class}}}")
-            };
-            self.replacements.push(Replacement {
-                start: node.span.start,
-                end: node.span.end,
-                content: format!("{kept}{style_attr_text}"),
-            });
+            attributes.push(self.written_attribute(node, &class_prop, &value));
         }
+        if let Some(value) = style_value {
+            attributes.push(self.written_attribute(node, "style", &value));
+        }
+        let content = attributes.join(" ");
+        self.replacements.push(Replacement {
+            start: node.span.start,
+            end: node.span.end,
+            content,
+        });
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    fn written_attribute(&self, node: &JSXAttribute<'a>, name: &str, value: &str) -> String {
+        let collides = self.jsx_owner.get(&node.span.start).is_some_and(|(_, attributes)| {
+            attributes.iter().any(|item| {
+                matches!(item, JSXAttributeItem::Attribute(attr)
+                    if attr.span != node.span
+                        && matches!(&attr.name, JSXAttributeName::Identifier(id) if id.name == name))
+            })
+        });
+        if !collides {
+            return format!("{name}={value}");
+        }
+        let expr = value
+            .strip_prefix('{')
+            .and_then(|rest| rest.strip_suffix('}'))
+            .unwrap_or(value);
+        format!("{{...{{ {}: {expr} }}}}", quote(name))
+    }
+
     fn assign_element(
         &mut self,
         node: &'b JSXAttribute<'a>,
@@ -2973,9 +2736,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         mut plan: ElementPlan,
         plans: Vec<(Vec<String>, Vec<String>)>,
         site: u32,
-        class: (Option<Span>, Option<Span>, String),
-        style: Option<(Span, String)>,
-        hosts: Vec<Host>,
     ) -> TResult<()> {
         let class_prop = self.env.class_prop.clone();
         let base = plan.base;
@@ -2983,58 +2743,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         self.arg_base.set(None);
         let mut temps: Vec<String> = plan.params.clone();
         temps.extend((base..arg_end).map(|index| format!("{PREFIX}a{index}")));
-        let sx_at = node.span.start;
-        let mut groups: Vec<(u32, Vec<String>)> = Vec::new();
-        let (class_span, class_place, existing_class) = class;
-        let class_source = match class_span {
-            Some(span) => {
-                let name = format!("{PREFIX}c{base}");
-                groups.push((span.start, vec![format!("{name} = {existing_class}")]));
-                temps.push(name.clone());
-                name
-            }
-            None => existing_class,
-        };
-        let style_span = style.as_ref().map(|(span, _)| *span);
-        let existing_style = style.map(|(span, value)| {
-            let name = format!("{PREFIX}s{base}");
-            groups.push((span.start, vec![format!("{name} = {value}")]));
-            temps.push(name.clone());
-            name
-        });
-        let sx_steps: Vec<String> = plans.into_iter().flat_map(|(_, items)| items).collect();
-        if !sx_steps.is_empty() {
-            groups.push((sx_at, sx_steps));
-        }
-        groups.sort_by_key(|(at, _)| *at);
+        let steps: Vec<String> = plans.into_iter().flat_map(|(_, items)| items).collect();
 
         self.element_reads = Some(std::mem::take(&mut plan.reads));
-        let built = self.build_class_parts(args, Vec::new(), class_source, true);
+        let built = self.build_class_parts(args, Vec::new(), String::new(), true);
         self.element_reads = None;
         let built = built?;
         let class_value = join_class_parts(&built.class_parts, &plan.params);
         let vars: Vec<&str> = plan.vars.iter().map(|(name, _)| name.as_str()).collect();
-        let fallback = existing_style.as_deref().unwrap_or("undefined");
-        let style_value = match (existing_style.as_deref(), vars.as_slice()) {
-            (None, []) => None,
-            (Some(existing), []) => Some(existing.to_string()),
-            (None, [only]) if plan.vars[0].1 => Some(only.to_string()),
-            (None, [only]) => Some(format!("{only} || undefined")),
-            _ => {
-                let spread: Vec<String> = existing_style
-                    .iter()
-                    .map(String::as_str)
-                    .chain(vars.iter().copied())
-                    .map(|name| format!("...{name}"))
-                    .collect();
-                let copy = format!("{{ {} }}", spread.join(", "));
-                Some(if plan.vars.iter().any(|(_, always)| *always) {
-                    copy
-                } else {
-                    format!("({}) ? {copy} : {fallback}", vars.join(" || "))
-                })
-            }
-        };
+        let style_value = (!vars.is_empty()).then(|| generated_style(&plan.vars));
         let sequence = |steps: &[String], value: &str| {
             if steps.is_empty() {
                 value.to_string()
@@ -3042,39 +2759,20 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 format!("({}, {value})", steps.join(", "))
             }
         };
-        let later = |span: Option<Span>| span.filter(|span| span.start > sx_at);
-        let class_at = later(class_place).map_or(sx_at, |span| span.start);
-        let style_at = later(style_span).map_or(sx_at, |span| span.start);
-        let class_static = class_span.is_none() && static_class(&class_value).is_some();
-        let mut targets: Vec<(u32, usize)> = Vec::new();
-        if style_value.is_some() && class_static {
-            targets.push((style_at, 1));
-        }
-        targets.push((class_at, 0));
-        if style_value.is_some() && !class_static {
-            targets.push((style_at, 1));
-        }
-        targets.extend(hosts.iter().enumerate().map(|(index, host)| (host.at, index + 2)));
-        let mut hosted: Vec<Vec<String>> = vec![Vec::new(); hosts.len() + 2];
-        for (at, steps) in groups {
-            let target = targets
-                .iter()
-                .filter(|(position, _)| *position >= at)
-                .min_by_key(|(position, _)| *position)
-                .map_or(0, |(_, target)| *target);
-            hosted[target].extend(steps);
-        }
-        let class_text = if hosted[0].is_empty()
-            && static_class(&class_value).is_some()
-            && !class_value.contains('&')
-        {
+        let class_static = static_class(&class_value).is_some();
+        let (class_steps, style_steps) = if style_value.is_some() && class_static {
+            (Vec::new(), steps)
+        } else {
+            (steps, Vec::new())
+        };
+        let class_text = if class_steps.is_empty() && class_static && !class_value.contains('&') {
             class_value
         } else {
-            format!("{{{}}}", sequence(&hosted[0], &class_value))
+            format!("{{{}}}", sequence(&class_steps, &class_value))
         };
         let style_text = style_value.map(|style| {
-            let alone = match (hosted[1].as_slice(), vars.as_slice()) {
-                ([step], [only]) if existing_style.is_none() && style == *only => step
+            let alone = match (style_steps.as_slice(), vars.as_slice()) {
+                ([step], [only]) if style == *only => step
                     .strip_prefix(&format!("({only} = "))
                     .and_then(|rest| rest.strip_suffix(')'))
                     .map(|value| (only.to_string(), value.to_string())),
@@ -3085,43 +2783,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     temps.retain(|temp| *temp != only);
                     value
                 }
-                None => sequence(&hosted[1], &style),
+                None => sequence(&style_steps, &style),
             }
         });
-        let mut at_sx: Vec<String> = Vec::new();
-        let class_attr = format!("{class_prop}={class_text}");
-        match later(class_place) {
-            Some(span) => self.set_replacement(span, class_attr),
-            None => at_sx.push(class_attr),
-        }
+        let mut content = self.written_attribute(node, &class_prop, &class_text);
         if let Some(style) = style_text {
-            let style_attr = format!("style={{{style}}}");
-            match later(style_span) {
-                Some(span) => self.set_replacement(span, style_attr),
-                None => at_sx.push(style_attr),
-            }
+            content.push(' ');
+            content.push_str(&self.written_attribute(node, "style", &format!("{{{style}}}")));
         }
         self.replacements.push(Replacement {
             start: node.span.start,
             end: node.span.end,
-            content: at_sx.join(" "),
+            content,
         });
-        for (host, steps) in hosts.iter().zip(&hosted[2..]) {
-            if steps.is_empty() {
-                continue;
-            }
-            let (open, close) = if host.braces { ("{(", ")}") } else { ("(", ")") };
-            self.replacements.push(Replacement {
-                start: host.open,
-                end: host.open,
-                content: format!("{open}{}, ", steps.join(", ")),
-            });
-            self.replacements.push(Replacement {
-                start: host.close,
-                end: host.close,
-                content: close.to_string(),
-            });
-        }
         self.temp_next.insert(site, arg_end.max(base + plan.params.len()).max(base + 1));
         if temps.is_empty() {
             return Ok(());
@@ -3133,21 +2807,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         }
         Ok(())
-    }
-
-    fn set_replacement(&mut self, span: Span, content: String) {
-        match self
-            .replacements
-            .iter_mut()
-            .find(|replacement| replacement.start == span.start && replacement.end == span.end)
-        {
-            Some(replacement) => replacement.content = content,
-            None => self.replacements.push(Replacement {
-                start: span.start,
-                end: span.end,
-                content,
-            }),
-        }
     }
 
     fn relay_prop(&mut self, expr: &'b Expression<'a>, list: &[TableEntry]) -> TResult<bool> {
