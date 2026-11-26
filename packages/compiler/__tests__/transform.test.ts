@@ -92,24 +92,26 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       expect(result.code).not.toContain('classes(s.a)');
     });
 
-    it('merges a non-object existing style expression', async () => {
+    it('leaves a non-object existing style expression in place', async () => {
       const result = await run(`
       import * as css from '@plumeria/core';
       const s = css.create({ a: (size: number) => ({ width: size }) });
       export const A = ({ size, style }: any) =>
         <div style={style} sx={s.a(size)} />;
     `);
-      expect(result.code).toContain('__plumeria__$$s0 = (style)');
-      expect(result.code).toContain('...__plumeria__$$s0, ...__plumeria__$$v0');
+      expect(result.code).toContain('<div style={style} className=');
+      expect(result.code).not.toContain('...__plumeria__$$s0');
     });
 
-    it('removes an empty style prop while retaining className', async () => {
+    it('lets an empty style prop override a className written before it', async () => {
       const result = await run(`
       import * as css from '@plumeria/core';
       export const A = ({ name }: any) =>
         <div className={name} sx={undefined} />;
     `);
-      expect(result.code).toContain('className={(name)}');
+      expect(result.code).toContain(
+        '<div className={name} {...{ "className": "" }} />',
+      );
     });
 
     it('rejects a dynamic function key passed to use', async () => {
