@@ -1192,11 +1192,28 @@ fn component_text(chain: &Chain, style_prop: &str, prefix: &str) -> R<String> {
     );
     params.push(format!("...{rest}"));
     Ok(format!(
-        "({{ {} }}) => <{tag} {{...{rest}}} {style_prop}={{[{}]}} />",
+        "({{ {} }}) => <{tag} {style_prop}={{[{}]}} {{...{rest}}} />",
         params.join(", "),
         styles.join(", "),
         tag = chain.tag,
     ))
+}
+
+pub fn styled_names(file: &str) -> Vec<String> {
+    let Ok(source) = crate::fs::source::read_raw(file) else {
+        return Vec::new();
+    };
+    if !source.contains(REACT) {
+        return Vec::new();
+    }
+    let allocator = Allocator::default();
+    let Ok(program) = parse_file_program(&allocator, &source, file) else {
+        return Vec::new();
+    };
+    match Analysis::of(&program, &source, file) {
+        Ok(Some(analysis)) => analysis.defs.into_iter().map(|def| def.name).collect(),
+        _ => Vec::new(),
+    }
 }
 
 pub fn desugar(source: &str, file: &str, style_prop: &str) -> R<Option<String>> {
