@@ -13,7 +13,6 @@ import type {
   VariableDeclarator,
   JSXAttributeOrSpread,
   JSXAttribute,
-  SpreadElement,
   ExportDeclaration,
   JSXOpeningElement,
   MemberExpression,
@@ -197,8 +196,6 @@ interface KeyedRow {
 }
 
 type Span = [number, number];
-type Place = { start: number; end: number };
-type Host = { at: number; open: number; close: number; braces: boolean };
 
 const spanOf = (node: any): Span => [node.span.start, node.span.end];
 const spanKey = ([start, end]: Span) => `${start}:${end}`;
@@ -341,6 +338,18 @@ const complementary = (first: string, second: string, generated: string[]) => {
   const a = generatedTest(first, generated);
   const b = generatedTest(second, generated);
   return !!a && !!b && a.name === b.name && a.negated !== b.negated;
+};
+
+const generatedStyle = (
+  vars: Array<{ name: string; always: boolean }>,
+): string => {
+  const names = vars.map(({ name }) => name);
+  const copy = `{ ${names.map((name) => `...${name}`).join(', ')} }`;
+  if (!vars.length) return 'undefined';
+  if (vars.length === 1)
+    return vars[0].always ? names[0] : `${names[0]} || undefined`;
+  if (vars.some(({ always }) => always)) return copy;
+  return `(${names.join(' || ')}) ? ${copy} : undefined`;
 };
 
 const joinClassParts = (parts: string[], generated: string[]): string => {
@@ -957,19 +966,6 @@ export const transformSource = async (
     content: string;
   }> = [];
 
-  const setReplacement = (
-    span: { start: number; end: number },
-    content: string,
-  ) => {
-    const start = span.start - baseByteOffset;
-    const end = span.end - baseByteOffset;
-    const existing = replacements.find(
-      (replacement) => replacement.start === start && replacement.end === end,
-    );
-    if (existing) existing.content = content;
-    else replacements.push({ start, end, content });
-  };
-
   const declSites = usesReservedName(ast)
     ? new Map<number, DeclSite>()
     : collectDeclSites(ast, source, baseByteOffset);
@@ -1023,44 +1019,6 @@ export const transformSource = async (
     }
     const value = `${PREFIX}a`;
     return invoke(value, body(value), source);
-  };
-
-  const deferredSources: Array<{
-    token: string;
-    start: number;
-    end: number;
-  }> = [];
-  const deferRange = (start: number, end: number): string => {
-    const token = `__plumeria_preserved_${deferredSources.length}__`;
-    deferredSources.push({ token, start, end });
-    return token;
-  };
-  const deferSource = (node: HasSpan): string =>
-    deferRange(
-      node.span.start - baseByteOffset,
-      node.span.end - baseByteOffset,
-    );
-  const deferProperty = (
-    property: ObjectExpression['properties'][number],
-  ): string | null => {
-    const node = property as {
-      span?: { start: number; end: number };
-      spread?: { start: number; end: number };
-      arguments?: HasSpan;
-      key?: HasSpan;
-      value?: HasSpan;
-    };
-    const range =
-      node.spread && node.arguments
-        ? { start: node.spread.start, end: node.arguments.span.end }
-        : node.span
-          ? { start: node.span.start, end: node.span.end }
-          : node.key && node.value
-            ? { start: node.key.span.start, end: node.value.span.end }
-            : null;
-    return range
-      ? deferRange(range.start - baseByteOffset, range.end - baseByteOffset)
-      : null;
   };
 
   const dynamicFnCalls: CallExpression[] = [];
@@ -2608,31 +2566,6 @@ export const transformSource = async (
   const planItem = (plan: ElementPlan, name: string, value: string) =>
     plan.assign ? `(${name} = ${value})` : value;
 
-  const readsNothing = (node: any): boolean => {
-    switch (node.type) {
-      case 'StringLiteral':
-      case 'NumericLiteral':
-      case 'BooleanLiteral':
-      case 'NullLiteral':
-        return true;
-      case 'TemplateLiteral':
-        return node.expressions.length === 0;
-      case 'ParenthesisExpression':
-        return readsNothing(node.expression);
-      case 'UnaryExpression':
-        return node.argument.type === 'NumericLiteral';
-      case 'ObjectExpression':
-        return node.properties.every(
-          (property: any) =>
-            property.type === 'KeyValueProperty' &&
-            property.key.type !== 'Computed' &&
-            readsNothing(property.value),
-        );
-      default:
-        return false;
-    }
-  };
-
   const varsObject = (
     vars: DynamicVar[],
     assign: boolean,
@@ -3666,145 +3599,80 @@ export const transformSource = async (
     };
   };
 
+  const writtenAttribute = (
+    node: JSXAttribute,
+    name: string,
+    value: string,
+  ): string => {
+    const collides = (
+      jsxAttributeOwnerMap.get(node.span.start)?.attributes ?? []
+    ).some(
+      (attr) =>
+        attr.type === 'JSXAttribute' &&
+        attr.span.start !== node.span.start &&
+        attr.name.type === 'Identifier' &&
+        attr.name.value === name,
+    );
+    if (!collides) return `${name}=${value}`;
+    const expr =
+      value.startsWith('{') && value.endsWith('}') ? value.slice(1, -1) : value;
+    return `{...{ ${JSON.stringify(name)}: ${expr} }}`;
+  };
+
   const assignElement = (
     node: JSXAttribute,
     args: Array<{ expression: Expression; order?: number }>,
     plan: ElementPlan,
     plans: Array<{ params: string[]; items: string[] }>,
     site: number,
-    classSpan: Place | undefined,
-    classPlace: Place | undefined,
-    existingClass: string,
-    style: { span: Place; value: string } | undefined,
-    hosts: Host[],
   ) => {
     const base = plan.base;
     const argEnd = argBase ?? base;
     argBase = null;
     let temps = [...plan.params, ...argNames(base, argEnd)];
-    const sxAt = node.span.start;
-    const groups: Array<{ at: number; steps: string[] }> = [];
-    let classSource = existingClass;
-    if (classSpan) {
-      const name = `${PREFIX}c${base}`;
-      groups.push({
-        at: classSpan.start,
-        steps: [`${name} = ${existingClass}`],
-      });
-      temps.push(name);
-      classSource = name;
-    }
-    let existingStyle: string | undefined;
-    if (style) {
-      const name = `${PREFIX}s${base}`;
-      groups.push({
-        at: style.span.start,
-        steps: [`${name} = ${style.value}`],
-      });
-      temps.push(name);
-      existingStyle = name;
-    }
-    const sxSteps = plans.flatMap(({ items }) => items);
-    if (sxSteps.length) groups.push({ at: sxAt, steps: sxSteps });
-    groups.sort((a, b) => a.at - b.at);
+    const steps = plans.flatMap(({ items }) => items);
 
     elementReads = plan.reads;
     let built;
     try {
-      built = buildClassParts(args, [], classSource, true);
+      built = buildClassParts(args, [], '', true);
     } finally {
       elementReads = null;
     }
     const classValue = joinClassParts(built.classParts, plan.params);
     const vars = plan.vars.map(({ name }) => name);
-    let styleValue: string | undefined;
-    if (!vars.length) styleValue = existingStyle;
-    else if (existingStyle === undefined && vars.length === 1)
-      styleValue = plan.vars[0].always ? vars[0] : `${vars[0]} || undefined`;
-    else {
-      const spread = [...(existingStyle ? [existingStyle] : []), ...vars].map(
-        (name) => `...${name}`,
-      );
-      const copy = `{ ${spread.join(', ')} }`;
-      styleValue = plan.vars.some(({ always }) => always)
-        ? copy
-        : `(${vars.join(' || ')}) ? ${copy} : ${existingStyle ?? 'undefined'}`;
-    }
+    const styleValue = vars.length ? generatedStyle(plan.vars) : undefined;
     const sequence = (steps: string[], value: string) =>
       steps.length ? `(${steps.join(', ')}, ${value})` : value;
-    const later = (span: Place | undefined) =>
-      span && span.start > sxAt ? span : undefined;
-    const classAt = later(classPlace)?.start ?? sxAt;
-    const styleAt = later(style?.span)?.start ?? sxAt;
-    const classStatic = !classSpan && staticClass(classValue) !== undefined;
-    const targets: Array<[number, number]> = [];
-    if (styleValue !== undefined && classStatic) targets.push([styleAt, 1]);
-    targets.push([classAt, 0]);
-    if (styleValue !== undefined && !classStatic) targets.push([styleAt, 1]);
-    hosts.forEach((host, index) => targets.push([host.at, index + 2]));
-    const hosted: string[][] = Array.from(
-      { length: hosts.length + 2 },
-      () => [],
-    );
-    for (const { at, steps } of groups) {
-      let target: [number, number] | undefined;
-      for (const candidate of targets)
-        if (candidate[0] >= at && (!target || candidate[0] < target[0]))
-          target = candidate;
-      hosted[target ? target[1] : 0].push(...steps);
-    }
+    const classStatic = staticClass(classValue) !== undefined;
+    const toStyle = styleValue !== undefined && classStatic;
+    const classSteps = toStyle ? [] : steps;
+    const styleSteps = toStyle ? steps : [];
     const classText =
-      !hosted[0].length &&
-      staticClass(classValue) !== undefined &&
-      !classValue.includes('&')
+      !classSteps.length && classStatic && !classValue.includes('&')
         ? classValue
-        : `{${sequence(hosted[0], classValue)}}`;
-    let styleText: string | undefined;
+        : `{${sequence(classSteps, classValue)}}`;
+    let content = writtenAttribute(node, classProp, classText);
     if (styleValue !== undefined) {
       const prefix = `(${vars[0]} = `;
-      const [step] = hosted[1];
+      const [step] = styleSteps;
+      let styleText;
       if (
-        hosted[1].length === 1 &&
+        styleSteps.length === 1 &&
         vars.length === 1 &&
-        existingStyle === undefined &&
         styleValue === vars[0] &&
         step.startsWith(prefix) &&
         step.endsWith(')')
       ) {
         temps = temps.filter((temp) => temp !== vars[0]);
         styleText = step.slice(prefix.length, -1);
-      } else styleText = sequence(hosted[1], styleValue);
-    }
-    const atSx: string[] = [];
-    const classAttr = `${classProp}=${classText}`;
-    const laterClass = later(classPlace);
-    if (laterClass) setReplacement(laterClass, classAttr);
-    else atSx.push(classAttr);
-    if (styleText !== undefined) {
-      const styleAttr = `style={${styleText}}`;
-      const laterStyle = later(style?.span);
-      if (laterStyle) setReplacement(laterStyle, styleAttr);
-      else atSx.push(styleAttr);
+      } else styleText = sequence(styleSteps, styleValue);
+      content += ` ${writtenAttribute(node, 'style', `{${styleText}}`)}`;
     }
     replacements.push({
       start: node.span.start - baseByteOffset,
       end: node.span.end - baseByteOffset,
-      content: atSx.join(' '),
-    });
-    hosts.forEach((host, index) => {
-      const steps = hosted[index + 2];
-      if (!steps.length) return;
-      const [open, close] = host.braces ? ['{(', ')}'] : ['(', ')'];
-      replacements.push({
-        start: host.open - baseByteOffset,
-        end: host.open - baseByteOffset,
-        content: `${open}${steps.join(', ')}, `,
-      });
-      replacements.push({
-        start: host.close - baseByteOffset,
-        end: host.close - baseByteOffset,
-        content: close,
-      });
+      content,
     });
     tempNext.set(site, Math.max(argEnd, base + plan.params.length, base + 1));
     if (temps.length) declareTemps(site, temps);
@@ -4317,78 +4185,10 @@ export const transformSource = async (
           : [{ expression: expr }];
 
       const dynamicClassParts: string[] = [];
-      const existingStyleParts: string[] = [];
 
-      const attributes: Array<JSXAttribute | SpreadElement> =
-        jsxAttributeOwnerMap.get(node.span.start)?.attributes ?? [];
-
-      const classNameAttr = attributes.find(
-        (attr): attr is JSXAttribute =>
-          attr.type === 'JSXAttribute' &&
-          attr.name.type === 'Identifier' &&
-          attr.name.value === classProp,
+      removableAttrs.add(
+        `${node.span.start - baseByteOffset}:${node.span.end - baseByteOffset}`,
       );
-      let existingClassExpr = '';
-
-      if (classNameAttr) {
-        replacements.push({
-          start: classNameAttr.span.start - baseByteOffset,
-          end: classNameAttr.span.end - baseByteOffset,
-          content: '',
-        });
-        if (classNameAttr.value?.type === 'StringLiteral') {
-          existingClassExpr = JSON.stringify(classNameAttr.value.value);
-        } else if (classNameAttr.value?.type === 'JSXExpressionContainer') {
-          existingClassExpr = `(${deferSource(classNameAttr.value.expression as HasSpan)})`;
-        }
-      }
-
-      const styleAttrExisting = attributes.find(
-        (attr): attr is JSXAttribute =>
-          attr.type === 'JSXAttribute' &&
-          attr.name.type === 'Identifier' &&
-          attr.name.value === 'style',
-      );
-      let existingStyleExpr = '';
-      let styleObject = false;
-
-      if (styleAttrExisting) {
-        replacements.push({
-          start: styleAttrExisting.span.start - baseByteOffset,
-          end: styleAttrExisting.span.end - baseByteOffset,
-          content: '',
-        });
-
-        if (styleAttrExisting.value?.type === 'JSXExpressionContainer') {
-          const innerExpr = styleAttrExisting.value?.expression;
-
-          if (innerExpr.type === 'ObjectExpression') {
-            styleObject = true;
-            for (const property of innerExpr.properties) {
-              const token = deferProperty(property);
-              if (token) existingStyleParts.push(token);
-            }
-          } else {
-            existingStyleExpr = `...(${deferSource(innerExpr as HasSpan)})`;
-          }
-        }
-      }
-
-      for (const attr of [node, classNameAttr, styleAttrExisting])
-        if (attr)
-          removableAttrs.add(
-            `${attr.span.start - baseByteOffset}:${attr.span.end - baseByteOffset}`,
-          );
-      const styleArg = existingStyleExpr
-        ? existingStyleExpr.slice(3)
-        : styleObject
-          ? `{ ${existingStyleParts.join(', ')} }`
-          : null;
-      const classIsExpr = existingClassExpr.startsWith('(');
-      const attributeReads = (attr: JSXAttribute | undefined) =>
-        attr?.value?.type === 'JSXExpressionContainer' &&
-        attr.value.expression.type !== 'JSXEmptyExpression' &&
-        !readsNothing(attr.value.expression);
       const site = siteOf(node);
       const base = site === undefined ? 0 : (tempNext.get(site) ?? 0);
       argBase = site === undefined ? null : base;
@@ -4405,136 +4205,33 @@ export const transformSource = async (
         plans.push({ params: plan.params.slice(start), items });
       }
       const planned = plans.length === args.length;
-      const wraps =
-        (plan.classRuntime || attributeReads(classNameAttr)) &&
-        (plan.styleRuntime || attributeReads(styleAttrExisting));
-      const moved = [node, classNameAttr, styleAttrExisting].flatMap((attr) =>
-        attr ? [attr.span.start] : [],
-      );
-      const hosts: Host[] = [];
-      for (const item of attributes) {
-        if (item.type === 'SpreadElement') {
-          hosts.push({
-            at: item.spread.start,
-            open: (item.arguments as HasSpan).span.start,
-            close: (item.arguments as HasSpan).span.end,
-            braces: false,
-          });
-          continue;
-        }
-        if (moved.includes(item.span.start)) continue;
-        const value = item.value;
-        if (value?.type === 'JSXExpressionContainer') {
-          const inner = value.expression;
-          if (inner.type !== 'JSXEmptyExpression' && !readsNothing(inner))
-            hosts.push({
-              at: item.span.start,
-              open: (inner as HasSpan).span.start,
-              close: (inner as HasSpan).span.end,
-              braces: false,
-            });
-        } else if (
-          value?.type === 'JSXElement' ||
-          value?.type === 'JSXFragment'
-        )
-          hosts.push({
-            at: item.span.start,
-            open: value.span.start,
-            close: value.span.end,
-            braces: true,
-          });
-      }
-      const positions = [
-        node.span.start,
-        classNameAttr?.span.start,
-        styleArg !== null ? styleAttrExisting?.span.start : undefined,
-      ].filter((position) => position !== undefined);
-      const first = Math.min(...positions);
-      const last = Math.max(...positions);
-      const crossing = hosts.some((host) => host.at > first && host.at < last);
-      if (
-        site !== undefined &&
-        planned &&
-        plan.assign &&
-        (wraps || plan.styleRuntime || crossing)
-      ) {
-        assignElement(
-          node,
-          args,
-          plan,
-          plans,
-          site,
-          classIsExpr ? classNameAttr?.span : undefined,
-          classNameAttr?.span,
-          existingClassExpr,
-          styleArg !== null && styleAttrExisting
-            ? { span: styleAttrExisting.span, value: styleArg }
-            : undefined,
-          hosts,
-        );
+      const wraps = plan.classRuntime && plan.styleRuntime;
+      if (site !== undefined && planned && plan.assign && plan.styleRuntime) {
+        assignElement(node, args, plan, plans, site);
       } else if (planned && wraps) {
         argBase = null;
-        const entries: Array<{
-          order: [number, number];
-          param: string;
-          arg: string;
-        }> = [];
-        if (classIsExpr && classNameAttr)
-          entries.push({
-            order: [classNameAttr.span.start, 0],
-            param: `${PREFIX}c`,
-            arg: existingClassExpr,
-          });
-        if (styleArg !== null && styleAttrExisting)
-          entries.push({
-            order: [styleAttrExisting.span.start, 0],
-            param: `${PREFIX}s`,
-            arg: styleArg,
-          });
-        plans.forEach(({ params, items }, index) => {
+        const entries: Array<{ param: string; arg: string }> = [];
+        plans.forEach(({ params, items }) => {
           if (!params.length) return;
           const single =
             params.length === 1 &&
             items.length === 1 &&
             !items[0].startsWith('...');
           entries.push({
-            order: [node.span.start, index + 1],
             param: single ? params[0] : `[${params.join(', ')}]`,
             arg: single ? items[0] : `[${items.join(', ')}]`,
           });
         });
-        entries.sort(
-          (a, b) => a.order[0] - b.order[0] || a.order[1] - b.order[1],
-        );
 
         elementReads = plan.reads;
         let built;
         try {
-          built = buildClassParts(
-            args,
-            [],
-            classIsExpr ? `${PREFIX}c` : existingClassExpr,
-            true,
-          );
+          built = buildClassParts(args, [], '', true);
         } finally {
           elementReads = null;
         }
         const classValue = joinClassParts(built.classParts, plan.params);
-        const existing = styleArg !== null ? `${PREFIX}s` : undefined;
-        const spread = [
-          ...(existing ? [existing] : []),
-          ...plan.vars.map(({ name }) => name),
-        ].map((name) => `...${name}`);
-        const copy = `{ ${spread.join(', ')} }`;
-        const styleValue = !plan.vars.length
-          ? (existing ?? 'undefined')
-          : plan.vars.length === 1 && !existing
-            ? plan.vars[0].always
-              ? plan.vars[0].name
-              : `${plan.vars[0].name} || undefined`
-            : plan.vars.some(({ always }) => always)
-              ? copy
-              : `(${plan.vars.map(({ name }) => name).join(' || ')}) ? ${copy} : ${existing ?? 'undefined'}`;
+        const styleValue = generatedStyle(plan.vars);
         const sides = entries.map(({ param }) => {
           const inClass = mentions(classValue, param);
           const inStyle = mentions(styleValue, param);
@@ -4564,11 +4261,13 @@ export const transformSource = async (
               ? classText
               : `{${classText}}`;
           const styleAttr =
-            styleText === 'undefined' ? '' : ` style={${styleText}}`;
+            styleText === 'undefined'
+              ? ''
+              : ` ${writtenAttribute(node, 'style', `{${styleText}}`)}`;
           replacements.push({
             start: node.span.start - baseByteOffset,
             end: node.span.end - baseByteOffset,
-            content: `${classProp}=${classAttr}${styleAttr}`,
+            content: `${writtenAttribute(node, classProp, classAttr)}${styleAttr}`,
           });
         } else
           replacements.push({
@@ -4576,7 +4275,7 @@ export const transformSource = async (
             end: node.span.end - baseByteOffset,
             content: `{...${invoke(
               entries.map(({ param }) => param).join(', '),
-              `({ ${classProp}: ${classValue}, style: ${styleValue} })`,
+              `({ ${JSON.stringify(classProp)}: ${classValue}, style: ${styleValue} })`,
               entries.map(({ arg }) => arg).join(', '),
             )}}`,
           });
@@ -4589,7 +4288,7 @@ export const transformSource = async (
           baseStyle,
           dynamicVars,
           propVarSpreads,
-        } = buildClassParts(args, dynamicClassParts, existingClassExpr, true);
+        } = buildClassParts(args, dynamicClassParts, '', true);
         const folded = foldDynamicVars(dynamicVars, site !== undefined, invoke);
         if (site !== undefined && argBase !== null && argBase > foldBase) {
           tempNext.set(site, argBase);
@@ -4604,22 +4303,16 @@ export const transformSource = async (
           );
         }
 
-        const styleParts = [
-          ...existingStyleParts,
-          ...folded,
-          ...propVarSpreads,
-        ];
-        const generatedOnly =
-          !styleObject && !existingStyleExpr && !propVarSpreads.length;
-        const allStyles = [existingStyleExpr, ...styleParts].filter(Boolean);
-        const styleAttr = !(styleParts.length > 0 || existingStyleExpr)
-          ? ''
-          : allStyles.length === 1 &&
-              generatedOnly &&
-              allStyles[0].startsWith('...')
-            ? ` style={${allStyles[0].slice(3)}}`
-            : ` style={{ ${allStyles.join(', ')} }}`;
+        const styleParts = [...folded, ...propVarSpreads];
+        const styleValue = !styleParts.length
+          ? undefined
+          : styleParts.length === 1 &&
+              !propVarSpreads.length &&
+              styleParts[0].startsWith('...')
+            ? `{${styleParts[0].slice(3)}}`
+            : `{{ ${styleParts.join(', ')} }}`;
 
+        const attributes: string[] = [];
         if (
           isOptimizable &&
           (args.length > 0 ||
@@ -4627,39 +4320,19 @@ export const transformSource = async (
             dynamicClassParts.length > 0)
         ) {
           const replacement = joinClassParts(classParts, []);
-          const fixed = staticClass(replacement) !== undefined;
           const value =
-            fixed && !replacement.includes('&')
+            staticClass(replacement) !== undefined && !replacement.includes('&')
               ? replacement
               : `{${replacement}}`;
-          if (
-            classNameAttr &&
-            classNameAttr.span.start > node.span.start &&
-            fixed &&
-            !styleAttr
-          ) {
-            setReplacement(classNameAttr.span, `${classProp}=${value}`);
-            replacements.push({
-              start: node.span.start - baseByteOffset,
-              end: node.span.end - baseByteOffset,
-              content: '',
-            });
-          } else
-            replacements.push({
-              start: node.span.start - baseByteOffset,
-              end: node.span.end - baseByteOffset,
-              content: `${classProp}=${value}${styleAttr}`,
-            });
-        } else {
-          const keptClass = existingClassExpr
-            ? `${classProp}={${existingClassExpr}}`
-            : '';
-          replacements.push({
-            start: node.span.start - baseByteOffset,
-            end: node.span.end - baseByteOffset,
-            content: `${keptClass}${styleAttr}`,
-          });
+          attributes.push(writtenAttribute(node, classProp, value));
         }
+        if (styleValue !== undefined)
+          attributes.push(writtenAttribute(node, 'style', styleValue));
+        replacements.push({
+          start: node.span.start - baseByteOffset,
+          end: node.span.end - baseByteOffset,
+          content: attributes.join(' '),
+        });
       }
       if (appliedBefore) {
         const referenced = new Set(appliedStyleProps);
@@ -4874,27 +4547,6 @@ export const transformSource = async (
     Number(a.end > a.start) - Number(b.end > b.start) ||
     b.end - a.end;
   replacements.sort(byPosition);
-
-  for (const deferred of deferredSources) {
-    let cursor = deferred.start;
-    const pieces: string[] = [];
-    for (const replacement of replacements) {
-      if (replacement.start < cursor || replacement.end > deferred.end)
-        continue;
-      pieces.push(
-        sourceBuffer.subarray(cursor, replacement.start).toString('utf-8'),
-        replacement.content,
-      );
-      cursor = replacement.end;
-    }
-    pieces.push(sourceBuffer.subarray(cursor, deferred.end).toString('utf-8'));
-    const content = pieces.join('');
-    for (const replacement of replacements)
-      replacement.content = replacement.content.replaceAll(
-        deferred.token,
-        () => content,
-      );
-  }
 
   const splice = (list: typeof replacements): string => {
     let offset = 0;
