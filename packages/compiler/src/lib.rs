@@ -387,6 +387,11 @@ fn to_json(value: &js::Value) -> serde_json::Value {
     }
 }
 
+#[napi(js_name = "styledComponents")]
+pub fn styled_components(file_path: String) -> Vec<String> {
+    styled::styled_names(&file_path)
+}
+
 #[napi(js_name = "resolveExportValue")]
 pub fn resolve_export_value(
     file_path: String,
