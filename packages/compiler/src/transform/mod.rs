@@ -105,7 +105,6 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub local_create_styles: IndexMap<String, CreateStyle<'b, 'a>, FxBuildHasher>,
     pub local_style_aliases: FxHashMap<String, Vec<(Option<SymbolId>, E<'b, 'a>)>>,
     pub replacements: Vec<Replacement>,
-    pub deferred: Vec<(String, u32, u32)>,
     pub dynamic_fn_calls: Vec<Span>,
     pub separately_exported: FxHashSet<String>,
     pub excluded_ranges: Vec<(u32, u32)>,
@@ -292,12 +291,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .any(|(s, e)| start >= *s && start < *e)
     }
 
-    pub fn defer_range(&mut self, start: u32, end: u32) -> String {
-        let token = format!("__plumeria_preserved_{}__", self.deferred.len());
-        self.deferred.push((token.clone(), start, end));
-        token
-    }
-
     pub fn style_functions_for(&self, object: &str, property: &str) -> bool {
         self.local_create_styles
             .get(object)
@@ -470,7 +463,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             local_create_styles: IndexMap::default(),
             local_style_aliases: FxHashMap::default(),
             replacements: Vec::new(),
-            deferred: Vec::new(),
             dynamic_fn_calls: Vec::new(),
             separately_exported: FxHashSet::default(),
             excluded_ranges: Vec::new(),
@@ -947,25 +939,6 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .then((a.end > a.start).cmp(&(b.end > b.start)))
                     .then(b.end.cmp(&a.end))
             });
-
-        for (token, start, end) in self.deferred.clone() {
-            let mut cursor = start;
-            let mut content = String::new();
-            for replacement in &self.replacements {
-                if replacement.start < cursor || replacement.end > end {
-                    continue;
-                }
-                content.push_str(&self.source[cursor as usize..replacement.start as usize]);
-                content.push_str(&replacement.content);
-                cursor = replacement.end;
-            }
-            content.push_str(&self.source[cursor as usize..end as usize]);
-            for replacement in &mut self.replacements {
-                if replacement.content.contains(&token) {
-                    replacement.content = replacement.content.replace(&token, &content);
-                }
-            }
-        }
 
         let out = splice(self.source, &self.replacements);
         let elided = self.elided_imports(&out);
