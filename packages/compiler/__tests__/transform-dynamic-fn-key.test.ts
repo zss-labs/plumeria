@@ -521,6 +521,20 @@ export const U = (proxy) => css.use(('active' in proxy) && s.red, s.blue);`,
       expect(has).toHaveBeenCalledTimes(1);
     });
 
+    it('evaluates folded css.use conditions in order without a helper', async () => {
+      const source = `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+export const U = (mark) => css.use(mark(1) && s.red, mark(2) && s.red, s.blue);
+export const blue = css.use(s.blue);`;
+      const name = 'use-folded-conditions.tsx';
+      const { code } = await run(source, name);
+      expect(code).not.toMatch(/__plumeria__\$\$f\d+/);
+      const { U, blue } = await execute(source, name);
+      const mark = jest.fn(() => false);
+      expect(U(mark as never)).toBe(blue);
+      expect(mark.mock.calls).toEqual([[1], [2]]);
+    });
+
     const branches = async (sx: string, name: string) => {
       const source = `import * as css from '@plumeria/core';
 const s = css.create({ w: (n) => ({ width: n }) });
