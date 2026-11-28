@@ -1574,6 +1574,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .all(|use_| !skippable.contains(&format!("{PREFIX}{use_}")));
             if inline {
                 class_parts.extend(parts.iter().map(|part| inline_params(part, &bound)));
+            } else if uses.is_empty() {
+                class_parts.push(format!("({}, {body})", bound.join(", ")));
             } else if let Some(base) = self.arg_base.get() {
                 self.arg_base.set(Some(base + bound.len()));
                 let names: Vec<String> = (0..bound.len())
