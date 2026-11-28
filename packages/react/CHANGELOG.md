@@ -1,5 +1,11 @@
 # @plumeria/react
 
+## 22.4.0
+
+### Minor Changes
+
+- 49bf156: Bump version to 22.4.0
+
 ## 22.3.4
 
 ### Patch Changes

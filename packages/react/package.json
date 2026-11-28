@@ -1,6 +1,6 @@
 {
   "name": "@plumeria/react",
-  "version": "22.3.4",
+  "version": "22.4.0",
   "description": "Styled components for Plumeria, compiled to the sx prop",
   "author": "zss-labs",
   "license": "MIT",
