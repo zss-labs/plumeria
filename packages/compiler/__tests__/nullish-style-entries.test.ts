@@ -94,7 +94,7 @@ ${body}
       const out = await run(
         `export const A = ({ o }: { o: boolean }) => <div className="keep" sx={[s.p1, o && s.p3]} />;`,
       );
-      expect(out).toContain(`<div className={((o) ? "${P3}" : "${P1}")} />`);
+      expect(out).toContain(`<div className={(o ? "${P3}" : "${P1}")} />`);
     });
   });
 });
