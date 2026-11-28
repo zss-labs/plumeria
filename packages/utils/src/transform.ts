@@ -324,6 +324,11 @@ const classTernary = (part: string) => {
   return { test: left.slice(0, question), truthy, falsy };
 };
 
+const runsNoCode = (value: string) =>
+  value.startsWith('(typeof (') ||
+  (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) ||
+  isIdentifierSource(value);
+
 const ID_START = /\p{ID_Start}/u;
 const ID_CONTINUE = /\p{ID_Continue}/u;
 
@@ -1952,6 +1957,7 @@ export const transformSource = async (
     rows: KeyedRow[],
     reads: Map<string, string>,
     calls: string[],
+    inline: Map<string, string>,
     names: { next: number },
     keys: string[],
     assign: boolean,
@@ -1969,7 +1975,7 @@ export const transformSource = async (
           })
         : calls;
       return [
-        `{ key: ${key}, vars: { ${carried.map((name) => `...${name}`).join(', ')} } }`,
+        `{ key: ${key}, vars: { ${carried.map((name) => inline.get(name) ?? `...${name}`).join(', ')} } }`,
         false,
       ];
     }
@@ -1996,6 +2002,7 @@ export const transformSource = async (
         branch((other) => other.truthy),
         reads,
         calls,
+        inline,
         names,
         keys,
         assign,
@@ -2004,6 +2011,7 @@ export const transformSource = async (
         branch((other) => !other.truthy),
         reads,
         calls,
+        inline,
         names,
         keys,
         assign,
@@ -2019,6 +2027,7 @@ export const transformSource = async (
           ),
           reads,
           calls,
+          inline,
           names,
           keys,
           assign,
@@ -2780,6 +2789,18 @@ export const transformSource = async (
       plan.vars.push({ name, always: true });
       if (plan.assign) {
         const object = varsObject(dynamic.vars, true)?.object ?? '';
+        if (
+          t.isCallExpression(node) &&
+          node.arguments.every(
+            (argument) => !argument.spread && canSkipTest(argument.expression),
+          ) &&
+          object.startsWith('{ ') &&
+          !object.includes(PREFIX) &&
+          dynamic.vars
+            .filter((v) => v.cssVar)
+            .every((v) => runsNoCode(v.valueExpr))
+        )
+          plan.objects.set(name, object);
         plan.folds.push(object);
         return [planItem(plan, name, object)];
       }
@@ -3798,6 +3819,27 @@ export const transformSource = async (
     return canSkipTest(expr);
   };
 
+  const inlineObjects = (
+    items: string[],
+    plan: ElementPlan,
+    site: number | undefined,
+  ): Map<string, string> => {
+    const inline = new Map<string, string>();
+    if (
+      site === undefined ||
+      !plan.assign ||
+      !items.length ||
+      items.length !== plan.params.length
+    )
+      return inline;
+    for (const param of plan.params) {
+      const object = plan.objects.get(param);
+      if (!object?.startsWith('{ ') || !object.endsWith(' }')) return new Map();
+      inline.set(param, object.slice(2, -2));
+    }
+    return inline;
+  };
+
   const joinAttributes = (attributes: string[]) =>
     attributes.filter(Boolean).join(' ');
 
@@ -4301,10 +4343,12 @@ export const transformSource = async (
                 processStyleRecords(entry.styleObj);
               }
               const keys: string[] = [];
+              const inline = inlineObjects(items, plan, site);
               const [body] = decideKeyed(
                 rows,
                 plan.reads,
                 plan.vars.map(({ name }) => name),
+                inline,
                 { next: 0 },
                 keys,
                 plan.assign,
@@ -4320,9 +4364,14 @@ export const transformSource = async (
                     ? `{ key: ${JSON.stringify(row.key)}, vars: ${plan.folds[0]} }`
                     : !items.length
                       ? body
-                      : `(${items.join(', ')}, ${body})`;
+                      : inline.size
+                        ? body
+                        : `(${items.join(', ')}, ${body})`;
                 const temps = [
-                  ...(content.startsWith('{ key: ') ? [] : plan.params),
+                  ...(content.startsWith('{ key: ') ||
+                  plan.params.every((param) => !mentions(content, param))
+                    ? []
+                    : plan.params),
                   ...argNames(base, argEnd),
                   ...keys,
                 ];
