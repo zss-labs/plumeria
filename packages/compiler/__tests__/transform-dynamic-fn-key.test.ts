@@ -476,7 +476,7 @@ export const U = (proxy) => css.use(('active' in proxy) && s.red, s.blue);`,
     const branches = async (sx: string, name: string) => {
       const source = `import * as css from '@plumeria/core';
 const s = css.create({ w: (n) => ({ width: n }) });
-export const A = ({ next, a, b }) => <div sx={${sx}} />;`;
+export const A = ({ on, next, a, b }) => <div sx={${sx}} />;`;
       const { code } = await run(source, name);
       const { A } = await execute(source, name);
       const render = (flag: boolean) => {
@@ -485,7 +485,7 @@ export const A = ({ next, a, b }) => <div sx={${sx}} />;`;
           a: jest.fn(() => 1),
           b: jest.fn(() => 2),
         };
-        const props = A(calls as never) as {
+        const props = A({ on: flag, ...calls } as never) as {
           className: string;
           style: Record<string, unknown>;
         };
@@ -520,6 +520,20 @@ export const A = ({ next, a, b }) => <div sx={${sx}} />;`;
         'stable-shared-branch.tsx',
       );
       expect(classOf(code)).toBe('xokp0532');
+    });
+
+    it('writes the selected style directly for a stable condition', async () => {
+      const { code, render } = await branches(
+        'on ? s.w(a()) : s.w(b())',
+        'direct-branch-style.tsx',
+      );
+      expect(code).not.toMatch(/__plumeria__\$\$v\d+/);
+      for (const flag of [true, false]) {
+        const { calls, props } = render(flag);
+        expect(calls.a).toHaveBeenCalledTimes(flag ? 1 : 0);
+        expect(calls.b).toHaveBeenCalledTimes(flag ? 0 : 1);
+        expect(Object.values(props.style)).toEqual([flag ? '1px' : '2px']);
+      }
     });
 
     it('preserves a shared inner guard on opposite outer branches', async () => {
