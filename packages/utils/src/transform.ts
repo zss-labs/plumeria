@@ -2547,6 +2547,8 @@ export const transformSource = async (
     styleRuntime: boolean;
     assign: boolean;
     base: number;
+    objects: Map<string, string>;
+    direct?: { at: number; style: string };
   }
 
   const newPlan = (assign = false, base = 0): ElementPlan => ({
@@ -2558,6 +2560,7 @@ export const transformSource = async (
     styleRuntime: false,
     assign,
     base,
+    objects: new Map(),
   });
 
   const slot = (plan: ElementPlan, kind: string) => {
@@ -2665,6 +2668,7 @@ export const transformSource = async (
       const vars = varsObject(dynamic.vars, plan.assign);
       if (!vars) return [];
       const name = slot(plan, 'v');
+      if (plan.assign && vars.always) plan.objects.set(name, vars.object);
       plan.vars.push({ name, always: vars.always && !guarded });
       plan.styleRuntime ||= vars.runtime || guarded;
       return [planItem(plan, name, vars.object)];
@@ -2779,6 +2783,24 @@ export const transformSource = async (
       const read = name
         ? `(${name} = (${getSource(test)}))`
         : `(${getSource(test)})`;
+      const whenTrue = plan.objects.get(plan.params[start]);
+      const whenFalse = plan.objects.get(plan.params[middle]);
+      if (
+        !name &&
+        middle === start + 1 &&
+        end === middle + 1 &&
+        whenTrue !== undefined &&
+        whenFalse !== undefined &&
+        yes.length === 1 &&
+        no.length === 1 &&
+        yes[0] === planItem(plan, plan.params[start], whenTrue) &&
+        no[0] === planItem(plan, plan.params[middle], whenFalse)
+      ) {
+        plan.direct = {
+          at: spanOf(test)[0],
+          style: `${read} ? ${whenTrue} : ${whenFalse}`,
+        };
+      }
       return [`(${read} ? (${group(truthy)}) : (${group(falsy)}))`];
     }
     const nulls = (count: number) => Array<string>(count).fill('null');
@@ -3663,6 +3685,13 @@ export const transformSource = async (
     argBase = null;
     let temps = [...plan.params, ...argNames(base, argEnd)];
     const steps = plans.flatMap(({ items }) => items);
+    const only =
+      args.length === 1 ? unwrapStyleExpression(args[0].expression) : undefined;
+    let direct =
+      only?.type === 'ConditionalExpression' &&
+      plan.direct?.at === spanOf(only.test)[0]
+        ? plan.direct.style
+        : undefined;
 
     elementReads = plan.reads;
     let built;
@@ -3677,6 +3706,7 @@ export const transformSource = async (
     const sequence = (steps: string[], value: string) =>
       steps.length ? `(${steps.join(', ')}, ${value})` : value;
     const classStatic = staticClass(classValue) !== undefined;
+    if (!classStatic || classValue.includes('&')) direct = undefined;
     const toStyle = styleValue !== undefined && classStatic;
     const classSteps = toStyle ? [] : steps;
     const styleSteps = toStyle ? steps : [];
@@ -3689,7 +3719,10 @@ export const transformSource = async (
       const prefix = `(${vars[0]} = `;
       const [step] = styleSteps;
       let styleText;
-      if (
+      if (direct !== undefined) {
+        temps = temps.filter((temp) => !plan.params.includes(temp));
+        styleText = direct;
+      } else if (
         styleSteps.length === 1 &&
         vars.length === 1 &&
         styleValue === vars[0] &&
