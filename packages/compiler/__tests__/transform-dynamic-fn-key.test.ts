@@ -303,6 +303,71 @@ export const B = (p) => <div sx={[p.on && s.stat, s.w(p.n)]} />`,
       return exports;
     };
 
+    const relay = (width: string) => `import * as css from '@plumeria/core';
+const s = css.create({ base: { padding: 8 }, red: { color: 'red' }, w: (n) => ({ width: ${width} }) });
+const Card = ({ cardStyle }) => <div sx={[s.base, cardStyle]} />;
+export const A = ({ n, on }) => <Card cardStyle={[s.w(n), on && s.red]} />;`;
+
+    type Relayed = {
+      cardStyle: { key: string; vars: Record<string, unknown> };
+    };
+
+    it('writes relayed variables into each branch for a stable argument', async () => {
+      const source = relay('n');
+      const name = 'relay-inline-vars.tsx';
+      const { code } = await run(source, name);
+      expect(code).not.toMatch(/__plumeria__\$\$v\d/);
+      const { A } = (await execute(source, name)) as {
+        A: (props: { n: number; on: boolean }) => Relayed;
+      };
+      const on = A({ n: 1, on: true }).cardStyle;
+      const off = A({ n: 1, on: false }).cardStyle;
+      expect(on.key).not.toBe(off.key);
+      expect(Object.values(on.vars)).toEqual(['1px']);
+      expect(off.vars).toEqual(on.vars);
+    });
+
+    it('keeps a condition string that looks like a relayed spread', async () => {
+      const marker = '...__plumeria__$$v0';
+      const source = `import * as css from '@plumeria/core';
+const s = css.create({ base: { padding: 8 }, red: { color: 'red' }, w: (n) => ({ width: n }) });
+const Card = ({ cardStyle }) => <div sx={[s.base, cardStyle]} />;
+export const A = ({ n, tag }) => <Card cardStyle={[s.w(n), tag === '${marker}' && s.red]} />;`;
+      const name = 'relay-spread-literal.tsx';
+      const { code } = await run(source, name);
+      expect(code).toContain(`'${marker}'`);
+      const { A } = (await execute(source, name)) as {
+        A: (props: { n: number; tag: string }) => Relayed;
+      };
+      const on = A({ n: 1, tag: marker }).cardStyle;
+      const off = A({ n: 1, tag: 'other' }).cardStyle;
+      expect(on.key).not.toBe(off.key);
+      expect(Object.values(on.vars)).toEqual(['1px']);
+      expect(off.vars).toEqual(on.vars);
+    });
+
+    it('converts a relayed value with a written unit once', async () => {
+      const source = relay('`${n}px`');
+      const name = 'relay-written-unit.tsx';
+      const { code } = await run(source, name);
+      expect(code.match(/\+\s*['"]px['"]/g) ?? []).toHaveLength(1);
+      const { A } = (await execute(source, name)) as {
+        A: (props: { n: unknown; on: boolean }) => Relayed;
+      };
+      for (const flag of [true, false]) {
+        let count = 0;
+        const n = {
+          [Symbol.toPrimitive]: () => {
+            count++;
+            return 1;
+          },
+        };
+        const { vars } = A({ n, on: flag }).cardStyle;
+        expect(count).toBe(1);
+        expect(Object.values(vars)).toEqual(['1px']);
+      }
+    });
+
     it('applies the width unit directly to a stable parameter', async () => {
       const source = `import * as css from '@plumeria/core';
 const s = css.create({ w: (n) => ({ width: n }) });
