@@ -2353,7 +2353,7 @@ export const transformSource = async (
       !extra.length &&
       !derived.length &&
       isStableRead(runtime[0].source) &&
-      varGroups.get(runtime[0].param)?.every((g) => !g.written && !g.unit);
+      varGroups.has(runtime[0].param);
     const reads = [
       ...runtime.map(({ param, source }) => ({ source, param })),
       ...extra.map((source) => ({ source, param: undefined })),
