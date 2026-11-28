@@ -1823,6 +1823,29 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
     }
 
+    fn class_reads_stable(&self, expr: E<'b, 'a>) -> bool {
+        let node = self.resolve_local_style_alias(unwrap(expr));
+        if node.is_no_op_style() || self.is_style_function_call(node) {
+            return true;
+        }
+        match node.kind() {
+            K::Array(array) => array.elements.iter().all(|element| match element {
+                ArrayExpressionElement::Elision(_) => true,
+                ArrayExpressionElement::SpreadElement(_) => false,
+                other => self.class_reads_stable(E::new(other.to_expression())),
+            }),
+            K::Conditional(cond) => {
+                self.can_skip_test(E::new(&cond.test))
+                    && self.class_reads_stable(E::new(&cond.consequent))
+                    && self.class_reads_stable(E::new(&cond.alternate))
+            }
+            K::Binary(left, op, right) if op.is_and() => {
+                self.can_skip_test(left) && self.class_reads_stable(right)
+            }
+            _ => matches!(self.resolve_style_object(node), Ok(Some(_))),
+        }
+    }
+
     fn collect_conditions(
         &mut self,
         builder: &mut Builder,
@@ -2792,6 +2815,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             },
             _ => None,
         };
+        let exprs: Vec<E<'b, 'a>> = args.iter().map(|(expr, _)| *expr).collect();
 
         self.element_reads = Some(std::mem::take(&mut plan.reads));
         let built = self.build_class_parts(args, Vec::new(), String::new(), true);
@@ -2809,7 +2833,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
         let class_static = static_class(&class_value).is_some();
         let direct = direct.filter(|_| class_static && !class_value.contains('&'));
-        let (class_steps, style_steps) = if style_value.is_some() && class_static {
+        let class_reads_only = style_value.is_some()
+            && !class_static
+            && !plan.params.iter().any(|param| mentions(&class_value, param))
+            && exprs.iter().all(|expr| self.class_reads_stable(*expr));
+        let (class_steps, style_steps) = if style_value.is_some() && (class_static || class_reads_only) {
             (Vec::new(), steps)
         } else {
             (steps, Vec::new())
