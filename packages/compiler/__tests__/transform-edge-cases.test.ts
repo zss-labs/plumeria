@@ -855,7 +855,7 @@ export const A = ({ n, on }: any) => <Card cardStyle={[on && s.a, s.fn(n)]} />;`
       );
       expect(code).toMatch(
         new RegExp(
-          `className=\\{"${PADDING}" \\+ " " \\+ \\(\\{__proto__:null,"x[a-z0-9]+":"${RED} x[a-z0-9]+","x[a-z0-9]+":"x[a-z0-9]+"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| ""\\)\\}`,
+          `className=\\{\\(\\{__proto__:null,"x[a-z0-9]+":"${PADDING} ${RED} x[a-z0-9]+","x[a-z0-9]+":"${PADDING} x[a-z0-9]+"\\}\\[\\(\\(cardStyle && cardStyle\\.key\\) \\|\\| cardStyle\\)\\] \\|\\| "${PADDING}"\\)\\}`,
         ),
       );
     });
