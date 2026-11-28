@@ -112,9 +112,7 @@ export const A = () => <div sx={s.a} />;`,
       const { code } = await app(
         `export const A = ({ on }: any) => <div sx={[on && [s.a, , s.b]]} />;`,
       );
-      expect(code).toContain(
-        `className={((on) ? "${RED}" : "") + " " + ((on) ? "${PADDING}" : "")}`,
-      );
+      expect(code).toContain(`className={(on ? "${RED} ${PADDING}" : "")}`);
     });
 
     it('leaves a keyframes call without an object alone', async () => {
@@ -231,7 +229,7 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
         `export const A = ({ on }: any) => <div sx={[(on && s.a), (s.b)]} />;`,
       );
       expect(code).toContain(
-        `className={((on) ? "${PADDING} ${RED}" : "${PADDING}")}`,
+        `className={(on ? "${PADDING} ${RED}" : "${PADDING}")}`,
       );
     });
   });
