@@ -57,22 +57,20 @@ ${body}
     });
 
     it.each(NOTHING)(
-      'keeps the element className beside %s',
+      'replaces an earlier className with the style beside %s',
       async (nothing) => {
         const out = await run(
           `export const A = () => <div className="keep" sx={[s.p1, ${nothing}]} />;`,
         );
-        expect(out).toContain('keep');
-        expect(out).toContain(P1);
+        expect(out).toContain(`<div className="${P1}" />`);
       },
     );
 
-    // Nothing is left to fold the className into, so it has to be left alone.
-    it('keeps the element className when the whole prop is undefined', async () => {
+    it('emits an empty class when the whole prop is undefined', async () => {
       const out = await run(
         `export const A = () => <div className="keep" sx={undefined} />;`,
       );
-      expect(out).toContain('keep');
+      expect(out).toContain('<div className="" />');
     });
 
     it('rejects an unresolved style expression even with an existing className', async () => {
@@ -96,9 +94,7 @@ ${body}
       const out = await run(
         `export const A = ({ o }: { o: boolean }) => <div className="keep" sx={[s.p1, o && s.p3]} />;`,
       );
-      expect(out).toContain('keep');
-      expect(out).toContain(P1);
-      expect(out).toContain(P3);
+      expect(out).toContain(`<div className={((o) ? "${P3}" : "${P1}")} />`);
     });
   });
 });
