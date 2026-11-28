@@ -1165,11 +1165,24 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let state_weights = get_state_weights(&sources);
 
-        let generated: Vec<String> = self
+        let mut generated: Vec<String> = self
             .element_reads
             .iter()
             .flat_map(|reads| reads.values().cloned())
             .collect();
+        for c in conditionals.iter().filter(|c| c.can_skip_test && c.group_id.is_none()) {
+            let Some(test) = &c.test_string else { continue };
+            let test = test.strip_prefix('!').unwrap_or(test);
+            let name = test
+                .strip_prefix('(')
+                .and_then(|name| name.strip_suffix(')'))
+                .unwrap_or(test);
+            if oxc_syntax::identifier::is_identifier_name(name)
+                && !generated.iter().any(|known| known == name)
+            {
+                generated.push(name.to_string());
+            }
+        }
 
         let test_sources: Vec<Option<String>> = conditionals
             .iter()
