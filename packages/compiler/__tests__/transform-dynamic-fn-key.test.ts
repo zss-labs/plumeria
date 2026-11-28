@@ -656,24 +656,29 @@ const s = css.create({ w: (n) => ({ width: n }) });
 export const A = ({ n, props }) => <div sx={s.w(n)} {...props} ${attribute} />;`,
           'spread-order.tsx',
         );
-        const props = A({ n: 1, props: { className: 'spread' } } as never) as {
+        const props = A({
+          n: 1,
+          props: { id: 'item', className: 'spread' },
+        } as never) as {
           className: string;
         };
-        expect(props.className.split(' ')[0]).toBe('base');
+        expect(props.className).toBe('base');
+        expect(Object.keys(props)).toEqual(['className', 'style', 'id']);
       },
     );
 
-    it('moves a static style past a spread without declaring anything', async () => {
+    it('preserves className key order across a spread', async () => {
       const source = `import * as css from '@plumeria/core';
 const s = css.create({ red: { color: 'red' } });
 export const A = (props) => <div sx={s.red} {...props} className="base" />;`;
       const { code } = await run(source, 'static-spread.tsx');
       expect(code).not.toContain('let');
       const { A } = await execute(source, 'static-spread.tsx');
-      const props = A({ className: 'spread' } as never) as {
+      const props = A({ id: 'item', className: 'spread' } as never) as {
         className: string;
       };
-      expect(props.className.split(' ')[0]).toBe('base');
+      expect(props.className).toBe('base');
+      expect(Object.keys(props)).toEqual(['className', 'id']);
     });
 
     it('keeps a style key that looks like a generated name', async () => {
