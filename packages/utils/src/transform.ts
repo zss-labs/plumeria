@@ -3698,6 +3698,7 @@ export const transformSource = async (
         uses.every((use) => !skippable.has(`${PREFIX}${use}`));
       if (inline)
         classParts.push(...parts.map((part) => inlineParams(part, bound)));
+      else if (!uses.length) classParts.push(`(${bound.join(', ')}, ${body})`);
       else if (argBase !== null) {
         const names = argNames(argBase, argBase + bound.length);
         argBase += bound.length;
