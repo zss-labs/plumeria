@@ -417,18 +417,38 @@ export function App(active = true) {
       });
     });
 
-    it('reads an initialized module condition in place beside a dynamic width', async () => {
-      const { code } = await run(
-        `import * as css from '@plumeria/core';
+    it('reads the condition after a preceding dynamic argument reassigns it', async () => {
+      const { App } = await execute(
+        readmeStyles +
+          `
+export function App(active = true) {
+  const change = () => { active = false; return 2; };
+  return <div sx={[styles.text, styles.scale(change()), active && styles.active]} />;
+}`,
+        'argument-before-condition.tsx',
+      );
+      expect(App()).toMatchObject({
+        className: 'xhrr6ses xhxthtyw xuifcaas',
+        style: { '--xfuma1qq-value': 2 },
+      });
+    });
+
+    it.each(['[on && s.red, s.w(n)]', '[s.w(n), on && s.red]'])(
+      'reads an initialized module condition and writes width directly for %s',
+      async (sx) => {
+        const { code } = await run(
+          `import * as css from '@plumeria/core';
 const s = css.create({ red: { color: 'red' }, w: (n) => ({ width: n }) });
 export const on = readFlag();
 const n = readWidth();
-export const view = <div sx={[on && s.red, s.w(n)]} />;`,
-        'module-const-condition.tsx',
-      );
-      expect(code).toContain('className=');
-      expect(code).not.toMatch(/__plumeria__\$\$t\d/);
-    });
+export const view = <div sx={${sx}} />;`,
+          'module-const-condition.tsx',
+        );
+        expect(code).toContain('className=');
+        expect(code).toContain('style=');
+        expect(code).not.toMatch(/__plumeria__\$\$[tv]\d/);
+      },
+    );
 
     it('preserves a module const TDZ read inside a hoisted function', async () => {
       await expect(
