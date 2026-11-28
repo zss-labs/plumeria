@@ -186,7 +186,7 @@ export const A = ({ n }: any) => <><i sx={s.fn("3")} /><b sx={s.fn(n)} /><u sx={
       });
       expect(code).toMatch(/<i [^>]*"--[a-z0-9]+-size": "3px"/);
       expect(code).toMatch(
-        /<b [^{]*\{\(__plumeria__\$\$a0 = n, \{ "--[a-z0-9]+-size": \(\(__plumeria__\$\$a0\) \+ 'px'\)[^}]*\}\)\}/,
+        /<b [^{]*\{\{ "--[a-z0-9]+-size": \(\(n\) \+ 'px'\)[^}]*\}\}/,
       );
     });
 
@@ -204,9 +204,7 @@ export const A = ({ n }: any) => <Card cardStyle={s.fn(n)} />;`,
       );
       expect(code).toContain('[((cardStyle && cardStyle.key) || cardStyle)]');
       expect(code).toContain('style={{ ...(cardStyle && cardStyle.vars) }}');
-      expect(code).toMatch(
-        /<Card cardStyle=\{\{ key: "x[a-z0-9]+", vars: \(__plumeria__\$\$a0 = n, \{/,
-      );
+      expect(code).toMatch(/<Card cardStyle=\{\{ key: "x[a-z0-9]+", vars: \{/);
     });
   });
 
@@ -295,7 +293,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
 
   describe('transform: the attributes beside the style prop', () => {
     const FN = `const d = css.create({ fn: (size: number) => ({ width: size }) });\n`;
-    const SIZE = `\\(__plumeria__\\$\\$a0 = n, \\{ "--[a-z0-9]+-size": \\(typeof \\(__plumeria__\\$\\$a0\\) === 'number' \\? \\(__plumeria__\\$\\$a0\\) \\+ 'px' : \\(__plumeria__\\$\\$a0\\)\\) \\}\\)`;
+    const SIZE = `\\{ "--[a-z0-9]+-size": \\(typeof \\(n\\) === 'number' \\? \\(n\\) \\+ 'px' : \\(n\\)\\) \\}`;
 
     it.each([
       [
