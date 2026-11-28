@@ -1793,12 +1793,17 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
 
     fn is_stable_read(&self, expr: E) -> bool {
         let K::Ident(id) = expr.kind() else { return false };
-        self.visibility().symbol_of(id)
-            .and_then(|symbol| {
-                self.initialized_const_returns.get(&symbol)
-                    .or_else(|| self.parameter_bodies.get(&symbol))
-            })
-            .is_some_and(|scope| scope.start <= id.span.start && id.span.end <= scope.end)
+        let Some(symbol) = self.visibility().symbol_of(id) else { return false };
+        let inside = |scope: &Span| scope.start <= id.span.start && id.span.end <= scope.end;
+        if let Some(scope) = self
+            .initialized_const_returns
+            .get(&symbol)
+            .or_else(|| self.parameter_bodies.get(&symbol))
+        {
+            return inside(scope);
+        }
+        self.module_consts.get(&symbol).is_some_and(inside)
+            && !self.hoisted_functions.iter().any(inside)
     }
 
     fn can_skip_test(&self, expr: E) -> bool {
