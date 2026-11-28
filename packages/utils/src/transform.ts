@@ -2837,6 +2837,18 @@ export const transformSource = async (
           at: spanOf(test)[0],
           style: `${read} ? ${whenTrue} : ${whenFalse}`,
         };
+      } else if (
+        !name &&
+        middle === start + 1 &&
+        end === middle &&
+        whenTrue !== undefined &&
+        yes.length === 1 &&
+        yes[0] === planItem(plan, plan.params[start], whenTrue)
+      ) {
+        plan.direct = {
+          at: spanOf(test)[0],
+          style: `${read} ? ${whenTrue} : undefined`,
+        };
       }
       return [`(${read} ? (${group(truthy)}) : (${group(falsy)}))`];
     }
@@ -2916,6 +2928,7 @@ export const transformSource = async (
     baseStyle: CSSObject;
     dynamicVars: DynamicVar[];
     propVarSpreads: string[];
+    stableTests: string[];
   } => {
     args.forEach((arg) => {
       arg.expression = resolveLocalStyleAlias(
@@ -3268,6 +3281,7 @@ export const transformSource = async (
         baseStyle,
         dynamicVars,
         propVarSpreads,
+        stableTests: [],
       };
     }
 
@@ -3290,6 +3304,7 @@ export const transformSource = async (
         )
         .join(',')}}`;
     const generated = [...(elementReads?.values() ?? [])];
+    const stableTests: string[] = [];
     for (const c of conditionals) {
       if (!c.canSkipTest || c.groupId !== undefined || !c.testString) continue;
       const test = c.testString.startsWith('!')
@@ -3317,6 +3332,7 @@ export const transformSource = async (
       }
       if (valid && !generated.includes(name)) {
         generated.push(name);
+        stableTests.push(name);
       }
     }
     const testSource = (c: StyleConditional) =>
@@ -3722,6 +3738,7 @@ export const transformSource = async (
       baseStyle,
       dynamicVars,
       propVarSpreads,
+      stableTests,
     };
   };
 
@@ -3798,9 +3815,14 @@ export const transformSource = async (
     const steps = plans.flatMap(({ items }) => items);
     const only =
       args.length === 1 ? unwrapStyleExpression(args[0].expression) : undefined;
+    const guard =
+      only?.type === 'ConditionalExpression'
+        ? only.test
+        : only?.type === 'BinaryExpression' && only.operator === '&&'
+          ? only.left
+          : undefined;
     let direct =
-      only?.type === 'ConditionalExpression' &&
-      plan.direct?.at === spanOf(only.test)[0]
+      guard && plan.direct?.at === spanOf(guard)[0]
         ? plan.direct.style
         : undefined;
 
@@ -3811,18 +3833,22 @@ export const transformSource = async (
     } finally {
       elementReads = null;
     }
-    const classValue = joinClassParts(built.classParts, plan.params);
+    const classValue = joinClassParts(built.classParts, [
+      ...plan.params,
+      ...built.stableTests,
+    ]);
     const vars = plan.vars.map(({ name }) => name);
     const styleValue = vars.length ? generatedStyle(plan.vars) : undefined;
     const sequence = (steps: string[], value: string) =>
       steps.length ? `(${steps.join(', ')}, ${value})` : value;
     const classStatic = staticClass(classValue) !== undefined;
-    if (!classStatic || classValue.includes('&')) direct = undefined;
     const classReadsOnly =
       styleValue !== undefined &&
       !classStatic &&
       !plan.params.some((param) => mentions(classValue, param)) &&
       args.every(({ expression }) => classReadsStable(expression));
+    if (!((classStatic && !classValue.includes('&')) || classReadsOnly))
+      direct = undefined;
     const toStyle = styleValue !== undefined && (classStatic || classReadsOnly);
     const classSteps = toStyle ? [] : steps;
     const styleSteps = toStyle ? steps : [];
@@ -4422,7 +4448,10 @@ export const transformSource = async (
         } finally {
           elementReads = null;
         }
-        const classValue = joinClassParts(built.classParts, plan.params);
+        const classValue = joinClassParts(built.classParts, [
+          ...plan.params,
+          ...built.stableTests,
+        ]);
         const styleValue = generatedStyle(plan.vars);
         const sides = entries.map(({ param }) => {
           const inClass = mentions(classValue, param);
@@ -4491,6 +4520,7 @@ export const transformSource = async (
           baseStyle,
           dynamicVars,
           propVarSpreads,
+          stableTests,
         } = buildClassParts(args, dynamicClassParts, '', true);
         const folded = foldDynamicVars(dynamicVars, site !== undefined, invoke);
         if (site !== undefined && argBase !== null && argBase > foldBase) {
@@ -4522,7 +4552,7 @@ export const transformSource = async (
             Object.keys(baseStyle).length > 0 ||
             dynamicClassParts.length > 0);
         if (hasClass) {
-          const replacement = joinClassParts(classParts, []);
+          const replacement = joinClassParts(classParts, stableTests);
           const value =
             staticClass(replacement) !== undefined && !replacement.includes('&')
               ? replacement
@@ -4626,13 +4656,13 @@ export const transformSource = async (
         }
       }
 
-      const { classParts, isOptimizable } = buildClassParts(args);
+      const { classParts, isOptimizable, stableTests } = buildClassParts(args);
 
       if (isOptimizable) {
         replacements.push({
           start: node.span.start - baseByteOffset,
           end: node.span.end - baseByteOffset,
-          content: joinClassParts(classParts, []),
+          content: joinClassParts(classParts, stableTests),
         });
       } else {
         throwCompilationError(
