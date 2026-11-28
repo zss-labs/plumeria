@@ -210,12 +210,16 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
       expect(declarationOf(code, 'Alone')).toMatch(
         /className=\{\(\{__proto__:null,("\w+":"[\w ]+",?)+\}\[sx\] \|\| ""\)\}/,
       );
-      expect(declarationOf(code, 'Renamed')).toMatch(/\[styleArray\] \|\| ""/);
+      expect(declarationOf(code, 'Renamed')).toMatch(
+        /\[styleArray\] \|\| "xbief8v4"/,
+      );
     });
 
-    it('keeps the component base outside the table it looks up', async () => {
+    it('includes the component base in the lookup values and fallback', async () => {
       const code = await compile(RECEIVERS);
-      expect(declarationOf(code, 'Merged')).toMatch(/"\w+" \+ " " \+ \(\{/);
+      expect(declarationOf(code, 'Merged')).toMatch(
+        /"\w+":"xbief8v4 [\w ]+".*\] \|\| "xbief8v4"/,
+      );
     });
 
     it.each([
@@ -229,7 +233,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
       const start = code.indexOf(marker);
       const next = code.indexOf('\nexport ', start + 1);
       expect(code.slice(start, next === -1 ? undefined : next)).toMatch(
-        /\[sx\] \|\| ""\)/,
+        /\[sx\] \|\| "xbief8v4"\)/,
       );
     });
   });
@@ -282,7 +286,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
 
     it('builds a table where the wrapped component applies the prop', async () => {
       const code = await compile(COMPARED);
-      expect(code.match(/\[sx\] \|\| ""\)/g)).toHaveLength(3);
+      expect(code.match(/\[sx\] \|\| "xbief8v4"\)/g)).toHaveLength(3);
     });
 
     // memo(Plain) is Plain, so a style passed to it is read as one passed to
@@ -325,24 +329,18 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
         expect(declarationOf(await compile(APP), `On${name}`)).toMatch(
           /sx=\{"\w+"\}/,
         );
-        expect(declarationOf(await compile(VIA_USE), name)).toMatch(
-          /\[sx\] \|\| ""/,
+        const fallback = name === 'UseAlone' ? '' : 'xbief8v4';
+        expect(declarationOf(await compile(VIA_USE), name)).toContain(
+          `[sx] || "${fallback}"`,
         );
       },
     );
 
-    // Only the base differs between the shapes: the lookup is the same, and the
-    // one with no base has nothing concatenated in front of it.
-    it('concatenates a base only where the call has one', async () => {
+    it('folds the base into each css.use lookup value', async () => {
       const code = await compile(VIA_USE);
-
-      expect(declarationOf(code, 'UseAlone')).not.toMatch(
-        /"\w+" \+ " " \+ \(\{/,
-      );
-      expect(declarationOf(code, 'UseWithBase')).toMatch(
-        /"\w+" \+ " " \+ \(\{/,
-      );
-      expect(declarationOf(code, 'UseListed')).toMatch(/"\w+" \+ " " \+ \(\{/);
+      for (const name of ['UseWithBase', 'UseListed']) {
+        expect(declarationOf(code, name)).toMatch(/"\w+":"xbief8v4 \w+"/);
+      }
     });
 
     // A dynamic style resolves to a class name and the custom properties the
