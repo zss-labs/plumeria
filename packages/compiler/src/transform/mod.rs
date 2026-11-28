@@ -119,6 +119,8 @@ pub struct Transformer<'t, 'p, 'b, 'a> {
     pub declared_props: FxHashMap<String, FxHashSet<String>>,
     pub initialized_const_returns: FxHashMap<SymbolId, Span>,
     pub parameter_bodies: FxHashMap<SymbolId, Span>,
+    pub module_consts: FxHashMap<SymbolId, Span>,
+    pub hoisted_functions: Vec<Span>,
     pub component_param_names: FxHashSet<String>,
     pub applied_style_props: FxHashSet<String>,
     pub element_reads: Option<FxHashMap<(u32, u32), String>>,
@@ -477,6 +479,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             declared_props: FxHashMap::default(),
             initialized_const_returns: FxHashMap::default(),
             parameter_bodies: FxHashMap::default(),
+            module_consts: FxHashMap::default(),
+            hoisted_functions: Vec::new(),
             component_param_names: FxHashSet::default(),
             applied_style_props: FxHashSet::default(),
             element_reads: None,
@@ -506,6 +510,43 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         }
         let stable_parameters = program.body.iter().any(Statement::is_module_declaration)
             && !self.scoping.root_scope_flags().contains_direct_eval();
+        if stable_parameters {
+            for statement in &program.body {
+                let (span, declaration) = match statement {
+                    Statement::VariableDeclaration(decl) => (decl.span, Some(&**decl)),
+                    Statement::ExportDeclaration(export) => match &export.declaration {
+                        Declaration::VariableDeclaration(decl) => (export.span, Some(&**decl)),
+                        Declaration::FunctionDeclaration(_) => {
+                            self.hoisted_functions.push(export.span);
+                            continue;
+                        }
+                        _ => continue,
+                    },
+                    Statement::FunctionDeclaration(function) => {
+                        self.hoisted_functions.push(function.span);
+                        continue;
+                    }
+                    Statement::ExportDefaultDeclaration(export) => {
+                        if let ExportDefaultDeclarationKind::FunctionDeclaration(_) = &export.declaration {
+                            self.hoisted_functions.push(export.span);
+                        }
+                        continue;
+                    }
+                    _ => continue,
+                };
+                let Some(decl) = declaration.filter(|decl| decl.kind == VariableDeclarationKind::Const) else {
+                    continue;
+                };
+                for declarator in &decl.declarations {
+                    if declarator.init.is_some()
+                        && let BindingPattern::BindingIdentifier(id) = &declarator.id
+                        && let Some(symbol) = id.symbol_id.get()
+                    {
+                        self.module_consts.insert(symbol, Span::new(span.end, program.span.end));
+                    }
+                }
+            }
+        }
         for (name, span, params) in component_functions(program) {
             let body = Span::new(params.span.end, span.end);
             let patterns = params.items.iter().map(|param| &param.pattern)
