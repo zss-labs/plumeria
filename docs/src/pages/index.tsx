@@ -97,7 +97,7 @@ const styles = css.create({
     fontSize: 16,
     fontWeight: 600,
     lineHeight: 1.5,
-    borderColor: homeTheme.label,
+    borderColor: homeTheme.buttonBorder,
     borderStyle: 'solid',
     borderWidth: 1,
     borderRadius: 8,
