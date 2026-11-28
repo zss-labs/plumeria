@@ -2841,6 +2841,9 @@ export const transformSource = async (
       const read = name
         ? `(${name} = (${getSource(test)}))`
         : `(${getSource(test)})`;
+      const guard = isIdentifierSource(getSource(test))
+        ? getSource(test)
+        : `(${getSource(test)})`;
       const whenTrue = plan.objects.get(plan.params[start]);
       const whenFalse = plan.objects.get(plan.params[middle]);
       if (
@@ -2856,7 +2859,7 @@ export const transformSource = async (
       ) {
         plan.direct = {
           at: spanOf(test)[0],
-          style: `${read} ? ${whenTrue} : ${whenFalse}`,
+          style: `${guard} ? ${whenTrue} : ${whenFalse}`,
         };
       } else if (
         !name &&
@@ -2868,7 +2871,7 @@ export const transformSource = async (
       ) {
         plan.direct = {
           at: spanOf(test)[0],
-          style: `${read} ? ${whenTrue} : undefined`,
+          style: `${guard} ? ${whenTrue} : undefined`,
         };
       }
       return [`(${read} ? (${group(truthy)}) : (${group(falsy)}))`];
