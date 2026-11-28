@@ -95,6 +95,9 @@ const styles = css.create({
     overflow: 'hidden',
     backgroundColor: '#294aa6',
     borderRadius: 6,
+    maskImage:
+      'linear-gradient(to right, transparent, #000 6%, #000 94%, transparent), linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent)',
+    maskComposite: 'intersect',
     [breakpoints.md]: {
       aspectRatio: '2',
     },
