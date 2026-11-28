@@ -64,39 +64,78 @@ const styles = css.create({
     flexWrap: 'wrap',
     gap: 16,
     alignItems: 'center',
+    [breakpoints.md]: {
+      justifyContent: 'center',
+    },
   },
   button: {
     display: 'inline-flex',
     gap: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    padding: '12px 26px',
+    padding: '8px 16px',
     fontSize: 16,
-    fontWeight: 500,
-    borderColor: homeTheme.border,
+    fontWeight: 600,
+    lineHeight: 1.5,
+    borderColor: homeTheme.label,
     borderStyle: 'solid',
     borderWidth: 1,
     borderRadius: 8,
-    transitionDuration: '0.2s',
     ':hover': {
-      background: homeTheme.accent,
+      color: homeTheme.background,
+      background: homeTheme.foreground,
+      boxShadow: '0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a',
+      scale: '1.05',
     },
   },
   primary: {
-    ...css.marker('primary', ':hover'),
-    color: homeTheme.background,
-    background: homeTheme.foreground,
-    borderColor: homeTheme.foreground,
+    position: 'relative',
+    color: homeTheme.foreground,
+    background: 'transparent',
+    borderWidth: 0,
+    isolation: 'isolate',
+    transitionProperty: 'scale',
+    '::before': {
+      position: 'absolute',
+      inset: -3,
+      zIndex: -2,
+      content: '""',
+      backgroundColor: '#0f766e',
+      backgroundImage: 'url(/primary-button-background.svg)',
+      backgroundPosition: '50%',
+      backgroundSize: 'cover',
+      borderRadius: 11,
+      transition: 'filter 0.12s ease-out, transform 0.12s ease-out',
+    },
+    '::after': {
+      position: 'absolute',
+      inset: 0,
+      zIndex: -1,
+      content: '""',
+      background: homeTheme.background,
+      borderRadius: 8,
+      transition: 'transform 0.15s ease-out',
+    },
     ':hover': {
-      background: homeTheme.foreground,
-      opacity: 0.85,
+      color: homeTheme.foreground,
+      background: 'transparent',
+      scale: '1.05',
+    },
+    ':hover::before': {
+      filter: 'brightness(130%)',
+      transform: 'scale(1.0125, 1.025)',
+    },
+    ':hover::after': {
+      transform: 'scale(0.98, 0.96)',
     },
   },
   heroBody: {
     display: 'flex',
     flexDirection: 'column',
     gap: 44,
+    [breakpoints.md]: {
+      textAlign: 'center',
+    },
   },
   banner: {
     width: '100%',
@@ -117,12 +156,6 @@ const styles = css.create({
     height: '100%',
     objectFit: 'cover',
     objectPosition: '72% center',
-  },
-  arrow: {
-    transition: 'translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
-    [css.extended('primary', ':hover')]: {
-      translate: '3px 0',
-    },
   },
 });
 
@@ -181,33 +214,16 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
             </div>
             <div sx={styles.actions}>
               <Link to={docs} unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
-                {ja ? 'さあ始めましょう' : 'Get started'}
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  sx={styles.arrow}
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
+                {ja ? 'さあ始めましょう' : 'Get Started'}
               </Link>
-              <Link to={`${docs}/why-plumeria`} unstable_prefetchOnView={{}} sx={styles.button}>
-                {ja ? (
-                  <>
-                    なぜ <span translate="no">Plumeria</span> ?
-                  </>
-                ) : (
-                  <>
-                    Why <span translate="no">Plumeria</span>?
-                  </>
-                )}
-              </Link>
+              <a
+                href="https://github.com/zss-labs/plumeria"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={styles.button}
+              >
+                {ja ? 'GitHub で見る' : 'View on GitHub'}
+              </a>
             </div>
           </div>
           <div aria-hidden="true" sx={styles.banner}>
