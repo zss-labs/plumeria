@@ -47,6 +47,8 @@ pub(super) struct ElementPlan {
     style_runtime: bool,
     assign: bool,
     base: usize,
+    objects: FxHashMap<String, String>,
+    direct: Option<(u32, String)>,
 }
 
 impl ElementPlan {
@@ -2340,6 +2342,9 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 return Ok(Some(Vec::new()));
             };
             let name = plan.slot("v");
+            if plan.assign && always {
+                plan.objects.insert(name.clone(), object.clone());
+            }
             plan.vars.push((name.clone(), always && !guarded));
             plan.style_runtime |= runtime || guarded;
             return Ok(Some(vec![plan.item(&name, object)]));
@@ -2504,6 +2509,20 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 Some(name) => format!("({name} = ({}))", self.text(test)),
                 None => format!("({})", self.text(test)),
             };
+            if name.is_none()
+                && middle == start + 1
+                && end == middle + 1
+                && let (Some(when_true), Some(when_false)) = (
+                    plan.objects.get(&plan.params[start]),
+                    plan.objects.get(&plan.params[middle]),
+                )
+                && truthy.len() == 2
+                && falsy.len() == 2
+                && truthy[0] == plan.item(&plan.params[start], when_true.clone())
+                && falsy[1] == plan.item(&plan.params[middle], when_false.clone())
+            {
+                plan.direct = Some((test.start, format!("{read} ? {when_true} : {when_false}")));
+            }
             return Ok(Some(vec![format!(
                 "({read} ? ({}) : ({}))",
                 group(truthy),
@@ -2757,6 +2776,17 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let mut temps: Vec<String> = plan.params.clone();
         temps.extend((base..arg_end).map(|index| format!("{PREFIX}a{index}")));
         let steps: Vec<String> = plans.into_iter().flat_map(|(_, items)| items).collect();
+        let direct = match args.as_slice() {
+            [(expr, _)] => match unwrap(*expr).kind() {
+                K::Conditional(cond) => plan
+                    .direct
+                    .take()
+                    .filter(|(at, _)| *at == cond.test.span().start)
+                    .map(|(_, style)| style),
+                _ => None,
+            },
+            _ => None,
+        };
 
         self.element_reads = Some(std::mem::take(&mut plan.reads));
         let built = self.build_class_parts(args, Vec::new(), String::new(), true);
@@ -2773,6 +2803,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         };
         let class_static = static_class(&class_value).is_some();
+        let direct = direct.filter(|_| class_static && !class_value.contains('&'));
         let (class_steps, style_steps) = if style_value.is_some() && class_static {
             (Vec::new(), steps)
         } else {
@@ -2784,6 +2815,10 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             format!("{{{}}}", sequence(&class_steps, &class_value))
         };
         let style_text = style_value.map(|style| {
+            if let Some(direct) = &direct {
+                temps.retain(|temp| !plan.params.contains(temp));
+                return direct.clone();
+            }
             let alone = match (style_steps.as_slice(), vars.as_slice()) {
                 ([step], [only]) if style == *only => step
                     .strip_prefix(&format!("({only} = "))
