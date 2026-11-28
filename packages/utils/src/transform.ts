@@ -2871,6 +2871,40 @@ export const transformSource = async (
     }
   };
 
+  const classReadsStable = (expr: Expression): boolean => {
+    const node = resolveLocalStyleAlias(
+      localStyleAliases,
+      unwrapExpression(expr),
+    );
+    if (isNoOpStyle(node) || isStyleFunctionCall(node)) return true;
+    switch (node.type) {
+      case 'ArrayExpression':
+        return node.elements.every(
+          (element) =>
+            !element ||
+            (!element.spread && classReadsStable(element.expression)),
+        );
+      case 'ConditionalExpression':
+        return (
+          canSkipTest(node.test) &&
+          classReadsStable(node.consequent) &&
+          classReadsStable(node.alternate)
+        );
+      case 'BinaryExpression':
+        return (
+          node.operator === '&&' &&
+          canSkipTest(node.left) &&
+          classReadsStable(node.right)
+        );
+      default:
+        try {
+          return !!resolveStyleObject(node);
+        } catch {
+          return false;
+        }
+    }
+  };
+
   const buildClassParts = (
     args: Array<{ expression: Expression; order?: number }>,
     dynamicClassParts: string[] = [],
@@ -3744,7 +3778,12 @@ export const transformSource = async (
       steps.length ? `(${steps.join(', ')}, ${value})` : value;
     const classStatic = staticClass(classValue) !== undefined;
     if (!classStatic || classValue.includes('&')) direct = undefined;
-    const toStyle = styleValue !== undefined && classStatic;
+    const classReadsOnly =
+      styleValue !== undefined &&
+      !classStatic &&
+      !plan.params.some((param) => mentions(classValue, param)) &&
+      args.every(({ expression }) => classReadsStable(expression));
+    const toStyle = styleValue !== undefined && (classStatic || classReadsOnly);
     const classSteps = toStyle ? [] : steps;
     const styleSteps = toStyle ? steps : [];
     const classText =
