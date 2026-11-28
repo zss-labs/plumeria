@@ -48,6 +48,7 @@ export const homeTheme = css.createTheme('.dark', {
   strong: { default: '#000000', theme: '#ffffff' },
   prose: { default: '#383437', theme: '#999999' },
   label: { default: '#767676', theme: '#807d82' },
+  buttonBorder: { default: '#c4c4c4', theme: '#423f45' },
   code: { default: '#f5f5f5', theme: '#212121' },
   primary: { default: '#d653bb', theme: '#d653bb' },
   primarySoft: { default: 'rgba(214, 83, 187, 0.1)', theme: 'rgba(214, 83, 187, 0.1)' },
