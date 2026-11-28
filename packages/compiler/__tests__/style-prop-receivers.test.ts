@@ -352,10 +352,10 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
       const code = await compile(APP);
 
       expect(declarationOf(code, 'Dynamic')).toMatch(
-        /sx=\{\{ key: "\w+", vars: \(__plumeria__\$\$a0 = \w+, \{ "--[\w-]+": /,
+        /sx=\{\{ key: "\w+", vars: \{ "--[\w-]+": /,
       );
       expect(declarationOf(code, 'DynamicListed')).toMatch(
-        /sx=\{\{ key: "\w+", vars: \(__plumeria__\$\$a0 = \w+, \{/,
+        /sx=\{\{ key: "\w+", vars: \{/,
       );
 
       const receivers = await compile(RECEIVERS);
@@ -370,9 +370,7 @@ export const Unseen = () => <Alone sx={styles.b} />;`,
     it('resolves a dynamic style on an element where it stands', async () => {
       const code = declarationOf(await compile(APP), 'DynamicOnElement');
       expect(code).toContain('className="');
-      expect(code).toMatch(
-        /style=\{\(__plumeria__\$\$a0 = \w+, \{ "--[\w-]+": /,
-      );
+      expect(code).toMatch(/style=\{\{ "--[\w-]+": /);
     });
 
     // Without an entry there is no key to hand over. Reading the attribute as the
