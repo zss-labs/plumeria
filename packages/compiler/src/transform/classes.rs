@@ -67,6 +67,12 @@ impl ElementPlan {
     }
 }
 
+fn runs_no_code(value: &str) -> bool {
+    value.starts_with("(typeof (")
+        || (value.len() >= 2 && value.starts_with('"') && value.ends_with('"'))
+        || is_identifier(value)
+}
+
 fn join_attributes(attributes: Vec<String>) -> String {
     attributes
         .into_iter()
@@ -2488,6 +2494,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             plan.vars.push((name.clone(), true));
             if plan.assign {
                 let (object, _, _) = vars_object(&vars, true, &|p, b, a| self.invoke(p, b, a)).unwrap_or_default();
+                if let K::Call(call) = node.kind()
+                    && call.arguments.iter().all(|argument| {
+                        argument.as_expression().is_some_and(|expr| self.can_skip_test(E::new(expr)))
+                    })
+                    && object.starts_with("{ ")
+                    && !object.contains(PREFIX)
+                    && vars
+                        .iter()
+                        .filter(|var| !var.css_var.is_empty())
+                        .all(|var| runs_no_code(&var.value_expr))
+                {
+                    plan.objects.insert(name.clone(), object.clone());
+                }
                 plan.folds.push(object.clone());
                 return Ok(Some(vec![plan.item(&name, object)]));
             }
@@ -3067,8 +3086,23 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let calls: Vec<String> = plan.vars.iter().map(|(name, _)| name.clone()).collect();
         let mut names = 0;
         let mut keys: Vec<String> = Vec::new();
+        let inline: FxHashMap<String, String> = (site.is_some()
+            && plan.assign
+            && !items.is_empty()
+            && items.len() == plan.params.len())
+        .then(|| {
+            plan.params
+                .iter()
+                .map(|param| {
+                    let inner = plan.objects.get(param)?.strip_prefix("{ ")?.strip_suffix(" }")?;
+                    Some((param.clone(), inner.to_string()))
+                })
+                .collect::<Option<FxHashMap<_, _>>>()
+        })
+        .flatten()
+        .unwrap_or_default();
         let body = self
-            .decide(&rows, &plan.reads, &calls, &mut names, &mut keys, plan.assign)
+            .decide(&rows, &plan.reads, &calls, &inline, &mut names, &mut keys, plan.assign)
             .0;
         if let Some(site) = site
             && plan.assign
@@ -3082,11 +3116,13 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 format!("{{ key: {}, vars: {fold} }}", quote(&row.key))
             } else if items.is_empty() {
                 body
+            } else if !inline.is_empty() {
+                body
             } else {
                 format!("({}, {body})", items.join(", "))
             };
             let mut temps: Vec<String> = plan.params.clone();
-            if content.starts_with("{ key: ") {
+            if content.starts_with("{ key: ") || plan.params.iter().all(|param| !mentions(&content, param)) {
                 temps.clear();
             }
             temps.extend((base..arg_end).map(|index| format!("{PREFIX}a{index}")));
@@ -3142,6 +3178,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         rows: &[Row],
         reads: &FxHashMap<(u32, u32), String>,
         calls: &[String],
+        inline: &FxHashMap<String, String>,
         names: &mut usize,
         keys: &mut Vec<String>,
         assign: bool,
@@ -3154,13 +3191,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             if first.fixed {
                 return (key, true);
             }
+            let carry = |name: &String| {
+                inline
+                    .get(name)
+                    .cloned()
+                    .unwrap_or_else(|| format!("...{name}"))
+            };
             let carried: Vec<String> = match &first.calls {
-                Some(spans) => spans
-                    .iter()
-                    .filter_map(|span| reads.get(span))
-                    .map(|name| format!("...{name}"))
-                    .collect(),
-                None => calls.iter().map(|name| format!("...{name}")).collect(),
+                Some(spans) => spans.iter().filter_map(|span| reads.get(span)).map(carry).collect(),
+                None => calls.iter().map(carry).collect(),
             };
             return (
                 format!("{{ key: {key}, vars: {{ {} }} }}", carried.join(", ")),
@@ -3191,15 +3230,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .unwrap_or_else(|| self.text(Span::new(test.0, test.1)).to_string());
         let Some(keyed) = &condition.keyed else {
             let (truthy, _) =
-                self.decide(&branch(&|c| c.truthy), reads, calls, names, keys, assign);
+                self.decide(&branch(&|c| c.truthy), reads, calls, inline, names, keys, assign);
             let (falsy, _) =
-                self.decide(&branch(&|c| !c.truthy), reads, calls, names, keys, assign);
+                self.decide(&branch(&|c| !c.truthy), reads, calls, inline, names, keys, assign);
             return (format!("(({text}) ? {truthy} : {falsy})"), false);
         };
         let mut branches: Vec<(String, bool)> = Vec::new();
         for option in (0..keyed.options.len()).map(Some).chain([None]) {
             let rows = branch(&|c| c.keyed.as_ref().is_some_and(|k| k.option == option));
-            branches.push(self.decide(&rows, reads, calls, names, keys, assign));
+            branches.push(self.decide(&rows, reads, calls, inline, names, keys, assign));
         }
         let (fallback, _) = branches.pop().unwrap();
         if branches.iter().all(|(_, fixed)| *fixed) {
