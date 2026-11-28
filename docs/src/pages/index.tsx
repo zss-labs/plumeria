@@ -38,17 +38,26 @@ const styles = css.create({
     },
   },
   title: {
-    fontSize: 'clamp(48px, 10vw, 64px)',
+    fontSize: 'clamp(48px, 13vw, 64px)',
     fontWeight: 650,
     lineHeight: 1.1,
-    letterSpacing: '-0.065em',
+    letterSpacing: '-0.04em',
+    wordBreak: 'keep-all',
+    textWrap: 'balance',
   },
   description: {
-    maxWidth: 640,
     marginTop: 12,
     fontSize: 'clamp(20px, 2.5vw, 28px)',
     lineHeight: 1.5,
     letterSpacing: '-0.02em',
+    wordBreak: 'keep-all',
+    textWrap: 'balance',
+  },
+  line: {
+    whiteSpace: 'nowrap',
+    [breakpoints.md]: {
+      whiteSpace: 'normal',
+    },
   },
   actions: {
     display: 'flex',
@@ -139,16 +148,40 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
         <div sx={styles.hero}>
           <div sx={styles.heroBody}>
             <div>
-              <h1 translate="no" sx={styles.title}>
-                Plumeria
+              <h1 sx={styles.title}>
+                {ja ? (
+                  <>
+                    ゼロ
+                    <wbr />
+                    ランタイム
+                    <wbr />
+                    CSS-in-JS
+                  </>
+                ) : (
+                  'Zero-Runtime CSS-in-JS'
+                )}
               </h1>
               <p sx={styles.description}>
-                {ja ? 'React のためのスタイルライブラリ' : 'React styling library for reliable interfaces'}
+                <span sx={styles.line}>
+                  {ja ? (
+                    <>
+                      信頼性の高い
+                      <wbr />
+                      インターフェースのための
+                      <wbr />
+                      React スタイリング
+                      <wbr />
+                      ライブラリ
+                    </>
+                  ) : (
+                    'React styling library for reliable interfaces'
+                  )}
+                </span>
               </p>
             </div>
             <div sx={styles.actions}>
               <Link to={docs} unstable_prefetchOnView={{}} sx={[styles.button, styles.primary]}>
-                {ja ? 'はじめる' : 'Get started'}
+                {ja ? 'さあ始めましょう' : 'Get started'}
                 <svg
                   width="16"
                   height="16"
@@ -167,7 +200,7 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
               <Link to={`${docs}/why-plumeria`} unstable_prefetchOnView={{}} sx={styles.button}>
                 {ja ? (
                   <>
-                    <span translate="no">Plumeria</span> を使う理由
+                    なぜ <span translate="no">Plumeria</span> ?
                   </>
                 ) : (
                   <>
