@@ -2627,6 +2627,8 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 Some(name) => format!("({name} = ({}))", self.text(test)),
                 None => format!("({})", self.text(test)),
             };
+            let bare = self.text(test);
+            let guard = if is_identifier(&bare) { bare } else { format!("({bare})") };
             if name.is_none()
                 && middle == start + 1
                 && end == middle + 1
@@ -2639,7 +2641,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 && truthy[0] == plan.item(&plan.params[start], when_true.clone())
                 && falsy[1] == plan.item(&plan.params[middle], when_false.clone())
             {
-                plan.direct = Some((test.start, format!("{read} ? {when_true} : {when_false}")));
+                plan.direct = Some((test.start, format!("{guard} ? {when_true} : {when_false}")));
             } else if name.is_none()
                 && middle == start + 1
                 && end == middle
@@ -2647,7 +2649,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 && truthy.len() == 1
                 && truthy[0] == plan.item(&plan.params[start], when_true.clone())
             {
-                plan.direct = Some((test.start, format!("{read} ? {when_true} : undefined")));
+                plan.direct = Some((test.start, format!("{guard} ? {when_true} : undefined")));
             }
             return Ok(Some(vec![format!(
                 "({read} ? ({}) : ({}))",
