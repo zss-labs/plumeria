@@ -1361,6 +1361,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let test = c.test_string.clone().unwrap_or_else(|| self.text(c.test));
             class_parts.push(format!("({test} ? {truthy} : {falsy})"));
         }
+        let mut lookups: Vec<(usize, Vec<(String, String)>, String, bool)> = Vec::new();
         let mut indep_groups: BTreeMap<u32, Vec<&Conditional>> = BTreeMap::new();
         for c in &independent {
             if let Some(group_id) = c.group_id {
@@ -1387,6 +1388,15 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .iter()
                     .map(|(k, v)| (k.to_string(), quote(&v.to_js_string())))
                     .collect();
+                lookups.push((
+                    class_parts.len(),
+                    lookup
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), v.to_js_string()))
+                        .collect(),
+                    common.clone(),
+                    options[0].closed,
+                ));
                 class_parts.push(format!(
                     "({}[{common}] || \"\")",
                     lookup_table(&entries, options[0].closed)
@@ -1596,27 +1606,68 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .iter()
                     .all(|use_| !skippable.contains(&format!("{PREFIX}{use_}")));
             if inline {
+                for (_, _, common, _) in &mut lookups {
+                    *common = inline_params(common, &bound);
+                }
                 class_parts.extend(parts.iter().map(|part| inline_params(part, &bound)));
-            } else if uses.is_empty() {
-                class_parts.push(format!("({}, {body})", bound.join(", ")));
-            } else if let Some(base) = self.arg_base.get() {
-                self.arg_base.set(Some(base + bound.len()));
-                let names: Vec<String> = (0..bound.len())
-                    .map(|index| format!("{PREFIX}a{}", base + index))
-                    .collect();
-                let assignments: Vec<String> = names
-                    .iter()
-                    .zip(&bound)
-                    .map(|(name, source)| format!("{name} = ({source})"))
-                    .collect();
-                class_parts.push(format!(
-                    "({}, {})",
-                    assignments.join(", "),
-                    inline_params(&body, &names)
-                ));
             } else {
-                class_parts.push(self.invoke(&params.join(", "), &body, &bound.join(", ")));
+                lookups.clear();
+                if uses.is_empty() {
+                    class_parts.push(format!("({}, {body})", bound.join(", ")));
+                } else if let Some(base) = self.arg_base.get() {
+                    self.arg_base.set(Some(base + bound.len()));
+                    let names: Vec<String> = (0..bound.len())
+                        .map(|index| format!("{PREFIX}a{}", base + index))
+                        .collect();
+                    let assignments: Vec<String> = names
+                        .iter()
+                        .zip(&bound)
+                        .map(|(name, source)| format!("{name} = ({source})"))
+                        .collect();
+                    class_parts.push(format!(
+                        "({}, {})",
+                        assignments.join(", "),
+                        inline_params(&body, &names)
+                    ));
+                } else {
+                    class_parts.push(self.invoke(&params.join(", "), &body, &bound.join(", ")));
+                }
             }
+        }
+
+        if let [(at, entries, common, closed)] = lookups.as_slice()
+            && dynamic_class_parts.is_empty()
+            && class_parts
+                .iter()
+                .enumerate()
+                .all(|(index, part)| index == *at || static_class(part).is_some())
+            && class_parts.len() > 1
+        {
+            let join = |parts: &[String]| -> Vec<String> {
+                parts
+                    .iter()
+                    .filter_map(|part| static_class(part))
+                    .filter(|class| !class.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            };
+            let before = join(&class_parts[..*at]);
+            let after = join(&class_parts[at + 1..]);
+            let with = |middle: Option<&str>| {
+                let mut classes = before.clone();
+                classes.extend(middle.map(str::to_string));
+                classes.extend(after.iter().cloned());
+                quote(&classes.join(" "))
+            };
+            let folded: Vec<(String, String)> = entries
+                .iter()
+                .map(|(key, class)| (key.clone(), with(Some(class))))
+                .collect();
+            class_parts = vec![format!(
+                "({}[{common}] || {})",
+                lookup_table(&folded, *closed),
+                with(None)
+            )];
         }
 
         class_parts.extend(dynamic_class_parts);
