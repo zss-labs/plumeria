@@ -67,6 +67,14 @@ impl ElementPlan {
     }
 }
 
+fn join_attributes(attributes: Vec<String>) -> String {
+    attributes
+        .into_iter()
+        .filter(|attribute| !attribute.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn static_class(part: &str) -> Option<&str> {
     let inner = part.strip_prefix('"')?.strip_suffix('"')?;
     (!inner.contains(['"', '\\'])).then_some(inner)
@@ -2687,11 +2695,19 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 } else {
                     format!("{{{class_text}}}")
                 };
-                let mut content = self.written_attribute(node, &class_prop, &class_attr);
-                if style_text != "undefined" {
-                    content.push(' ');
-                    content.push_str(&self.written_attribute(node, "style", &format!("{{{style_text}}}")));
+                let has_style = style_text != "undefined";
+                let mut attributes =
+                    vec![self.written_attribute(node, &class_prop, &class_attr, true, !has_style)];
+                if has_style {
+                    attributes.push(self.written_attribute(
+                        node,
+                        "style",
+                        &format!("{{{style_text}}}"),
+                        false,
+                        true,
+                    ));
                 }
+                let content = join_attributes(attributes);
                 self.replacements.push(Replacement {
                     start: node.span.start,
                     end: node.span.end,
@@ -2757,19 +2773,21 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         };
 
         let mut attributes = Vec::new();
-        if arg_count > 0 || !built.base_style.is_empty() {
+        let has_class = arg_count > 0 || !built.base_style.is_empty();
+        if has_class {
             let replacement = join_class_parts(&built.class_parts, &[]);
             let value = if static_class(&replacement).is_some() && !replacement.contains('&') {
                 replacement
             } else {
                 format!("{{{replacement}}}")
             };
-            attributes.push(self.written_attribute(node, &class_prop, &value));
+            let last = style_value.is_none();
+            attributes.push(self.written_attribute(node, &class_prop, &value, true, last));
         }
         if let Some(value) = style_value {
-            attributes.push(self.written_attribute(node, "style", &value));
+            attributes.push(self.written_attribute(node, "style", &value, !has_class, true));
         }
-        let content = attributes.join(" ");
+        let content = join_attributes(attributes);
         self.replacements.push(Replacement {
             start: node.span.start,
             end: node.span.end,
@@ -2778,22 +2796,75 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         Ok(())
     }
 
-    fn written_attribute(&self, node: &JSXAttribute<'a>, name: &str, value: &str) -> String {
-        let collides = self.jsx_owner.get(&node.span.start).is_some_and(|(_, attributes)| {
-            attributes.iter().any(|item| {
-                matches!(item, JSXAttributeItem::Attribute(attr)
-                    if attr.span != node.span
-                        && matches!(&attr.name, JSXAttributeName::Identifier(id) if id.name == name))
-            })
-        });
-        if !collides {
-            return format!("{name}={value}");
-        }
+    fn written_attribute(
+        &mut self,
+        node: &JSXAttribute<'a>,
+        name: &str,
+        value: &str,
+        first: bool,
+        last: bool,
+    ) -> String {
         let expr = value
             .strip_prefix('{')
             .and_then(|rest| rest.strip_suffix('}'))
             .unwrap_or(value);
+        let Some(attributes) = self.jsx_owner.get(&node.span.start).map(|(_, attributes)| *attributes) else {
+            return format!("{name}={value}");
+        };
+        let named = |item: &'b JSXAttributeItem<'a>| match item {
+            JSXAttributeItem::Attribute(attr)
+                if attr.span != node.span
+                    && matches!(&attr.name, JSXAttributeName::Identifier(id) if id.name == name) =>
+            {
+                Some(&**attr)
+            }
+            _ => None,
+        };
+        let same: Vec<&JSXAttribute> = attributes.iter().filter_map(named).collect();
+        if same.is_empty() {
+            return format!("{name}={value}");
+        }
+        let at = attributes.iter().position(|item| item.span() == node.span);
+        let previous = at.and_then(|at| at.checked_sub(1)).and_then(|at| attributes.get(at)).and_then(named);
+        let next = at.and_then(|at| attributes.get(at + 1)).and_then(named);
+        if last && next.is_some() && static_class(expr).is_some() {
+            return String::new();
+        }
+        if first
+            && let [only] = same.as_slice()
+            && previous.is_some_and(|attr| attr.span == only.span)
+            && self.pure_attribute(only)
+        {
+            self.removable_attrs.insert((only.span.start, only.span.end));
+            self.replacements.push(Replacement {
+                start: only.span.start,
+                end: only.span.end,
+                content: String::new(),
+            });
+            return format!("{name}={value}");
+        }
         format!("{{...{{ {}: {expr} }}}}", quote(name))
+    }
+
+    fn pure_attribute(&self, attr: &JSXAttribute<'a>) -> bool {
+        let Some(value) = &attr.value else { return true };
+        let JSXAttributeValue::ExpressionContainer(container) = value else {
+            return matches!(value, JSXAttributeValue::StringLiteral(_));
+        };
+        let Some(expr) = container.expression.as_expression() else {
+            return true;
+        };
+        if let Expression::ObjectExpression(object) = expr {
+            return object.properties.iter().all(|property| {
+                matches!(property, ObjectPropertyKind::ObjectProperty(property)
+                    if property.kind == PropertyKind::Init
+                        && !property.computed
+                        && !property.method
+                        && !property.shorthand
+                        && self.can_skip_test(E::new(&property.value)))
+            });
+        }
+        self.can_skip_test(E::new(expr))
     }
 
     fn assign_element(
@@ -2874,11 +2945,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 None => sequence(&style_steps, &style),
             }
         });
-        let mut content = self.written_attribute(node, &class_prop, &class_text);
+        let last = style_text.is_none();
+        let mut attributes = vec![self.written_attribute(node, &class_prop, &class_text, true, last)];
         if let Some(style) = style_text {
-            content.push(' ');
-            content.push_str(&self.written_attribute(node, "style", &format!("{{{style}}}")));
+            attributes.push(self.written_attribute(node, "style", &format!("{{{style}}}"), false, true));
         }
+        let content = join_attributes(attributes);
         self.replacements.push(Replacement {
             start: node.span.start,
             end: node.span.end,
