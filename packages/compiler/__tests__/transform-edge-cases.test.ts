@@ -309,12 +309,12 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a className without a value',
         `<div className sx={s.a} />`,
-        `<div className {...{ "className": "${RED}" }} />`,
+        `<div className="${RED}" />`,
       ],
       [
         'a className string',
         `<div className="x" sx={s.a} />`,
-        `<div className="x" {...{ "className": "${RED}" }} />`,
+        `<div className="${RED}" />`,
       ],
       [
         'a className expression',
@@ -324,7 +324,7 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'a className beside a style that is not there',
         `<div className="x" sx={undefined} />`,
-        `<div className="x" {...{ "className": "" }} />`,
+        `<div className="" />`,
       ],
       [
         'dollar patterns in a className expression',
@@ -337,6 +337,11 @@ export const A = () => <Card cardStyle={s.a} />;`,
         `<div style={p.on ? { content: "$$" } : p.st} className="${RED}" />`,
       ],
       [
+        'a className immediately after a static style',
+        `<div sx={s.a} className="base" />`,
+        `<div className="base" />`,
+      ],
+      [
         'a className after a spread',
         `<div sx={s.a} {...p} className="x" />`,
         `<div {...{ "className": "${RED}" }} {...p} className="x" />`,
@@ -344,14 +349,14 @@ export const A = () => <Card cardStyle={s.a} />;`,
       [
         'two spaces inside a className value',
         `<div className="a  b" sx={s.a} />`,
-        `<div className="a  b" {...{ "className": "${RED}" }} />`,
+        `<div className="${RED}" />`,
       ],
       [
         'attributes on their own lines',
         `<div\n      id="i"\n      className="x"\n      sx={s.a}\n    />`,
-        `<div\n      id="i"\n      className="x"\n      {...{ "className": "${RED}" }}\n    />`,
+        `<div\n      id="i"\n      \n      className="${RED}"\n    />`,
       ],
-    ])('keeps %s', async (_name, element, expected) => {
+    ])('transforms %s', async (_name, element, expected) => {
       const { code } = await app(`export const A = (p: any) => ${element};`);
       expect(code).toContain(expected);
     });
