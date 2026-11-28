@@ -1,3 +1,15 @@
+## 22.4.0
+
+### Minor Changes
+
+- 49bf156: - Update: Bump cssdefs to 1.1.0.
+  - Update: Accept `block`, `block-start` and `block-end` for marginTrim instead of `in-flow` and `all`.
+
+### Patch Changes
+
+- Updated dependencies [49bf156]
+  - @plumeria/compiler@22.4.0
+
 ## 22.3.4
 
 ### Patch Changes

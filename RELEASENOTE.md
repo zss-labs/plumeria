@@ -1,5 +1,11 @@
 # Release Notes
 
+## 22.4.0 (Nov 28, 2026)
+
+- Update: Bump cssdefs to 1.1.0.
+
+- Update: Accept `block`, `block-start` and `block-end` for marginTrim instead of `in-flow` and `all`.
+
 ## 22.3.4 (Nov 26, 2026)
 
 - Update: Leave className and style written beside sx in place, so an attribute added after them overrides them, instead of merging them.
