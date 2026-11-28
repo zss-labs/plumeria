@@ -849,8 +849,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let text_of = |source: E<'b, 'a>| self.source_of(source);
         let inline_argument = extra.is_empty() && resolved.derived.is_empty()
             && matches!(runtime.as_slice(), [(param, source)]
-                if self.is_stable_read(*source) && resolved.var_groups.get(param)
-                    .is_some_and(|groups| groups.iter().all(|g| !g.written && g.unit.is_empty())));
+                if self.is_stable_read(*source) && resolved.var_groups.contains_key(param));
         let mut reads: Vec<(u32, Option<&String>, String)> = runtime
             .iter()
             .map(|(param, source)| (source.span().start, Some(param), text_of(*source)))
