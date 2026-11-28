@@ -3729,21 +3729,60 @@ export const transformSource = async (
     node: JSXAttribute,
     name: string,
     value: string,
+    first: boolean,
+    last: boolean,
   ): string => {
-    const collides = (
-      jsxAttributeOwnerMap.get(node.span.start)?.attributes ?? []
-    ).some(
-      (attr) =>
-        attr.type === 'JSXAttribute' &&
-        attr.span.start !== node.span.start &&
-        attr.name.type === 'Identifier' &&
-        attr.name.value === name,
-    );
-    if (!collides) return `${name}=${value}`;
     const expr =
       value.startsWith('{') && value.endsWith('}') ? value.slice(1, -1) : value;
+    const items = jsxAttributeOwnerMap.get(node.span.start)?.attributes ?? [];
+    const named = (attr: any): attr is JSXAttribute =>
+      attr?.type === 'JSXAttribute' &&
+      attr.span.start !== node.span.start &&
+      attr.name.type === 'Identifier' &&
+      attr.name.value === name;
+    const same = items.filter(named);
+    if (!same.length) return `${name}=${value}`;
+    const at = items.findIndex(
+      (item) =>
+        item.type === 'JSXAttribute' && item.span.start === node.span.start,
+    );
+    const previous = at > 0 ? items[at - 1] : undefined;
+    const next = at >= 0 ? items[at + 1] : undefined;
+    if (last && named(next) && staticClass(expr) !== undefined) return '';
+    if (
+      first &&
+      same.length === 1 &&
+      previous === same[0] &&
+      pureAttribute(same[0])
+    ) {
+      const start = same[0].span.start - baseByteOffset;
+      const end = same[0].span.end - baseByteOffset;
+      removableAttrs.add(`${start}:${end}`);
+      replacements.push({ start, end, content: '' });
+      return `${name}=${value}`;
+    }
     return `{...{ ${JSON.stringify(name)}: ${expr} }}`;
   };
+
+  const pureAttribute = (attr: JSXAttribute): boolean => {
+    const value = attr.value as any;
+    if (!value) return true;
+    if (value.type === 'StringLiteral') return true;
+    if (value.type !== 'JSXExpressionContainer') return false;
+    const expr = value.expression;
+    if (expr.type === 'JSXEmptyExpression') return true;
+    if (expr.type === 'ObjectExpression')
+      return expr.properties.every(
+        (property: any) =>
+          property.type === 'KeyValueProperty' &&
+          property.key.type !== 'Computed' &&
+          canSkipTest(property.value),
+      );
+    return canSkipTest(expr);
+  };
+
+  const joinAttributes = (attributes: string[]) =>
+    attributes.filter(Boolean).join(' ');
 
   const assignElement = (
     node: JSXAttribute,
@@ -3791,7 +3830,15 @@ export const transformSource = async (
       !classSteps.length && classStatic && !classValue.includes('&')
         ? classValue
         : `{${sequence(classSteps, classValue)}}`;
-    let content = writtenAttribute(node, classProp, classText);
+    const attributes = [
+      writtenAttribute(
+        node,
+        classProp,
+        classText,
+        true,
+        styleValue === undefined,
+      ),
+    ];
     if (styleValue !== undefined) {
       const prefix = `(${vars[0]} = `;
       const [step] = styleSteps;
@@ -3809,8 +3856,11 @@ export const transformSource = async (
         temps = temps.filter((temp) => temp !== vars[0]);
         styleText = step.slice(prefix.length, -1);
       } else styleText = sequence(styleSteps, styleValue);
-      content += ` ${writtenAttribute(node, 'style', `{${styleText}}`)}`;
+      attributes.push(
+        writtenAttribute(node, 'style', `{${styleText}}`, false, true),
+      );
     }
+    const content = joinAttributes(attributes);
     replacements.push({
       start: node.span.start - baseByteOffset,
       end: node.span.end - baseByteOffset,
@@ -4409,14 +4459,18 @@ export const transformSource = async (
             staticClass(classText) !== undefined && !classText.includes('&')
               ? classText
               : `{${classText}}`;
-          const styleAttr =
-            styleText === 'undefined'
-              ? ''
-              : ` ${writtenAttribute(node, 'style', `{${styleText}}`)}`;
+          const hasStyle = styleText !== 'undefined';
+          const attributes = [
+            writtenAttribute(node, classProp, classAttr, true, !hasStyle),
+          ];
+          if (hasStyle)
+            attributes.push(
+              writtenAttribute(node, 'style', `{${styleText}}`, false, true),
+            );
           replacements.push({
             start: node.span.start - baseByteOffset,
             end: node.span.end - baseByteOffset,
-            content: `${writtenAttribute(node, classProp, classAttr)}${styleAttr}`,
+            content: joinAttributes(attributes),
           });
         } else
           replacements.push({
@@ -4462,25 +4516,35 @@ export const transformSource = async (
             : `{{ ${styleParts.join(', ')} }}`;
 
         const attributes: string[] = [];
-        if (
+        const hasClass =
           isOptimizable &&
           (args.length > 0 ||
             Object.keys(baseStyle).length > 0 ||
-            dynamicClassParts.length > 0)
-        ) {
+            dynamicClassParts.length > 0);
+        if (hasClass) {
           const replacement = joinClassParts(classParts, []);
           const value =
             staticClass(replacement) !== undefined && !replacement.includes('&')
               ? replacement
               : `{${replacement}}`;
-          attributes.push(writtenAttribute(node, classProp, value));
+          attributes.push(
+            writtenAttribute(
+              node,
+              classProp,
+              value,
+              true,
+              styleValue === undefined,
+            ),
+          );
         }
         if (styleValue !== undefined)
-          attributes.push(writtenAttribute(node, 'style', styleValue));
+          attributes.push(
+            writtenAttribute(node, 'style', styleValue, !hasClass, true),
+          );
         replacements.push({
           start: node.span.start - baseByteOffset,
           end: node.span.end - baseByteOffset,
-          content: attributes.join(' '),
+          content: joinAttributes(attributes),
         });
       }
       if (appliedBefore) {
