@@ -61,13 +61,13 @@ describe.each(implementations)('$name', ({ transformSource }) => {
     expect(code).not.toContain('className=');
   });
 
-  it('leaves an existing attribute written under the configured name in place', async () => {
+  it('replaces an adjacent literal attribute under the configured name', async () => {
     const code = await run(
       `export const A = () => <div class="kept" sx={styles.a} />;`,
       'class',
     );
 
-    expect(code).toMatch(/class="kept" \{\.\.\.\{ "class": "x\w+" \}\}/);
+    expect(code).toMatch(/<div class="x\w+" \/>/);
     expect(code).not.toContain('className');
   });
 
@@ -84,12 +84,12 @@ describe.each(implementations)('$name', ({ transformSource }) => {
 
   it('writes a colliding attribute with a hyphenated name as a string key', async () => {
     const code = await run(
-      `export const A = () => <div data-class="kept" sx={styles.a} />;`,
+      `export const A = () => <div data-class={read()} sx={styles.a} />;`,
       'data-class',
     );
 
     expect(code).toMatch(
-      /data-class="kept" \{\.\.\.\{ "data-class": "x\w+" \}\}/,
+      /data-class=\{read\(\)\} \{\.\.\.\{ "data-class": "x\w+" \}\}/,
     );
   });
 });
