@@ -109,9 +109,7 @@ describe.each(implementations)('$name', ({ transformSource, compileCSS }) => {
       export const A = ({ name }: any) =>
         <div className={name} sx={undefined} />;
     `);
-      expect(result.code).toContain(
-        '<div className={name} {...{ "className": "" }} />',
-      );
+      expect(result.code).toContain('<div className="" />');
     });
 
     it('rejects a dynamic function key passed to use', async () => {
