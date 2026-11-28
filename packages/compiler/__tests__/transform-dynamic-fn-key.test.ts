@@ -214,34 +214,43 @@ function App(mark) { ${body} }`,
         'a default parameter',
         `function P(x = <div sx={[mark('condition') && s.stat, s.w(n)]} />) { return x; }
         return P();`,
+        true,
       ],
       [
         'a class field',
         `class C { x = <div sx={[mark('condition') && s.stat, s.w(n)]} />; }
         return new C().x;`,
+        true,
       ],
       [
         'a shared condition in a default parameter',
         `function P(x = <div sx={[mark('condition') && s.w(n), s.stat]} />) { return x; }
         return P();`,
+        false,
       ],
-    ])('reads %s once in order without a wrapper', async (_, body) => {
-      const source = `
+    ])(
+      'reads %s once in order without a wrapper',
+      async (_, body, classOnly) => {
+        const source = `
         const n = { valueOf() { mark('valueOf'); return 1; } };
         ${body}
       `;
-      const { code } = await run(
-        `import * as css from '@plumeria/core';
+        const { code } = await run(
+          `import * as css from '@plumeria/core';
 const s = css.create({ stat: { color: 'red' }, w: (n) => ({ width: n * 2 }) });
 function App(mark) { ${source} }`,
-        'helper-site.tsx',
-      );
-      expect(code).not.toMatch(/\(\([\w, [\]]*\) => /);
-      const app = await compileComponent(source);
-      const mark = jest.fn(() => true);
-      app(mark);
-      expect(mark.mock.calls).toEqual([['condition'], ['valueOf']]);
-    });
+          'helper-site.tsx',
+        );
+        expect(code).not.toMatch(/\(\([\w, [\]]*\) => /);
+        if (classOnly) {
+          expect(code).toMatch(/className=\{\(*mark\('condition'\)\)*\s*\?/);
+        }
+        const app = await compileComponent(source);
+        const mark = jest.fn(() => true);
+        app(mark);
+        expect(mark.mock.calls).toEqual([['condition'], ['valueOf']]);
+      },
+    );
 
     it('declares the module temporaries outside an arrow that ends the file', async () => {
       const { code } = await run(
