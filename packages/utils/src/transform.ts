@@ -665,6 +665,8 @@ export const transformSource = async (
   const declaredProps = new Map<string, Set<string>>();
   const initializedConstReturns = new Map<string, HasSpan['span']>();
   const parameterBodies = new Map<string, HasSpan['span']>();
+  const moduleConsts = new Map<string, HasSpan['span']>();
+  const hoistedFunctions: Array<HasSpan['span']> = [];
   const discardWrittenParameter = (target: unknown) =>
     forEachPatternIdentifier(target, (id) =>
       parameterBodies.delete(`${id.ctxt}:${id.value}`),
@@ -673,8 +675,12 @@ export const transformSource = async (
     if (!t.isIdentifier(expr)) return false;
     const { ctxt } = expr as Identifier & { ctxt: number };
     const key = `${ctxt}:${expr.value}`;
+    const inside = (scope: HasSpan['span']) =>
+      scope.start <= expr.span.start && expr.span.end <= scope.end;
     const ret = initializedConstReturns.get(key) ?? parameterBodies.get(key);
-    return !!ret && ret.start <= expr.span.start && expr.span.end <= ret.end;
+    if (ret) return inside(ret);
+    const scope = moduleConsts.get(key);
+    return !!scope && inside(scope) && !hoistedFunctions.some(inside);
   };
   const addComponent = (name: string, fn: HasSpan & { params: unknown[] }) => {
     components.push({ name, node: fn });
@@ -705,6 +711,34 @@ export const transformSource = async (
     (stmt) =>
       stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export'),
   );
+  if (hasModuleDeclaration) {
+    for (const stmt of ast.body as any[]) {
+      const decl =
+        stmt.type === 'ExportDeclaration'
+          ? stmt.declaration
+          : stmt.type === 'ExportDefaultDeclaration'
+            ? stmt.decl
+            : stmt;
+      if (
+        decl?.type === 'FunctionDeclaration' ||
+        (stmt.type === 'ExportDefaultDeclaration' &&
+          decl?.type === 'FunctionExpression')
+      ) {
+        hoistedFunctions.push(stmt.span);
+        continue;
+      }
+      if (decl?.type !== 'VariableDeclaration' || decl.kind !== 'const')
+        continue;
+      for (const declarator of decl.declarations) {
+        if (declarator.init && declarator.id.type === 'Identifier')
+          moduleConsts.set(`${declarator.id.ctxt}:${declarator.id.value}`, {
+            ...stmt.span,
+            start: stmt.span.end,
+            end: ast.span.end,
+          });
+      }
+    }
+  }
   for (const { name, fn } of componentFunctions(ast)) {
     addComponent(name, fn);
     if (hasModuleDeclaration && fn.body) {
@@ -1561,7 +1595,10 @@ export const transformSource = async (
       let target = unwrapExpression(callee);
       while (target?.type === 'TsInstantiation')
         target = unwrapExpression(target.expression);
-      if (t.isIdentifier(target, { name: 'eval' })) parameterBodies.clear();
+      if (t.isIdentifier(target, { name: 'eval' })) {
+        parameterBodies.clear();
+        moduleConsts.clear();
+      }
       let propName: string | undefined;
 
       if (
