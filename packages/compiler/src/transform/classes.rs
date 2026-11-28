@@ -2671,6 +2671,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     {
                         return arg.to_string();
                     }
+                    if let ([param], [arg]) = (params.as_slice(), args.as_slice())
+                        && let Some(rest) = value.strip_prefix(&format!("({param} ? "))
+                        && !rest.contains(param)
+                    {
+                        return format!("({arg} ? {rest}");
+                    }
                     self.invoke(&params.join(", "), value, &args.join(", "))
                 };
                 let class_text = side(true, &class_value);
