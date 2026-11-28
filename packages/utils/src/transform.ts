@@ -3491,6 +3491,12 @@ export const transformSource = async (
         );
       });
 
+    const lookups: Array<{
+      at: number;
+      entries: Array<[string, string]>;
+      common: string;
+      closed: boolean;
+    }> = [];
     const indepVarGroups: Record<number, StyleConditional[]> = {};
     indepConditionals.forEach((c) => {
       if (c.groupId !== undefined) {
@@ -3517,6 +3523,12 @@ export const transformSource = async (
           Object.entries(lookupMap).map(([k, v]) => [k, JSON.stringify(v)]),
           options[0].closed,
         );
+        lookups.push({
+          at: classParts.length,
+          entries: Object.entries(lookupMap),
+          common: commonTestExpr,
+          closed: !!options[0].closed,
+        });
         classParts.push(`(${table}[${commonTestExpr}] || "")`);
       }
     });
@@ -3733,9 +3745,13 @@ export const transformSource = async (
         uses.length === bound.length &&
         uses.every((use, index) => use === index) &&
         uses.every((use) => !skippable.has(`${PREFIX}${use}`));
-      if (inline)
+      if (!inline) lookups.length = 0;
+      if (inline) {
+        for (const lookup of lookups)
+          lookup.common = inlineParams(lookup.common, bound);
         classParts.push(...parts.map((part) => inlineParams(part, bound)));
-      else if (!uses.length) classParts.push(`(${bound.join(', ')}, ${body})`);
+      } else if (!uses.length)
+        classParts.push(`(${bound.join(', ')}, ${body})`);
       else if (argBase !== null) {
         const names = argNames(argBase, argBase + bound.length);
         argBase += bound.length;
@@ -3750,6 +3766,34 @@ export const transformSource = async (
             bound.join(', '),
           ),
         );
+    }
+
+    const [lookup] = lookups;
+    if (
+      lookups.length === 1 &&
+      !dynamicClassParts.length &&
+      classParts.length > 1 &&
+      classParts.every(
+        (part, index) => index === lookup.at || staticClass(part) !== undefined,
+      )
+    ) {
+      const statics = (parts: string[]) =>
+        parts.map((part) => staticClass(part) ?? '').filter(Boolean);
+      const before = statics(classParts.slice(0, lookup.at));
+      const after = statics(classParts.slice(lookup.at + 1));
+      const withClass = (middle?: string) =>
+        JSON.stringify(
+          [...before, ...(middle ? [middle] : []), ...after].join(' '),
+        );
+      const table = lookupTable(
+        lookup.entries.map(([key, className]) => [key, withClass(className)]),
+        lookup.closed,
+      );
+      classParts.splice(
+        0,
+        classParts.length,
+        `(${table}[${lookup.common}] || ${withClass()})`,
+      );
     }
 
     classParts.push(...dynamicClassParts);
