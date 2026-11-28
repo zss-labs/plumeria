@@ -454,6 +454,13 @@ pub struct Built {
     pub base_style: Object,
     pub dynamic_vars: Vec<DynamicVar>,
     pub prop_var_spreads: Vec<String>,
+    pub stable_tests: Vec<String>,
+}
+
+impl Built {
+    fn generated(&self, params: &[String]) -> Vec<String> {
+        params.iter().chain(&self.stable_tests).cloned().collect()
+    }
 }
 
 struct Decision {
@@ -1152,6 +1159,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 base_style,
                 dynamic_vars,
                 prop_var_spreads,
+                stable_tests: Vec::new(),
             });
         }
 
@@ -1179,6 +1187,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .iter()
             .flat_map(|reads| reads.values().cloned())
             .collect();
+        let mut stable_tests: Vec<String> = Vec::new();
         for c in conditionals.iter().filter(|c| c.can_skip_test && c.group_id.is_none()) {
             let Some(test) = &c.test_string else { continue };
             let test = test.strip_prefix('!').unwrap_or(test);
@@ -1190,6 +1199,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 && !generated.iter().any(|known| known == name)
             {
                 generated.push(name.to_string());
+                stable_tests.push(name.to_string());
             }
         }
 
@@ -1610,6 +1620,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             base_style,
             dynamic_vars,
             prop_var_spreads,
+            stable_tests,
         })
     }
 
@@ -2559,6 +2570,14 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                 && falsy[1] == plan.item(&plan.params[middle], when_false.clone())
             {
                 plan.direct = Some((test.start, format!("{read} ? {when_true} : {when_false}")));
+            } else if name.is_none()
+                && middle == start + 1
+                && end == middle
+                && let Some(when_true) = plan.objects.get(&plan.params[start])
+                && truthy.len() == 1
+                && truthy[0] == plan.item(&plan.params[start], when_true.clone())
+            {
+                plan.direct = Some((test.start, format!("{read} ? {when_true} : undefined")));
             }
             return Ok(Some(vec![format!(
                 "({read} ? ({}) : ({}))",
@@ -2649,7 +2668,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             let built = self.build_class_parts(args, Vec::new(), String::new(), true);
             self.element_reads = None;
             let built = built?;
-            let class_value = join_class_parts(&built.class_parts, &plan.params);
+            let class_value = join_class_parts(&built.class_parts, &built.generated(&plan.params));
             let style_value = generated_style(&plan.vars);
             let sides: Option<Vec<bool>> = entries
                 .iter()
@@ -2775,7 +2794,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let mut attributes = Vec::new();
         let has_class = arg_count > 0 || !built.base_style.is_empty();
         if has_class {
-            let replacement = join_class_parts(&built.class_parts, &[]);
+            let replacement = join_class_parts(&built.class_parts, &built.stable_tests);
             let value = if static_class(&replacement).is_some() && !replacement.contains('&') {
                 replacement
             } else {
@@ -2889,6 +2908,11 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
                     .take()
                     .filter(|(at, _)| *at == cond.test.span().start)
                     .map(|(_, style)| style),
+                K::Binary(left, op, _) if op.is_and() => plan
+                    .direct
+                    .take()
+                    .filter(|(at, _)| *at == left.span().start)
+                    .map(|(_, style)| style),
                 _ => None,
             },
             _ => None,
@@ -2899,7 +2923,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
         let built = self.build_class_parts(args, Vec::new(), String::new(), true);
         self.element_reads = None;
         let built = built?;
-        let class_value = join_class_parts(&built.class_parts, &plan.params);
+        let class_value = join_class_parts(&built.class_parts, &built.generated(&plan.params));
         let vars: Vec<&str> = plan.vars.iter().map(|(name, _)| name.as_str()).collect();
         let style_value = (!vars.is_empty()).then(|| generated_style(&plan.vars));
         let sequence = |steps: &[String], value: &str| {
@@ -2910,11 +2934,12 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             }
         };
         let class_static = static_class(&class_value).is_some();
-        let direct = direct.filter(|_| class_static && !class_value.contains('&'));
         let class_reads_only = style_value.is_some()
             && !class_static
             && !plan.params.iter().any(|param| mentions(&class_value, param))
             && exprs.iter().all(|expr| self.class_reads_stable(*expr));
+        let direct =
+            direct.filter(|_| (class_static && !class_value.contains('&')) || class_reads_only);
         let (class_steps, style_steps) = if style_value.is_some() && (class_static || class_reads_only) {
             (Vec::new(), steps)
         } else {
