@@ -1,0 +1,30 @@
+---
+title: 'Plumeria 22.4'
+description: 'The later className or style attribute wins, and margin-trim follows the current spec.'
+date: '2026-11-28'
+---
+
+import { GitHubUser } from 'component/GitHubUser'
+
+<div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
+  <GitHubUser username="refirst11" subtext="Plumeria Core" />
+  <GitHubUser username="Anionix" subtext="Plumeria Core" />
+</div>
+
+## 22.3.4 and later
+The later attribute wins:  
+
+Starting in 22.3.4, a `className` or `style` attribute written after `sx` overrides the generated one instead of being merged into it. `<div sx={styles.text} className="banner" />` renders only `banner`. When `sx` comes after, as in `<div className="banner" sx={styles.text} />`, the generated `className` wins and `banner` is dropped. The same applies to a `className` or `style` passed to a styled component. To override a style, use `sx`.
+
+## margin-trim
+
+`marginTrim` accepts `none`, `block`, `block-start` and `block-end`. `in-flow` and `all` were removed from the spec, and the ESLint plugin now reports them.
+
+---
+
+## Release notes
+
+## 22.4.0 (Nov 28, 2026)
+
+- Update: Bump cssdefs to 1.1.0.
+- Update: Accept `block`, `block-start` and `block-end` for marginTrim instead of `in-flow` and `all`.
