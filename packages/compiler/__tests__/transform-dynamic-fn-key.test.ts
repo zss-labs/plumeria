@@ -327,6 +327,25 @@ export const A = ({ n, on }) => <Card cardStyle={[s.w(n), on && s.red]} />;`;
       expect(off.vars).toEqual(on.vars);
     });
 
+    it('folds the receiver class into the lookup values and fallback', async () => {
+      const source = relay('n') + '\nexport { Card };';
+      const name = 'relay-receiver-classes.tsx';
+      const { code } = await run(source, name);
+      expect(code).not.toMatch(/\+\s*['"] ['"]\s*\+/);
+
+      const { A, Card } = (await execute(source, name)) as {
+        A: (props: { n: number; on: boolean }) => Relayed;
+        Card: (props: Relayed) => { className: string };
+      };
+      expect(Card(A({ n: 1, on: true })).className).toBe(
+        'xymmdeuh xl77b4e6 xq96bg3w',
+      );
+      expect(Card(A({ n: 1, on: false })).className).toBe('xymmdeuh xl77b4e6');
+      expect(Card({ cardStyle: { key: 'unknown', vars: {} } }).className).toBe(
+        'xymmdeuh',
+      );
+    });
+
     it('keeps a condition string that looks like a relayed spread', async () => {
       const marker = '...__plumeria__$$v0';
       const source = `import * as css from '@plumeria/core';
