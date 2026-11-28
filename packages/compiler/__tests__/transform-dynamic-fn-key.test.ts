@@ -336,7 +336,7 @@ export default function App({ active }) {
       );
       expect(code).not.toContain('__plumeria__$$');
       expect(code).toContain(
-        'className={((active) ? "xhrr6ses xhxthtyw xvbwmxqp" : "xhrr6ses xhxthtyw xuifcaas")}',
+        'className={(active ? "xhrr6ses xhxthtyw xvbwmxqp" : "xhrr6ses xhxthtyw xuifcaas")}',
       );
       expect(code).toMatch(/style=\{\{\s*"--xfuma1qq-value": scale\s*\}\}/);
     });
@@ -560,7 +560,7 @@ export const blue = css.use(s.blue);`;
 
     const branches = async (sx: string, name: string) => {
       const source = `import * as css from '@plumeria/core';
-const s = css.create({ w: (n) => ({ width: n }) });
+const s = css.create({ w: (n) => ({ width: n }), red: { color: 'red' } });
 export const A = ({ on, next, a, b }) => <div sx={${sx}} />;`;
       const { code } = await run(source, name);
       const { A } = await execute(source, name);
@@ -620,6 +620,27 @@ export const A = ({ on, next, a, b }) => <div sx={${sx}} />;`;
         expect(Object.values(props.style)).toEqual([flag ? '1px' : '2px']);
       }
     });
+
+    it.each([
+      ['on && s.w(a())', 'direct-guarded-style.tsx', ''],
+      ['on ? s.w(a()) : s.red', 'direct-static-branch.tsx', 'xq96bg3w'],
+    ])(
+      'writes the guarded style directly for %s',
+      async (sx, file, offClass) => {
+        const { code, render } = await branches(sx, file);
+        expect(code).not.toMatch(/__plumeria__\$\$v\d+/);
+
+        const on = render(true);
+        expect(on.calls.a).toHaveBeenCalledTimes(1);
+        expect(Object.values(on.props.style)).toEqual(['1px']);
+        expect(on.props.className).toBe('xl77b4e6');
+
+        const off = render(false);
+        expect(off.calls.a).not.toHaveBeenCalled();
+        expect(off.props.style).toBeUndefined();
+        expect(off.props.className).toBe(offClass);
+      },
+    );
 
     it('preserves a shared inner guard on opposite outer branches', async () => {
       const { A } = (await execute(
