@@ -513,6 +513,33 @@ export const A = ({ next, a, b }) => <div sx={${sx}} />;`;
       expect(Object.values(off.props.style)).toEqual(['2px']);
     });
 
+    it('emits a fixed class when both branches of a stable condition use the same key', async () => {
+      const { code } = await run(
+        header +
+          `export const A = ({ on, a, b }) => <div sx={on ? s.palette(a) : s.palette(b)} />;`,
+        'stable-shared-branch.tsx',
+      );
+      expect(classOf(code)).toBe('xokp0532');
+    });
+
+    it('preserves a shared inner guard on opposite outer branches', async () => {
+      const { A } = (await execute(
+        header +
+          `export const A = ({ x, on, color }) => <div sx={x
+            ? (on ? null : s.palette(color))
+            : (on ? null : s.palette(color))} />;`,
+        'nested-shared-branch.tsx',
+      )) as {
+        A: (props: { x: boolean; on: boolean; color: string }) => {
+          className: string;
+        };
+      };
+      for (const x of [true, false]) {
+        expect(A({ x, on: true, color: 'red' }).className).toBe('');
+        expect(A({ x, on: false, color: 'red' }).className).toBe('xokp0532');
+      }
+    });
+
     it('keeps two separately written conditions apart', async () => {
       const { render } = await branches(
         '[next() && s.w(a()), !next() && s.w(b())]',
