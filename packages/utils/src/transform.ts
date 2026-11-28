@@ -324,6 +324,9 @@ const classTernary = (part: string) => {
   return { test: left.slice(0, question), truthy, falsy };
 };
 
+const ID_START = /\p{ID_Start}/u;
+const ID_CONTINUE = /\p{ID_Continue}/u;
+
 const generatedTest = (test: string, generated: string[]) => {
   const negated = test.startsWith('!');
   const base = negated ? test.slice(1) : test;
@@ -3194,6 +3197,35 @@ export const transformSource = async (
         )
         .join(',')}}`;
     const generated = [...(elementReads?.values() ?? [])];
+    for (const c of conditionals) {
+      if (!c.canSkipTest || c.groupId !== undefined || !c.testString) continue;
+      const test = c.testString.startsWith('!')
+        ? c.testString.slice(1)
+        : c.testString;
+      const name =
+        test.startsWith('(') && test.endsWith(')') ? test.slice(1, -1) : test;
+      let valid = name.length > 0;
+      for (let i = 0; valid && i < name.length; ) {
+        const code = name.codePointAt(i) ?? 0;
+        valid =
+          code === 36 ||
+          code === 95 ||
+          (code >= 65 && code <= 90) ||
+          (code >= 97 && code <= 122) ||
+          (i > 0 &&
+            ((code >= 48 && code <= 57) ||
+              code === 0x200c ||
+              code === 0x200d)) ||
+          (code >= 0x80 &&
+            (i === 0 ? ID_START : ID_CONTINUE).test(
+              String.fromCodePoint(code),
+            ));
+        i += code > 0xffff ? 2 : 1;
+      }
+      if (valid && !generated.includes(name)) {
+        generated.push(name);
+      }
+    }
     const testSource = (c: StyleConditional) =>
       c.groupId === undefined ? (c.testString ?? getSource(c.test)) : c.testLHS;
     const bound: string[] = [];
