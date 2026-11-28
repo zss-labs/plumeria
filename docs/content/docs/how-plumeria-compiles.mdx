@@ -58,7 +58,7 @@ export const A = ({ active }) => (
 
 ```tsx title="Compiled"
 export const A = ({ active }) => (
-  <div className={((active) ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas")} />
+  <div className={(active ? "xhrr6ses xvbwmxqp" : "xhrr6ses xuifcaas")} />
 );
 ```
 
@@ -89,9 +89,9 @@ export function App({ active, size }) {
 ```
 
 ```tsx title="Compiled"
-export function App({ active, size }) { let __plumeria__$$v0, __plumeria__$$a0;
+export function App({ active, size }) { let __plumeria__$$a0;
   return (
-    <div className={((__plumeria__$$v0 = (__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })), ((active) ? "xhrr6ses x8a1qw3u xvbwmxqp" : "xhrr6ses x8a1qw3u xuifcaas"))} style={__plumeria__$$v0} />
+    <div className={(active ? "xhrr6ses x8a1qw3u xvbwmxqp" : "xhrr6ses x8a1qw3u xuifcaas")} style={(__plumeria__$$a0 = size * 2, { "--xga54edu-size": (typeof (__plumeria__$$a0) === 'number' ? (__plumeria__$$a0) + 'px' : (__plumeria__$$a0)) })} />
   );
 }
 ```
@@ -99,5 +99,5 @@ export function App({ active, size }) { let __plumeria__$$v0, __plumeria__$$a0;
 The minifier then renames the temporaries like any other local.
 
 ```js title="next build"
-function e({active:a,size:c}){let d,f;return(0,b.jsx)("div",{className:(d={"--xga54edu-size":"number"==typeof(f=2*c)?f+"px":f},a?"xhrr6ses x8a1qw3u xvbwmxqp":"xhrr6ses x8a1qw3u xuifcaas"),style:d})}
+function({active:e,size:t}){let r;return(0,s.jsx)("div",{className:e?"xhrr6ses x8a1qw3u xvbwmxqp":"xhrr6ses x8a1qw3u xuifcaas",style:{"--xga54edu-size":"number"==typeof(r=2*t)?r+"px":r}})}
 ```
