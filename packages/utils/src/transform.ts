@@ -4390,6 +4390,13 @@ export const transformSource = async (
             if (!picked.length) return value;
             if (picked.length === 1 && picked[0].param === value)
               return picked[0].arg;
+            const head = picked.length === 1 ? `(${picked[0].param} ? ` : '';
+            if (
+              head &&
+              value.startsWith(head) &&
+              !value.slice(head.length).includes(picked[0].param)
+            )
+              return `(${picked[0].arg} ? ${value.slice(head.length)}`;
             return invoke(
               picked.map(({ param }) => param).join(', '),
               value,
