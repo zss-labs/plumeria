@@ -44,6 +44,6 @@
     "provenance": true
   },
   "dependencies": {
-    "cssdefs": "1.0.2"
+    "cssdefs": "1.1.0"
   }
 }
