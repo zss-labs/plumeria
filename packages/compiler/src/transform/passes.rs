@@ -973,7 +973,7 @@ impl<'t, 'p, 'b, 'a> Transformer<'t, 'p, 'b, 'a> {
             .collect();
         let built = self.build_class_parts(args, Vec::new(), String::new(), false)?;
         if built.is_optimizable {
-            let content = super::classes::join_class_parts(&built.class_parts, &[]);
+            let content = super::classes::join_class_parts(&built.class_parts, &built.stable_tests);
             self.replacements.push(Replacement {
                 start: call.span.start,
                 end: call.span.end,
