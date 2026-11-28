@@ -37,6 +37,26 @@ const styles = css.create({
       minHeight: 'calc(100lvh - 56px)',
     },
   },
+  eyebrow: {
+    alignItems: 'center',
+    marginBottom: 16,
+    color: homeTheme.muted,
+  },
+  by: {
+    fontSize: 12,
+  },
+  emphasis: {
+    alignItems: 'center',
+    marginBottom: 3,
+    fontWeight: 500,
+    color: homeTheme.foreground,
+  },
+  mark: {
+    marginInline: '0.3em',
+    ':is(.dark *)': {
+      filter: 'invert(1)',
+    },
+  },
   title: {
     fontSize: 'clamp(48px, 13vw, 64px)',
     fontWeight: 650,
@@ -181,6 +201,14 @@ export function HomePage({ lang = 'en' }: { lang?: 'en' | 'ja' }) {
         <div sx={styles.hero}>
           <div sx={styles.heroBody}>
             <div>
+              <p sx={styles.eyebrow}>
+                <span sx={styles.by}>BY</span>&nbsp;
+                <span sx={styles.emphasis}>
+                  zss {'{'}
+                  <img src="/logo.svg" alt="z" width="12" sx={styles.mark} />
+                  {'}'}
+                </span>
+              </p>
               <h1 sx={styles.title}>
                 {ja ? (
                   <>
