@@ -417,6 +417,34 @@ export function App(active = true) {
       });
     });
 
+    it('reads an initialized module condition in place beside a dynamic width', async () => {
+      const { code } = await run(
+        `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, w: (n) => ({ width: n }) });
+export const on = readFlag();
+const n = readWidth();
+export const view = <div sx={[on && s.red, s.w(n)]} />;`,
+        'module-const-condition.tsx',
+      );
+      expect(code).toContain('className=');
+      expect(code).not.toMatch(/__plumeria__\$\$t\d/);
+    });
+
+    it('preserves a module const TDZ read inside a hoisted function', async () => {
+      await expect(
+        execute(
+          `import * as css from '@plumeria/core';
+const s = css.create({ red: { color: 'red' }, blue: { color: 'blue' } });
+render();
+const on = true;
+export function render() {
+  return css.use(on && s.red, s.blue);
+}`,
+          'hoisted-module-const-tdz.tsx',
+        ),
+      ).rejects.toThrow(ReferenceError);
+    });
+
     it('preserves a TDZ read when a later style overrides the conditional style', async () => {
       const { U } = await execute(
         `import * as css from '@plumeria/core';
