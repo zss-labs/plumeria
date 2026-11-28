@@ -1294,7 +1294,7 @@ const validData: { [key: string]: readonly string[] } = {
   initialLetterAlign: ['auto', 'alphabetic', 'hanging', 'ideographic'], // 437
   interactivity: ['auto', 'inert'], // 438
   interpolateSize: ['numeric-only', 'allow-keywords'], // 439
-  marginTrim: ['none', 'in-flow', 'all'], // 440
+  marginTrim: ['none', 'block', 'block-start', 'block-end'], // 440
   mathShift: ['normal', 'compact'], // 441
   msOverflowStyle: ['auto', 'none', 'scrollbar', '-ms-autohiding-scrollbar'], // 442
   overflowClipBox: ['padding-box', 'content-box'], // 443
