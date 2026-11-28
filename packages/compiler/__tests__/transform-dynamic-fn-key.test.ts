@@ -68,9 +68,9 @@ const s = css.create({ stat: { color: 'red' }, palette: (color: string) => ({ co
         const source = [
           "import * as css from '@plumeria/core';",
           'const s = css.create({ w: (n) => ({ width: n }) });',
-          'export function A({ n }) {',
+          'export function A({ readWidth }) {',
           `${indent}'use client';`,
-          `${indent}return <div sx={s.w(n)} />;`,
+          `${indent}return <div sx={s.w(readWidth())} />;`,
           '}',
         ].join(newline);
         const { code } = await run(source, `directive-${name}.tsx`);
@@ -106,7 +106,7 @@ const d = css.create({
       async (_, parameter, argument) => {
         const { code } = await run(
           header +
-            `export function A(${parameter}) { return <div sx={s.palette(${argument})} />; }`,
+            `export function A(${parameter}) { return <div sx={s.palette(${argument}())} />; }`,
           'reserved-argument.tsx',
         );
         expect(code).toContain('style={((__plumeria__$$a0) => (');
@@ -118,14 +118,14 @@ const d = css.create({
     it('declares the arguments in the function that returns the element', async () => {
       const { code } = await run(
         header +
-          `export function A({ c }) {\n  return <div sx={s.palette(c)} />;\n}\nexport const B = ({ c }) => <div sx={s.palette(c)} />;`,
+          `export function A({ c }) {\n  return <div sx={s.palette(c())} />;\n}\nexport const B = ({ c }) => <div sx={s.palette(c())} />;`,
         'hoist-site.tsx',
       );
       expect(code).toMatch(
-        /export function A\(\{ c \}\) \{ let __plumeria__\$\$a0;\n {2}return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c, /,
+        /export function A\(\{ c \}\) \{ let __plumeria__\$\$a0;\n {2}return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c\(\), /,
       );
       expect(code).toMatch(
-        /export const B = \(\{ c \}\) => \{ let __plumeria__\$\$a0; return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c, [^\n]*\)\} \/>; \};/,
+        /export const B = \(\{ c \}\) => \{ let __plumeria__\$\$a0; return <div className="xokp0532" style=\{\(__plumeria__\$\$a0 = c\(\), [^\n]*\)\} \/>; \};/,
       );
     });
 
@@ -293,6 +293,20 @@ export const B = (p) => <div sx={[p.on && s.stat, s.w(p.n)]} />`,
       );
       return exports;
     };
+
+    it('applies the width unit directly to a stable parameter', async () => {
+      const source = `import * as css from '@plumeria/core';
+const s = css.create({ w: (n) => ({ width: n }) });
+export const A = (n) => <div sx={s.w(n)} />;`;
+      const name = 'inline-width-parameter.tsx';
+      const { code } = await run(source, name);
+      expect(code).not.toMatch(/__plumeria__\$\$a\d/);
+      const { A } = (await execute(source, name)) as {
+        A: (n: number | string) => { style: Record<string, unknown> };
+      };
+      expect(Object.values(A(12).style)).toEqual(['12px']);
+      expect(Object.values(A('50%').style)).toEqual(['50%']);
+    });
 
     const readmeStyles = `import * as css from '@plumeria/core';
 const styles = css.create({
@@ -672,7 +686,7 @@ export const A = ({ getKey }) => <div sx={[t[getKey()], t[getKey()]]} />;`,
       );
       expect(code).not.toMatch(/=> \(\{/);
       expect(code).toContain(
-        '{...{ "style": __plumeria__$$v0 }} id={g()} style={f()} />',
+        `{...{ "style": { "--x80848wl-color": (typeof (c) === 'number' ? (c) + 'px' : (c)) } }} id={g()} style={f()} />`,
       );
     });
 
@@ -1159,9 +1173,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.fill(r)} />;`,
         'unit-percent.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
-      expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
-      );
+      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ '%'\)/);
     });
 
     it('moves a unit written as px the same way', async () => {
@@ -1172,9 +1184,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
         'unit-px.tsx',
       );
       expect(sheets.join('')).toMatch(/width: var\(--[a-z0-9-]+\);/);
-      expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ 'px'\)/,
-      );
+      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ 'px'\)/);
     });
 
     it('moves a unit written inside calc', async () => {
@@ -1187,9 +1197,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       expect(sheets.join('')).toMatch(
         /width: calc\(100% - var\(--[a-z0-9-]+\)\);/,
       );
-      expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+": \(\(__plumeria__\$\$a0\) \+ 'px'\)/,
-      );
+      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+": \(\(r\) \+ 'px'\)/);
     });
 
     it('still carries the unit when the declaration writes none', async () => {
@@ -1265,10 +1273,10 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
       expect(css).toMatch(/margin: var\(--[a-z0-9-]+-margin\);/);
       expect(css).toMatch(/translate: var\(--[a-z0-9-]+-translate\);/);
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin": \(\(__plumeria__\$\$a0\) \+ 'rem'\)/,
+        /"--[a-z0-9-]+-margin": \(\(r\) \+ 'rem'\)/,
       );
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-translate": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
+        /"--[a-z0-9-]+-translate": \(\(r\) \+ '%'\)/,
       );
     });
 
@@ -1282,9 +1290,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.k(r)} />;`,
       expect(sheets.join('')).toMatch(
         /width: calc\(var\(--[a-z0-9-]+\) \+ var\(--[a-z0-9-]+-width\)\);/,
       );
-      expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-width": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
-      );
+      expect(styleOf(code)).toMatch(/"--[a-z0-9-]+-width": \(\(r\) \+ '%'\)/);
     });
 
     it('splits one parameter that lands in declarations with different units', async () => {
@@ -1299,7 +1305,7 @@ export const A = ({ r }: { r: number }) => <div sx={s.box(r)} />;`,
       expect(css).toMatch(/margin-top: var\(--[a-z0-9-]+-margin-top\);/);
       expect(styleOf(code)).toContain("+ 'px'");
       expect(styleOf(code)).toMatch(
-        /"--[a-z0-9-]+-margin-top": \(\(__plumeria__\$\$a0\) \+ '%'\)/,
+        /"--[a-z0-9-]+-margin-top": \(\(r\) \+ '%'\)/,
       );
     });
 
