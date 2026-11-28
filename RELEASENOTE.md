@@ -1,5 +1,9 @@
 # Release Notes
 
+## 22.4.2 (Nov 28, 2026)
+
+- Fix: Accept percentages in logical margin and inset properties, blockSize and inlineSize in validate-values.
+
 ## 22.4.1 (Nov 28, 2026)
 
 - Perf: Merge complementary branches on a stable condition into one class.

@@ -1,3 +1,11 @@
+## 22.4.2
+
+### Patch Changes
+
+- 4efe3f9: - Fix: Accept percentages in logical margin and inset properties, blockSize and inlineSize in validate-values.
+- Updated dependencies [4efe3f9]
+  - @plumeria/compiler@22.4.2
+
 ## 22.4.1
 
 ### Patch Changes
